@@ -1249,6 +1249,7 @@ DECLARE
   v_admin_id     uuid := 'a0000000-0000-0000-0000-000000000003';
   v_sample_req_id uuid := 'b0000000-0000-0000-0000-000000000001';
 BEGIN
+  PERFORM set_config('search_path', 'public, extensions', true);
 
   -- --------------------------------------------------------------------------
   -- 1. Create or Update: Showcase Volunteer (kind_volunteer)
@@ -1308,7 +1309,7 @@ BEGIN
     '+91 98320 12345',
     'user',
     'verified',
-    ST_SetSRID(ST_MakePoint(86.9661, 23.6889), 4326)::geography,
+    extensions.ST_SetSRID(extensions.ST_MakePoint(86.9661, 23.6889), 4326)::geography,
     4.95,
     18
   )
@@ -1377,7 +1378,7 @@ BEGIN
     '+91 98321 54321',
     'user',
     'verified',
-    ST_SetSRID(ST_MakePoint(86.9742, 23.6845), 4326)::geography,
+    extensions.ST_SetSRID(extensions.ST_MakePoint(86.9742, 23.6845), 4326)::geography,
     5.00,
     3
   )
@@ -1446,7 +1447,7 @@ BEGIN
     '+91 98000 00000',
     'admin',
     'verified',
-    ST_SetSRID(ST_MakePoint(86.9661, 23.6889), 4326)::geography,
+    extensions.ST_SetSRID(extensions.ST_MakePoint(86.9661, 23.6889), 4326)::geography,
     5.00,
     100
   )
@@ -1488,7 +1489,7 @@ BEGIN
     '🚨 Critical O+ Blood Needed (2 Units) - Asansol District Hospital',
     'Emergency trauma patient admitted in surgical ward. Requires 2 verified units of O+ blood immediately. Patient relatives available on site.',
     '{"bloodGroup": "O+", "unitsNeeded": 2, "hospitalName": "Asansol District Hospital"}'::jsonb,
-    ST_SetSRID(ST_MakePoint(86.9742, 23.6845), 4326)::geography,
+    extensions.ST_SetSRID(extensions.ST_MakePoint(86.9742, 23.6845), 4326)::geography,
     'Asansol District Hospital, SB Gorai Road, Asansol',
     'open',
     now() - interval '12 minutes'

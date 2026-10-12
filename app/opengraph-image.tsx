@@ -86,7 +86,8 @@ export default async function Image() {
         >
           <div
             style={{
-              display: 'inline-flex',
+              display: 'flex',
+              alignSelf: 'flex-start',
               alignItems: 'center',
               padding: '6px 16px',
               borderRadius: '9999px',
