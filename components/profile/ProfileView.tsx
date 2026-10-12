@@ -20,35 +20,49 @@ import {
 import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { VerificationState } from '@/lib/data/types';
+import { dataAdapter } from '@/lib/data';
 
 export function ProfileView() {
   const { userProfile, updateVerificationState, requests } = useKindLinkStore();
 
   const [activeTab, setActiveTab] = useState<'history' | 'my-requests' | 'badges'>('history');
-  const [otpModalOpen, setOtpModalOpen] = useState(false);
   const [idModalOpen, setIdModalOpen] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
-  const [selectedFileName, setSelectedFileName] = useState('AEC_Student_ID_RahulSen.pdf');
+  const [phoneInput, setPhoneInput] = useState(userProfile.phone || '+91 98320 12345');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
-  // Verify Phone OTP
-  const handleVerifyOtp = () => {
-    if (otpCode.length < 4) {
-      toast.error('Please enter a valid OTP code (e.g. 1234)');
+  // Upload ID to private storage
+  const handleUploadId = async () => {
+    if (!phoneInput || phoneInput.trim().length < 10) {
+      toast.error('Please enter a valid 10-digit phone number');
       return;
     }
-    updateVerificationState('verified');
-    setOtpModalOpen(false);
-    toast.success('Phone Number Verified Successfully!');
+    if (!selectedFile) {
+      toast.error('Please choose a valid ID document (JPG, PNG, or PDF)');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const res = await dataAdapter.uploadVerificationDoc(phoneInput.trim(), selectedFile);
+      if (!res.success) {
+        toast.error(res.error || 'Failed to submit verification document');
+        setUploading(false);
+        return;
+      }
+
+      updateVerificationState('pending', selectedFile.name);
+      setIdModalOpen(false);
+      toast.success('Document Submitted for Verification!', {
+        description: 'Uploaded to private storage. Admin will review and verify your account.',
+      });
+    } catch (err: any) {
+      toast.error(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
   };
 
-  // Upload ID
-  const handleUploadId = () => {
-    updateVerificationState('pending', selectedFileName);
-    setIdModalOpen(false);
-    toast.success('ID Uploaded for Verification!', {
-      description: 'Community moderators at AEC will review within 2 hours.',
-    });
-  };
 
   const myHelpHistory = [
     {
@@ -303,69 +317,80 @@ export function ProfileView() {
         )}
       </div>
 
-      {/* OTP MODAL */}
-      {otpModalOpen && (
+      {/* ID UPLOAD MODAL */}
+      {idModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-3xl bg-card border border-border p-6 shadow-2xl text-center space-y-4">
-            <h3 className="text-lg font-bold text-foreground">Verify Phone via OTP</h3>
-            <p className="text-xs text-muted-foreground">
-              Enter 6-digit verification code sent to +91 98320 12345
-            </p>
-            <input
-              type="text"
-              maxLength={6}
-              value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value)}
-              placeholder="123456"
-              className="w-full text-center tracking-widest text-xl font-bold p-3 rounded-2xl border border-border bg-background focus:outline-none focus:border-primary"
-            />
-            <div className="flex gap-2">
+          <div className="w-full max-w-sm rounded-3xl bg-card border border-border p-6 shadow-2xl text-left space-y-4">
+            <div>
+              <h3 className="text-lg font-bold text-foreground">Apply for Volunteer Verification</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Verified helpers can respond to community aid requests. Upload your student or government ID.
+              </p>
+            </div>
+
+            {/* Phone number */}
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                Phone Number (Private, shared only upon accepted match)
+              </label>
+              <input
+                type="tel"
+                value={phoneInput}
+                onChange={(e) => setPhoneInput(e.target.value)}
+                placeholder="+91 98765 43210"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            {/* File picker */}
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                Select ID Document (PDF, JPG, PNG - Max 5 MB)
+              </label>
+              <label className="p-5 rounded-2xl border-2 border-dashed border-border bg-muted/40 text-xs text-muted-foreground flex flex-col items-center gap-2 cursor-pointer hover:bg-muted/70 transition">
+                <Upload className="h-6 w-6 text-primary notranslate" />
+                <span className="font-medium text-foreground text-center">
+                  {selectedFile ? selectedFile.name : 'Click to select ID document'}
+                </span>
+                <span className="text-[11px] text-muted-foreground">Stored securely in private storage</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast.error('File size exceeds 5 MB limit');
+                        return;
+                      }
+                      setSelectedFile(file);
+                    }
+                  }}
+                />
+              </label>
+            </div>
+
+            <div className="flex gap-2 pt-2">
               <button
-                onClick={() => setOtpModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold"
+                onClick={() => setIdModalOpen(false)}
+                disabled={uploading}
+                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold hover:bg-muted transition"
               >
                 Cancel
               </button>
               <button
-                onClick={handleVerifyOtp}
-                className="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-soft"
+                onClick={handleUploadId}
+                disabled={uploading}
+                className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold shadow-soft transition disabled:opacity-50"
               >
-                Verify Now
+                {uploading ? 'Uploading...' : 'Submit Verification'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ID UPLOAD MODAL */}
-      {idModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-3xl bg-card border border-border p-6 shadow-2xl text-center space-y-4">
-            <h3 className="text-lg font-bold text-foreground">Upload Student / Govt ID</h3>
-            <p className="text-xs text-muted-foreground">
-              Supported files: PDF, PNG, JPG (College ID or Aadhaar Card)
-            </p>
-            <div className="p-6 rounded-2xl border-2 border-dashed border-border bg-muted/40 text-xs text-muted-foreground flex flex-col items-center gap-2">
-              <Upload className="h-8 w-8 text-primary notranslate" />
-              <span>Selected: {selectedFileName}</span>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setIdModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUploadId}
-                className="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-soft"
-              >
-                Submit ID
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 import { AlertTriangle, Phone, Radio, ShieldCheck, X, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
+import { dataAdapter } from '@/lib/data';
+
 interface EmergencySosModalProps {
   open: boolean;
   onClose: () => void;
@@ -16,14 +19,17 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
 
   const handleBroadcast = () => {
     setBroadcastSent(true);
+    const { userCoords } = useKindLinkStore.getState();
+    dataAdapter.submitSos(userCoords.lat, userCoords.lng).catch(() => {});
     toast.error('Emergency SOS Signal Broadcasted!', {
-      description: '48 verified volunteers in Asansol and Burnpur have received your high-priority alert.',
+      description: 'Verified volunteers in Asansol and Burnpur have received your high-priority alert.',
     });
     setTimeout(() => {
       setBroadcastSent(false);
       onClose();
     }, 2800);
   };
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">

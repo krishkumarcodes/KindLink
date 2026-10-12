@@ -26,8 +26,11 @@ import {
   calculateHelpGravity,
   formatETA,
 } from '@/lib/data/physics';
+import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
+import { dataAdapter } from '@/lib/data';
 
 export function PhysicsLabView() {
+
   // -------------------------------------------------------------
   // FEATURE A: KINEMATICS & HAVERSINE DISTANCE
   // -------------------------------------------------------------
@@ -207,10 +210,13 @@ export function PhysicsLabView() {
         if (prev <= 1) {
           clearInterval(countdownIntervalRef.current!);
           setCountdownActive(false);
+          const { userCoords } = useKindLinkStore.getState();
+          dataAdapter.submitSos(userCoords.lat, userCoords.lng).catch(() => {});
           toast.error('Emergency SOS Beacon Triggered!', {
             description: 'Automated fall detection broadcasted alert to nearby KindLink helpers.',
           });
           return 0;
+
         }
         return prev - 1;
       });

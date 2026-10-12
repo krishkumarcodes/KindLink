@@ -15,10 +15,30 @@ import { ProfileView } from '@/components/profile/ProfileView';
 import { SettingsView } from '@/components/settings/SettingsView';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
 
-export default function KindLinkApp() {
-  const { currentView, addNotification, hasSimulatedUrgentAlert } = useKindLinkStore();
+import { initializeRealtime } from '@/lib/supabase/realtime';
 
-  // Simulate incoming real-time urgent alert after 20 seconds
+export default function KindLinkApp() {
+  const {
+    currentView,
+    addNotification,
+    hasSimulatedUrgentAlert,
+    fetchLiveRequests,
+    fetchLiveProfile,
+    fetchLiveNotifications,
+  } = useKindLinkStore();
+
+  // Load real backend data and bind realtime subscriptions on mount
+  useEffect(() => {
+    fetchLiveRequests();
+    fetchLiveProfile();
+    fetchLiveNotifications();
+    const cleanupRealtime = initializeRealtime();
+
+    return () => {
+      cleanupRealtime?.();
+    };
+  }, [fetchLiveRequests, fetchLiveProfile, fetchLiveNotifications]);
+
   useEffect(() => {
     if (hasSimulatedUrgentAlert) return;
 

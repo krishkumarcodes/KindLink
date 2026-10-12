@@ -16,6 +16,7 @@ import {
   MOCK_USER,
 } from '../data/mock-requests';
 import { calculateHaversineDistance, calculateHelpGravity } from '../data/physics';
+import { dataAdapter } from '../data';
 
 export type AppView = 'home' | 'requests' | 'map' | 'new' | 'physics' | 'profile' | 'settings';
 
@@ -35,6 +36,7 @@ interface KindLinkState {
   userCoords: { lat: number; lng: number; isLive: boolean };
   hasSimulatedUrgentAlert: boolean;
   sensorCalibration: { x: number; y: number; z: number; calibrated: boolean };
+  isLoadingRequests: boolean;
 
   // Actions
   setCurrentView: (view: AppView) => void;
@@ -49,11 +51,15 @@ interface KindLinkState {
   setUserCoords: (coords: { lat: number; lng: number; isLive: boolean }) => void;
   setSensorCalibration: (cal: { x: number; y: number; z: number; calibrated: boolean }) => void;
 
-  addRequest: (newReq: Omit<HelpRequest, 'id' | 'createdAt' | 'helpGravityScore' | 'status' | 'helpersOffered' | 'distanceKm'>) => void;
-  offerHelp: (requestId: string) => void;
+  fetchLiveRequests: () => Promise<void>;
+  fetchLiveProfile: () => Promise<void>;
+  fetchLiveNotifications: () => Promise<void>;
+
+  addRequest: (newReq: Omit<HelpRequest, 'id' | 'createdAt' | 'helpGravityScore' | 'status' | 'helpersOffered' | 'distanceKm'>) => Promise<void>;
+  offerHelp: (requestId: string) => Promise<void>;
   updateVerificationState: (state: VerificationState, docName?: string) => void;
-  markNotificationRead: (id: string) => void;
-  markAllNotificationsRead: () => void;
+  markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
   addNotification: (notif: NotificationItem) => void;
 }
 
@@ -75,6 +81,7 @@ export const useKindLinkStore = create<KindLinkState>()(
       userCoords: { lat: ASANSOL_CENTER.lat, lng: ASANSOL_CENTER.lng, isLive: false },
       hasSimulatedUrgentAlert: false,
       sensorCalibration: { x: 0, y: 0, z: 0, calibrated: false },
+      isLoadingRequests: false,
 
       setCurrentView: (view) => set({ currentView: view }),
       setSelectedRequestId: (id) => set({ selectedRequestId: id }),
@@ -88,58 +95,118 @@ export const useKindLinkStore = create<KindLinkState>()(
       setSensorCalibration: (cal) => set({ sensorCalibration: cal }),
 
       setUserCoords: (coords) => {
-        const { requests } = get();
-        // Recalculate distances and gravity scores with new coords
-        const updated = requests.map((req) => {
+        set({ userCoords: coords });
+        get().fetchLiveRequests();
+      },
+
+      fetchLiveRequests: async () => {
+        const { userCoords, filterRadius, filterCategory, filterUrgency } = get();
+        set({ isLoadingRequests: true });
+        try {
+          const fresh = await dataAdapter.getRequests({
+            lat: userCoords.lat,
+            lng: userCoords.lng,
+            radiusKm: filterRadius,
+            category: filterCategory,
+            urgency: filterUrgency,
+          });
+          if (fresh && fresh.length > 0) {
+            set({ requests: fresh, isLoadingRequests: false });
+          } else {
+            set({ isLoadingRequests: false });
+          }
+        } catch {
+          set({ isLoadingRequests: false });
+        }
+      },
+
+      fetchLiveProfile: async () => {
+        try {
+          const profile = await dataAdapter.getCurrentUserProfile();
+          if (profile) {
+            set({ userProfile: profile });
+          }
+        } catch {
+          // Handled
+        }
+      },
+
+      fetchLiveNotifications: async () => {
+        try {
+          const notifs = await dataAdapter.getNotifications();
+          if (notifs && notifs.length > 0) {
+            set({ notifications: notifs });
+          }
+        } catch {
+          // Handled
+        }
+      },
+
+      addRequest: async (newReqData) => {
+        const { userCoords, fetchLiveRequests } = get();
+        try {
+          const res = await dataAdapter.createRequest({
+            category: newReqData.category,
+            title: newReqData.title,
+            description: newReqData.description,
+            urgency: newReqData.urgency,
+            latitude: newReqData.latitude,
+            longitude: newReqData.longitude,
+            addressText: newReqData.locationName,
+            bloodGroup: newReqData.bloodGroup,
+            unitsNeeded: newReqData.unitsNeeded,
+            itemType: newReqData.itemType,
+            itemDuration: newReqData.itemDuration,
+            patientAge: newReqData.patientAge,
+          });
+
+          if (res.success) {
+            await fetchLiveRequests();
+            set({
+              selectedRequestId: res.id,
+              currentView: 'requests',
+            });
+          }
+        } catch {
+          // Fallback optimistic local addition
           const dist = calculateHaversineDistance(
-            coords.lat,
-            coords.lng,
-            req.latitude,
-            req.longitude
+            userCoords.lat,
+            userCoords.lng,
+            newReqData.latitude,
+            newReqData.longitude
           );
-          const gravityScore = calculateHelpGravity(req.category, req.waitingMinutes, dist);
-          return {
-            ...req,
+          const gravityScore = calculateHelpGravity(
+            newReqData.category,
+            newReqData.waitingMinutes || 1,
+            dist
+          );
+
+          const newRequest: HelpRequest = {
+            ...newReqData,
+            id: `req-${Date.now()}`,
             distanceKm: dist,
+            createdAt: 'Just now',
             helpGravityScore: gravityScore,
+            status: 'open',
+            helpersOffered: 0,
           };
-        });
-        set({ userCoords: coords, requests: updated });
+
+          set((state) => ({
+            requests: [newRequest, ...state.requests],
+            selectedRequestId: newRequest.id,
+            currentView: 'requests',
+          }));
+        }
       },
 
-      addRequest: (newReqData) => {
-        const { userCoords, requests } = get();
-        const dist = calculateHaversineDistance(
-          userCoords.lat,
-          userCoords.lng,
-          newReqData.latitude,
-          newReqData.longitude
-        );
-        const gravityScore = calculateHelpGravity(
-          newReqData.category,
-          newReqData.waitingMinutes || 1,
-          dist
-        );
-
-        const newRequest: HelpRequest = {
-          ...newReqData,
-          id: `req-${Date.now()}`,
-          distanceKm: dist,
-          createdAt: 'Just now',
-          helpGravityScore: gravityScore,
-          status: 'open',
-          helpersOffered: 0,
-        };
-
-        set({
-          requests: [newRequest, ...requests],
-          selectedRequestId: newRequest.id,
-          currentView: 'requests',
-        });
-      },
-
-      offerHelp: (requestId) => {
+      offerHelp: async (requestId) => {
         const { requests, userProfile } = get();
+        try {
+          await dataAdapter.offerHelp(requestId);
+        } catch {
+          // Handled
+        }
+
         const updated = requests.map((req) => {
           if (req.id === requestId) {
             return {
@@ -149,6 +216,7 @@ export const useKindLinkStore = create<KindLinkState>()(
           }
           return req;
         });
+
         set({
           requests: updated,
           userProfile: {
@@ -169,15 +237,21 @@ export const useKindLinkStore = create<KindLinkState>()(
         });
       },
 
-      markNotificationRead: (id) => {
+      markNotificationRead: async (id) => {
         const { notifications } = get();
+        try {
+          await dataAdapter.markNotificationRead(id);
+        } catch {}
         set({
           notifications: notifications.map((n) => (n.id === id ? { ...n, unread: false } : n)),
         });
       },
 
-      markAllNotificationsRead: () => {
+      markAllNotificationsRead: async () => {
         const { notifications } = get();
+        try {
+          await dataAdapter.markAllNotificationsRead();
+        } catch {}
         set({
           notifications: notifications.map((n) => ({ ...n, unread: false })),
         });

@@ -23,6 +23,7 @@ import { HelpRequest, TravelMode } from '@/lib/data/types';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { calculateETA, formatETA } from '@/lib/data/physics';
 import { WhyThisRankModal } from './WhyThisRankModal';
+import { dataAdapter } from '@/lib/data';
 
 interface RequestDetailModalProps {
   request: HelpRequest | null;
@@ -31,22 +32,48 @@ interface RequestDetailModalProps {
 }
 
 export function RequestDetailModal({ request, open, onClose }: RequestDetailModalProps) {
-  const { offerHelp, travelMode, setTravelMode } = useKindLinkStore();
+  const { offerHelp, travelMode, setTravelMode, userProfile } = useKindLinkStore();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [whyRankOpen, setWhyRankOpen] = useState(false);
   const [isHelped, setIsHelped] = useState(false);
+  const [contactInfo, setContactInfo] = useState<{ name: string; phone: string; relationship: string } | null>(null);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [stars, setStars] = useState(5);
+  const [ratingComment, setRatingComment] = useState('');
+
+  React.useEffect(() => {
+    if (open && request) {
+      dataAdapter.getContact(request.id).then((c) => setContactInfo(c)).catch(() => setContactInfo(null));
+    }
+  }, [open, request]);
 
   if (!open || !request) return null;
 
   const etaMinutes = calculateETA(request.distanceKm, travelMode);
 
-  const handleConfirmHelp = () => {
-    offerHelp(request.id);
-    setIsHelped(true);
-    setConfirmOpen(false);
-    toast.success('Thank you for stepping up!', {
-      description: `You have offered to help ${request.contactName}. Details shared with requester.`,
-    });
+  const handleConfirmHelp = async () => {
+    if (userProfile.verificationState !== 'verified') {
+      toast.error('Identity Verification Required', {
+        description: 'Only verified helpers can offer aid. Please upload your student/government ID under Profile.',
+      });
+      setConfirmOpen(false);
+      return;
+    }
+
+    try {
+      await offerHelp(request.id);
+      setIsHelped(true);
+      setConfirmOpen(false);
+      toast.success('Thank you for stepping up!', {
+        description: `Offer submitted to ${request.contactName}. You will receive a notification when accepted.`,
+      });
+      const c = await dataAdapter.getContact(request.id);
+      if (c) setContactInfo(c);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to submit offer');
+    }
   };
 
   const handleShare = async () => {
@@ -59,20 +86,32 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     if (navigator.share) {
       try {
         await navigator.share(shareData);
-      } catch {
-        // Ignored if cancelled
-      }
+      } catch {}
     } else {
       await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
       toast.success('Link copied to clipboard!');
     }
   };
 
-  const handleReport = () => {
+  const handleReport = async () => {
+    if (!reportReason.trim()) {
+      toast.error('Please enter a reason for the report');
+      return;
+    }
+    await dataAdapter.submitReport(request.id, reportReason);
+    setReportModalOpen(false);
+    setReportReason('');
     toast.info('Report submitted to Asansol moderators', {
       description: 'Our team will review this request within 15 minutes.',
     });
   };
+
+  const handleRate = async () => {
+    await dataAdapter.submitRating(request.id, request.id, stars, ratingComment);
+    setRatingModalOpen(false);
+    toast.success('Thank you for rating your volunteer match!');
+  };
+
 
   return (
     <>
@@ -202,22 +241,45 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                   </div>
                 </div>
 
-                <a
-                  href={`tel:${request.phone}`}
-                  className="flex items-center gap-1 rounded-xl bg-background border border-border px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/5 transition touch-target"
-                >
-                  <Phone className="h-3.5 w-3.5 notranslate" />
-                  <span>Call</span>
-                </a>
+                {contactInfo ? (
+                  <a
+                    href={`tel:${contactInfo.phone}`}
+                    className="flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white px-3 py-1.5 text-xs font-bold hover:bg-emerald-700 transition touch-target"
+                  >
+                    <Phone className="h-3.5 w-3.5 notranslate" />
+                    <span>Call {contactInfo.phone}</span>
+                  </a>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground bg-muted px-2.5 py-1 rounded-xl">
+                    Phone revealed upon match
+                  </span>
+                )}
               </div>
             </div>
 
             {/* Action buttons */}
             <div className="pt-2 flex flex-col sm:flex-row gap-3">
               {isHelped ? (
-                <div className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold text-sm">
-                  <CheckCircle2 className="h-5 w-5 notranslate" />
-                  <span>Help Offered! You are connected.</span>
+                <div className="flex-1 flex flex-col gap-2">
+                  <div className="flex items-center justify-center gap-2 py-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold text-xs">
+                    <CheckCircle2 className="h-4 w-4 notranslate" />
+                    <span>Help Offered! You are connected.</span>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await dataAdapter.completeRequest(request.id);
+                        toast.success('Aid request marked completed!');
+                        setRatingModalOpen(true);
+                      } catch (err: any) {
+                        toast.error(err.message || 'Failed to complete request');
+                      }
+                    }}
+                    className="py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Mark Task Completed & Leave Rating</span>
+                  </button>
                 </div>
               ) : (
                 <button
@@ -239,7 +301,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                   <span className="hidden sm:inline">Share</span>
                 </button>
                 <button
-                  onClick={handleReport}
+                  onClick={() => setReportModalOpen(true)}
                   className="flex items-center justify-center gap-1.5 rounded-2xl border border-border bg-card px-4 py-3.5 text-xs font-bold text-muted-foreground hover:text-urgency-critical hover:bg-muted transition touch-target"
                   title="Report request"
                 >
@@ -251,6 +313,76 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
           </div>
         </div>
       </div>
+
+      {/* Report Modal */}
+      {reportModalOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in zoom-in-95 duration-150">
+          <div className="w-full max-w-sm rounded-3xl bg-card border border-border p-6 shadow-2xl text-left space-y-4">
+            <h3 className="text-base font-bold text-foreground">Report Inappropriate Request</h3>
+            <p className="text-xs text-muted-foreground">
+              Please specify reason (e.g. spam, commercial service, incorrect urgency):
+            </p>
+            <textarea
+              rows={3}
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+              placeholder="Explain the issue..."
+              className="w-full p-3 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setReportModalOpen(false)}
+                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReport}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700"
+              >
+                Submit Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rating Modal */}
+      {ratingModalOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in zoom-in-95 duration-150">
+          <div className="w-full max-w-sm rounded-3xl bg-card border border-border p-6 shadow-2xl text-center space-y-4">
+            <h3 className="text-base font-bold text-foreground">Rate Your Experience</h3>
+            <p className="text-xs text-muted-foreground">
+              Mutual ratings build community trust in Asansol and Dhanbad.
+            </p>
+            <div className="flex justify-center gap-2">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStars(s)}
+                  className={`text-2xl transition ${s <= stars ? 'text-amber-500 scale-110' : 'text-slate-300'}`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+            <textarea
+              rows={2}
+              value={ratingComment}
+              onChange={(e) => setRatingComment(e.target.value)}
+              placeholder="Kind, prompt, and helpful..."
+              className="w-full p-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <button
+              onClick={handleRate}
+              className="w-full py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90"
+            >
+              Submit Rating
+            </button>
+          </div>
+        </div>
+      )}
+
 
       {/* Confirmation Dialog */}
       {confirmOpen && (

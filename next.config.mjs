@@ -5,6 +5,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  experimental: {
+    useWasmBinary: true,
+  },
 };
 
 export default nextConfig;
