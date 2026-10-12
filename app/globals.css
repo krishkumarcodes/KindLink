@@ -1,0 +1,175 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import Leaflet stylesheet for map rendering */
+@import 'leaflet/dist/leaflet.css';
+
+@layer base {
+  :root {
+    --background: #F6F8FA;
+    --foreground: #0F172A;
+    --card: #FFFFFF;
+    --card-foreground: #0F172A;
+    --popover: #FFFFFF;
+    --popover-foreground: #0F172A;
+    --primary: #0D9488;
+    --primary-foreground: #FFFFFF;
+    --primary-hover: #0F766E;
+    --secondary: #F1F5F9;
+    --secondary-foreground: #1E293B;
+    --muted: #F1F5F9;
+    --muted-foreground: #64748B;
+    --accent: #E6FFFA;
+    --accent-foreground: #0D9488;
+    --destructive: #E5484D;
+    --destructive-foreground: #FFFFFF;
+    --border: #E2E8F0;
+    --input: #E2E8F0;
+    --ring: #0D9488;
+  }
+
+  .dark {
+    --background: #0B1220;
+    --foreground: #E6EDF7;
+    --card: #111A2C;
+    --card-foreground: #E6EDF7;
+    --popover: #111A2C;
+    --popover-foreground: #E6EDF7;
+    --primary: #0D9488;
+    --primary-foreground: #FFFFFF;
+    --primary-hover: #14B8A6;
+    --secondary: #1E293B;
+    --secondary-foreground: #F8FAFC;
+    --muted: #1E293B;
+    --muted-foreground: #94A3B8;
+    --accent: #132E38;
+    --accent-foreground: #2DD4BF;
+    --destructive: #EF4444;
+    --destructive-foreground: #FFFFFF;
+    --border: #1E293B;
+    --input: #1E293B;
+    --ring: #14B8A6;
+  }
+
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    height: 100%;
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    position: static !important;
+    top: 0px !important;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading), var(--font-sans), sans-serif;
+  }
+}
+
+/* -------------------------------------------------------------
+   HIDE ALL GOOGLE TRANSLATE DEFAULT UI & PREVENT LAYOUT SHIFT
+   ------------------------------------------------------------- */
+.goog-te-banner-frame.skiptranslate,
+.goog-te-banner-frame,
+iframe.goog-te-banner-frame,
+.goog-te-menu-frame,
+#goog-gt-tt,
+.goog-te-balloon-frame,
+.goog-tooltip,
+.goog-tooltip:hover {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+body {
+  top: 0px !important;
+  position: static !important;
+}
+
+.goog-text-highlight {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+#google_translate_element {
+  display: none !important;
+}
+
+/* Ensure brand name and protected elements never translate */
+.notranslate,
+[translate="no"] {
+  -webkit-transform: translateZ(0);
+}
+
+/* -------------------------------------------------------------
+   RTL SUPPORT FOR URDU
+   ------------------------------------------------------------- */
+[dir="rtl"],
+.rtl-layout {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .ltr-only {
+  direction: ltr;
+  text-align: left;
+}
+
+/* -------------------------------------------------------------
+   TOUCH TARGET ACCESSIBILITY & UTILITIES
+   ------------------------------------------------------------- */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Custom scrollbar hiding */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Pulse animation for SOS beacon */
+@keyframes beacon-pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(229, 72, 77, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 14px rgba(229, 72, 77, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(229, 72, 77, 0);
+  }
+}
+
+.animate-beacon {
+  animation: beacon-pulse 2s infinite;
+}
+
+/* Leaflet map fix inside container */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  z-index: 10;
+}
