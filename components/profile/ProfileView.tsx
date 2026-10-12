@@ -172,7 +172,7 @@ export function ProfileView() {
               Verified with +91 98320 12345 via instant OTP code.
             </p>
             <button
-              onClick={() => setOtpModalOpen(true)}
+              onClick={() => setIdModalOpen(true)}
               className="text-xs font-bold text-primary hover:underline"
             >
               Update Phone →
