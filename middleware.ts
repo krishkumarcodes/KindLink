@@ -9,7 +9,50 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // Support offline mock mode bypass
+  const path = request.nextUrl.pathname;
+
+  // Set HTTP header X-Robots-Tag: noindex, nofollow on /app, /admin, /api/*, /login, /signup
+  const isPrivateOrRestricted =
+    path.startsWith('/app') ||
+    path.startsWith('/admin') ||
+    path.startsWith('/api') ||
+    path === '/login' ||
+    path === '/signup';
+
+  if (isPrivateOrRestricted) {
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  }
+
+  // Allow static files, manifests, icons, and API routes
+  if (
+    path.startsWith('/_next') ||
+    path.startsWith('/api') ||
+    path === '/favicon.ico' ||
+    path === '/manifest.json' ||
+    path.match(/\.(svg|png|jpg|jpeg|gif|webp|ico|txt|xml|json)$/)
+  ) {
+    return response;
+  }
+
+  // Public allowed guest pages and AI crawlers
+  const isGuestAllowed =
+    path === '/' ||
+    path === '/about' ||
+    path === '/how-it-works' ||
+    path === '/physics' ||
+    path === '/safety-and-verification' ||
+    path === '/faq' ||
+    path === '/privacy' ||
+    path === '/terms' ||
+    path === '/contact' ||
+    path === '/welcome' ||
+    path === '/llms.txt' ||
+    path === '/llms-full.txt' ||
+    path === '/robots.txt' ||
+    path === '/sitemap.xml' ||
+    path.startsWith('/help');
+
+  // Support offline mock mode bypass (still setting X-Robots-Tag above)
   if (process.env.DATA_SOURCE === 'mock' || process.env.NEXT_PUBLIC_DATA_SOURCE === 'mock') {
     return response;
   }
@@ -26,6 +69,9 @@ export async function middleware(request: NextRequest) {
             headers: request.headers,
           },
         });
+        if (isPrivateOrRestricted) {
+          response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+        }
         response.cookies.set({ name, value, ...options });
       },
       remove(name: string, options: CookieOptions) {
@@ -35,42 +81,30 @@ export async function middleware(request: NextRequest) {
             headers: request.headers,
           },
         });
+        if (isPrivateOrRestricted) {
+          response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+        }
         response.cookies.set({ name, value: '', ...options });
       },
     },
   });
 
   const { data: { user } } = await supabase.auth.getUser();
-  const path = request.nextUrl.pathname;
 
-  // Allow static files, manifests, icons, and API routes
-  if (
-    path.startsWith('/_next') ||
-    path.startsWith('/api') ||
-    path.includes('.') ||
-    path === '/favicon.ico' ||
-    path === '/manifest.json'
-  ) {
-    return response;
-  }
-
-  // Public allowed guest pages
-  const isGuestAllowed =
-    path === '/' ||
-    path === '/welcome' ||
-    path === '/login' ||
-    path === '/signup';
-
-  if (!user && !isGuestAllowed) {
+  // Protect /app, /admin, and private routes: redirect unauthenticated requests to /login?redirect=...
+  if (!user && !isGuestAllowed && path !== '/login' && path !== '/signup') {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = '/login';
     redirectUrl.searchParams.set('redirect', path);
-    return NextResponse.redirect(redirectUrl);
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    redirectResponse.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    return redirectResponse;
   }
 
+  // If user is already authenticated and visits /login or /signup, redirect to /app
   if (user && (path === '/login' || path === '/signup')) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = '/';
+    redirectUrl.pathname = '/app';
     return NextResponse.redirect(redirectUrl);
   }
 

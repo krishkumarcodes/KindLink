@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Lock, Mail, Heart, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTarget = searchParams.get('redirect') || '/';
+  const redirectTarget = searchParams.get('redirect') || '/app';
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -144,7 +144,7 @@ export default function LoginPage() {
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Don&apos;t have an account yet?{' '}
               <Link
-                href={`/signup${redirectTarget !== '/' ? `?redirect=${encodeURIComponent(redirectTarget)}` : ''}`}
+                href={`/signup${redirectTarget !== '/app' ? `?redirect=${encodeURIComponent(redirectTarget)}` : ''}`}
                 className="font-semibold text-teal-600 hover:text-teal-700 dark:text-teal-400 underline underline-offset-2"
               >
                 Sign up directly
@@ -154,5 +154,19 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-center items-center">
+          <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

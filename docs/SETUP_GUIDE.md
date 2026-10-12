@@ -11,13 +11,13 @@ This guide walks you step-by-step through setting up Supabase, configuring secur
 1. [Step 1: Create a Free Supabase Project & Select Region](#step-1-create-a-free-supabase-project--select-region)
 2. [Step 2: Turn OFF 'Confirm Email' in Supabase Auth (CRITICAL)](#step-2-turn-off-confirm-email-in-supabase-auth-critical)
 3. [Step 3: Enable the PostGIS Geospatial Extension](#step-3-enable-the-postgis-geospatial-extension)
-4. [Step 4: Run SQL Schema Migrations & Verify Tables](#step-4-run-sql-schema-migrations--verify-tables)
+4. [Step 4: Run SQL Schema Migrations & Verify Tables (01–13 & all_in_one.sql)](#step-4-run-sql-schema-migrations--verify-tables)
 5. [Step 5: Verify Storage Bucket 'verification-docs' & Realtime Publication](#step-5-verify-storage-bucket-verification-docs--realtime-publication)
 6. [Step 6: Copy Project URL, Anon Key, and Secret Service Role Key](#step-6-copy-project-url-anon-key-and-secret-service-role-key)
 7. [Step 7: Configure .env.local & Run KindLink Locally](#step-7-configure-envlocal--run-kindlink-locally)
-8. [Step 8: Populate Demo Data with npm run seed](#step-8-populate-demo-data-with-npm-run-seed)
+8. [Step 8: Demo Data Seeding & Showcase Accounts (SQL Migrations 12 & 13)](#step-8-demo-data-seeding--showcase-accounts-sql-migrations-12--13)
 9. [Step 9: Create Your Account & Promote to Administrator](#step-9-create-your-account--promote-to-administrator)
-10. [Step 10: Configure Environment Variables on Render & Redeploy](#step-10-configure-environment-variables-on-render--redeploy)
+10. [Step 10: Configure Environment Variables on Render & Docker Build Guide (Node 22 & Suspense Fix)](#step-10-configure-environment-variables-on-render--docker-build-guide-node-22--suspense-fix)
 11. [Step 11: End-to-End Testing Verification Checklist](#step-11-end-to-end-testing-verification-checklist)
 12. [Step 12: How to Manually Reset a User's Password in Supabase](#step-12-how-to-manually-reset-a-users-password-in-supabase)
 13. [Step 13: Troubleshooting Matrix for Common Issues](#step-13-troubleshooting-matrix-for-common-issues)
@@ -114,8 +114,11 @@ You can choose either **Option A (Recommended: All-in-One)** or **Option B (Numb
 6. Click the green button labeled **Run** in the bottom right corner (or press `Ctrl+Enter` / `Cmd+Enter`).
 7. Wait 5 to 10 seconds. You will see a green status badge at the bottom stating **Success. No rows returned**.
 
-### Option B: Run Files 01 through 09 in Order
-If you prefer running modular migrations, create a **+ New query** in the SQL Editor and execute these files in sequential order:
+> [!NOTE]
+> `all_in_one.sql` includes the complete core architecture (Sections 1–9: PostGIS types, tables, spatial indexes, functions, triggers, RLS, storage, and realtime) plus **Section 10** (`12_cleanup_demo_users.sql` to purge stale test data) and **Section 11** (`13_create_showcase_accounts.sql` to provision the 3 verified showcase accounts and live emergency demo). Both appended sections are completely idempotent.
+
+### Option B: Run Migration Files in Sequential Order
+If you prefer running modular migrations, create a **+ New query** in the SQL Editor and execute these files in order:
 1. [supabase/sql/01_extensions.sql](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/01_extensions.sql) — PostGIS, pgcrypto, uuid-ossp
 2. [supabase/sql/02_types.sql](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/02_types.sql) — User roles, verification status, categories, urgency enums
 3. [supabase/sql/03_tables.sql](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/03_tables.sql) — Core tables: profiles, requests, offers, ratings, reports, etc.
@@ -125,6 +128,10 @@ If you prefer running modular migrations, create a **+ New query** in the SQL Ed
 7. [supabase/sql/07_rls_policies.sql](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/07_rls_policies.sql) — Row-level security for requests, offers, reports, private contacts
 8. [supabase/sql/08_storage.sql](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/08_storage.sql) — Private bucket `verification-docs` and folder security
 9. [supabase/sql/09_realtime.sql](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/09_realtime.sql) — Replica identity FULL and `supabase_realtime` publication
+10. [supabase/sql/10_make_me_admin.sql](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/10_make_me_admin.sql) — Admin promotion template for registered user accounts
+11. [supabase/sql/11_demo_seed_note.md](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/11_demo_seed_note.md) — Node CLI demo seed guide (`npm run seed`)
+12. [supabase/sql/12_cleanup_demo_users.sql](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/12_cleanup_demo_users.sql) — **Purge test/demo accounts**: Deletes all demo users, test admins, requests, offers, ratings, notifications, and auth rows safely (idempotent)
+13. [supabase/sql/13_create_showcase_accounts.sql](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/13_create_showcase_accounts.sql) — **Create showcase accounts**: Provisions 3 verified showcase accounts (`kind_volunteer`, `need_aid`, `admin_kindlink`) with known passwords and an active emergency blood request + volunteer offer (idempotent)
 
 ### How to Verify That All Tables Were Created:
 1. In the left navigation sidebar, click on **Table Editor** (grid icon with rows and columns).
@@ -250,11 +257,43 @@ Now connect your local development environment to your live Supabase project.
 
 ---
 
-## Step 8: Populate Demo Data with npm run seed
+## Step 8: Demo Data Seeding & Showcase Accounts (SQL Migrations 12 & 13)
 
-To test KindLink with realistic data, run the automated seed script. It provisions **8 demo accounts** with pre-configured verified statuses, realistic locations across Asansol, Durgapur, Dhanbad, and Kolkata, and **25 localized emergency requests**.
+KindLink provides two convenient ways to populate test data:
+- **Method A: Instant SQL Showcase Accounts** (Recommended for portfolio reviewers, live evaluations, and automated deployments without Node CLI dependencies).
+- **Method B: Automated CLI Seed Script** (`npm run seed` for 8 realistic personas and 25 localized requests).
 
-### Numbered Action Steps:
+---
+
+### Method A: Instant SQL Showcase Accounts (Migrations 12 & 13)
+
+If you want immediate access to pre-configured accounts with pre-linked emergency requests and volunteer offers directly in Supabase without running terminal scripts, use the dedicated SQL migrations:
+
+1. **Purge Test & Demo Accounts (`12_cleanup_demo_users.sql`)**:
+   - File: [supabase/sql/12_cleanup_demo_users.sql](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/12_cleanup_demo_users.sql)
+   - Safely removes all demo/test users, offers, requests, ratings, notifications, verification documents, and `auth.users` records.
+   - Completely **idempotent**: safe to run multiple times to reset the system to a clean state.
+
+2. **Provision 3 Showcase Accounts (`13_create_showcase_accounts.sql`)**:
+   - File: [supabase/sql/13_create_showcase_accounts.sql](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/13_create_showcase_accounts.sql)
+   - Paste into Supabase **SQL Editor** and click **Run**.
+   - Instantly provisions 2 verified community members and 1 super administrator with deterministic UUIDs and bcrypt-encrypted passwords.
+   - Automatically injects an active emergency blood request at **Asansol District Hospital** and an active helper offer from the volunteer!
+
+#### 🔑 The 3 Showcase Accounts Credential Reference:
+
+| Persona & Username | Email Address | Password | Role & Status | Pre-Configured State & Capabilities |
+| :--- | :--- | :--- | :--- | :--- |
+| **Showcase Volunteer**<br>`kind_volunteer` | `volunteer@kindlink.demo` | **`KindLink#Volunteer2026`** | `user`<br>**(Verified)** | **Dr. Ananya Roy (Volunteer)**<br>• Location: Kalyanpur, Asansol (`+91 98320 12345`)<br>• Trust Rating: 4.95 ⭐ (18 reviews)<br>• **Pre-linked Offer**: Has a pending offer on Sourav's blood request ready to be accepted. |
+| **Showcase Requester**<br>`need_aid` | `requester@kindlink.demo` | **`KindLink#Requester2026`** | `user`<br>**(Verified)** | **Sourav Mukherjee (Citizen)**<br>• Location: Asansol District Hospital (`+91 98321 54321`)<br>• Trust Rating: 5.00 ⭐ (3 reviews)<br>• **Live Request**: Posted `🚨 Critical O+ Blood Needed (2 Units) - Asansol District Hospital`. |
+| **Super Administrator**<br>`admin_kindlink` | `admin@kindlink.demo` | **`KindLink#Admin2026`** | `admin`<br>**(Verified)** | **KindLink Administrator**<br>• Full access to the `/admin` Moderation Console<br>• Can review ID uploads in `verification-docs`<br>• Can approve/reject badges and moderate SOS/safety reports. |
+
+---
+
+### Method B: Populate Comprehensive Demo Data with `npm run seed`
+
+For an extended regional simulation across Asansol, Durgapur, Dhanbad, and Kolkata:
+
 1. In your terminal in the KindLink root directory, run:
    ```bash
    npm run seed
@@ -273,8 +312,8 @@ To test KindLink with realistic data, run the automated seed script. It provisio
    🎉 Demo Seed Completed Successfully!
    ```
 
-### Demo Accounts Reference Table:
-All demo accounts share the same universal password: **`KindLink#2026`**
+#### CLI Seed Persona Reference Table:
+All CLI seed accounts share the universal password: **`KindLink#2026`**
 
 | Username | Email Address | Role | Status | Description / Location |
 | :--- | :--- | :--- | :--- | :--- |
@@ -288,15 +327,19 @@ All demo accounts share the same universal password: **`KindLink#2026`**
 | `admin_kindlink`| `admin@kindlink.demo` | `admin`| Verified | KindLink Platform Administrator & Moderator |
 
 ### Resetting / Cleaning Demo Data:
-If you ever want to wipe the demo accounts and start fresh, run:
+To wipe the CLI demo accounts and start fresh:
 ```bash
+# Using npm script:
 npm run seed -- --clean
+
+# OR run in Supabase SQL Editor:
+# supabase/sql/12_cleanup_demo_users.sql
 ```
 
 > ⚠️ **What to do if it fails:**
 > - If the script prints `❌ Missing environment variables! Please ensure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set in .env.local`, double-check that `.env.local` exists in the project root and that `SUPABASE_SERVICE_ROLE_KEY` is populated.
 > - If you receive an error `AuthApiError: Email address invalid or provider disabled`, make sure you completed Step 2 (turning OFF Confirm email) and that Email provider is enabled.
-> - The seed script is completely **idempotent**: you can run it multiple times safely without duplicate key errors.
+> - Both the seed script and migration `13_create_showcase_accounts.sql` are completely **idempotent**: you can run them multiple times safely without duplicate key errors.
 
 ---
 
@@ -354,9 +397,9 @@ Next, create your personal user account and promote it to an Administrator using
 
 ---
 
-## Step 10: Configure Environment Variables on Render & Redeploy
+## Step 10: Configure Environment Variables on Render & Docker Build Guide (Node 22 & Suspense Fix)
 
-When you are ready to publish KindLink to production on [Render](https://render.com):
+When you are ready to publish KindLink to production on [Render](https://render.com) using Docker:
 
 ### Numbered Action Steps:
 1. Log in to your **Render Dashboard** at **[https://dashboard.render.com](https://dashboard.render.com)**.
@@ -387,8 +430,48 @@ When you are ready to publish KindLink to production on [Render](https://render.
    }
    ```
 
+---
+
+### Docker Build Engineering & Static Prerender Resolution
+
+When containerizing Next.js 14/15 applications, two critical configurations ensure smooth, reproducible production builds:
+
+#### 1. Resolving the Static Prerender Bailout Issue (`useSearchParams` Suspense Boundary)
+- **The Issue**: During `docker build` (specifically the `RUN npm run build` step in the builder stage), Next.js performs static page generation. Any client component that invokes `useSearchParams()` (such as `/login` or `/signup` inspecting `?redirect=...`) reads dynamic query parameters. If not wrapped in a React `<Suspense>` boundary, Next.js throws:
+  ```text
+  Error: useSearchParams() should be wrapped in a suspense boundary at page "/login".
+  See more info here: https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout
+  ```
+  This causes static generation to fail with exit code 1, aborting the Docker build.
+- **The Solution**: Split the page into an inner component containing the form and query-param logic (`LoginForm` / `SignUpForm`) and wrap it with React `<Suspense fallback={<Loader2 className="animate-spin..." />}>` in the default export (`LoginPage` / `SignUpPage`):
+  ```tsx
+  // Example: app/login/page.tsx
+  function LoginForm() {
+    const router = useRouter();
+    const searchParams = useSearchParams(); // Safe inside Suspense
+    const redirectTarget = searchParams.get('redirect') || '/';
+    // ... form handling logic ...
+  }
+
+  export default function LoginPage() {
+    return (
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-teal-600" /></div>}>
+        <LoginForm />
+      </Suspense>
+    );
+  }
+  ```
+  Both [app/login/page.tsx](file:///data/data/com.termux/files/home/storage/downloads/KindLink/app/login/page.tsx) and [app/signup/page.tsx](file:///data/data/com.termux/files/home/storage/downloads/KindLink/app/signup/page.tsx) implement this pattern, ensuring flawless static prerendering during container builds.
+
+#### 2. Node.js 22 LTS Alpine Upgrade
+- The [Dockerfile](file:///data/data/com.termux/files/home/storage/downloads/KindLink/Dockerfile) is upgraded from Node 20 to **Node 22 LTS** (`node:22-alpine` across `deps`, `builder`, and `runner` stages).
+- **Benefits**:
+  - **Memory Efficiency**: The upgraded V8 engine significantly reduces heap memory spikes during standalone bundle generation, preventing `Exit code 137 (OOM Killed)` errors on Render's 512MB RAM free tier.
+  - **Native Alpine Stability**: Includes `apk add --no-cache libc6-compat` for compatibility with binary packages like `sharp` and geospatial libs.
+  - **Clean Build Assurance**: Configured `eslint: { ignoreDuringBuilds: true }` in `next.config.mjs` so non-critical lint rules do not interrupt production container builds.
+
 > ⚠️ **What to do if it fails:**
-> - If the Render build fails with `Out of memory`, ensure your Dockerfile uses multi-stage builds and that `output: 'standalone'` is set in `next.config.mjs` (already pre-configured in the repository).
+> - If the Render build fails with `Out of memory`, verify your Dockerfile uses `node:22-alpine` multi-stage builds and that `output: 'standalone'` is set in `next.config.mjs` (already pre-configured in the repository).
 > - If the site loads on Render but shows a blank screen or console errors, trigger a **Clear build cache & deploy**: Next.js bakes `NEXT_PUBLIC_` variables into client-side JS at compile time, so changing environment variables requires a fresh build.
 
 ---
@@ -553,8 +636,11 @@ Use this quick-reference troubleshooting matrix whenever you encounter an error 
 | **"Storage bucket not found: verification-docs"** | The storage bucket migration has not run yet. | In **SQL Editor**, run [supabase/sql/08_storage.sql](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/08_storage.sql) or create a private bucket named `verification-docs` in the **Storage** dashboard. |
 | **Realtime radar or notifications do not update** | Tables have not been added to the `supabase_realtime` publication or Replica Identity is not set. | In **SQL Editor**, run [supabase/sql/09_realtime.sql](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/09_realtime.sql). Also check browser console for WebSocket connection status. |
 | **"429 Too Many Requests"** on login/signup | In-memory API rate limiter triggered (5 signups per 15 min, 10 logins per 15 min per IP). | Wait 15 minutes for the rate limit bucket to reset, or restart your local development server (`npm run dev`) to reset in-memory counters. |
-| **Render Deploy Error: "Exit code 137 (OOM Killed)"** | Docker build ran out of RAM on the Render free tier during compilation. | Ensure Docker multi-stage caching is enabled and `standalone` output mode is configured in `next.config.mjs`. |
-| **Admin Portal displays "Access Denied"** | The logged-in user profile does not have `role = 'admin'`. | Run `10_make_me_admin.sql` in the Supabase SQL editor with your username, then log out and log back in to refresh claims. |
+| **Docker Build: `useSearchParams() should be wrapped in a suspense boundary`** | Next.js static prerender bailout during `npm run build` in the container builder stage. | Wrap the inner form in `<Suspense fallback={<Loader2 className="animate-spin..." />}>` in [app/login/page.tsx](file:///data/data/com.termux/files/home/storage/downloads/KindLink/app/login/page.tsx) and [app/signup/page.tsx](file:///data/data/com.termux/files/home/storage/downloads/KindLink/app/signup/page.tsx) (see Step 10). |
+| **Render Deploy Error: "Exit code 137 (OOM Killed)"** | Docker build ran out of RAM on the Render free tier during compilation. | Upgrade Dockerfile to `node:22-alpine` for improved V8 memory management, enable multi-stage caching, and ensure `output: 'standalone'` in `next.config.mjs`. |
+| **Stale or conflicting demo user data** | Previous seed data or demo accounts causing duplicate key or role conflicts. | Run [supabase/sql/12_cleanup_demo_users.sql](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/12_cleanup_demo_users.sql) in SQL Editor to cleanly purge all demo and test records (or run `npm run seed -- --clean`). |
+| **Need instant verified test accounts without Node CLI** | Testing in an environment without local Node or service role secrets. | Execute [supabase/sql/13_create_showcase_accounts.sql](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/13_create_showcase_accounts.sql) in SQL Editor to immediately provision `kind_volunteer`, `need_aid`, and `admin_kindlink`. |
+| **Admin Portal displays "Access Denied"** | The logged-in user profile does not have `role = 'admin'`. | Run `10_make_me_admin.sql` in the Supabase SQL editor with your username (or log in with `admin_kindlink` / `KindLink#Admin2026`), then log out and log back in to refresh claims. |
 
 ---
 

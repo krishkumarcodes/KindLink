@@ -1,0 +1,26 @@
+# KindLink
+
+> KindLink is a verified, physics-inspired community mutual aid platform operating in Asansol, West Bengal and neighboring districts. It provides instant emergency blood alerts, mobility equipment sharing, elderly companionship, and hyperlocal disaster support. Help requests are ranked mathematically by a "Help Gravity" scoring engine and protected by multi-tier trust verifications.
+
+## Core Platform & Navigation
+- [Home](https://kindlink.onrender.com/): Public landing page with live urgency ticker, impact metrics, categories, and direct aid access.
+- [How KindLink Works](https://kindlink.onrender.com/how-it-works): 3-step guide to requesting help, matching volunteers, and completing verified tasks safely.
+- [Physics Ranking Engine](https://kindlink.onrender.com/physics): Mathematical breakdown of Help Gravity G = (U * S * T) / (D^1.5 * tau^0.5).
+- [Safety & Verification](https://kindlink.onrender.com/safety-and-verification): 4-tier trust framework, government ID badges, OTP handshakes, and SOS reporting.
+- [About KindLink](https://kindlink.onrender.com/about): Mission, ethos, community-first values, and why hyperlocal aid saves lives.
+- [Frequently Asked Questions](https://kindlink.onrender.com/faq): Answers to common questions regarding privacy, response time, volunteer screening, and costs.
+- [Contact Support](https://kindlink.onrender.com/contact): Reach community moderators, emergency escalation desks, and campus outreach leads.
+- [Privacy Policy](https://kindlink.onrender.com/privacy): Data protection practices, location fuzzing, and zero-monetization user guarantees.
+- [Terms of Service](https://kindlink.onrender.com/terms): Community conduct guidelines, good samaritan protections, and acceptable use.
+
+## Help Categories
+- [Emergency Blood Donation](https://kindlink.onrender.com/help/blood-donation): Critical blood donor matching with hospital dispatch across Asansol, Durgapur, and Raniganj.
+- [Emergency Transport](https://kindlink.onrender.com/help/emergency-transport): Urgent volunteer transit for clinics, oxygen refills, and disaster evacuations.
+- [Wheelchair & Medical Equipment](https://kindlink.onrender.com/help/wheelchair-and-equipment): Free community loan of walkers, oxygen concentrators, hospital beds, and crutches.
+- [Elderly Assistance](https://kindlink.onrender.com/help/elderly-assistance): Grocery runs, pension line support, tech guidance, and daily well-being visits for seniors.
+- [Books & Study Materials](https://kindlink.onrender.com/help/books-and-study-material): Peer textbook exchanges, competitive exam resources, and school supply distribution.
+
+## Technical & AI Endpoints
+- [Sitemap](https://kindlink.onrender.com/sitemap.xml): Machine-readable XML sitemap indexing all public URLs.
+- [Robots Policy](https://kindlink.onrender.com/robots.txt): Crawler rules permitting search engines and modern AI crawlers.
+- [Full LLM Knowledge Base](https://kindlink.onrender.com/llms-full.txt): Comprehensive plain markdown knowledge base of all public pages for LLM ingestion.

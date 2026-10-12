@@ -1,0 +1,177 @@
+# KindLink — Full Knowledge Base & Public Documentation
+**Canonical Base URL:** https://kindlink.onrender.com
+**Platform:** KindLink Hyperlocal Mutual Aid Network
+**Region:** Asansol, Durgapur, Raniganj, Paschim Bardhaman, West Bengal, India
+**Last Updated:** 2026-10-12T12:09:12.306Z
+
+---
+
+
+---
+
+## Page: Home
+**URL:** https://kindlink.onrender.com/
+**Summary:** Public landing page with live urgency ticker, impact metrics, categories, and direct aid access.
+
+# KindLink - Hyperlocal Mutual Aid & Community Support
+**Tagline:** Help is just next door.
+**Coverage Area:** Asansol, Raniganj, Kulti, Durgapur, and neighboring districts in West Bengal, India.
+**Core Mission:** Bridge critical emergency needs (blood, medical transport, mobility gear) and neighborly assistance using verified community members and a transparent physics-inspired urgency algorithm.
+**Free to Use:** 100% free community platform with zero commercial monetization, ads, or hidden charges.
+**Key Features:**
+- Real-time SOS alerts with browser & mobile audio notifications.
+- Physics-based Help Gravity ranking prioritizing life-critical requests.
+- Privacy-first location fuzzing (exact addresses never exposed publicly).
+- One-tap volunteer response with two-way verification OTP handshake.
+
+---
+
+## Page: Emergency Blood Donation
+**URL:** https://kindlink.onrender.com/help/blood-donation
+**Summary:** Critical blood donor matching with hospital dispatch across Asansol, Durgapur, and Raniganj.
+
+# Emergency Blood Donation Support
+Connects patients and family members at hospitals such as Asansol Sub-Divisional Hospital, Burnpur Hospital, and Health World Durgapur directly with verified local donors.
+- **Priority:** Critical (Gravity boost: 4.0x - 5.0x).
+- **Compatible Groups:** O-, O+, A-, A+, B-, B+, AB-, AB+.
+- **Safety Standard:** Voluntary non-remunerated donation following NACO (National AIDS Control Organisation) guidelines. Donors must be aged 18-65, weight > 45 kg, with minimum 90-day rest between donations.
+
+---
+
+## Page: Emergency Transport
+**URL:** https://kindlink.onrender.com/help/emergency-transport
+**Summary:** Urgent volunteer transit for clinics, oxygen refills, and disaster evacuations.
+
+# Urgent Community Transport
+Volunteers with two-wheelers, four-wheelers, or autorickshaws providing rapid transit for non-ambulance medical emergencies, diagnostic tests, and senior citizen hospital visits.
+- **Priority:** High / Critical.
+- **Response Radius:** Usually 2 to 8 km.
+- **Security Check:** Vehicle numbers verified with in-app volunteer badges.
+
+---
+
+## Page: Wheelchair & Medical Equipment
+**URL:** https://kindlink.onrender.com/help/wheelchair-and-equipment
+**Summary:** Free community loan of walkers, oxygen concentrators, hospital beds, and crutches.
+
+# Medical Equipment Sharing & Community Lending
+Neighbors share idle durable medical equipment (wheelchairs, nebulizers, walker frames, crutches, pulse oximeters) with families in temporary need.
+- **Cost:** Free of charge community lending.
+- **Condition Tagging:** Sanitized, inspected, and verified before handover.
+- **Return Assurance:** Borrowers agree to safe return protocols upon recovery.
+
+---
+
+## Page: Elderly Assistance
+**URL:** https://kindlink.onrender.com/help/elderly-assistance
+**Summary:** Grocery runs, pension line support, tech guidance, and daily well-being visits for seniors.
+
+# Senior Citizen & Elderly Support
+Provides compassionate aid to elderly residents living alone in Asansol and coalfield colonies.
+- **Services:** Prescription collection, pension slip verification, digital banking literacy, heavy grocery carrying, and regular friendly check-ins.
+- **Volunteer Verification:** Enhanced background check and community endorsement required.
+
+---
+
+## Page: Books & Study Materials
+**URL:** https://kindlink.onrender.com/help/books-and-study-material
+**Summary:** Peer textbook exchanges, competitive exam resources, and school supply distribution.
+
+# Educational Support & Book Lending
+Empowers underprivileged students in Asansol, Kalla, and Burnpur by sharing high school textbooks, engineering/medical entrance prep guides (JEE, NEET, WBJEE), and stationery.
+- **Philosophy:** Knowledge belongs to everyone; no child drops out for lack of books.
+
+---
+
+## Page: How KindLink Works
+**URL:** https://kindlink.onrender.com/how-it-works
+**Summary:** 3-step guide to requesting help, matching volunteers, and completing verified tasks safely.
+
+# How KindLink Works: 3 Simple Steps
+1. **Request Help:** Submit an urgent or community task with category, description, and approximate locality. No intrusive permissions required.
+2. **Physics-Ranked Notification:** The platform calculates the request's Help Gravity score and notifies nearby verified helpers within optimal radius.
+3. **Verified Handshake:** When a helper accepts, an in-app secure coordination channel and OTP code activate. Upon completion, both parties rate and vouch for each other.
+
+---
+
+## Page: Physics Ranking Engine
+**URL:** https://kindlink.onrender.com/physics
+**Summary:** Mathematical breakdown of Help Gravity G = (U * S * T) / (D^1.5 * tau^0.5).
+
+# The Physics of KindLink: Help Gravity Engine
+Rather than relying on ad spend or chronological feeds, KindLink uses a deterministic physics model:
+```
+Help Gravity (G) = (UrgencyScore * Severity * TrustFactor) / (Distance^1.5 * DecayTime^0.5)
+```
+- **UrgencyScore (U):** 1.0 (Standard) to 5.0 (Life-threatening emergency).
+- **Severity (S):** Impact assessment based on request category and vulnerability.
+- **TrustFactor (T):** Helper reliability multiplier based on completed verified tasks.
+- **Distance (D):** Geodesic distance in kilometers with super-linear damping (1.5 exponent).
+- **DecayTime (tau):** Elapsed time since posting; older unresolved requests gain boost.
+
+---
+
+## Page: Safety & Verification
+**URL:** https://kindlink.onrender.com/safety-and-verification
+**Summary:** 4-tier trust framework, government ID badges, OTP handshakes, and SOS reporting.
+
+# Safety & Verification Framework
+1. **Tier 1 - Community Member:** Phone/email authenticated with verified device fingerprint.
+2. **Tier 2 - Verified Neighbor:** Community vouching by at least 2 existing verified helpers.
+3. **Tier 3 - Certified Hero:** Government identity verification (Aadhaar/Voter ID masked) reviewed by moderation.
+4. **Tier 4 - Partner Organization:** Registered NGOs, hospitals, and disaster management volunteers.
+- **Panic Protocol:** One-tap SOS trigger instantly alerts regional administrators and local emergency contacts.
+
+---
+
+## Page: About KindLink
+**URL:** https://kindlink.onrender.com/about
+**Summary:** Mission, ethos, community-first values, and why hyperlocal aid saves lives.
+
+# About KindLink
+Born out of the industrial and community heart of Asansol, KindLink turns everyday empathy into systematic, responsive action. When emergencies happen, distance is the greatest adversary. By organizing neighbors within 1 to 5 kilometers, KindLink ensures no one suffers alone while waiting for distant assistance.
+
+---
+
+## Page: Frequently Asked Questions
+**URL:** https://kindlink.onrender.com/faq
+**Summary:** Answers to common questions regarding privacy, response time, volunteer screening, and costs.
+
+# Frequently Asked Questions (FAQ)
+- **Q: Is KindLink free?**
+  A: Yes, 100% free for both requesters and volunteers.
+- **Q: How are my personal details protected?**
+  A: Exact addresses and phone numbers are never made public. Only approximate neighborhood distance is shown.
+- **Q: Who can register as a volunteer?**
+  A: Anyone aged 18+ residing in the service region with a valid email or phone number.
+- **Q: What happens if someone submits a fake request?**
+  A: Strict zero-tolerance policy. Reported accounts are permanently suspended and IP-blocked.
+
+---
+
+## Page: Contact Support
+**URL:** https://kindlink.onrender.com/contact
+**Summary:** Reach community moderators, emergency escalation desks, and campus outreach leads.
+
+# Contact KindLink
+- **Community Desk:** help@kindlink.org
+- **Emergency Escalation Desk:** emergency@kindlink.org
+- **Location:** Asansol, Paschim Bardhaman, West Bengal - 713301, India.
+
+---
+
+## Page: Privacy Policy
+**URL:** https://kindlink.onrender.com/privacy
+**Summary:** Data protection practices, location fuzzing, and zero-monetization user guarantees.
+
+# Privacy Policy
+KindLink complies with Indian Digital Personal Data Protection Act (DPDPA). We never sell data, never serve behavioral ads, and encrypt all user communications in transit and at rest.
+
+---
+
+## Page: Terms of Service
+**URL:** https://kindlink.onrender.com/terms
+**Summary:** Community conduct guidelines, good samaritan protections, and acceptable use.
+
+# Terms of Service
+KindLink is a peer-to-peer mutual aid coordinator. Volunteers act in good faith under Indian Good Samaritan guidelines. Harassment, commercial solicitation, and fraud result in immediate termination.

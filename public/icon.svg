@@ -1,8 +1,47 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <rect width="512" height="512" rx="128" fill="#0D9488"/>
-  <circle cx="180" cy="256" r="64" fill="#FFFFFF"/>
-  <circle cx="332" cy="256" r="64" fill="#FFFFFF" fill-opacity="0.9"/>
-  <path d="M180 220C210 220 236 240 256 256C276 272 302 292 332 292" stroke="#0D9488" stroke-width="24" stroke-linecap="round"/>
-  <path d="M332 220C302 220 276 240 256 256C236 272 210 292 180 292" stroke="#0D9488" stroke-width="24" stroke-linecap="round"/>
-  <circle cx="256" cy="256" r="28" fill="#F59E0B"/>
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="pwa-bg" x1="32" y1="32" x2="480" y2="480" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0F766E"/>
+      <stop offset="35%" stop-color="#0D9488"/>
+      <stop offset="70%" stop-color="#06B6D4"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+
+    <!-- Beacon Radial Gradient -->
+    <radialGradient id="pwa-beacon" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FDE047"/>
+      <stop offset="50%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#EF4444"/>
+    </radialGradient>
+
+    <!-- Shadow filter -->
+    <filter id="pwa-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+
+    <!-- Glow filter -->
+    <filter id="pwa-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Squircle Base with Deep Elevation -->
+  <rect x="24" y="24" width="464" height="464" rx="128" fill="url(#pwa-bg)" filter="url(#pwa-shadow)"/>
+
+  <!-- Antigravity Gravitational Field Lines (Physics Help Gravity Orbitals) -->
+  <ellipse cx="256" cy="256" rx="190" ry="95" transform="rotate(-30 256 256)" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="16" stroke-dasharray="32 16" stroke-linecap="round"/>
+  <ellipse cx="256" cy="256" rx="190" ry="95" transform="rotate(30 256 256)" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="16" stroke-dasharray="32 16" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="160" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="8"/>
+
+  <!-- Connected Hearts & Hands Mobius Loop (KindLink Emblem) -->
+  <path d="M176 220 C140 170, 92 195, 92 256 C92 318, 190 382, 256 414 C322 382, 420 318, 420 256 C420 195, 372 170, 336 220 C312 252, 280 270, 256 270 C232 270, 200 252, 176 220 Z" fill="#FFFFFF" fill-opacity="0.95" filter="url(#pwa-shadow)"/>
+
+  <!-- Secondary Inner Link Arch -->
+  <path d="M190 236 C210 262, 232 276, 256 276 C280 276, 302 262, 322 236" stroke="#0D9488" stroke-width="14" stroke-linecap="round"/>
+
+  <!-- Quantum Hyperlocal Aid Core (Gravitational Center of Mass) -->
+  <circle cx="256" cy="256" r="44" fill="url(#pwa-beacon)" filter="url(#pwa-glow)"/>
+  <circle cx="256" cy="256" r="18" fill="#FFFFFF"/>
 </svg>

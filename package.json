@@ -8,7 +8,9 @@
     "start": "node ./node_modules/next/dist/bin/next start",
     "lint": "node ./node_modules/next/dist/bin/next lint",
     "type-check": "node ./node_modules/typescript/bin/tsc --noEmit",
-    "seed": "node scripts/seed.mjs"
+    "seed": "node scripts/seed.mjs",
+    "indexnow": "node scripts/indexnow.mjs",
+    "seo:check": "node scripts/seo-check.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

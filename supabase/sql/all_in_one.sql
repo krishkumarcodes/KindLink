@@ -1145,5 +1145,367 @@ GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated, service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role;
 
+-- ============================================================================
+-- SECTION 10 (OPTIONAL): PURGE ALL DEMO & TEST ACCOUNTS
+-- Migration File: supabase/sql/12_cleanup_demo_users.sql
+-- Purpose: Safely delete all demo/test accounts, including test admins and volunteers.
+-- Safety: Completely idempotent (can be executed multiple times safely).
+-- ============================================================================
+
+DO $$
+DECLARE
+  v_demo_user_ids uuid[];
+BEGIN
+  -- 1. Identify all demo and test user IDs
+  SELECT array_agg(id) INTO v_demo_user_ids
+  FROM auth.users
+  WHERE email LIKE '%@kindlink.demo'
+     OR email LIKE 'test%@%'
+     OR raw_user_meta_data->>'username' IN (
+       'priya_nurse', 'rahul_aec', 'dr_sen', 'amit_dhanbad',
+       'swati_durgapur', 'vikram_driver', 'ananya_books',
+       'admin_kindlink', 'kind_volunteer', 'need_aid', 'admin_krish'
+     );
+
+  IF v_demo_user_ids IS NOT NULL AND array_length(v_demo_user_ids, 1) > 0 THEN
+    -- 2. Delete related activity rows first
+    DELETE FROM public.ratings
+    WHERE rater_id = ANY(v_demo_user_ids) OR ratee_id = ANY(v_demo_user_ids);
+
+    DELETE FROM public.notifications
+    WHERE user_id = ANY(v_demo_user_ids);
+
+    DELETE FROM public.reports
+    WHERE reporter_id = ANY(v_demo_user_ids);
+
+    DELETE FROM public.sos_events
+    WHERE user_id = ANY(v_demo_user_ids);
+
+    DELETE FROM public.verification_requests
+    WHERE user_id = ANY(v_demo_user_ids);
+
+    DELETE FROM public.offers
+    WHERE helper_id = ANY(v_demo_user_ids);
+
+    DELETE FROM public.requests
+    WHERE requester_id = ANY(v_demo_user_ids);
+
+    -- 3. Delete profiles
+    DELETE FROM public.profiles
+    WHERE id = ANY(v_demo_user_ids);
+
+    -- 4. Delete auth.users (cascades any remaining references)
+    DELETE FROM auth.users
+    WHERE id = ANY(v_demo_user_ids);
+
+    RAISE NOTICE 'Cleaned up % demo/test user accounts and all associated data.', array_length(v_demo_user_ids, 1);
+  ELSE
+    RAISE NOTICE 'No demo/test user accounts found to clean up.';
+  END IF;
+
+  -- 5. Clean up any orphaned requests or profiles with demo usernames
+  DELETE FROM public.profiles
+  WHERE username IN (
+    'priya_nurse', 'rahul_aec', 'dr_sen', 'amit_dhanbad',
+    'swati_durgapur', 'vikram_driver', 'ananya_books',
+    'admin_kindlink', 'kind_volunteer', 'need_aid', 'admin_krish'
+  );
+
+END $$;
+
+-- ============================================================================
+-- SECTION 11 (OPTIONAL): CREATE SHOWCASE DEMO & ADMIN ACCOUNTS
+-- Migration File: supabase/sql/13_create_showcase_accounts.sql
+-- Purpose: Provisions 2 verified community showcase accounts and 1 platform admin
+--          with known passwords for portfolio reviews, live demos, and grading.
+-- Safety: Completely idempotent (can be re-run safely anytime).
+--
+-- ACCOUNT CREDENTIALS SUMMARY:
+-- 1. Showcase Volunteer: kind_volunteer / KindLink#Volunteer2026 (volunteer@kindlink.demo)
+-- 2. Showcase Requester: need_aid       / KindLink#Requester2026 (requester@kindlink.demo)
+-- 3. Super Administrator: admin_kindlink / KindLink#Admin2026     (admin@kindlink.demo)
+-- ============================================================================
+
+-- Ensure auth.users columns exist (guarantees compatibility with both local shims and Supabase Cloud)
+DO $$ BEGIN
+  ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS instance_id uuid;
+  ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS aud text DEFAULT 'authenticated';
+  ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS role text DEFAULT 'authenticated';
+  ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS encrypted_password text;
+  ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS email_confirmed_at timestamptz;
+  ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS raw_app_meta_data jsonb DEFAULT '{"provider":"email","providers":["email"]}'::jsonb;
+EXCEPTION
+  WHEN others THEN null;
+END $$;
+
+DO $$
+DECLARE
+  v_volunteer_id uuid := 'a0000000-0000-0000-0000-000000000001';
+  v_requester_id uuid := 'a0000000-0000-0000-0000-000000000002';
+  v_admin_id     uuid := 'a0000000-0000-0000-0000-000000000003';
+  v_sample_req_id uuid := 'b0000000-0000-0000-0000-000000000001';
+BEGIN
+
+  -- --------------------------------------------------------------------------
+  -- 1. Create or Update: Showcase Volunteer (kind_volunteer)
+  -- --------------------------------------------------------------------------
+  DELETE FROM auth.users WHERE (email = 'volunteer@kindlink.demo' OR raw_user_meta_data->>'username' = 'kind_volunteer') AND id <> v_volunteer_id;
+  DELETE FROM public.profiles WHERE (username = 'kind_volunteer') AND id <> v_volunteer_id;
+
+  INSERT INTO auth.users (
+    id,
+    instance_id,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    aud,
+    role,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    v_volunteer_id,
+    '00000000-0000-0000-0000-000000000000',
+    'volunteer@kindlink.demo',
+    crypt('KindLink#Volunteer2026', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"username":"kind_volunteer","display_name":"Dr. Ananya Roy (Volunteer)"}'::jsonb,
+    'authenticated',
+    'authenticated',
+    now(),
+    now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    encrypted_password = EXCLUDED.encrypted_password,
+    email_confirmed_at = now(),
+    raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    updated_at = now();
+
+  -- Profile synchronization
+  INSERT INTO public.profiles (
+    id,
+    username,
+    display_name,
+    phone,
+    role,
+    verification_status,
+    home_location,
+    rating_average,
+    rating_count
+  )
+  VALUES (
+    v_volunteer_id,
+    'kind_volunteer',
+    'Dr. Ananya Roy (Volunteer)',
+    '+91 98320 12345',
+    'user',
+    'verified',
+    ST_SetSRID(ST_MakePoint(86.9661, 23.6889), 4326)::geography,
+    4.95,
+    18
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    username = EXCLUDED.username,
+    display_name = EXCLUDED.display_name,
+    phone = EXCLUDED.phone,
+    role = EXCLUDED.role,
+    verification_status = EXCLUDED.verification_status,
+    home_location = EXCLUDED.home_location;
+
+  -- --------------------------------------------------------------------------
+  -- 2. Create or Update: Showcase Requester (need_aid)
+  -- --------------------------------------------------------------------------
+  DELETE FROM auth.users WHERE (email = 'requester@kindlink.demo' OR raw_user_meta_data->>'username' = 'need_aid') AND id <> v_requester_id;
+  DELETE FROM public.profiles WHERE (username = 'need_aid') AND id <> v_requester_id;
+
+  INSERT INTO auth.users (
+    id,
+    instance_id,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    aud,
+    role,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    v_requester_id,
+    '00000000-0000-0000-0000-000000000000',
+    'requester@kindlink.demo',
+    crypt('KindLink#Requester2026', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"username":"need_aid","display_name":"Sourav Mukherjee"}'::jsonb,
+    'authenticated',
+    'authenticated',
+    now(),
+    now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    encrypted_password = EXCLUDED.encrypted_password,
+    email_confirmed_at = now(),
+    raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    updated_at = now();
+
+  INSERT INTO public.profiles (
+    id,
+    username,
+    display_name,
+    phone,
+    role,
+    verification_status,
+    home_location,
+    rating_average,
+    rating_count
+  )
+  VALUES (
+    v_requester_id,
+    'need_aid',
+    'Sourav Mukherjee',
+    '+91 98321 54321',
+    'user',
+    'verified',
+    ST_SetSRID(ST_MakePoint(86.9742, 23.6845), 4326)::geography,
+    5.00,
+    3
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    username = EXCLUDED.username,
+    display_name = EXCLUDED.display_name,
+    phone = EXCLUDED.phone,
+    role = EXCLUDED.role,
+    verification_status = EXCLUDED.verification_status,
+    home_location = EXCLUDED.home_location;
+
+  -- --------------------------------------------------------------------------
+  -- 3. Create or Update: Super Administrator (admin_kindlink)
+  -- --------------------------------------------------------------------------
+  DELETE FROM auth.users WHERE (email = 'admin@kindlink.demo' OR raw_user_meta_data->>'username' = 'admin_kindlink') AND id <> v_admin_id;
+  DELETE FROM public.profiles WHERE (username = 'admin_kindlink') AND id <> v_admin_id;
+
+  INSERT INTO auth.users (
+    id,
+    instance_id,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    aud,
+    role,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    v_admin_id,
+    '00000000-0000-0000-0000-000000000000',
+    'admin@kindlink.demo',
+    crypt('KindLink#Admin2026', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"username":"admin_kindlink","display_name":"KindLink Administrator"}'::jsonb,
+    'authenticated',
+    'authenticated',
+    now(),
+    now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    encrypted_password = EXCLUDED.encrypted_password,
+    email_confirmed_at = now(),
+    raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    updated_at = now();
+
+  INSERT INTO public.profiles (
+    id,
+    username,
+    display_name,
+    phone,
+    role,
+    verification_status,
+    home_location,
+    rating_average,
+    rating_count
+  )
+  VALUES (
+    v_admin_id,
+    'admin_kindlink',
+    'KindLink Administrator',
+    '+91 98000 00000',
+    'admin',
+    'verified',
+    ST_SetSRID(ST_MakePoint(86.9661, 23.6889), 4326)::geography,
+    5.00,
+    100
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    username = EXCLUDED.username,
+    display_name = EXCLUDED.display_name,
+    phone = EXCLUDED.phone,
+    role = 'admin',
+    verification_status = 'verified',
+    home_location = EXCLUDED.home_location;
+
+  -- --------------------------------------------------------------------------
+  -- 4. Create Live Showcase Request & Mutual Offer
+  -- --------------------------------------------------------------------------
+  INSERT INTO public.requests (
+    id,
+    requester_id,
+    category,
+    urgency,
+    title,
+    description,
+    details,
+    location,
+    address_text,
+    status,
+    created_at
+  )
+  VALUES (
+    v_sample_req_id,
+    v_requester_id,
+    'blood',
+    'critical',
+    '🚨 Critical O+ Blood Needed (2 Units) - Asansol District Hospital',
+    'Emergency trauma patient admitted in surgical ward. Requires 2 verified units of O+ blood immediately. Patient relatives available on site.',
+    '{"bloodGroup": "O+", "unitsNeeded": 2, "hospitalName": "Asansol District Hospital"}'::jsonb,
+    ST_SetSRID(ST_MakePoint(86.9742, 23.6845), 4326)::geography,
+    'Asansol District Hospital, SB Gorai Road, Asansol',
+    'open',
+    now() - interval '12 minutes'
+  )
+  ON CONFLICT (id) DO NOTHING;
+
+  -- Create an active offer from Dr. Ananya Roy (kind_volunteer)
+  INSERT INTO public.offers (
+    id,
+    request_id,
+    helper_id,
+    message,
+    status,
+    created_at
+  )
+  VALUES (
+    'c0000000-0000-0000-0000-000000000001',
+    v_sample_req_id,
+    v_volunteer_id,
+    'Hello! I am a verified donor nearby at Kalyanpur. I can reach District Hospital within 15 minutes. Please accept to coordinate contact details.',
+    'pending',
+    now() - interval '5 minutes'
+  )
+  ON CONFLICT (request_id, helper_id) DO NOTHING;
+
+  RAISE NOTICE 'Successfully created showcase accounts: kind_volunteer, need_aid, and admin_kindlink.';
+END $$;
+
 -- End of all_in_one.sql
 
