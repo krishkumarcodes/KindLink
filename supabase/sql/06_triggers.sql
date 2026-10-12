@@ -101,7 +101,7 @@ CREATE OR REPLACE FUNCTION public.handle_new_request_notification()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 BEGIN
   -- Find verified helpers with a set home_location within 10 km
@@ -110,15 +110,19 @@ BEGIN
     p.id,
     'new_nearby_request',
     '🚨 New Urgent Need: ' || NEW.title,
-    'Urgent aid requested at ' || NEW.address_text || ' (' || NEW.category || '). Help is just next door.',
+    'Urgent aid requested at ' || COALESCE(NEW.address_text, '') || ' (' || NEW.category || '). Help is just next door.',
     NEW.id
   FROM public.profiles p
   WHERE p.id != NEW.requester_id
     AND p.verification_status = 'verified'
     AND p.home_location IS NOT NULL
-    AND ST_DWithin(p.home_location, NEW.location, 10000.0);
+    AND extensions.ST_DWithin(p.home_location, NEW.location, 10000.0::double precision);
 
   RETURN NEW;
+EXCEPTION
+  WHEN others THEN
+    -- Fallback safety: do not block request creation if notification dispatch fails
+    RETURN NEW;
 END;
 $$;
 

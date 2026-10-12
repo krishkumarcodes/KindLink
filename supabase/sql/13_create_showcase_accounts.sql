@@ -39,6 +39,35 @@ EXCEPTION
   WHEN others THEN null;
 END $$;
 
+-- Fix handle_new_request_notification: ensure search_path includes extensions and ST_DWithin has double precision cast
+CREATE OR REPLACE FUNCTION public.handle_new_request_notification()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+BEGIN
+  INSERT INTO public.notifications (user_id, type, title, body, request_id)
+  SELECT
+    p.id,
+    'new_nearby_request',
+    '🚨 New Urgent Need: ' || NEW.title,
+    'Urgent aid requested at ' || COALESCE(NEW.address_text, '') || ' (' || NEW.category || '). Help is just next door.',
+    NEW.id
+  FROM public.profiles p
+  WHERE p.id != NEW.requester_id
+    AND p.verification_status = 'verified'
+    AND p.home_location IS NOT NULL
+    AND extensions.ST_DWithin(p.home_location, NEW.location, 10000.0::double precision);
+
+  RETURN NEW;
+EXCEPTION
+  WHEN others THEN
+    -- Fallback safety: do not block request creation if notification dispatch fails
+    RETURN NEW;
+END;
+$$;
+
 DO $$
 DECLARE
   v_volunteer_id uuid := 'a0000000-0000-0000-0000-000000000001';
@@ -259,6 +288,12 @@ BEGIN
   -- --------------------------------------------------------------------------
   -- 4. Create Live Showcase Request & Mutual Offer
   -- --------------------------------------------------------------------------
+  -- Temporarily disable notification trigger during seed to ensure zero friction
+  BEGIN
+    EXECUTE 'ALTER TABLE public.requests DISABLE TRIGGER on_new_request_created';
+  EXCEPTION WHEN others THEN null;
+  END;
+
   INSERT INTO public.requests (
     id,
     requester_id,
@@ -286,6 +321,12 @@ BEGIN
     now() - interval '12 minutes'
   )
   ON CONFLICT (id) DO NOTHING;
+
+  -- Re-enable notification trigger
+  BEGIN
+    EXECUTE 'ALTER TABLE public.requests ENABLE TRIGGER on_new_request_created';
+  EXCEPTION WHEN others THEN null;
+  END;
 
   -- Create an active offer from Dr. Ananya Roy (kind_volunteer)
   INSERT INTO public.offers (
