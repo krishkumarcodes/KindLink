@@ -69,25 +69,41 @@ KindLink was engineered as an applied physics capstone project, directly integra
 
 ### 1. Help Gravity Score (Newtonian Proximity Model)
 
-In Sir Isaac Newton's Universal Law of Gravitation, the gravitational force between two point masses is directly proportional to the product of their masses and inversely proportional to the square of the distance between them:
+In Sir Isaac Newton's Universal Law of Gravitation, the gravitational attraction $F$ between two bodies is directly proportional to the product of their masses and inversely proportional to the square of the separation distance:
 
-$$F = G \frac{m_1 m_2}{r^2}$$
+```math
+F = G \frac{m_1 \cdot m_2}{r^2}
+```
 
-KindLink models an urgent human plea as an epicenter of gravitational pull, drawing nearby altruistic helpers toward the point of distress. The **Help Gravity Score** is computed as:
+```text
+       G · m₁ · m₂
+  F = ─────────────
+           r²
+```
 
-$$\text{Help Gravity Score} = \frac{\text{TypeWeight} \times \left(1 + \lambda \times \text{waitingMinutes}\right)}{\left(1 + \text{distanceKm}\right)^2}$$
+KindLink models an urgent community need as an epicenter of gravitational attraction, pulling verified local volunteers toward the point of distress. The **Help Gravity Score** is formulated as:
+
+```math
+\text{Help Gravity Score} = \frac{\text{TypeWeight} \times (1 + \lambda \times \text{waitingMinutes})}{(1 + \text{distanceKm})^2}
+```
+
+```text
+                         TypeWeight × (1 + λ × waitingMinutes)
+  Help Gravity Score  =  ─────────────────────────────────────
+                                   (1 + distanceKm)²
+```
 
 #### Formula Breakdown & Variable Definitions:
 
-| Parameter | Symbol / Code | Description & Physical Interpretation |
-| :--- | :--- | :--- |
-| **Category Type Weight** | $\text{TypeWeight}$ / $W_{\text{type}}$ | Inherent physical urgency scalar (analogous to gravitational mass $m_1$) determined by life-criticality. |
-| **Elapsed Waiting Time** | $\text{waitingMinutes}$ / $\Delta t$ | Minutes elapsed since the emergency broadcast was initiated ($\text{now}() - t_{\text{created}}$). |
-| **Accretion Coefficient** | $\lambda = 0.05\text{ min}^{-1}$ | Linear time amplification parameter. Adds $+5\%$ compounding urgency for every minute the request remains unfulfilled. |
-| **Geodesic Distance** | $\text{distanceKm}$ / $d_{\text{km}}$ | Spherical great-circle distance between volunteer coordinates and emergency coordinates. |
-| **Inverse-Square Term** | $\left(1 + d_{\text{km}}\right)^2$ | Models Newton's Inverse-Square Law ($1/r^2$). The $+1.0\text{ km}$ soft-damping buffer prevents division-by-zero singularities as $d \to 0$. |
+| Parameter | Symbol / Variable | Default Value / Unit | Physical Interpretation |
+| :--- | :--- | :--- | :--- |
+| **Category Type Weight** | `TypeWeight` (`W_type`) | `2` to `10` (Scalar) | Inherent physical urgency scalar (analogous to gravitational mass $m_1$) based on life-criticality. |
+| **Elapsed Waiting Time** | `waitingMinutes` (`Δt`) | Minutes ($\ge 0$) | Time elapsed since emergency broadcast initiation (`now() - t_created`). |
+| **Urgency Accretion Rate** | `λ` (`lambda`) | `0.05 min⁻¹` (+5%/min) | Linear accretion parameter compounding urgency for unfulfilled requests over time. |
+| **Geodesic Distance** | `distanceKm` (`d_km`) | Kilometers ($\ge 0$) | Great-circle Haversine distance between volunteer GPS and incident site. |
+| **Inverse-Square Buffer** | `(1 + distanceKm)²` | Damped $r^2$ ($d \ge 0$) | Newton's Inverse-Square Law with a `+1.0 km` soft buffer preventing infinite force singularities as $d \to 0$. |
 
-#### Category Urgency Weights ($W_{\text{type}}$):
+#### Category Urgency Weights (`W_type`):
 - 🩸 **Blood Donation**: `10 / 10` (Maximum criticality; perishable life window)
 - 🚑 **Emergency Transport**: `9 / 10` (Immediate transit requirement)
 - 👵 **Elderly Care**: `6 / 10` (Time-sensitive vulnerability)
@@ -124,35 +140,70 @@ export function calculateHelpGravity(
 
 ### 2. Kinematics & Haversine Geodesic Distance Engine
 
-To compute spatial separation across the curved surface of the Earth, KindLink employs the Haversine trigonometric formulation on a mean spherical Earth radius $R = 6,371\text{ km}$:
+To compute spatial separation across the curved surface of the Earth, KindLink employs the spherical Haversine trigonometric formulation with mean Earth radius $R = 6,371\text{ km}$:
 
-$$a = \sin^2\left(\frac{\Delta\phi}{2}\right) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\Delta\lambda}{2}\right)$$
-$$c = 2 \cdot \operatorname{atan2}\left(\sqrt{a}, \sqrt{1 - a}\right)$$
-$$d = R \cdot c$$
+```math
+a = \sin^2\left(\frac{\Delta\phi}{2}\right) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\Delta\lambda}{2}\right)
+```
+
+```math
+c = 2 \cdot \operatorname{atan2}\left(\sqrt{a}, \sqrt{1 - a}\right)
+```
+
+```math
+d = R \cdot c
+```
+
+```text
+  a = sin²(Δφ / 2) + cos(φ₁) · cos(φ₂) · sin²(Δλ / 2)
+  c = 2 · atan2(√a, √(1 - a))
+  d = R · c   (where R = 6,371 km)
+```
 
 where $\phi_1, \phi_2$ represent latitudes in radians, and $\Delta\lambda$ represents longitude difference in radians.
 
 #### Dynamic Arrival Time (Kinematics: $v = d / t \implies t = d / v$):
-KindLink provides dynamic responder Estimated Time of Arrival (ETA) with selectable travel modalities:
+KindLink calculates responder Estimated Time of Arrival (ETA) with three travel modalities:
 - 🚶 **Walking**: $5\text{ km/h}$
 - 🚲 **Bicycle**: $15\text{ km/h}$
-- 🚗 **Vehicle / Auto / Ambulance**: $30\text{ km/h}$ (calibrated for congested urban/rural road corridors)
+- 🚗 **Vehicle / Auto / Ambulance**: $30\text{ km/h}$ (calibrated for congested municipal road corridors)
 
-$$\text{ETA (minutes)} = \max\left(1, \left\lceil \frac{d_{\text{km}}}{v_{\text{mode}}} \times 60 \right\rceil\right)$$
+```math
+\text{ETA (minutes)} = \max\left(1, \left\lceil \frac{d_{\text{km}}}{v_{\text{mode}}} \times 60 \right\rceil\right)
+```
+
+```text
+                     ⌈  d_km         ⌉
+  ETA (minutes) = max│1, ───── × 60  │
+                     ⌊   v_mode      ⌋
+```
 
 ---
 
 ### 3. Inertial Sensor Calibration & Dynamic Fall Detector
 
-To protect isolated elderly residents and field volunteers, KindLink implements client-side motion telemetry using the HTML5 `DeviceMotion` API:
+To protect isolated seniors and lone volunteers, KindLink implements client-side motion telemetry using the HTML5 `DeviceMotion` API:
 
 1. **Stationary Bias Calibration**:
    A 3-second stationary baseline phase records Earth's local gravitational vector ($\vec{g} \approx 9.81\text{ m/s}^2$) and calibrates sensor bias $(\Delta x, \Delta y, \Delta z)$ across the three spatial axes.
-2. **Signal Filtering**:
-   High-frequency jitter and structural noise are smoothed using a discrete first-order low-pass filter ($\alpha = 0.3$):
-   $$\vec{a}_{\text{filtered}}[t] = \alpha \cdot \vec{a}_{\text{raw}}[t] + (1 - \alpha) \cdot \vec{a}_{\text{filtered}}[t-1]$$
-3. **Kinetic Spike & Impact Detection**:
-   When sudden deceleration exceeds the threshold ($|\vec{a}| > 22.0\text{ m/s}^2 \approx 2.24g$) followed by immobility, an automated 10-second safety countdown is initiated, dispatching an SOS beacon to the community upon expiry.
+
+2. **Discrete Low-Pass Signal Filtering**:
+   High-frequency motion jitter is smoothed using a discrete first-order low-pass filter ($\alpha = 0.3$):
+   ```math
+   \vec{a}_{\text{filtered}}[t] = \alpha \cdot \vec{a}_{\text{raw}}[t] + (1 - \alpha) \cdot \vec{a}_{\text{filtered}}[t-1]
+   ```
+   ```text
+   a_filtered[t] = α · a_raw[t] + (1 - α) · a_filtered[t-1]   (where α = 0.3)
+   ```
+
+3. **Net Acceleration Magnitude & Kinetic Spike Detection**:
+   ```math
+   \|\vec{a}_{\text{net}}\| = \sqrt{a_x^2 + a_y^2 + a_z^2}
+   ```
+   ```text
+   |a_net| = √(ax² + ay² + az²)
+   ```
+   When sudden deceleration exceeds the threshold ($|\vec{a}_{\text{net}}| > 22.0\text{ m/s}^2 \approx 2.24g$) followed by prolonged immobility, an automated 10-second safety countdown is triggered, dispatching an SOS beacon with live GPS coordinates to nearby verified volunteers.
 
 ---
 
@@ -468,15 +519,29 @@ KindLink was engineered as a B.Tech Computer Science & Engineering (CSE) Physics
 - **Lead Engineer & Author**: [Krish Kumar](https://github.com/krishkumarcodes) (`krishkumarcodes@gmail.com`)
 - **Academic Focus**: Applied Classical Mechanics in Societal Computing & Crisis Dispatch
 - **Core Physics Translation**:
-  1. Translation of Newton's Universal Gravitation ($F = G \frac{m_1 m_2}{r^2}$) into urgency scoring.
-  2. Spherical Trigonometry & Haversine Geodesic formulation ($d = 2R \arcsin(\sqrt{a})$).
-  3. Dynamic Kinematics ($v = d / t$).
-  4. Inertial Acceleration Vector Analysis ($\vec{a}_{\text{net}} = \sqrt{a_x^2 + a_y^2 + a_z^2}$) and Low-Pass Noise Suppression.
+  1. Translation of Newton's Universal Gravitation (`F = G · (m₁ · m₂) / r²`) into urgency scoring.
+  2. Spherical Trigonometry & Haversine Geodesic formulation (`d = 2R · arcsin(√a)`).
+  3. Dynamic Kinematics (`v = d / t` $\implies$ `ETA = d / v`).
+  4. Inertial Acceleration Vector Analysis (`|a_net| = √(ax² + ay² + az²)`) and Low-Pass Noise Suppression.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for complete details.
+This project is open-source software licensed under the **[MIT License](LICENSE)**:
 
-KindLink is open-source, non-profit, and dedicated to empowering communities with equitable, physics-driven mutual aid.
+```text
+MIT License
+
+Copyright (c) 2026 Krish Kumar (krishkumarcodes@gmail.com) and KindLink Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+...
+```
+
+KindLink is fully open-source, non-profit, and dedicated to empowering communities with equitable, physics-driven mutual aid. Contributions, forks, and academic extensions are warmly welcomed.
