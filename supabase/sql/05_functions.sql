@@ -304,4 +304,80 @@ BEGIN
 END;
 $$;
 
+-- 8. LIVE STATS AGGREGATION RPC
+CREATE OR REPLACE FUNCTION public.live_stats(
+  lat double precision DEFAULT 23.6889,
+  lng double precision DEFAULT 86.9661,
+  radius_km double precision DEFAULT 25.0
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_helpers_count integer := 0;
+  v_avg_response_min numeric := NULL;
+  v_completed_count integer := 0;
+  v_satisfaction_pct numeric := NULL;
+  v_active_requests integer := 0;
+BEGIN
+  -- Count verified helpers
+  SELECT COUNT(*) INTO v_helpers_count
+  FROM public.profiles
+  WHERE role IN ('user', 'admin') AND verification_status = 'verified';
+
+  -- Active requests
+  SELECT COUNT(*) INTO v_active_requests
+  FROM public.requests
+  WHERE status IN ('open', 'accepted');
+
+  -- Completed requests
+  SELECT COUNT(*) INTO v_completed_count
+  FROM public.requests
+  WHERE status = 'completed';
+
+  -- Avg response time (in minutes) between created_at and accepted_at
+  SELECT ROUND(AVG(EXTRACT(EPOCH FROM (accepted_at - created_at)) / 60)::numeric, 1)
+  INTO v_avg_response_min
+  FROM public.requests
+  WHERE accepted_at IS NOT NULL AND status IN ('accepted', 'completed');
+
+  -- Satisfaction percentage based on ratings
+  SELECT ROUND((AVG(COALESCE(rating_score, stars::numeric)) / 5.0 * 100)::numeric, 1)
+  INTO v_satisfaction_pct
+  FROM public.ratings
+  WHERE stars IS NOT NULL;
+
+  RETURN jsonb_build_object(
+    'helpers_nearby', COALESCE(v_helpers_count, 0),
+    'active_requests', COALESCE(v_active_requests, 0),
+    'requests_completed', COALESCE(v_completed_count, 0),
+    'avg_response_minutes', v_avg_response_min,
+    'satisfaction_percentage', v_satisfaction_pct
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.live_stats TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.live_stats(double precision, double precision, double precision) TO anon, authenticated, service_role;
+
+-- 9. USERNAME RESOLUTION RPC FOR LOGIN
+CREATE OR REPLACE FUNCTION public.get_email_by_username(p_username text)
+RETURNS text
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+  SELECT COALESCE(p.email, u.email)
+  FROM public.profiles p
+  LEFT JOIN auth.users u ON u.id = p.id
+  WHERE lower(p.username) = lower(p_username)
+     OR p.username = p_username
+  LIMIT 1;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_email_by_username(text) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_email_by_username TO anon, authenticated;
+
 -- End of 05_functions.sql

@@ -58,12 +58,18 @@ loadEnv();
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  'https://hxrysrpymeleaipgofqj.supabase.co';
+  'https://pwfvaajngfmnmsfmqgyx.supabase.co';
 
 const SUPABASE_SERVICE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_SECRET_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cnlzcnB5bWVsZWFpcGdvZnFqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTc5MjAwOCwiZXhwIjoyMTA3MzY4MDA4fQ.hdrH0c9RGEVLej2Cle-ukUyLewuZmqqGY1Z3QS7QIhM';
+  process.env.SUPABASE_SERVICE_KEY;
+
+if (!SUPABASE_SERVICE_KEY) {
+  console.error('ERROR: SUPABASE_SERVICE_ROLE_KEY is not defined.');
+  console.error('Please configure it in .env.local or pass it in environment variables.');
+  process.exit(1);
+}
 
 const DEMO_PASSWORD = 'KindLink#2026';
 

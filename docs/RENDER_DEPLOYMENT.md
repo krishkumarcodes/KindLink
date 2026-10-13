@@ -17,11 +17,10 @@ NODE_ENV=production
 DATA_SOURCE=supabase
 NEXT_PUBLIC_DATA_SOURCE=supabase
 NEXT_PUBLIC_SITE_URL=https://kindlink-gd8e.onrender.com
-NEXT_PUBLIC_SUPABASE_URL=https://hxrysrpymeleaipgofqj.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cnlzcnB5bWVsZWFpcGdvZnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3OTIwMDgsImV4cCI6MjEwNzM2ODAwOH0.a7Vra1vcmPmxAr2zd9mOGRpWR9w34kcj7sEVbwdFFXg
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cnlzcnB5bWVsZWFpcGdvZnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3OTIwMDgsImV4cCI6MjEwNzM2ODAwOH0.a7Vra1vcmPmxAr2zd9mOGRpWR9w34kcj7sEVbwdFFXg
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cnlzcnB5bWVsZWFpcGdvZnFqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTc5MjAwOCwiZXhwIjoyMTA3MzY4MDA4fQ.hdrH0c9RGEVLej2Cle-ukUyLewuZmqqGY1Z3QS7QIhM
-SUPABASE_SECRET_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cnlzcnB5bWVsZWFpcGdvZnFqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTc5MjAwOCwiZXhwIjoyMTA3MzY4MDA4fQ.hdrH0c9RGEVLej2Cle-ukUyLewuZmqqGY1Z3QS7QIhM
+NEXT_PUBLIC_SUPABASE_URL=https://pwfvaajngfmnmsfmqgyx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3ZnZhYWpuZ2Ztbm1zZm1xZ3l4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4ODc3ODUsImV4cCI6MjEwNzQ2Mzc4NX0.LSbxXDJJe0PfZsf_JUPD88f5W9KAJVfyKMHIyTLDnWg
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+SUPABASE_SECRET_KEY=sb_secret_your_secret_key_here
 NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
 NEXT_PUBLIC_BING_SITE_VERIFICATION=
 INDEXNOW_KEY=
@@ -41,7 +40,7 @@ INDEXNOW_KEY=
 | `DATA_SOURCE` | Yes | No | Backend mode: `supabase` (live PostgreSQL/Auth) or `mock` (offline seed data). |
 | `NEXT_PUBLIC_DATA_SOURCE` | Yes | Yes | Client-side indicator for data source switch (`supabase` or `mock`). |
 | `NEXT_PUBLIC_SITE_URL` | Yes | Yes | Canonical production URL (e.g., `https://kindlink-gd8e.onrender.com`). |
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Yes | Supabase project endpoint (`https://hxrysrpymeleaipgofqj.supabase.co`). |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Yes | Supabase project endpoint (`https://pwfvaajngfmnmsfmqgyx.supabase.co`). |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Yes | Public anon key for client-side queries and RLS evaluation. |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Optional | Yes | Alias for `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Supports legacy JWT or modern 2024+ format. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | **NO (STRICT SECRET)** | Administrator service role key. Bypasses Row Level Security (RLS). Used by server actions and seed scripts. |
@@ -59,18 +58,18 @@ KindLink is built with resilient configuration resolvers in `lib/supabase/client
 ### A. Legacy JWT Keys (Recommended Default)
 - **Public Anon Key (`role: anon`)**:
   ```text
-  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cnlzcnB5bWVsZWFpcGdvZnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3OTIwMDgsImV4cCI6MjEwNzM2ODAwOH0.a7Vra1vcmPmxAr2zd9mOGRpWR9w34kcj7sEVbwdFFXg
+  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3ZnZhYWpuZ2Ztbm1zZm1xZ3l4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4ODc3ODUsImV4cCI6MjEwNzQ2Mzc4NX0.LSbxXDJJe0PfZsf_JUPD88f5W9KAJVfyKMHIyTLDnWg
   ```
 - **Service Role Secret Key (`role: service_role`)**:
   ```text
-  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cnlzcnB5bWVsZWFpcGdvZnFqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTc5MjAwOCwiZXhwIjoyMTA3MzY4MDA4fQ.hdrH0c9RGEVLej2Cle-ukUyLewuZmqqGY1Z3QS7QIhM
+  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.your_service_role_jwt_token_here
   ```
 - **Why this is default**: Next.js SSR middleware and `@supabase/ssr` (v0.12+) decode JWT payload claims (`iss`, `ref`, `role`, `exp`) locally to establish auth context without network overhead.
 
 ### B. New Supabase 2024+ API Keys
 - **Public Publishable Key**:
   ```text
-  sb_publishable_jq9ovhxpDR7GDzXlKSBPvg_0lU2GP3P
+  sb_publishable_JeO_LxYPZFhNoIl5a7tkZw_cogjbwdY
   ```
 - **Secret Key**:
   ```text
