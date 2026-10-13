@@ -136,10 +136,8 @@ BEGIN
     EXECUTE format('UPDATE auth.users SET %I = '''' WHERE %I IS NULL', v_col.column_name, v_col.column_name);
   END LOOP;
 
-  -- Ensure confirmed_at is populated if NULL
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'auth' AND table_name = 'users' AND column_name = 'confirmed_at') THEN
-    UPDATE auth.users SET confirmed_at = COALESCE(confirmed_at, email_confirmed_at, now()) WHERE confirmed_at IS NULL;
-  END IF;
+  -- Ensure email_confirmed_at is populated if NULL (which automatically generates confirmed_at)
+  UPDATE auth.users SET email_confirmed_at = now() WHERE email_confirmed_at IS NULL;
 
   -- Ensure boolean columns have non-null defaults
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'auth' AND table_name = 'users' AND column_name = 'is_super_admin') THEN
@@ -283,7 +281,6 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
-    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
@@ -307,7 +304,6 @@ BEGIN
     'volunteer@kindlink.demo',
     crypt('KindLink#Volunteer2026', gen_salt('bf')),
     now(),
-    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"kind_volunteer","display_name":"Dr. Ananya Roy (Volunteer)"}'::jsonb,
     'authenticated',
@@ -329,7 +325,6 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
-    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
     confirmation_token = '',
@@ -412,7 +407,6 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
-    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
@@ -436,7 +430,6 @@ BEGIN
     'requester@kindlink.demo',
     crypt('KindLink#Requester2026', gen_salt('bf')),
     now(),
-    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"need_aid","display_name":"Sourav Mukherjee"}'::jsonb,
     'authenticated',
@@ -458,7 +451,6 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
-    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
     confirmation_token = '',
@@ -540,7 +532,6 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
-    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
@@ -564,7 +555,6 @@ BEGIN
     'admin@kindlink.demo',
     crypt('KindLink#Admin2026', gen_salt('bf')),
     now(),
-    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"admin_kindlink","display_name":"KindLink Administrator"}'::jsonb,
     'authenticated',
@@ -586,7 +576,6 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
-    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
     confirmation_token = '',
@@ -668,7 +657,6 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
-    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
@@ -692,7 +680,6 @@ BEGIN
     'kind_volunteer@kindlink.demo',
     crypt('KindLink#2026', gen_salt('bf')),
     now(),
-    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"kind_volunteer_alias","display_name":"Dr. Ananya Roy (Volunteer Alias)"}'::jsonb,
     'authenticated',
@@ -714,7 +701,6 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
-    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
     confirmation_token = '',
@@ -796,7 +782,6 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
-    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
@@ -820,7 +805,6 @@ BEGIN
     'need_aid@kindlink.demo',
     crypt('KindLink#2026', gen_salt('bf')),
     now(),
-    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"need_aid_alias","display_name":"Sourav Mukherjee (Requester Alias)"}'::jsonb,
     'authenticated',
@@ -842,7 +826,6 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
-    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
     confirmation_token = '',
@@ -924,7 +907,6 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
-    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
@@ -948,7 +930,6 @@ BEGIN
     'admin_kindlink@kindlink.demo',
     crypt('KindLink#2026', gen_salt('bf')),
     now(),
-    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"admin_kindlink_alias","display_name":"KindLink Administrator (Admin Alias)"}'::jsonb,
     'authenticated',
@@ -970,7 +951,6 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
-    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
     confirmation_token = '',
