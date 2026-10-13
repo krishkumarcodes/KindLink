@@ -39,11 +39,23 @@ export async function POST(req: NextRequest) {
         primary: 'volunteer@kindlink.demo',
         aliases: ['volunteer@kindlink.demo', 'kind_volunteer@kindlink.demo'],
       },
+      kind_volunteer_alias: {
+        primary: 'volunteer@kindlink.demo',
+        aliases: ['volunteer@kindlink.demo', 'kind_volunteer@kindlink.demo'],
+      },
       need_aid: {
         primary: 'requester@kindlink.demo',
         aliases: ['requester@kindlink.demo', 'need_aid@kindlink.demo', 'patient@kindlink.demo'],
       },
+      need_aid_alias: {
+        primary: 'requester@kindlink.demo',
+        aliases: ['requester@kindlink.demo', 'need_aid@kindlink.demo', 'patient@kindlink.demo'],
+      },
       admin_kindlink: {
+        primary: 'admin@kindlink.demo',
+        aliases: ['admin@kindlink.demo', 'admin_kindlink@kindlink.demo'],
+      },
+      admin_kindlink_alias: {
         primary: 'admin@kindlink.demo',
         aliases: ['admin@kindlink.demo', 'admin_kindlink@kindlink.demo'],
       },
@@ -113,20 +125,36 @@ export async function POST(req: NextRequest) {
 
     // Candidate passwords (seamless primary & secondary demo password support)
     const candidatePasswords: string[] = [password];
+    const cleanPass = password.trim();
+    if (cleanPass && cleanPass !== password && !candidatePasswords.includes(cleanPass)) {
+      candidatePasswords.push(cleanPass);
+    }
     const lowerInput = cleanId.toLowerCase();
-    const isVolunteer = lowerInput === 'kind_volunteer' || candidateEmails.some((e) => e.includes('volunteer'));
-    const isRequester = lowerInput === 'need_aid' || candidateEmails.some((e) => e.includes('requester') || e.includes('need_aid'));
-    const isAdmin = lowerInput === 'admin_kindlink' || candidateEmails.some((e) => e.includes('admin'));
+    const isVolunteer =
+      lowerInput === 'kind_volunteer' ||
+      lowerInput === 'kind_volunteer_alias' ||
+      candidateEmails.some((e) => e.includes('volunteer'));
+    const isRequester =
+      lowerInput === 'need_aid' ||
+      lowerInput === 'need_aid_alias' ||
+      candidateEmails.some((e) => e.includes('requester') || e.includes('need_aid') || e.includes('patient'));
+    const isAdmin =
+      lowerInput === 'admin_kindlink' ||
+      lowerInput === 'admin_kindlink_alias' ||
+      candidateEmails.some((e) => e.includes('admin'));
 
     if (isVolunteer) {
       if (!candidatePasswords.includes('KindLink#Volunteer2026')) candidatePasswords.push('KindLink#Volunteer2026');
       if (!candidatePasswords.includes('KindLink#2026')) candidatePasswords.push('KindLink#2026');
+      if (!candidatePasswords.includes('Volunteer2026')) candidatePasswords.push('Volunteer2026');
     } else if (isRequester) {
       if (!candidatePasswords.includes('KindLink#Requester2026')) candidatePasswords.push('KindLink#Requester2026');
       if (!candidatePasswords.includes('KindLink#2026')) candidatePasswords.push('KindLink#2026');
+      if (!candidatePasswords.includes('Requester2026')) candidatePasswords.push('Requester2026');
     } else if (isAdmin) {
       if (!candidatePasswords.includes('KindLink#Admin2026')) candidatePasswords.push('KindLink#Admin2026');
       if (!candidatePasswords.includes('KindLink#2026')) candidatePasswords.push('KindLink#2026');
+      if (!candidatePasswords.includes('Admin2026')) candidatePasswords.push('Admin2026');
     } else if (password === 'KindLink#2026' || password.startsWith('KindLink#')) {
       if (!candidatePasswords.includes('KindLink#2026')) candidatePasswords.push('KindLink#2026');
     }
