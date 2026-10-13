@@ -102,28 +102,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS profiles_username_lower_idx ON public.profiles
 -- ----------------------------------------------------------------------------
 -- STEP 2: Safe Phone Constraint Handling in auth.users
 -- ----------------------------------------------------------------------------
--- Ensure auth.users phone unique constraint does not block multiple empty strings ('')
-DO $$
-BEGIN
-  -- Drop non-partial unique constraint if present
-  BEGIN
-    ALTER TABLE auth.users DROP CONSTRAINT IF EXISTS users_phone_key;
-  EXCEPTION WHEN others THEN NULL;
-  END;
+-- In PostgreSQL, multiple NULL values are allowed by the users_phone_key unique
+-- constraint. Multiple empty strings ('') violate uniqueness.
+-- Reset any accidental empty strings in phone to NULL.
+UPDATE auth.users SET phone = NULL WHERE phone = '';
 
-  BEGIN
-    DROP INDEX IF EXISTS auth.users_phone_key;
-  EXCEPTION WHEN others THEN NULL;
-  END;
-
-  -- Ensure partial unique index exists (only enforce uniqueness on non-empty, non-null phones)
-  BEGIN
-    CREATE UNIQUE INDEX IF NOT EXISTS users_phone_partial_key
-      ON auth.users (phone)
-      WHERE phone IS NOT NULL AND phone <> '';
-  EXCEPTION WHEN others THEN NULL;
-  END;
-END $$;
 
 -- ----------------------------------------------------------------------------
 -- STEP 3: Database-Wide NULL Token Sanitization in auth.users
@@ -133,6 +116,7 @@ DECLARE
   v_col record;
 BEGIN
   -- Iterate through all string/token columns present in auth.users and eliminate NULLs
+  -- NOTE: 'phone' is NOT a token and must remain NULL for email accounts to comply with users_phone_key
   FOR v_col IN (
     SELECT column_name
     FROM information_schema.columns
@@ -145,7 +129,6 @@ BEGIN
         'email_change_token_new',
         'email_change_token_current',
         'reauthentication_token',
-        'phone',
         'phone_change',
         'phone_change_token'
       )
@@ -335,7 +318,7 @@ BEGIN
     '',
     '',
     '',
-    '',
+    NULL,
     '',
     '',
     false,
@@ -355,7 +338,7 @@ BEGIN
     email_change_token_new = '',
     email_change_token_current = '',
     reauthentication_token = '',
-    phone = '',
+    phone = NULL,
     phone_change = '',
     phone_change_token = '',
     is_super_admin = false,
@@ -464,7 +447,7 @@ BEGIN
     '',
     '',
     '',
-    '',
+    NULL,
     '',
     '',
     false,
@@ -484,7 +467,7 @@ BEGIN
     email_change_token_new = '',
     email_change_token_current = '',
     reauthentication_token = '',
-    phone = '',
+    phone = NULL,
     phone_change = '',
     phone_change_token = '',
     is_super_admin = false,
@@ -592,7 +575,7 @@ BEGIN
     '',
     '',
     '',
-    '',
+    NULL,
     '',
     '',
     false,
@@ -612,7 +595,7 @@ BEGIN
     email_change_token_new = '',
     email_change_token_current = '',
     reauthentication_token = '',
-    phone = '',
+    phone = NULL,
     phone_change = '',
     phone_change_token = '',
     is_super_admin = false,
@@ -720,7 +703,7 @@ BEGIN
     '',
     '',
     '',
-    '',
+    NULL,
     '',
     '',
     false,
@@ -740,7 +723,7 @@ BEGIN
     email_change_token_new = '',
     email_change_token_current = '',
     reauthentication_token = '',
-    phone = '',
+    phone = NULL,
     phone_change = '',
     phone_change_token = '',
     is_super_admin = false,
@@ -848,7 +831,7 @@ BEGIN
     '',
     '',
     '',
-    '',
+    NULL,
     '',
     '',
     false,
@@ -868,7 +851,7 @@ BEGIN
     email_change_token_new = '',
     email_change_token_current = '',
     reauthentication_token = '',
-    phone = '',
+    phone = NULL,
     phone_change = '',
     phone_change_token = '',
     is_super_admin = false,
@@ -976,7 +959,7 @@ BEGIN
     '',
     '',
     '',
-    '',
+    NULL,
     '',
     '',
     false,
@@ -996,7 +979,7 @@ BEGIN
     email_change_token_new = '',
     email_change_token_current = '',
     reauthentication_token = '',
-    phone = '',
+    phone = NULL,
     phone_change = '',
     phone_change_token = '',
     is_super_admin = false,

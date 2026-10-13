@@ -177,23 +177,8 @@ BEGIN
     WHERE table_schema = 'auth' AND table_name = 'identities' AND column_name = 'provider_id'
   ) INTO v_has_provider_id;
 
-  -- Ensure auth.users phone unique constraint does not block multiple empty strings ('')
-  BEGIN
-    ALTER TABLE auth.users DROP CONSTRAINT IF EXISTS users_phone_key;
-  EXCEPTION WHEN others THEN NULL;
-  END;
-
-  BEGIN
-    DROP INDEX IF EXISTS auth.users_phone_key;
-  EXCEPTION WHEN others THEN NULL;
-  END;
-
-  BEGIN
-    CREATE UNIQUE INDEX IF NOT EXISTS users_phone_partial_key
-      ON auth.users (phone)
-      WHERE phone IS NOT NULL AND phone <> '';
-  EXCEPTION WHEN others THEN NULL;
-  END;
+  -- Clean up any empty string phone numbers to NULL so users_phone_key unique constraint is never violated
+  UPDATE auth.users SET phone = NULL WHERE phone = '';
 
   -- ==========================================================================
   -- 1. PRIMARY VOLUNTEER: volunteer@kindlink.demo (kind_volunteer)
@@ -242,7 +227,7 @@ BEGIN
     '',
     '',
     '',
-    '',
+    NULL,
     '',
     '',
     false,
@@ -262,7 +247,7 @@ BEGIN
     email_change_token_new = '',
     email_change_token_current = '',
     reauthentication_token = '',
-    phone = '',
+    phone = NULL,
     phone_change = '',
     phone_change_token = '',
     is_super_admin = false,
@@ -361,7 +346,7 @@ BEGIN
     '',
     '',
     '',
-    '',
+    NULL,
     '',
     '',
     false,
@@ -381,7 +366,7 @@ BEGIN
     email_change_token_new = '',
     email_change_token_current = '',
     reauthentication_token = '',
-    phone = '',
+    phone = NULL,
     phone_change = '',
     phone_change_token = '',
     is_super_admin = false,
@@ -479,7 +464,7 @@ BEGIN
     '',
     '',
     '',
-    '',
+    NULL,
     '',
     '',
     false,
@@ -499,7 +484,7 @@ BEGIN
     email_change_token_new = '',
     email_change_token_current = '',
     reauthentication_token = '',
-    phone = '',
+    phone = NULL,
     phone_change = '',
     phone_change_token = '',
     is_super_admin = false,
@@ -597,7 +582,7 @@ BEGIN
     '',
     '',
     '',
-    '',
+    NULL,
     '',
     '',
     false,
@@ -617,7 +602,7 @@ BEGIN
     email_change_token_new = '',
     email_change_token_current = '',
     reauthentication_token = '',
-    phone = '',
+    phone = NULL,
     phone_change = '',
     phone_change_token = '',
     is_super_admin = false,
@@ -715,7 +700,7 @@ BEGIN
     '',
     '',
     '',
-    '',
+    NULL,
     '',
     '',
     false,
@@ -735,7 +720,7 @@ BEGIN
     email_change_token_new = '',
     email_change_token_current = '',
     reauthentication_token = '',
-    phone = '',
+    phone = NULL,
     phone_change = '',
     phone_change_token = '',
     is_super_admin = false,
@@ -833,7 +818,7 @@ BEGIN
     '',
     '',
     '',
-    '',
+    NULL,
     '',
     '',
     false,
@@ -853,7 +838,7 @@ BEGIN
     email_change_token_new = '',
     email_change_token_current = '',
     reauthentication_token = '',
-    phone = '',
+    phone = NULL,
     phone_change = '',
     phone_change_token = '',
     is_super_admin = false,
@@ -963,7 +948,6 @@ BEGIN
       email_change_token_current = COALESCE(email_change_token_current, ''),
       email_change = COALESCE(email_change, ''),
       reauthentication_token = COALESCE(reauthentication_token, ''),
-      phone = COALESCE(phone, ''),
       phone_change = COALESCE(phone_change, ''),
       phone_change_token = COALESCE(phone_change_token, ''),
       confirmed_at = COALESCE(confirmed_at, email_confirmed_at, now()),
