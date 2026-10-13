@@ -8,6 +8,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/krishkumarcodes/KindLink/releases/tag/v2.0.0"><img src="https://img.shields.io/badge/Release-v2.0.0-0D9488?style=for-the-badge&logo=github&logoColor=white" alt="Release v2.0.0" /></a>
   <a href="https://kindlink-gd8e.onrender.com"><img src="https://img.shields.io/badge/Live_Site-kindlink--gd8e.onrender.com-0D9488?style=for-the-badge&logo=render&logoColor=white" alt="Live Production Site" /></a>
   <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js-14.2%20App%20Router-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js 14" /></a>
   <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5.6-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
@@ -222,44 +223,39 @@ For academic grading, portfolio evaluations, and live project presentations, Kin
 
 ---
 
-## 🛠️ How to Run the Showcase SQL & Auth Fix
+## 🛠️ Supabase Database Setup & Demo Accounts Provisioning
 
-Follow these steps in your Supabase project to execute the database migrations and provision verified showcase accounts:
+KindLink utilizes a clean, cloud-safe PostgreSQL schema (`supabase/sql/all_in_one.sql`) designed for modern Supabase Cloud instances, coupled with the official GoTrue Admin API seeder:
 
-### Method A: Auth & Identity Fix (If experiencing login errors on existing database)
-If you already ran base tables or `all_in_one_v2.sql` and encounter GoTrue errors (`Database error querying schema`, `Invalid login credentials`, or `Database error finding users`), run the dedicated fix script:
-1. Open your [Supabase Dashboard](https://supabase.com/dashboard) -> **SQL Editor** -> **+ New query**.
-2. Open [`supabase/sql/auth_fix/17_fix_showcase_auth_identities.sql`](supabase/sql/auth_fix/17_fix_showcase_auth_identities.sql), copy and paste into the editor, and click **Run**.
-3. **What this accomplishes:**
-   - ✅ Inserts missing `auth.identities` records required by Supabase GoTrue for email/password authentication.
-   - ✅ Sanitizes Go struct scan fields (`confirmation_token`, `recovery_token`, `email_change_token_new`) to prevent scan aborts.
-   - ✅ Synchronizes `public.profiles` (`email`, `username`, `verification_status = 'verified'`, `role = 'admin'`).
-   - ✅ Provisions dual-credential aliases with universal `KindLink#2026` passwords.
-   - ✅ Deploys collision-safe `handle_new_user()` trigger so signups never fail.
+### Step 1: Run the Master Clean Database Schema
+1. Open your [Supabase Dashboard](https://supabase.com/dashboard) -> Select Project -> **SQL Editor** -> **+ New query**.
+2. Open [`supabase/sql/all_in_one.sql`](supabase/sql/all_in_one.sql), copy its entire content, paste it into the editor, and click **Run**.
+3. **What this accomplishes in one execution:**
+   - ✅ Activates `uuid-ossp`, `pgcrypto`, and native `postgis` spatial extensions.
+   - ✅ Creates core normalized tables: `profiles`, `requests`, `offers`, `notifications`, `ratings`, `reports`, `sos_events`, and `verification_requests`.
+   - ✅ Deploys PostGIS GiST spatial indexes for sub-second radar lookups and B-Tree indexes.
+   - ✅ Deploys the Help Gravity score function, notification triggers, and strict Row Level Security (RLS) policies.
+   - ✅ Deploys `get_email_by_username()` and `public_stats()` RPC resolvers.
+   - ✅ Configures storage buckets (`verification-docs`) and Supabase Realtime publication.
+   - ✅ **Zero generated column or token mismatches**: Pure DDL for `public` schema with zero direct manipulation of internal `auth.users` tables.
 
-### Method B: Single Atomic Master Run (Fresh Database Setup)
-Execute [`supabase/sql/all_in_one_v2.sql`](supabase/sql/all_in_one_v2.sql) — a complete, fully idempotent migration wrapped in an atomic `BEGIN ... COMMIT` transaction:
-1. Log in to your [Supabase Dashboard](https://supabase.com/dashboard) and select your KindLink project.
-2. In the left navigation sidebar, click on **SQL Editor** (icon: `>_`) -> **+ New query**.
-3. Open [`supabase/sql/all_in_one_v2.sql`](supabase/sql/all_in_one_v2.sql), copy its entire content, paste it into the editor, and click **Run**.
-4. **What this accomplishes in one single execution:**
-   - ✅ Activates `uuid-ossp`, `pgcrypto`, and `postgis` with custom tolerance cast overloads.
-   - ✅ Creates and verifies all tables: `profiles`, `requests`, `offers`, `notifications`, `ratings`, `reports`, `sos_events`, `active_transit_locations`, `emergency_contacts`, `user_badges`, `auth_otps`, `push_subscriptions`.
-   - ✅ Applies PostGIS GiST spatial indexes and performance B-Tree indexes.
-   - ✅ Deploys the Help Gravity engine, notification triggers, and RLS security policies.
-   - ✅ Provisions all 3 official showcase accounts + 3 alias accounts with `auth.identities`.
-   - ✅ Deploys the `live_stats(p_lat, p_lng, p_radius_km)` RPC engine for real-time community pulse indicators.
-   - ✅ Deploys `get_email_by_username()` RPC for universal identifier authentication.
-   - ✅ Purges leftover test/dummy data while preserving genuine users and showcase accounts.
+### Step 2: Disable Email Confirmations in Supabase
+1. In the Supabase Dashboard, go to **Authentication** -> **Providers** -> **Email**.
+2. Turn **OFF** the toggle for **Confirm email**.
+3. Click **Save**.
 
----
+### Step 3: Seed Demo Accounts via GoTrue Admin API
+Execute the native GoTrue provisioner in your terminal:
+```bash
+node scripts/seed-demo-users.mjs
+```
+*(Alternatively, execute [`supabase/sql/seed_demo_accounts.sql`](supabase/sql/seed_demo_accounts.sql) in the Supabase SQL Editor).*
 
-### Method C: Incremental Upgrade Migrations (For Existing Databases)
-If you already applied the base schema (`01` through `13`), execute these upgrade files in sequence:
-1. **`14_comprehensive_live_upgrade.sql`**: Deploys SOS live tracking, volunteer heartbeat, `live_stats` function, and real-time publications.
-2. **`15_cleanup_test_data.sql`**: Safely purges legacy placeholder requests and test accounts while preserving showcase accounts.
-3. **`16_login_signup_helpers.sql`**: Provisions `get_email_by_username()` RPC and username unique constraint indexing.
-4. **`auth_fix/17_fix_showcase_auth_identities.sql`**: Synchronizes GoTrue `auth.identities` and provisions dual-credential aliases.
+**What this accomplishes:**
+- ✅ Provisions all 3 official showcase accounts + 3 alias accounts natively via the official Supabase GoTrue Admin API.
+- ✅ Synchronizes `public.profiles` (`verification_status = 'verified'`, `role = 'admin'` for Super Admin).
+- ✅ Seeds a realistic emergency blood request and nearby volunteer offer in Asansol.
+- ✅ Validates password authentication with HTTP 200 checks across all credentials.
 
 ---
 
