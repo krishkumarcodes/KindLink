@@ -98,7 +98,7 @@ BEGIN
   VALUES (
     v_volunteer_id, 'kind_volunteer', 'Dr. Ananya Roy (Volunteer)', 'volunteer@kindlink.demo',
     '+91 98320 12345', 'user', 'verified',
-    extensions.ST_SetSRID(extensions.ST_MakePoint(86.9661, 23.6889), 4326)::geography, 4.95, 18
+    ST_SetSRID(ST_MakePoint(86.9661, 23.6889), 4326)::geography, 4.95, 18
   )
   ON CONFLICT (id) DO UPDATE SET
     username = EXCLUDED.username, display_name = EXCLUDED.display_name, email = EXCLUDED.email,
@@ -156,7 +156,7 @@ BEGIN
   VALUES (
     v_requester_id, 'need_aid', 'Sourav Mukherjee', 'requester@kindlink.demo',
     '+91 98320 54321', 'user', 'verified',
-    extensions.ST_SetSRID(extensions.ST_MakePoint(86.9745, 23.6842), 4326)::geography, 4.80, 7
+    ST_SetSRID(ST_MakePoint(86.9745, 23.6842), 4326)::geography, 4.80, 7
   )
   ON CONFLICT (id) DO UPDATE SET
     username = EXCLUDED.username, display_name = EXCLUDED.display_name, email = EXCLUDED.email,
@@ -214,7 +214,7 @@ BEGIN
   VALUES (
     v_admin_id, 'admin_kindlink', 'KindLink Administrator', 'admin@kindlink.demo',
     '+91 98320 00000', 'admin', 'verified',
-    extensions.ST_SetSRID(extensions.ST_MakePoint(86.9700, 23.6870), 4326)::geography, 5.00, 99
+    ST_SetSRID(ST_MakePoint(86.9700, 23.6870), 4326)::geography, 5.00, 99
   )
   ON CONFLICT (id) DO UPDATE SET
     username = EXCLUDED.username, display_name = EXCLUDED.display_name, email = EXCLUDED.email,
@@ -272,7 +272,7 @@ BEGIN
   VALUES (
     v_alias_vol_id, 'kind_volunteer_alias', 'Dr. Ananya Roy (Volunteer Alias)', 'kind_volunteer@kindlink.demo',
     '+91 98320 12345', 'user', 'verified',
-    extensions.ST_SetSRID(extensions.ST_MakePoint(86.9661, 23.6889), 4326)::geography, 4.95, 18
+    ST_SetSRID(ST_MakePoint(86.9661, 23.6889), 4326)::geography, 4.95, 18
   )
   ON CONFLICT (id) DO UPDATE SET
     username = EXCLUDED.username, display_name = EXCLUDED.display_name, email = EXCLUDED.email,
@@ -330,7 +330,7 @@ BEGIN
   VALUES (
     v_alias_req_id, 'need_aid_alias', 'Sourav Mukherjee (Requester Alias)', 'need_aid@kindlink.demo',
     '+91 98320 54321', 'user', 'verified',
-    extensions.ST_SetSRID(extensions.ST_MakePoint(86.9745, 23.6842), 4326)::geography, 4.80, 7
+    ST_SetSRID(ST_MakePoint(86.9745, 23.6842), 4326)::geography, 4.80, 7
   )
   ON CONFLICT (id) DO UPDATE SET
     username = EXCLUDED.username, display_name = EXCLUDED.display_name, email = EXCLUDED.email,
@@ -388,7 +388,7 @@ BEGIN
   VALUES (
     v_alias_adm_id, 'admin_kindlink_alias', 'KindLink Administrator (Admin Alias)', 'admin_kindlink@kindlink.demo',
     '+91 98320 00000', 'admin', 'verified',
-    extensions.ST_SetSRID(extensions.ST_MakePoint(86.9700, 23.6870), 4326)::geography, 5.00, 99
+    ST_SetSRID(ST_MakePoint(86.9700, 23.6870), 4326)::geography, 5.00, 99
   )
   ON CONFLICT (id) DO UPDATE SET
     username = EXCLUDED.username, display_name = EXCLUDED.display_name, email = EXCLUDED.email,
@@ -403,7 +403,7 @@ BEGIN
     'Urgent: B+ Blood Required for Dialysis Patient',
     'Looking for verified blood donor nearby District Hospital Asansol. Patient scheduled for regular hemodialysis treatment today at 3:00 PM.',
     'high', 'open',
-    extensions.ST_SetSRID(extensions.ST_MakePoint(86.9745, 23.6842), 4326)::geography,
+    ST_SetSRID(ST_MakePoint(86.9745, 23.6842), 4326)::geography,
     'District Hospital, Asansol, West Bengal',
     now() - interval '20 minutes', now() - interval '20 minutes'
   )
