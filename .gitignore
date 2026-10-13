@@ -25,10 +25,10 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+.env.render
 render.env
 *.env
 !.env.example
-!.env.render
 
 # database / docker local volumes
 .pgdata
