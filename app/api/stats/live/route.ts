@@ -49,23 +49,32 @@ export async function GET(request: NextRequest) {
     let rpcSucceeded = false;
 
     try {
-      const { data: rpcData, error: rpcError } = await supabase.rpc('live_stats', {
-        lat,
-        lng,
-        radius_km: radiusKm,
-      });
+      // Try parameter names p_lat, p_lng, p_radius_km first, then lat, lng, radius_km
+      let rpcResult = await supabase.rpc('live_stats', {
+        p_lat: lat,
+        p_lng: lng,
+        p_radius_km: radiusKm,
+      } as any);
 
-      if (!rpcError && rpcData) {
-        helpers = Number(rpcData.helpers_nearby ?? 0);
-        avgResponseMin =
-          rpcData.avg_response_minutes !== null && rpcData.avg_response_minutes !== undefined
-            ? Number(rpcData.avg_response_minutes)
-            : null;
-        requestsCompleted = Number(rpcData.acts_of_help ?? 0);
-        satisfactionPct =
-          rpcData.trust_match_percentage !== null && rpcData.trust_match_percentage !== undefined
-            ? Number(rpcData.trust_match_percentage)
-            : null;
+      if (rpcResult.error) {
+        rpcResult = await supabase.rpc('live_stats', {
+          lat,
+          lng,
+          radius_km: radiusKm,
+        } as any);
+      }
+
+      const rpcData: any = rpcResult.data;
+      if (!rpcResult.error && rpcData) {
+        helpers = Number(rpcData.helpers ?? rpcData.helpers_nearby ?? 0);
+        const respMin = rpcData.avg_response_min ?? rpcData.avg_response_minutes;
+        avgResponseMin = respMin !== null && respMin !== undefined ? Number(respMin) : null;
+        requestsCompleted = Number(rpcData.requests_completed ?? rpcData.acts_of_help ?? 0);
+        const satPct = rpcData.satisfaction_pct ?? rpcData.trust_match_percentage ?? rpcData.trust_match_percent;
+        satisfactionPct = satPct !== null && satPct !== undefined ? Number(satPct) : null;
+        if (rpcData.active_requests !== undefined && rpcData.active_requests !== null) {
+          activeRequestsCount = Number(rpcData.active_requests);
+        }
         rpcSucceeded = true;
       }
     } catch {

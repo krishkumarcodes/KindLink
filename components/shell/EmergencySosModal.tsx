@@ -217,10 +217,10 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
             </div>
             <div className="truncate">
               <span className="font-bold text-foreground block truncate">
-                {userProfile.name || 'Rahul Sen'}
+                {userProfile.name || 'Community Member'}
               </span>
               <span className="text-[11px] text-muted-foreground block truncate">
-                Phone: {userProfile.phone || '+91 98320 12345'}
+                Phone: {userProfile.phone || 'Community Volunteer'}
               </span>
             </div>
           </div>

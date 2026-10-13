@@ -27,9 +27,15 @@ export function ProfileView() {
 
   const [activeTab, setActiveTab] = useState<'history' | 'my-requests' | 'badges'>('history');
   const [idModalOpen, setIdModalOpen] = useState(false);
-  const [phoneInput, setPhoneInput] = useState(userProfile.phone || '+91 98320 12345');
+  const [phoneInput, setPhoneInput] = useState(userProfile.phone || '');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  const myActiveRequests = (requests || []).filter(
+    (r) =>
+      (userProfile.name && r.contactName === userProfile.name) ||
+      (userProfile.phone && r.phone === userProfile.phone)
+  );
 
   // Upload ID to private storage
   const handleUploadId = async () => {
@@ -98,7 +104,7 @@ export function ProfileView() {
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
           <div className="relative">
             <div className="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-3xl bg-primary text-white text-3xl font-extrabold shadow-soft">
-              {userProfile.name.charAt(0)}
+              {(userProfile.name || 'Community Member').charAt(0).toUpperCase()}
             </div>
             <div className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-xs">
               <ShieldCheck className="h-4 w-4 notranslate" />
@@ -107,7 +113,7 @@ export function ProfileView() {
 
           <div className="space-y-1.5 flex-1">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <h1 className="text-2xl font-bold text-foreground">{userProfile.name}</h1>
+              <h1 className="text-2xl font-bold text-foreground">{userProfile.name || 'Community Member'}</h1>
               <span
                 className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider self-center sm:self-auto ${
                   userProfile.verificationState === 'verified'
@@ -123,9 +129,13 @@ export function ProfileView() {
             </div>
 
             <p className="text-xs sm:text-sm text-muted-foreground font-medium">
-              {userProfile.college} · Asansol, WB
+              {userProfile.college || 'KindLink Community'} · Asansol, WB
             </p>
-            <p className="text-xs text-muted-foreground font-mono">{userProfile.phone} · {userProfile.email}</p>
+            {(userProfile.phone || userProfile.email) && (
+              <p className="text-xs text-muted-foreground font-mono">
+                {[userProfile.phone, userProfile.email].filter(Boolean).join(' · ')}
+              </p>
+            )}
 
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 pt-3 text-xs">
               <div className="flex items-center gap-1 text-amber-500 font-bold">
@@ -169,7 +179,7 @@ export function ProfileView() {
               <CheckCircle2 className="h-4 w-4 text-emerald-500 notranslate" />
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Verified with +91 98320 12345 via instant OTP code.
+              {userProfile.phone ? `Verified with ${userProfile.phone} via SMS/OTP.` : 'Add your phone number to enable SMS alerts.'}
             </p>
             <button
               onClick={() => setIdModalOpen(true)}
@@ -186,12 +196,12 @@ export function ProfileView() {
                 <Upload className="h-4 w-4 text-primary notranslate" />
                 <span>2. Student / Govt ID</span>
               </span>
-              <span className="text-[10px] font-bold text-emerald-600 px-2 py-0.5 rounded-full bg-emerald-500/10">
-                Active
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${userProfile.verificationState === 'verified' ? 'text-emerald-600 bg-emerald-500/10' : 'text-muted-foreground bg-muted'}`}>
+                {userProfile.verificationState === 'verified' ? 'Active' : 'Pending'}
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Asansol Engineering College Student ID uploaded.
+              {userProfile.idDocumentName ? `${userProfile.idDocumentName} uploaded.` : 'Upload a student or citizen ID card for verification.'}
             </p>
             <button
               onClick={() => setIdModalOpen(true)}
@@ -208,10 +218,12 @@ export function ProfileView() {
                 <Award className="h-4 w-4 text-primary notranslate" />
                 <span>3. Community Peer Trust</span>
               </span>
-              <CheckCircle2 className="h-4 w-4 text-emerald-500 notranslate" />
+              <CheckCircle2 className={`h-4 w-4 notranslate ${userProfile.verificationState === 'verified' ? 'text-emerald-500' : 'text-muted-foreground/40'}`} />
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Endorsed by 4 student volunteers at AEC Kalyanpur.
+              {userProfile.verificationState === 'verified'
+                ? 'Community verified member with peer endorsements.'
+                : 'Earn peer endorsements through verified emergency responses.'}
             </p>
             <span className="text-xs font-bold text-emerald-600 block">Verified Badge Unlocked</span>
           </div>
@@ -229,7 +241,7 @@ export function ProfileView() {
                 : 'text-muted-foreground hover:bg-muted'
             }`}
           >
-            My Help History ({myHelpHistory.length})
+            My Help History ({userProfile.helpsCount})
           </button>
           <button
             onClick={() => setActiveTab('my-requests')}
@@ -239,7 +251,7 @@ export function ProfileView() {
                 : 'text-muted-foreground hover:bg-muted'
             }`}
           >
-            My Active Requests (1)
+            My Active Requests ({myActiveRequests.length})
           </button>
           <button
             onClick={() => setActiveTab('badges')}
@@ -249,53 +261,70 @@ export function ProfileView() {
                 : 'text-muted-foreground hover:bg-muted'
             }`}
           >
-            Badges & Impact (4)
+            Badges & Impact ({userProfile.badges?.length || 0})
           </button>
         </div>
 
         {/* Tab 1: Help History */}
         {activeTab === 'history' && (
-          <div className="space-y-3">
-            {myHelpHistory.map((item) => (
-              <div
-                key={item.id}
-                className="p-4 rounded-2xl border border-border bg-card shadow-soft flex items-center justify-between text-xs"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-foreground text-sm">{item.title}</span>
-                    <span className="text-[10px] font-bold text-primary px-2 py-0.5 rounded-full bg-primary/10">
-                      {item.category}
-                    </span>
+          userProfile.helpsCount === 0 || myHelpHistory.length === 0 ? (
+            <div className="p-8 rounded-2xl border border-dashed border-border bg-muted/20 text-center text-xs text-muted-foreground">
+              No completed help acts recorded yet. Offer help on requests nearby to build your verified impact record!
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {myHelpHistory.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-4 rounded-2xl border border-border bg-card shadow-soft flex items-center justify-between text-xs"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-foreground text-sm">{item.title}</span>
+                      <span className="text-[10px] font-bold text-primary px-2 py-0.5 rounded-full bg-primary/10">
+                        {item.category}
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground">
+                      Assisted {item.beneficiary} • {item.date}
+                    </p>
                   </div>
-                  <p className="text-muted-foreground">
-                    Assisted {item.beneficiary} • {item.date}
-                  </p>
+                  <div className="flex items-center gap-1 font-bold text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-xl">
+                    <Star className="h-3.5 w-3.5 fill-amber-400 notranslate" />
+                    <span>{item.rating}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 font-bold text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-xl">
-                  <Star className="h-3.5 w-3.5 fill-amber-400 notranslate" />
-                  <span>{item.rating}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )
         )}
 
         {/* Tab 2: My Active Requests */}
         {activeTab === 'my-requests' && (
-          <div className="p-4 rounded-2xl border border-border bg-card shadow-soft space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-foreground text-sm">
-                O+ Blood Urgently Needed (2 Units)
-              </span>
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-full">
-                2 Responders Connected
-              </span>
+          myActiveRequests.length === 0 ? (
+            <div className="p-8 rounded-2xl border border-dashed border-border bg-muted/20 text-center text-xs text-muted-foreground">
+              No active aid requests posted yet. You can submit an emergency or aid request from the home screen anytime.
             </div>
-            <p className="text-xs text-muted-foreground">
-              Asansol District Hospital, SB Gorai Road · Posted 14m ago
-            </p>
-          </div>
+          ) : (
+            <div className="space-y-3">
+              {myActiveRequests.map((req) => (
+                <div
+                  key={req.id}
+                  className="p-4 rounded-2xl border border-border bg-card shadow-soft space-y-2"
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-foreground text-sm">{req.title}</span>
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-full uppercase">
+                      {req.status} ({req.helpersOffered || 0} offers)
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {req.locationName} · {req.createdAt}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )
         )}
 
         {/* Tab 3: Badges */}

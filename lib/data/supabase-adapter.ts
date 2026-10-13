@@ -470,11 +470,22 @@ class SupabaseDataAdapter implements DataAdapter {
     // 2. Direct Supabase RPC
     try {
       const supabase = this.getSupabase();
-      const { data, error } = await supabase.rpc('live_stats', {
-        lat,
-        lng,
-        radius_km: radius,
-      });
+      let rpcRes = await supabase.rpc('live_stats', {
+        p_lat: lat,
+        p_lng: lng,
+        p_radius_km: radius,
+      } as any);
+
+      if (rpcRes.error) {
+        rpcRes = await supabase.rpc('live_stats', {
+          lat,
+          lng,
+          radius_km: radius,
+        } as any);
+      }
+
+      const data: any = rpcRes.data;
+      const error = rpcRes.error;
 
       if (!error && data) {
         const trustVal =
@@ -482,16 +493,22 @@ class SupabaseDataAdapter implements DataAdapter {
             ? Number(data.trust_match_percentage)
             : data.trust_match_percent !== null && data.trust_match_percent !== undefined
             ? Number(data.trust_match_percent)
+            : data.satisfaction_pct !== null && data.satisfaction_pct !== undefined
+            ? Number(data.satisfaction_pct)
+            : null;
+        const respMin =
+          data.avg_response_minutes !== null && data.avg_response_minutes !== undefined
+            ? Number(data.avg_response_minutes)
+            : data.avg_response_min !== null && data.avg_response_min !== undefined
+            ? Number(data.avg_response_min)
             : null;
         return {
-          helpersNearby: Number(data.helpers_nearby ?? 0),
-          avgResponseMinutes:
-            data.avg_response_minutes !== null && data.avg_response_minutes !== undefined
-              ? Number(data.avg_response_minutes)
-              : null,
-          actsOfHelp: Number(data.acts_of_help ?? 0),
+          helpersNearby: Number(data.helpers_nearby ?? data.helpers ?? 0),
+          avgResponseMinutes: respMin,
+          actsOfHelp: Number(data.acts_of_help ?? data.requests_completed ?? 0),
           trustMatchPercentage: trustVal,
           trustMatchPercent: trustVal,
+          activeRequests: Number(data.active_requests ?? 0),
           updatedAt: new Date().toISOString(),
         };
       }

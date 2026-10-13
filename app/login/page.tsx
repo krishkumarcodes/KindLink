@@ -524,7 +524,7 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                       disabled={loading}
                       value={signupFullName}
                       onChange={(e) => setSignupFullName(e.target.value)}
-                      placeholder="e.g. Rahul Sen"
+                      placeholder="e.g. Community Member"
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-700/80 bg-slate-950/60 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition-colors disabled:opacity-50"
                     />
                   </div>

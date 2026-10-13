@@ -154,18 +154,18 @@ export default function PublicHomePage() {
               {/* Call to Actions */}
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
                 <Link
-                  href="/app"
+                  href="/login"
                   className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-teal-600/25 transition-all hover:bg-teal-700 active:scale-[0.98]"
                 >
                   <Sparkles className="h-4 w-4" />
-                  <span>Launch KindLink App</span>
+                  <span>Get Started / Login</span>
                 </Link>
 
                 <Link
-                  href="/how-it-works"
+                  href="/app"
                   className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3.5 text-sm font-semibold text-foreground transition-all hover:bg-muted active:scale-[0.98]"
                 >
-                  <span>See How it Works</span>
+                  <span>Launch KindLink App</span>
                   <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
 
@@ -465,10 +465,16 @@ export default function PublicHomePage() {
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
               <Link
-                href="/app"
+                href="/login"
                 className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-teal-600/25 hover:bg-teal-700 transition-all active:scale-[0.98]"
               >
                 <Sparkles className="h-4 w-4" />
+                <span>Get Started / Login</span>
+              </Link>
+              <Link
+                href="/app"
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3.5 text-sm font-semibold text-foreground hover:bg-muted transition-all active:scale-[0.98]"
+              >
                 <span>Launch Interactive App Now</span>
               </Link>
               <Link

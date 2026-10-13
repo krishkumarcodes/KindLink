@@ -21,14 +21,24 @@ CREATE EXTENSION IF NOT EXISTS postgis SCHEMA extensions;
 
 SET search_path = public, extensions;
 
--- 1. EXPAND request_status ENUM WITH TRANSIT STATES
-DO $$ BEGIN
-  ALTER TYPE request_status ADD VALUE IF NOT EXISTS 'on_the_way' AFTER 'accepted';
+-- 1. EXPAND request_status ENUM WITH TRANSIT STATES (if not already present)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_enum WHERE enumtypid = 'request_status'::regtype AND enumlabel = 'on_the_way'
+  ) THEN
+    ALTER TYPE request_status ADD VALUE IF NOT EXISTS 'on_the_way' AFTER 'accepted';
+  END IF;
 EXCEPTION WHEN others THEN null;
 END $$;
 
-DO $$ BEGIN
-  ALTER TYPE request_status ADD VALUE IF NOT EXISTS 'arrived' AFTER 'on_the_way';
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_enum WHERE enumtypid = 'request_status'::regtype AND enumlabel = 'arrived'
+  ) THEN
+    ALTER TYPE request_status ADD VALUE IF NOT EXISTS 'arrived' AFTER 'on_the_way';
+  END IF;
 EXCEPTION WHEN others THEN null;
 END $$;
 

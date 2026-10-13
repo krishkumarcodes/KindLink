@@ -31,8 +31,10 @@ BEGIN
     DELETE FROM public.reports
     WHERE reporter_id = ANY(v_demo_user_ids);
 
-    DELETE FROM public.sos_events
-    WHERE user_id = ANY(v_demo_user_ids);
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sos_events') THEN
+      DELETE FROM public.sos_events
+      WHERE user_id = ANY(v_demo_user_ids);
+    END IF;
 
     DELETE FROM public.verification_requests
     WHERE user_id = ANY(v_demo_user_ids);
