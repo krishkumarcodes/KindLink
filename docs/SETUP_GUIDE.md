@@ -405,15 +405,51 @@ When you are ready to publish KindLink to production on [Render](https://render.
 1. Log in to your **Render Dashboard** at **[https://dashboard.render.com](https://dashboard.render.com)**.
 2. Click on your **KindLink** Web Service (configured from your GitHub repo using `render.yaml` or Docker).
 3. In the left navigation menu of your web service, click **Environment** (key icon).
-4. Click the button labeled **Add Environment Variable** to add the required production values:
-   - **`PORT`**: `3000`
-   - **`NODE_ENV`**: `production`
-   - **`NEXT_PUBLIC_SUPABASE_URL`**: `https://your-project-id.supabase.co`
-   - **`NEXT_PUBLIC_SUPABASE_ANON_KEY`**: `your-anon-key-here`
-   - **`SUPABASE_SERVICE_ROLE_KEY`**: `your-service-role-key-here`
+4. You can configure environment variables using either of the following two methods:
+
+#### Method A: Direct Bulk Import via "Add from .env" (Fastest & Recommended)
+Click the button labeled **"Add from .env"**, copy the entire block below, paste it into the dialog, and click **Save Changes**:
+
+```dotenv
+PORT=3000
+NODE_ENV=production
+DATA_SOURCE=supabase
+NEXT_PUBLIC_DATA_SOURCE=supabase
+NEXT_PUBLIC_SITE_URL=https://kindlink-gd8e.onrender.com
+NEXT_PUBLIC_SUPABASE_URL=https://hxrysrpymeleaipgofqj.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cnlzcnB5bWVsZWFpcGdvZnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3OTIwMDgsImV4cCI6MjEwNzM2ODAwOH0.a7Vra1vcmPmxAr2zd9mOGRpWR9w34kcj7sEVbwdFFXg
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cnlzcnB5bWVsZWFpcGdvZnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3OTIwMDgsImV4cCI6MjEwNzM2ODAwOH0.a7Vra1vcmPmxAr2zd9mOGRpWR9w34kcj7sEVbwdFFXg
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cnlzcnB5bWVsZWFpcGdvZnFqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTc5MjAwOCwiZXhwIjoyMTA3MzY4MDA4fQ.hdrH0c9RGEVLej2Cle-ukUyLewuZmqqGY1Z3QS7QIhM
+SUPABASE_SECRET_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cnlzcnB5bWVsZWFpcGdvZnFqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTc5MjAwOCwiZXhwIjoyMTA3MzY4MDA4fQ.hdrH0c9RGEVLej2Cle-ukUyLewuZmqqGY1Z3QS7QIhM
+NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
+NEXT_PUBLIC_BING_SITE_VERIFICATION=
+INDEXNOW_KEY=
+```
+
+#### Method B: Add Individual Environment Variables
+Click **Add Environment Variable** for each line:
+- **`PORT`**: `3000`
+- **`NODE_ENV`**: `production`
+- **`DATA_SOURCE`**: `supabase`
+- **`NEXT_PUBLIC_DATA_SOURCE`**: `supabase`
+- **`NEXT_PUBLIC_SITE_URL`**: `https://kindlink-gd8e.onrender.com`
+- **`NEXT_PUBLIC_SUPABASE_URL`**: `https://hxrysrpymeleaipgofqj.supabase.co`
+- **`NEXT_PUBLIC_SUPABASE_ANON_KEY`**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cnlzcnB5bWVsZWFpcGdvZnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3OTIwMDgsImV4cCI6MjEwNzM2ODAwOH0.a7Vra1vcmPmxAr2zd9mOGRpWR9w34kcj7sEVbwdFFXg`
+- **`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cnlzcnB5bWVsZWFpcGdvZnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3OTIwMDgsImV4cCI6MjEwNzM2ODAwOH0.a7Vra1vcmPmxAr2zd9mOGRpWR9w34kcj7sEVbwdFFXg`
+- **`SUPABASE_SERVICE_ROLE_KEY`**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cnlzcnB5bWVsZWFpcGdvZnFqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTc5MjAwOCwiZXhwIjoyMTA3MzY4MDA4fQ.hdrH0c9RGEVLej2Cle-ukUyLewuZmqqGY1Z3QS7QIhM`
+- **`SUPABASE_SECRET_KEY`**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cnlzcnB5bWVsZWFpcGdvZnFqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTc5MjAwOCwiZXhwIjoyMTA3MzY4MDA4fQ.hdrH0c9RGEVLej2Cle-ukUyLewuZmqqGY1Z3QS7QIhM`
+
+> **Note on Key Formats (Legacy JWT vs New 2024+ format):**
+> KindLink's configuration resolvers (`lib/supabase/client.ts` and `lib/supabase/admin.ts`) support both:
+> 1. **Legacy JWT Key format** (`eyJhbGciOiJIUzI1Ni...`): Expected by default by `@supabase/supabase-js` v2 and `@supabase/ssr` to verify token signatures, claims, and RLS policies.
+> 2. **New Supabase 2024+ format**:
+>    - Public: `sb_publishable_jq9ovhxpDR7GDzXlKSBPvg_0lU2GP3P`
+>    - Secret: `sb_secret_your_secret_key_here`
+> Both can be used seamlessly as `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`.
+
 5. Click the blue button labeled **Save Changes** at the bottom of the environment section.
 6. In the top right header of the Render page, click the button labeled **Manual Deploy**.
-7. From the dropdown menu, select **Deploy latest commit** (or **Clear build cache & deploy** to force a clean build with the new environment variables).
+7. From the dropdown menu, select **Clear build cache & deploy** (Next.js inlines `NEXT_PUBLIC_` variables at compile time, so a fresh build ensures the new keys are baked into the client bundle).
 8. Monitor the deploy logs. You should see the Docker container build successfully:
    ```text
    ==> Starting service with 'node server.js'
@@ -431,6 +467,7 @@ When you are ready to publish KindLink to production on [Render](https://render.
    ```
 
 ---
+
 
 ### Docker Build Engineering & Static Prerender Resolution
 

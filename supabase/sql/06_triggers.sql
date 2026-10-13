@@ -17,6 +17,7 @@ DECLARE
   v_raw_username text;
   v_sanitized_username text;
   v_display_name text;
+  v_collision_count integer;
 BEGIN
   -- Extract username from sign-up metadata
   v_raw_username := NEW.raw_user_meta_data->>'username';
@@ -29,25 +30,43 @@ BEGIN
     v_sanitized_username := lower(trim(v_raw_username));
   END IF;
 
-  INSERT INTO public.profiles (
-    id,
-    username,
-    display_name,
-    phone,
-    role,
-    verification_status
-  )
-  VALUES (
-    NEW.id,
-    v_sanitized_username,
-    COALESCE(v_display_name, v_sanitized_username),
-    NEW.phone,
-    'user',
-    'unverified'
-  )
-  ON CONFLICT (id) DO UPDATE
-  SET username = EXCLUDED.username,
-      display_name = EXCLUDED.display_name;
+  -- Deduplicate username if another user already holds it
+  SELECT COUNT(*) INTO v_collision_count
+  FROM public.profiles
+  WHERE username = v_sanitized_username AND id <> NEW.id;
+
+  IF v_collision_count > 0 THEN
+    v_sanitized_username := v_sanitized_username || '_' || substr(NEW.id::text, 1, 4);
+  END IF;
+
+  BEGIN
+    INSERT INTO public.profiles (
+      id,
+      username,
+      display_name,
+      email,
+      phone,
+      role,
+      verification_status
+    )
+    VALUES (
+      NEW.id,
+      v_sanitized_username,
+      COALESCE(v_display_name, v_sanitized_username),
+      NEW.email,
+      NEW.phone,
+      'user',
+      'unverified'
+    )
+    ON CONFLICT (id) DO UPDATE
+    SET username = EXCLUDED.username,
+        display_name = EXCLUDED.display_name,
+        email = COALESCE(EXCLUDED.email, profiles.email);
+  EXCEPTION
+    WHEN others THEN
+      -- Safety guarantee: Never block GoTrue user registration
+      NULL;
+  END;
 
   RETURN NEW;
 END;

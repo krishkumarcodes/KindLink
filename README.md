@@ -209,24 +209,35 @@ To protect isolated seniors and lone volunteers, KindLink implements client-side
 
 ## 🔑 Showcase Demo Accounts & Credentials
 
-For academic grading, portfolio evaluations, and live project presentations, KindLink includes pre-configured showcase accounts provisioned via cryptographic database migrations.
+For academic grading, portfolio evaluations, and live project presentations, KindLink includes pre-configured showcase accounts provisioned via cryptographic database migrations. KindLink supports **both role-specific passwords** and the **universal 1-click demo password** (`KindLink#2026`) across all showcase profiles:
 
-| Account Type | Username | Email | Password | Role & Showcase Permissions |
+| Account Type | Username / Aliases | Primary Email | Passwords (Either Works) | Role & Showcase Permissions |
 | :--- | :--- | :--- | :--- | :--- |
-| 🤝 **Showcase Volunteer** | `kind_volunteer` | `volunteer@kindlink.demo` | `KindLink#Volunteer2026` | **Verified Volunteer**<br />• Browses urgent requests on the live radar<br />• Submits help offers & calculates transit ETA<br />• Accesses Physics Lab and real-time simulator |
-| 🆘 **Showcase Requester** | `need_aid` | `requester@kindlink.demo` | `KindLink#Requester2026` | **Verified Citizen**<br />• Broadcasts urgent blood/equipment requests<br />• Real-time incoming responder tracking<br />• Resolves tasks with feedback ratings |
-| 🛡️ **Platform Administrator** | `admin_kindlink` | `admin@kindlink.demo` | `KindLink#Admin2026` | **Super Administrator**<br />• Full access to `/admin` Moderation Portal<br />• Reviews & verifies government identity docs<br />• Resolves flagged community reports & incidents |
+| 🤝 **Showcase Volunteer** | `kind_volunteer`<br />`kind_volunteer_alias` | `volunteer@kindlink.demo`<br />*(or `kind_volunteer@kindlink.demo`)* | `KindLink#Volunteer2026`<br />or `KindLink#2026` | **Verified Volunteer**<br />• Browses urgent requests on the live radar<br />• Submits help offers & calculates transit ETA<br />• Accesses Physics Lab and real-time simulator |
+| 🆘 **Showcase Requester** | `need_aid`<br />`need_aid_alias` | `requester@kindlink.demo`<br />*(or `need_aid@kindlink.demo`)* | `KindLink#Requester2026`<br />or `KindLink#2026` | **Verified Citizen**<br />• Broadcasts urgent blood/equipment requests<br />• Real-time incoming responder tracking<br />• Resolves tasks with feedback ratings |
+| 🛡️ **Platform Administrator** | `admin_kindlink`<br />`admin_kindlink_alias` | `admin@kindlink.demo`<br />*(or `admin_kindlink@kindlink.demo`)* | `KindLink#Admin2026`<br />or `KindLink#2026` | **Super Administrator**<br />• Full access to `/admin` Moderation Portal<br />• Reviews & verifies government identity docs<br />• Resolves flagged community reports & incidents |
 
 > [!NOTE]
-> All showcase passwords are pre-hashed using `bcrypt` and match the credentials configured in migration `13_create_showcase_accounts.sql`.
+> All showcase passwords are pre-hashed using `bcrypt` and synchronized with Supabase GoTrue Auth via `auth.identities`.
 
 ---
 
-## 🛠️ How to Run the Showcase SQL
+## 🛠️ How to Run the Showcase SQL & Auth Fix
 
 Follow these steps in your Supabase project to execute the database migrations and provision verified showcase accounts:
 
-### Method A: Single Atomic Master Run (Recommended)
+### Method A: Auth & Identity Fix (If experiencing login errors on existing database)
+If you already ran base tables or `all_in_one_v2.sql` and encounter GoTrue errors (`Database error querying schema`, `Invalid login credentials`, or `Database error finding users`), run the dedicated fix script:
+1. Open your [Supabase Dashboard](https://supabase.com/dashboard) -> **SQL Editor** -> **+ New query**.
+2. Open [`supabase/sql/auth_fix/17_fix_showcase_auth_identities.sql`](supabase/sql/auth_fix/17_fix_showcase_auth_identities.sql), copy and paste into the editor, and click **Run**.
+3. **What this accomplishes:**
+   - ✅ Inserts missing `auth.identities` records required by Supabase GoTrue for email/password authentication.
+   - ✅ Sanitizes Go struct scan fields (`confirmation_token`, `recovery_token`, `email_change_token_new`) to prevent scan aborts.
+   - ✅ Synchronizes `public.profiles` (`email`, `username`, `verification_status = 'verified'`, `role = 'admin'`).
+   - ✅ Provisions dual-credential aliases with universal `KindLink#2026` passwords.
+   - ✅ Deploys collision-safe `handle_new_user()` trigger so signups never fail.
+
+### Method B: Single Atomic Master Run (Fresh Database Setup)
 Execute [`supabase/sql/all_in_one_v2.sql`](supabase/sql/all_in_one_v2.sql) — a complete, fully idempotent migration wrapped in an atomic `BEGIN ... COMMIT` transaction:
 1. Log in to your [Supabase Dashboard](https://supabase.com/dashboard) and select your KindLink project.
 2. In the left navigation sidebar, click on **SQL Editor** (icon: `>_`) -> **+ New query**.
@@ -236,18 +247,19 @@ Execute [`supabase/sql/all_in_one_v2.sql`](supabase/sql/all_in_one_v2.sql) — a
    - ✅ Creates and verifies all tables: `profiles`, `requests`, `offers`, `notifications`, `ratings`, `reports`, `sos_events`, `active_transit_locations`, `emergency_contacts`, `user_badges`, `auth_otps`, `push_subscriptions`.
    - ✅ Applies PostGIS GiST spatial indexes and performance B-Tree indexes.
    - ✅ Deploys the Help Gravity engine, notification triggers, and RLS security policies.
-   - ✅ Provisions the 3 official showcase demo accounts (`kind_volunteer`, `need_aid`, `admin_kindlink`).
+   - ✅ Provisions all 3 official showcase accounts + 3 alias accounts with `auth.identities`.
    - ✅ Deploys the `live_stats(p_lat, p_lng, p_radius_km)` RPC engine for real-time community pulse indicators.
    - ✅ Deploys `get_email_by_username()` RPC for universal identifier authentication.
    - ✅ Purges leftover test/dummy data while preserving genuine users and showcase accounts.
 
 ---
 
-### Method B: Incremental Upgrade Migrations (For Existing Databases)
+### Method C: Incremental Upgrade Migrations (For Existing Databases)
 If you already applied the base schema (`01` through `13`), execute these upgrade files in sequence:
 1. **`14_comprehensive_live_upgrade.sql`**: Deploys SOS live tracking, volunteer heartbeat, `live_stats` function, and real-time publications.
 2. **`15_cleanup_test_data.sql`**: Safely purges legacy placeholder requests and test accounts while preserving showcase accounts.
 3. **`16_login_signup_helpers.sql`**: Provisions `get_email_by_username()` RPC and username unique constraint indexing.
+4. **`auth_fix/17_fix_showcase_auth_identities.sql`**: Synchronizes GoTrue `auth.identities` and provisions dual-credential aliases.
 
 ---
 

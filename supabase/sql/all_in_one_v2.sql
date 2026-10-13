@@ -698,6 +698,7 @@ DECLARE
   v_raw_username text;
   v_sanitized_username text;
   v_display_name text;
+  v_collision_count integer;
 BEGIN
   -- Extract username from sign-up metadata
   v_raw_username := NEW.raw_user_meta_data->>'username';
@@ -710,25 +711,43 @@ BEGIN
     v_sanitized_username := lower(trim(v_raw_username));
   END IF;
 
-  INSERT INTO public.profiles (
-    id,
-    username,
-    display_name,
-    phone,
-    role,
-    verification_status
-  )
-  VALUES (
-    NEW.id,
-    v_sanitized_username,
-    COALESCE(v_display_name, v_sanitized_username),
-    NEW.phone,
-    'user',
-    'unverified'
-  )
-  ON CONFLICT (id) DO UPDATE
-  SET username = EXCLUDED.username,
-      display_name = EXCLUDED.display_name;
+  -- Deduplicate username if another user already holds it
+  SELECT COUNT(*) INTO v_collision_count
+  FROM public.profiles
+  WHERE username = v_sanitized_username AND id <> NEW.id;
+
+  IF v_collision_count > 0 THEN
+    v_sanitized_username := v_sanitized_username || '_' || substr(NEW.id::text, 1, 4);
+  END IF;
+
+  BEGIN
+    INSERT INTO public.profiles (
+      id,
+      username,
+      display_name,
+      email,
+      phone,
+      role,
+      verification_status
+    )
+    VALUES (
+      NEW.id,
+      v_sanitized_username,
+      COALESCE(v_display_name, v_sanitized_username),
+      NEW.email,
+      NEW.phone,
+      'user',
+      'unverified'
+    )
+    ON CONFLICT (id) DO UPDATE
+    SET username = EXCLUDED.username,
+        display_name = EXCLUDED.display_name,
+        email = COALESCE(EXCLUDED.email, profiles.email);
+  EXCEPTION
+    WHEN others THEN
+      -- Safety guarantee: Never block GoTrue user registration
+      NULL;
+  END;
 
   RETURN NEW;
 END;
@@ -1599,6 +1618,7 @@ ORDER BY created_at DESC;
 --
 -- ACCOUNT CREDENTIALS SUMMARY:
 -- ----------------------------------------------------------------------------
+-- PRIMARY SHOWCASE ACCOUNTS:
 -- 1. Showcase Volunteer:
 --    Username: kind_volunteer
 --    Email:    volunteer@kindlink.demo
@@ -1615,6 +1635,25 @@ ORDER BY created_at DESC;
 --    Username: admin_kindlink
 --    Email:    admin@kindlink.demo
 --    Password: KindLink#Admin2026
+--    Role:     admin (full access to /admin verification & moderation portal)
+--
+-- ALIAS ACCOUNTS (1-Click & Unified Demo Password Compatibility):
+-- 4. Showcase Volunteer Alias:
+--    Username: kind_volunteer_alias
+--    Email:    kind_volunteer@kindlink.demo
+--    Password: KindLink#2026
+--    Role:     user (verified volunteer)
+--
+-- 5. Showcase Requester Alias:
+--    Username: need_aid_alias
+--    Email:    need_aid@kindlink.demo
+--    Password: KindLink#2026
+--    Role:     user (verified citizen)
+--
+-- 6. Super Administrator Alias:
+--    Username: admin_kindlink_alias
+--    Email:    admin_kindlink@kindlink.demo
+--    Password: KindLink#2026
 --    Role:     admin (full access to /admin verification & moderation portal)
 -- ----------------------------------------------------------------------------
 
@@ -1633,9 +1672,63 @@ DO $$ BEGIN
   ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS encrypted_password text;
   ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS email_confirmed_at timestamptz;
   ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS raw_app_meta_data jsonb DEFAULT '{"provider":"email","providers":["email"]}'::jsonb;
+  ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS raw_user_meta_data jsonb;
+  ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS phone text;
 EXCEPTION
   WHEN others THEN null;
 END $$;
+
+-- Ensure auth.identities exists and has all required columns & constraints for GoTrue
+CREATE TABLE IF NOT EXISTS auth.identities (
+  id text NOT NULL,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  identity_data jsonb NOT NULL,
+  provider text NOT NULL,
+  provider_id text NOT NULL,
+  last_sign_in_at timestamptz,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  CONSTRAINT identities_provider_id_provider_unique UNIQUE (provider, provider_id)
+);
+
+DO $$ BEGIN
+  ALTER TABLE auth.identities ADD COLUMN IF NOT EXISTS provider_id text;
+  ALTER TABLE auth.identities ADD COLUMN IF NOT EXISTS identity_data jsonb;
+  ALTER TABLE auth.identities ADD COLUMN IF NOT EXISTS last_sign_in_at timestamptz;
+  ALTER TABLE auth.identities ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+  ALTER TABLE auth.identities ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+EXCEPTION
+  WHEN others THEN null;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'identities_provider_id_provider_unique'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM pg_indexes WHERE schemaname = 'auth' AND tablename = 'identities' AND indexdef LIKE '%provider_id%' AND indexdef LIKE '%provider%'
+  ) THEN
+    ALTER TABLE auth.identities ADD CONSTRAINT identities_provider_id_provider_unique UNIQUE (provider, provider_id);
+  END IF;
+EXCEPTION
+  WHEN others THEN null;
+END $$;
+
+-- Ensure profiles email column and unique constraints exist
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email text;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'profiles_username_key'
+  ) THEN
+    BEGIN
+      ALTER TABLE public.profiles ADD CONSTRAINT profiles_username_key UNIQUE (username);
+    EXCEPTION
+      WHEN duplicate_table OR duplicate_object THEN NULL;
+    END;
+  END IF;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS profiles_username_lower_idx ON public.profiles (lower(username));
 
 -- Fix handle_new_request_notification: ensure search_path includes extensions and ST_DWithin has double precision cast
 CREATE OR REPLACE FUNCTION public.handle_new_request_notification()
@@ -1673,19 +1766,32 @@ $$;
 
 DO $$
 DECLARE
-  v_volunteer_id uuid := 'a0000000-0000-0000-0000-000000000001';
-  v_requester_id uuid := 'a0000000-0000-0000-0000-000000000002';
-  v_admin_id     uuid := 'a0000000-0000-0000-0000-000000000003';
-  v_sample_req_id uuid := 'b0000000-0000-0000-0000-000000000001';
+  v_volunteer_id      uuid := 'a0000000-0000-0000-0000-000000000001';
+  v_requester_id      uuid := 'a0000000-0000-0000-0000-000000000002';
+  v_admin_id          uuid := 'a0000000-0000-0000-0000-000000000003';
+  v_alias_vol_id      uuid := 'a0000000-0000-0000-0000-000000000011';
+  v_alias_req_id      uuid := 'a0000000-0000-0000-0000-000000000012';
+  v_alias_adm_id      uuid := 'a0000000-0000-0000-0000-000000000013';
+  v_sample_req_id     uuid := 'b0000000-0000-0000-0000-000000000001';
 BEGIN
   PERFORM set_config('search_path', 'public, extensions', true);
+
+  -- Temporarily disable triggers during seeding
+  BEGIN
+    EXECUTE 'ALTER TABLE auth.users DISABLE TRIGGER on_auth_user_created';
+  EXCEPTION WHEN others THEN null;
+  END;
+
+  BEGIN
+    EXECUTE 'ALTER TABLE public.requests DISABLE TRIGGER on_new_request_created';
+  EXCEPTION WHEN others THEN null;
+  END;
 
   -- --------------------------------------------------------------------------
   -- 1. Create or Update: Showcase Volunteer (kind_volunteer)
   -- --------------------------------------------------------------------------
-  -- Cleanup any conflicting email/username if previously created with different ID
   DELETE FROM auth.users WHERE (email = 'volunteer@kindlink.demo' OR raw_user_meta_data->>'username' = 'kind_volunteer') AND id <> v_volunteer_id;
-  DELETE FROM public.profiles WHERE (username = 'kind_volunteer') AND id <> v_volunteer_id;
+  DELETE FROM public.profiles WHERE (username = 'kind_volunteer' OR email = 'volunteer@kindlink.demo') AND id <> v_volunteer_id;
 
   INSERT INTO auth.users (
     id,
@@ -1717,7 +1823,37 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
+    raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    updated_at = now();
+
+  -- CRITICAL: auth.identities record required for GoTrue email/password login
+  DELETE FROM auth.identities WHERE user_id = v_volunteer_id OR (provider = 'email' AND provider_id = v_volunteer_id::text) OR id = v_volunteer_id::text;
+
+  INSERT INTO auth.identities (
+    id,
+    user_id,
+    identity_data,
+    provider,
+    provider_id,
+    last_sign_in_at,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    v_volunteer_id::text,
+    v_volunteer_id,
+    jsonb_build_object('sub', v_volunteer_id::text, 'email', 'volunteer@kindlink.demo', 'email_verified', true),
+    'email',
+    v_volunteer_id::text,
+    now(),
+    now(),
+    now()
+  )
+  ON CONFLICT (provider, provider_id) DO UPDATE SET
+    identity_data = EXCLUDED.identity_data,
+    user_id = EXCLUDED.user_id,
+    last_sign_in_at = EXCLUDED.last_sign_in_at,
     updated_at = now();
 
   -- Profile synchronization
@@ -1725,6 +1861,7 @@ BEGIN
     id,
     username,
     display_name,
+    email,
     phone,
     role,
     verification_status,
@@ -1736,6 +1873,7 @@ BEGIN
     v_volunteer_id,
     'kind_volunteer',
     'Dr. Ananya Roy (Volunteer)',
+    'volunteer@kindlink.demo',
     '+91 98320 12345',
     'user',
     'verified',
@@ -1746,6 +1884,7 @@ BEGIN
   ON CONFLICT (id) DO UPDATE SET
     username = EXCLUDED.username,
     display_name = EXCLUDED.display_name,
+    email = EXCLUDED.email,
     phone = EXCLUDED.phone,
     role = EXCLUDED.role,
     verification_status = EXCLUDED.verification_status,
@@ -1755,7 +1894,7 @@ BEGIN
   -- 2. Create or Update: Showcase Requester (need_aid)
   -- --------------------------------------------------------------------------
   DELETE FROM auth.users WHERE (email = 'requester@kindlink.demo' OR raw_user_meta_data->>'username' = 'need_aid') AND id <> v_requester_id;
-  DELETE FROM public.profiles WHERE (username = 'need_aid') AND id <> v_requester_id;
+  DELETE FROM public.profiles WHERE (username = 'need_aid' OR email = 'requester@kindlink.demo') AND id <> v_requester_id;
 
   INSERT INTO auth.users (
     id,
@@ -1787,13 +1926,44 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
+    raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    updated_at = now();
+
+  -- CRITICAL: auth.identities record required for GoTrue email/password login
+  DELETE FROM auth.identities WHERE user_id = v_requester_id OR (provider = 'email' AND provider_id = v_requester_id::text) OR id = v_requester_id::text;
+
+  INSERT INTO auth.identities (
+    id,
+    user_id,
+    identity_data,
+    provider,
+    provider_id,
+    last_sign_in_at,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    v_requester_id::text,
+    v_requester_id,
+    jsonb_build_object('sub', v_requester_id::text, 'email', 'requester@kindlink.demo', 'email_verified', true),
+    'email',
+    v_requester_id::text,
+    now(),
+    now(),
+    now()
+  )
+  ON CONFLICT (provider, provider_id) DO UPDATE SET
+    identity_data = EXCLUDED.identity_data,
+    user_id = EXCLUDED.user_id,
+    last_sign_in_at = EXCLUDED.last_sign_in_at,
     updated_at = now();
 
   INSERT INTO public.profiles (
     id,
     username,
     display_name,
+    email,
     phone,
     role,
     verification_status,
@@ -1805,6 +1975,7 @@ BEGIN
     v_requester_id,
     'need_aid',
     'Sourav Mukherjee',
+    'requester@kindlink.demo',
     '+91 98321 54321',
     'user',
     'verified',
@@ -1815,6 +1986,7 @@ BEGIN
   ON CONFLICT (id) DO UPDATE SET
     username = EXCLUDED.username,
     display_name = EXCLUDED.display_name,
+    email = EXCLUDED.email,
     phone = EXCLUDED.phone,
     role = EXCLUDED.role,
     verification_status = EXCLUDED.verification_status,
@@ -1824,7 +1996,7 @@ BEGIN
   -- 3. Create or Update: Super Administrator (admin_kindlink)
   -- --------------------------------------------------------------------------
   DELETE FROM auth.users WHERE (email = 'admin@kindlink.demo' OR raw_user_meta_data->>'username' = 'admin_kindlink') AND id <> v_admin_id;
-  DELETE FROM public.profiles WHERE (username = 'admin_kindlink') AND id <> v_admin_id;
+  DELETE FROM public.profiles WHERE (username = 'admin_kindlink' OR email = 'admin@kindlink.demo') AND id <> v_admin_id;
 
   INSERT INTO auth.users (
     id,
@@ -1856,13 +2028,44 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
+    raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    updated_at = now();
+
+  -- CRITICAL: auth.identities record required for GoTrue email/password login
+  DELETE FROM auth.identities WHERE user_id = v_admin_id OR (provider = 'email' AND provider_id = v_admin_id::text) OR id = v_admin_id::text;
+
+  INSERT INTO auth.identities (
+    id,
+    user_id,
+    identity_data,
+    provider,
+    provider_id,
+    last_sign_in_at,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    v_admin_id::text,
+    v_admin_id,
+    jsonb_build_object('sub', v_admin_id::text, 'email', 'admin@kindlink.demo', 'email_verified', true),
+    'email',
+    v_admin_id::text,
+    now(),
+    now(),
+    now()
+  )
+  ON CONFLICT (provider, provider_id) DO UPDATE SET
+    identity_data = EXCLUDED.identity_data,
+    user_id = EXCLUDED.user_id,
+    last_sign_in_at = EXCLUDED.last_sign_in_at,
     updated_at = now();
 
   INSERT INTO public.profiles (
     id,
     username,
     display_name,
+    email,
     phone,
     role,
     verification_status,
@@ -1874,6 +2077,7 @@ BEGIN
     v_admin_id,
     'admin_kindlink',
     'KindLink Administrator',
+    'admin@kindlink.demo',
     '+91 98000 00000',
     'admin',
     'verified',
@@ -1884,20 +2088,318 @@ BEGIN
   ON CONFLICT (id) DO UPDATE SET
     username = EXCLUDED.username,
     display_name = EXCLUDED.display_name,
+    email = EXCLUDED.email,
     phone = EXCLUDED.phone,
     role = 'admin',
     verification_status = 'verified',
     home_location = EXCLUDED.home_location;
 
   -- --------------------------------------------------------------------------
-  -- 4. Create Live Showcase Request & Mutual Offer
+  -- 4. Create or Update: Showcase Volunteer Alias (kind_volunteer@kindlink.demo)
   -- --------------------------------------------------------------------------
-  -- Temporarily disable notification trigger during seed to ensure zero friction
-  BEGIN
-    EXECUTE 'ALTER TABLE public.requests DISABLE TRIGGER on_new_request_created';
-  EXCEPTION WHEN others THEN null;
-  END;
+  DELETE FROM auth.users WHERE email = 'kind_volunteer@kindlink.demo' AND id <> v_alias_vol_id;
+  DELETE FROM public.profiles WHERE (username = 'kind_volunteer_alias' OR email = 'kind_volunteer@kindlink.demo') AND id <> v_alias_vol_id;
 
+  INSERT INTO auth.users (
+    id,
+    instance_id,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    aud,
+    role,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    v_alias_vol_id,
+    '00000000-0000-0000-0000-000000000000',
+    'kind_volunteer@kindlink.demo',
+    crypt('KindLink#2026', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"username":"kind_volunteer_alias","display_name":"Dr. Ananya Roy (Volunteer Alias)"}'::jsonb,
+    'authenticated',
+    'authenticated',
+    now(),
+    now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    encrypted_password = EXCLUDED.encrypted_password,
+    email_confirmed_at = now(),
+    raw_app_meta_data = EXCLUDED.raw_app_meta_data,
+    raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    updated_at = now();
+
+  DELETE FROM auth.identities WHERE user_id = v_alias_vol_id OR (provider = 'email' AND provider_id = v_alias_vol_id::text) OR id = v_alias_vol_id::text;
+
+  INSERT INTO auth.identities (
+    id,
+    user_id,
+    identity_data,
+    provider,
+    provider_id,
+    last_sign_in_at,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    v_alias_vol_id::text,
+    v_alias_vol_id,
+    jsonb_build_object('sub', v_alias_vol_id::text, 'email', 'kind_volunteer@kindlink.demo', 'email_verified', true),
+    'email',
+    v_alias_vol_id::text,
+    now(),
+    now(),
+    now()
+  )
+  ON CONFLICT (provider, provider_id) DO UPDATE SET
+    identity_data = EXCLUDED.identity_data,
+    user_id = EXCLUDED.user_id,
+    last_sign_in_at = EXCLUDED.last_sign_in_at,
+    updated_at = now();
+
+  INSERT INTO public.profiles (
+    id,
+    username,
+    display_name,
+    email,
+    phone,
+    role,
+    verification_status,
+    home_location,
+    rating_average,
+    rating_count
+  )
+  VALUES (
+    v_alias_vol_id,
+    'kind_volunteer_alias',
+    'Dr. Ananya Roy (Volunteer Alias)',
+    'kind_volunteer@kindlink.demo',
+    '+91 98320 12345',
+    'user',
+    'verified',
+    extensions.ST_SetSRID(extensions.ST_MakePoint(86.9661, 23.6889), 4326)::geography,
+    4.95,
+    18
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    username = EXCLUDED.username,
+    display_name = EXCLUDED.display_name,
+    email = EXCLUDED.email,
+    phone = EXCLUDED.phone,
+    role = EXCLUDED.role,
+    verification_status = EXCLUDED.verification_status,
+    home_location = EXCLUDED.home_location;
+
+  -- --------------------------------------------------------------------------
+  -- 5. Create or Update: Showcase Requester Alias (need_aid@kindlink.demo)
+  -- --------------------------------------------------------------------------
+  DELETE FROM auth.users WHERE email = 'need_aid@kindlink.demo' AND id <> v_alias_req_id;
+  DELETE FROM public.profiles WHERE (username = 'need_aid_alias' OR email = 'need_aid@kindlink.demo') AND id <> v_alias_req_id;
+
+  INSERT INTO auth.users (
+    id,
+    instance_id,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    aud,
+    role,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    v_alias_req_id,
+    '00000000-0000-0000-0000-000000000000',
+    'need_aid@kindlink.demo',
+    crypt('KindLink#2026', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"username":"need_aid_alias","display_name":"Sourav Mukherjee (Requester Alias)"}'::jsonb,
+    'authenticated',
+    'authenticated',
+    now(),
+    now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    encrypted_password = EXCLUDED.encrypted_password,
+    email_confirmed_at = now(),
+    raw_app_meta_data = EXCLUDED.raw_app_meta_data,
+    raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    updated_at = now();
+
+  DELETE FROM auth.identities WHERE user_id = v_alias_req_id OR (provider = 'email' AND provider_id = v_alias_req_id::text) OR id = v_alias_req_id::text;
+
+  INSERT INTO auth.identities (
+    id,
+    user_id,
+    identity_data,
+    provider,
+    provider_id,
+    last_sign_in_at,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    v_alias_req_id::text,
+    v_alias_req_id,
+    jsonb_build_object('sub', v_alias_req_id::text, 'email', 'need_aid@kindlink.demo', 'email_verified', true),
+    'email',
+    v_alias_req_id::text,
+    now(),
+    now(),
+    now()
+  )
+  ON CONFLICT (provider, provider_id) DO UPDATE SET
+    identity_data = EXCLUDED.identity_data,
+    user_id = EXCLUDED.user_id,
+    last_sign_in_at = EXCLUDED.last_sign_in_at,
+    updated_at = now();
+
+  INSERT INTO public.profiles (
+    id,
+    username,
+    display_name,
+    email,
+    phone,
+    role,
+    verification_status,
+    home_location,
+    rating_average,
+    rating_count
+  )
+  VALUES (
+    v_alias_req_id,
+    'need_aid_alias',
+    'Sourav Mukherjee (Requester Alias)',
+    'need_aid@kindlink.demo',
+    '+91 98321 54321',
+    'user',
+    'verified',
+    extensions.ST_SetSRID(extensions.ST_MakePoint(86.9742, 23.6845), 4326)::geography,
+    5.00,
+    3
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    username = EXCLUDED.username,
+    display_name = EXCLUDED.display_name,
+    email = EXCLUDED.email,
+    phone = EXCLUDED.phone,
+    role = EXCLUDED.role,
+    verification_status = EXCLUDED.verification_status,
+    home_location = EXCLUDED.home_location;
+
+  -- --------------------------------------------------------------------------
+  -- 6. Create or Update: Showcase Admin Alias (admin_kindlink@kindlink.demo)
+  -- --------------------------------------------------------------------------
+  DELETE FROM auth.users WHERE email = 'admin_kindlink@kindlink.demo' AND id <> v_alias_adm_id;
+  DELETE FROM public.profiles WHERE (username = 'admin_kindlink_alias' OR email = 'admin_kindlink@kindlink.demo') AND id <> v_alias_adm_id;
+
+  INSERT INTO auth.users (
+    id,
+    instance_id,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    aud,
+    role,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    v_alias_adm_id,
+    '00000000-0000-0000-0000-000000000000',
+    'admin_kindlink@kindlink.demo',
+    crypt('KindLink#2026', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"username":"admin_kindlink_alias","display_name":"KindLink Administrator (Admin Alias)"}'::jsonb,
+    'authenticated',
+    'authenticated',
+    now(),
+    now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    encrypted_password = EXCLUDED.encrypted_password,
+    email_confirmed_at = now(),
+    raw_app_meta_data = EXCLUDED.raw_app_meta_data,
+    raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    updated_at = now();
+
+  DELETE FROM auth.identities WHERE user_id = v_alias_adm_id OR (provider = 'email' AND provider_id = v_alias_adm_id::text) OR id = v_alias_adm_id::text;
+
+  INSERT INTO auth.identities (
+    id,
+    user_id,
+    identity_data,
+    provider,
+    provider_id,
+    last_sign_in_at,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    v_alias_adm_id::text,
+    v_alias_adm_id,
+    jsonb_build_object('sub', v_alias_adm_id::text, 'email', 'admin_kindlink@kindlink.demo', 'email_verified', true),
+    'email',
+    v_alias_adm_id::text,
+    now(),
+    now(),
+    now()
+  )
+  ON CONFLICT (provider, provider_id) DO UPDATE SET
+    identity_data = EXCLUDED.identity_data,
+    user_id = EXCLUDED.user_id,
+    last_sign_in_at = EXCLUDED.last_sign_in_at,
+    updated_at = now();
+
+  INSERT INTO public.profiles (
+    id,
+    username,
+    display_name,
+    email,
+    phone,
+    role,
+    verification_status,
+    home_location,
+    rating_average,
+    rating_count
+  )
+  VALUES (
+    v_alias_adm_id,
+    'admin_kindlink_alias',
+    'KindLink Administrator (Admin Alias)',
+    'admin_kindlink@kindlink.demo',
+    '+91 98000 00000',
+    'admin',
+    'verified',
+    extensions.ST_SetSRID(extensions.ST_MakePoint(86.9661, 23.6889), 4326)::geography,
+    5.00,
+    100
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    username = EXCLUDED.username,
+    display_name = EXCLUDED.display_name,
+    email = EXCLUDED.email,
+    phone = EXCLUDED.phone,
+    role = 'admin',
+    verification_status = 'verified',
+    home_location = EXCLUDED.home_location;
+
+  -- --------------------------------------------------------------------------
+  -- 7. Create Live Showcase Request & Mutual Offer
+  -- --------------------------------------------------------------------------
   INSERT INTO public.requests (
     id,
     requester_id,
@@ -1926,12 +2428,6 @@ BEGIN
   )
   ON CONFLICT (id) DO NOTHING;
 
-  -- Re-enable notification trigger
-  BEGIN
-    EXECUTE 'ALTER TABLE public.requests ENABLE TRIGGER on_new_request_created';
-  EXCEPTION WHEN others THEN null;
-  END;
-
   -- Create an active offer from Dr. Ananya Roy (kind_volunteer)
   INSERT INTO public.offers (
     id,
@@ -1951,21 +2447,61 @@ BEGIN
   )
   ON CONFLICT (request_id, helper_id) DO NOTHING;
 
-  RAISE NOTICE 'Successfully created showcase accounts: kind_volunteer, need_aid, and admin_kindlink.';
+  -- Universal GoTrue Go struct scan safety: ensure token strings are not NULL
+  BEGIN
+    UPDATE auth.users
+    SET
+      confirmation_token = COALESCE(confirmation_token, ''),
+      recovery_token = COALESCE(recovery_token, ''),
+      email_change_token_new = COALESCE(email_change_token_new, ''),
+      email_change_token_current = COALESCE(email_change_token_current, ''),
+      email_change = COALESCE(email_change, ''),
+      phone_change = COALESCE(phone_change, ''),
+      phone_change_token = COALESCE(phone_change_token, ''),
+      confirmed_at = COALESCE(confirmed_at, email_confirmed_at, now()),
+      is_super_admin = COALESCE(is_super_admin, false),
+      is_sso_user = COALESCE(is_sso_user, false),
+      is_anonymous = COALESCE(is_anonymous, false)
+    WHERE id IN (
+      v_volunteer_id, v_requester_id, v_admin_id,
+      v_alias_vol_id, v_alias_req_id, v_alias_adm_id
+    );
+  EXCEPTION WHEN others THEN null;
+  END;
+
+  -- Re-enable triggers
+  BEGIN
+    EXECUTE 'ALTER TABLE auth.users ENABLE TRIGGER on_auth_user_created';
+  EXCEPTION WHEN others THEN null;
+  END;
+
+  BEGIN
+    EXECUTE 'ALTER TABLE public.requests ENABLE TRIGGER on_new_request_created';
+  EXCEPTION WHEN others THEN null;
+  END;
+
+  RAISE NOTICE 'Successfully created showcase accounts: kind_volunteer, need_aid, and admin_kindlink (with auth.identities).';
 END $$;
 
--- Verify created showcase accounts
+-- Verify created showcase accounts and auth identities
 SELECT
   p.id,
   p.username,
   u.email,
+  p.email AS profile_email,
   p.role,
   p.verification_status,
   p.display_name,
-  p.phone
+  p.phone,
+  i.provider,
+  i.provider_id
 FROM public.profiles p
 JOIN auth.users u ON p.id = u.id
-WHERE p.username IN ('kind_volunteer', 'need_aid', 'admin_kindlink')
+JOIN auth.identities i ON p.id = i.user_id
+WHERE p.username IN (
+  'kind_volunteer', 'need_aid', 'admin_kindlink',
+  'kind_volunteer_alias', 'need_aid_alias', 'admin_kindlink_alias'
+)
 ORDER BY p.role DESC, p.username ASC;
 
 

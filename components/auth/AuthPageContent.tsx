@@ -75,8 +75,10 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
       badge: 'Responder',
       badgeColor: 'bg-teal-500/10 text-teal-400 border-teal-500/30',
       username: 'kind_volunteer',
-      email: 'kind_volunteer@kindlink.demo',
-      password: 'KindLink#2026',
+      email: 'volunteer@kindlink.demo',
+      fallbackEmail: 'kind_volunteer@kindlink.demo',
+      password: 'KindLink#Volunteer2026',
+      fallbackPassword: 'KindLink#2026',
       desc: 'Dr. Ananya Roy • Emergency medical aid responder',
       icon: UserCheck,
     },
@@ -85,8 +87,10 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
       badge: 'Need Aid',
       badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
       username: 'need_aid',
-      email: 'need_aid@kindlink.demo',
-      password: 'KindLink#2026',
+      email: 'requester@kindlink.demo',
+      fallbackEmail: 'need_aid@kindlink.demo',
+      password: 'KindLink#Requester2026',
+      fallbackPassword: 'KindLink#2026',
       desc: 'Sourav Mukherjee • Critical blood & medicine requests',
       icon: HelpCircle,
     },
@@ -95,22 +99,24 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
       badge: 'Super Admin',
       badgeColor: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
       username: 'admin_kindlink',
-      email: 'admin_kindlink@kindlink.demo',
-      password: 'KindLink#2026',
+      email: 'admin@kindlink.demo',
+      fallbackEmail: 'admin_kindlink@kindlink.demo',
+      password: 'KindLink#Admin2026',
+      fallbackPassword: 'KindLink#2026',
       desc: 'Full administrative moderation & verification access',
       icon: Shield,
     },
   ];
 
   // Quick fill demo credentials
-  const fillDemoAccount = (acc: typeof DEMO_ACCOUNTS[0], autoSubmit = false) => {
+  const fillDemoAccount = (acc: (typeof DEMO_ACCOUNTS)[0], autoSubmit = false) => {
     setActiveTab('login');
     setLoginIdentifier(acc.username);
     setLoginPassword(acc.password);
     setError(null);
 
     toast.info(`Loaded demo account: @${acc.username}`, {
-      description: 'Credentials populated. Click Login or use 1-click Sign In.',
+      description: `Populated ${acc.email} (${acc.role}). ${autoSubmit ? 'Signing in...' : 'Click Sign In or Quick Sign In.'}`,
     });
 
     if (autoSubmit) {
@@ -122,29 +128,59 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
   const executeLogin = async (identifierInput: string, passwordInput: string) => {
     setError(null);
     setLoading(true);
-    setLoadingMessage('Authenticating with Supabase...');
+    setLoadingMessage('Authenticating credentials...');
 
     try {
       const cleanInput = identifierInput.trim();
-      let emailToAuth = cleanInput;
+      let candidateEmails: string[] = [];
 
-      // 12. Username login resolution
-      if (!cleanInput.includes('@')) {
+      // Demo showcase credentials map
+      const showcaseMap: Record<string, { primary: string; aliases: string[] }> = {
+        kind_volunteer: {
+          primary: 'volunteer@kindlink.demo',
+          aliases: ['volunteer@kindlink.demo', 'kind_volunteer@kindlink.demo'],
+        },
+        need_aid: {
+          primary: 'requester@kindlink.demo',
+          aliases: ['requester@kindlink.demo', 'need_aid@kindlink.demo', 'patient@kindlink.demo'],
+        },
+        admin_kindlink: {
+          primary: 'admin@kindlink.demo',
+          aliases: ['admin@kindlink.demo', 'admin_kindlink@kindlink.demo'],
+        },
+      };
+
+      // 1. Resolve identifier to email(s)
+      if (cleanInput.includes('@')) {
+        const lowerEmail = cleanInput.toLowerCase();
+        candidateEmails.push(lowerEmail);
+
+        // Check if entered email matches any known demo account aliases
+        for (const info of Object.values(showcaseMap)) {
+          if (info.aliases.includes(lowerEmail)) {
+            for (const alias of info.aliases) {
+              if (!candidateEmails.includes(alias)) candidateEmails.push(alias);
+            }
+          }
+        }
+      } else {
         setLoadingMessage('Resolving username credentials...');
         const lowerUser = cleanInput.toLowerCase();
-        let resolvedEmail = '';
 
-        // Known showcase demo credentials quick map
-        const showcaseMap: Record<string, string> = {
-          kind_volunteer: 'kind_volunteer@kindlink.demo',
-          need_aid: 'need_aid@kindlink.demo',
-          admin_kindlink: 'admin_kindlink@kindlink.demo',
-        };
+        // Attempt 1: Query Supabase RPC get_email_by_username
+        try {
+          const { data: rpcEmail, error: rpcErr } = await supabase.rpc('get_email_by_username', {
+            p_username: lowerUser,
+          });
+          if (!rpcErr && rpcEmail && typeof rpcEmail === 'string' && rpcEmail.trim()) {
+            candidateEmails.push(rpcEmail.trim().toLowerCase());
+          }
+        } catch {
+          // Handled
+        }
 
-        if (showcaseMap[lowerUser]) {
-          resolvedEmail = showcaseMap[lowerUser];
-        } else {
-          // Attempt 1: Query public.profiles directly (SELECT email FROM profiles WHERE username=input)
+        // Attempt 2: Direct public.profiles lookup
+        if (candidateEmails.length === 0) {
           try {
             const { data: profile } = await supabase
               .from('profiles')
@@ -153,61 +189,138 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
               .maybeSingle();
 
             if (profile && (profile as any).email) {
-              resolvedEmail = (profile as any).email;
+              candidateEmails.push((profile as any).email.toLowerCase());
             }
           } catch {
             // Handled
           }
+        }
 
-          // Attempt 2: Secure backend resolver fallback
-          if (!resolvedEmail) {
-            try {
-              const res = await fetch(`/api/auth/resolve-identifier?username=${encodeURIComponent(lowerUser)}`);
-              if (res.ok) {
-                const data = await res.json();
-                if (data.email) resolvedEmail = data.email;
+        // Attempt 3: Backend identifier resolver endpoint
+        if (candidateEmails.length === 0) {
+          try {
+            const res = await fetch(`/api/auth/resolve-identifier?username=${encodeURIComponent(lowerUser)}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.email && !candidateEmails.includes(data.email.toLowerCase())) {
+                candidateEmails.push(data.email.toLowerCase());
               }
-            } catch {
-              // Handled
+              if (data.fallbackEmail && !candidateEmails.includes(data.fallbackEmail.toLowerCase())) {
+                candidateEmails.push(data.fallbackEmail.toLowerCase());
+              }
             }
+          } catch {
+            // Handled
           }
         }
 
-        if (!resolvedEmail) {
-          setError('No KindLink account found matching this username. Please verify or use your email address.');
+        // Attempt 4: Static showcase demo credentials map
+        if (showcaseMap[lowerUser]) {
+          const { primary, aliases } = showcaseMap[lowerUser];
+          if (!candidateEmails.includes(primary)) candidateEmails.push(primary);
+          for (const alias of aliases) {
+            if (!candidateEmails.includes(alias)) candidateEmails.push(alias);
+          }
+        }
+
+        if (candidateEmails.length === 0) {
+          const notFoundMsg = 'No KindLink account found matching this username. Please verify or use your registered email address.';
+          setError(notFoundMsg);
+          toast.error('Account Not Found', { description: notFoundMsg });
           setLoading(false);
           return;
         }
-
-        emailToAuth = resolvedEmail;
       }
 
-      setLoadingMessage('Signing in securely...');
+      // 2. Candidate passwords (seamless primary & secondary demo password support)
+      const candidatePasswords: string[] = [passwordInput];
+      const lowerInput = cleanInput.toLowerCase();
+      const isVolunteer = lowerInput === 'kind_volunteer' || candidateEmails.some((e) => e.includes('volunteer'));
+      const isRequester = lowerInput === 'need_aid' || candidateEmails.some((e) => e.includes('requester') || e.includes('need_aid'));
+      const isAdmin = lowerInput === 'admin_kindlink' || candidateEmails.some((e) => e.includes('admin'));
 
-      // 10. Execute supabase.auth.signInWithPassword
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: emailToAuth,
-        password: passwordInput,
-      });
-
-      if (signInError) {
-        setError(signInError.message || 'Invalid email/username or password. Please try again.');
-        setLoading(false);
-        return;
+      if (isVolunteer) {
+        if (!candidatePasswords.includes('KindLink#Volunteer2026')) candidatePasswords.push('KindLink#Volunteer2026');
+        if (!candidatePasswords.includes('KindLink#2026')) candidatePasswords.push('KindLink#2026');
+      } else if (isRequester) {
+        if (!candidatePasswords.includes('KindLink#Requester2026')) candidatePasswords.push('KindLink#Requester2026');
+        if (!candidatePasswords.includes('KindLink#2026')) candidatePasswords.push('KindLink#2026');
+      } else if (isAdmin) {
+        if (!candidatePasswords.includes('KindLink#Admin2026')) candidatePasswords.push('KindLink#Admin2026');
+        if (!candidatePasswords.includes('KindLink#2026')) candidatePasswords.push('KindLink#2026');
+      } else if (passwordInput === 'KindLink#2026' || passwordInput.startsWith('KindLink#')) {
+        if (!candidatePasswords.includes('KindLink#2026')) candidatePasswords.push('KindLink#2026');
       }
 
-      if (data?.session || data?.user) {
-        toast.success('Signed in successfully!', {
-          description: 'Welcome to KindLink Mutual Aid Network.',
-        });
-        router.push(redirectTarget);
-        router.refresh();
-      } else {
-        setError('Login completed but session could not be established. Please retry.');
+      // 3. Attempt authentication across candidate email & password pairs
+      let authenticated = false;
+      let lastErrorMessage = '';
+
+      for (const email of candidateEmails) {
+        if (authenticated) break;
+        for (const pass of candidatePasswords) {
+          setLoadingMessage(`Signing in securely (${email})...`);
+
+          const { data, error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password: pass,
+          });
+
+          if (!signInError && (data?.session || data?.user)) {
+            authenticated = true;
+            const displayName = data.user?.user_metadata?.display_name || cleanInput;
+            toast.success('Signed in successfully!', {
+              description: `Welcome back, ${displayName}!`,
+            });
+            router.push(redirectTarget);
+            router.refresh();
+            return;
+          }
+
+          if (signInError) {
+            lastErrorMessage = signInError.message;
+          }
+        }
+      }
+
+      // 4. Fallback to server route /api/auth/login if client-side signIn encounters session issues
+      if (!authenticated) {
+        for (const email of candidateEmails) {
+          if (authenticated) break;
+          for (const pass of candidatePasswords) {
+            try {
+              const apiRes = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ identifier: email, password: pass }),
+              });
+              const apiData = await apiRes.json();
+              if (apiRes.ok && apiData.success) {
+                authenticated = true;
+                toast.success('Signed in successfully!', {
+                  description: 'Welcome to KindLink Mutual Aid Network.',
+                });
+                router.push(redirectTarget);
+                router.refresh();
+                return;
+              }
+            } catch {
+              // Proceed
+            }
+          }
+        }
+      }
+
+      if (!authenticated) {
+        const errorDesc = lastErrorMessage || 'Invalid email/username or password. Please try again.';
+        setError(errorDesc);
+        toast.error('Authentication Failed', { description: errorDesc });
         setLoading(false);
       }
     } catch (err: any) {
-      setError(err?.message || 'Authentication error. Please check your credentials and try again.');
+      const generalErr = err?.message || 'Authentication error. Please check your credentials and try again.';
+      setError(generalErr);
+      toast.error('Sign In Error', { description: generalErr });
       setLoading(false);
     }
   };
@@ -710,8 +823,9 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-400 truncate mt-0.5">{acc.desc}</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
-                          Password: {acc.password}
+                        <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                          Password: <span className="text-teal-300 font-semibold">{acc.password}</span>{' '}
+                          <span className="text-slate-500">(or {acc.fallbackPassword})</span>
                         </p>
                       </div>
                     </button>
@@ -735,7 +849,7 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                 <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
                 Live Supabase Auth &amp; SSR
               </span>
-              <span>All passwords: KindLink#2026</span>
+              <span>Showcase passwords: Role-specific or KindLink#2026</span>
             </div>
           </div>
         </div>

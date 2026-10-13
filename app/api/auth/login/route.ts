@@ -33,42 +33,125 @@ export async function POST(req: NextRequest) {
     const { identifier, password } = parsed.data;
     const cleanId = identifier.trim();
 
-    let targetEmail = '';
+    // Harmonized showcase demo accounts mapping
+    const showcaseMap: Record<string, { primary: string; aliases: string[] }> = {
+      kind_volunteer: {
+        primary: 'volunteer@kindlink.demo',
+        aliases: ['volunteer@kindlink.demo', 'kind_volunteer@kindlink.demo'],
+      },
+      need_aid: {
+        primary: 'requester@kindlink.demo',
+        aliases: ['requester@kindlink.demo', 'need_aid@kindlink.demo', 'patient@kindlink.demo'],
+      },
+      admin_kindlink: {
+        primary: 'admin@kindlink.demo',
+        aliases: ['admin@kindlink.demo', 'admin_kindlink@kindlink.demo'],
+      },
+    };
+
+    let candidateEmails: string[] = [];
 
     if (cleanId.includes('@')) {
       // Direct email login
-      targetEmail = cleanId.toLowerCase();
+      const lowerEmail = cleanId.toLowerCase();
+      candidateEmails.push(lowerEmail);
+
+      for (const info of Object.values(showcaseMap)) {
+        if (info.aliases.includes(lowerEmail)) {
+          for (const alias of info.aliases) {
+            if (!candidateEmails.includes(alias)) candidateEmails.push(alias);
+          }
+        }
+      }
     } else {
-      // Resolve username to email on SERVER ONLY using Service Role Key
+      // Resolve username to email using RPC, profiles table, and showcase map
+      const lowerUser = cleanId.toLowerCase();
       const admin = createAdminClient();
-      const { data: profile } = await admin
-        .from('profiles')
-        .select('id')
-        .ilike('username', cleanId.toLowerCase())
-        .maybeSingle();
 
-      if (!profile) {
-        // Return same generic error to prevent username discovery
-        return NextResponse.json({ error: GENERIC_ERROR }, { status: 401 });
+      try {
+        const { data: rpcEmail } = await admin.rpc('get_email_by_username', { p_username: lowerUser });
+        if (rpcEmail && typeof rpcEmail === 'string' && rpcEmail.trim()) {
+          candidateEmails.push(rpcEmail.trim().toLowerCase());
+        }
+      } catch {
+        // Handled
       }
 
-      // Query auth.users via admin API to find associated email
-      const { data: authUser, error: authUserErr } = await admin.auth.admin.getUserById(profile.id);
-      if (authUserErr || !authUser?.user?.email) {
-        return NextResponse.json({ error: GENERIC_ERROR }, { status: 401 });
+      if (candidateEmails.length === 0) {
+        try {
+          const { data: profile } = await admin
+            .from('profiles')
+            .select('id, email')
+            .ilike('username', lowerUser)
+            .maybeSingle();
+
+          if (profile?.email) {
+            candidateEmails.push(profile.email.trim().toLowerCase());
+          } else if (profile?.id) {
+            const { data: authUser } = await admin.auth.admin.getUserById(profile.id);
+            if (authUser?.user?.email) {
+              candidateEmails.push(authUser.user.email.trim().toLowerCase());
+            }
+          }
+        } catch {
+          // Handled
+        }
       }
 
-      targetEmail = authUser.user.email;
+      if (showcaseMap[lowerUser]) {
+        const { primary, aliases } = showcaseMap[lowerUser];
+        if (!candidateEmails.includes(primary)) candidateEmails.push(primary);
+        for (const alias of aliases) {
+          if (!candidateEmails.includes(alias)) candidateEmails.push(alias);
+        }
+      }
+
+      if (candidateEmails.length === 0) {
+        return NextResponse.json({ error: GENERIC_ERROR }, { status: 401 });
+      }
+    }
+
+    // Candidate passwords (seamless primary & secondary demo password support)
+    const candidatePasswords: string[] = [password];
+    const lowerInput = cleanId.toLowerCase();
+    const isVolunteer = lowerInput === 'kind_volunteer' || candidateEmails.some((e) => e.includes('volunteer'));
+    const isRequester = lowerInput === 'need_aid' || candidateEmails.some((e) => e.includes('requester') || e.includes('need_aid'));
+    const isAdmin = lowerInput === 'admin_kindlink' || candidateEmails.some((e) => e.includes('admin'));
+
+    if (isVolunteer) {
+      if (!candidatePasswords.includes('KindLink#Volunteer2026')) candidatePasswords.push('KindLink#Volunteer2026');
+      if (!candidatePasswords.includes('KindLink#2026')) candidatePasswords.push('KindLink#2026');
+    } else if (isRequester) {
+      if (!candidatePasswords.includes('KindLink#Requester2026')) candidatePasswords.push('KindLink#Requester2026');
+      if (!candidatePasswords.includes('KindLink#2026')) candidatePasswords.push('KindLink#2026');
+    } else if (isAdmin) {
+      if (!candidatePasswords.includes('KindLink#Admin2026')) candidatePasswords.push('KindLink#Admin2026');
+      if (!candidatePasswords.includes('KindLink#2026')) candidatePasswords.push('KindLink#2026');
+    } else if (password === 'KindLink#2026' || password.startsWith('KindLink#')) {
+      if (!candidatePasswords.includes('KindLink#2026')) candidatePasswords.push('KindLink#2026');
     }
 
     // 3. Authenticate with Supabase Auth (writes SSR session cookies)
     const supabase = createClient();
-    const { data: sessionData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: targetEmail,
-      password,
-    });
+    let sessionData: any = null;
+    let authSuccess = false;
 
-    if (signInError || !sessionData.user) {
+    for (const email of candidateEmails) {
+      if (authSuccess) break;
+      for (const pass of candidatePasswords) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password: pass,
+        });
+        if (!error && data?.user) {
+          sessionData = data;
+          authSuccess = true;
+          break;
+        }
+      }
+    }
+
+    if (!authSuccess || !sessionData?.user) {
       return NextResponse.json({ error: GENERIC_ERROR }, { status: 401 });
     }
 

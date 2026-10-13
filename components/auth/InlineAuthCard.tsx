@@ -21,6 +21,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { UserProfile, VerificationState } from '@/lib/data/types';
+import { toast } from 'sonner';
 
 interface InlineAuthCardProps {
   onAuthSuccess?: () => void;
@@ -94,131 +95,229 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
   };
 
   // Demo showcase accounts quick fill
-  const handleSelectDemo = (username: string, pass: string) => {
+  const handleSelectDemo = (username: string, pass: string, autoSubmit = false) => {
     setActiveTab('login');
     setLoginIdentifier(username);
     setLoginPassword(pass);
     setErrorMsg(null);
     setSuccessMsg(null);
+
+    toast.info(`Loaded demo account: @${username}`, {
+      description: `Populated credentials (${pass}). ${autoSubmit ? 'Signing in...' : 'Click Sign In or Quick Sign In.'}`,
+    });
+
+    if (autoSubmit) {
+      executeLogin(username, pass);
+    }
   };
 
-  // Handle Sign In (supports both email AND username)
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Harmonized login executor (supports username resolution and secondary password auto-try)
+  const executeLogin = async (identifierInput: string, passwordInput: string) => {
     setErrorMsg(null);
     setSuccessMsg(null);
     setLoading(true);
 
-    const cleanId = loginIdentifier.trim();
-    if (!cleanId || !loginPassword) {
+    const cleanId = identifierInput.trim();
+    if (!cleanId || !passwordInput) {
       setErrorMsg('Please enter your email or username and password');
       setLoading(false);
       return;
     }
 
     try {
-      let targetEmail = '';
+      let candidateEmails: string[] = [];
 
-      // 1. If it's directly an email
+      // Known showcase demo credentials quick map
+      const showcaseMap: Record<string, { primary: string; aliases: string[] }> = {
+        kind_volunteer: {
+          primary: 'volunteer@kindlink.demo',
+          aliases: ['volunteer@kindlink.demo', 'kind_volunteer@kindlink.demo'],
+        },
+        need_aid: {
+          primary: 'requester@kindlink.demo',
+          aliases: ['requester@kindlink.demo', 'need_aid@kindlink.demo', 'patient@kindlink.demo'],
+        },
+        admin_kindlink: {
+          primary: 'admin@kindlink.demo',
+          aliases: ['admin@kindlink.demo', 'admin_kindlink@kindlink.demo'],
+        },
+      };
+
+      // 1. Resolve identifier to candidate email(s)
       if (cleanId.includes('@')) {
-        targetEmail = cleanId.toLowerCase();
-      } else {
-        // 2. It's a username - check demo accounts mapping first
-        const lowerUser = cleanId.toLowerCase();
-        if (lowerUser === 'kind_volunteer') {
-          targetEmail = 'volunteer@kindlink.demo';
-        } else if (lowerUser === 'need_aid') {
-          targetEmail = 'patient@kindlink.demo';
-        } else if (lowerUser === 'admin_kindlink') {
-          targetEmail = 'admin@kindlink.demo';
-        } else {
-          // Look up username in profiles table to verify user exists
-          const { data: prof, error: profErr } = await supabase
-            .from('profiles')
-            .select('id, username')
-            .ilike('username', lowerUser)
-            .maybeSingle();
+        const lowerEmail = cleanId.toLowerCase();
+        candidateEmails.push(lowerEmail);
 
-          if (profErr || !prof) {
-            // Also try API route which can resolve username using service role
-            const apiRes = await fetch('/api/auth/login', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ identifier: cleanId, password: loginPassword }),
-            });
-            const apiData = await apiRes.json();
-            if (apiRes.ok && apiData.success) {
-              if (apiData.user?.id) {
-                await syncProfileToStore(apiData.user.id);
-              }
-              onAuthSuccess?.();
-              return;
-            } else {
-              setErrorMsg(apiData.error || 'User not found or incorrect password');
-              setLoading(false);
-              return;
+        // Check if entered email matches any known demo account aliases
+        for (const info of Object.values(showcaseMap)) {
+          if (info.aliases.includes(lowerEmail)) {
+            for (const alias of info.aliases) {
+              if (!candidateEmails.includes(alias)) candidateEmails.push(alias);
             }
-          }
-
-          // If found in profiles table, call /api/auth/login to sign in and set session
-          const apiRes = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identifier: cleanId, password: loginPassword }),
-          });
-          const apiData = await apiRes.json();
-          if (apiRes.ok && apiData.success) {
-            if (apiData.user?.id) {
-              await syncProfileToStore(apiData.user.id);
-            }
-            onAuthSuccess?.();
-            return;
-          } else {
-            setErrorMsg(apiData.error || 'Incorrect email/username or password');
-            setLoading(false);
-            return;
           }
         }
-      }
+      } else {
+        const lowerUser = cleanId.toLowerCase();
 
-      // If we resolved an email (direct email or showcase username)
-      if (targetEmail) {
-        const { data: signInData, error: signInError } =
-          await supabase.auth.signInWithPassword({
-            email: targetEmail,
-            password: loginPassword,
+        // Attempt 1: Query Supabase RPC get_email_by_username
+        try {
+          const { data: rpcEmail, error: rpcErr } = await supabase.rpc('get_email_by_username', {
+            p_username: lowerUser,
           });
-
-        if (signInError) {
-          // Try backend fallback endpoint
-          const apiRes = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identifier: targetEmail, password: loginPassword }),
-          });
-          const apiData = await apiRes.json();
-          if (apiRes.ok && apiData.success) {
-            if (apiData.user?.id) {
-              await syncProfileToStore(apiData.user.id, targetEmail);
-            }
-            onAuthSuccess?.();
-            return;
+          if (!rpcErr && rpcEmail && typeof rpcEmail === 'string' && rpcEmail.trim()) {
+            candidateEmails.push(rpcEmail.trim().toLowerCase());
           }
-          setErrorMsg(signInError.message || 'Incorrect email or password');
+        } catch {
+          // Handled
+        }
+
+        // Attempt 2: Direct public.profiles lookup
+        if (candidateEmails.length === 0) {
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('email')
+              .ilike('username', lowerUser)
+              .maybeSingle();
+
+            if (profile && (profile as any).email) {
+              candidateEmails.push((profile as any).email.toLowerCase());
+            }
+          } catch {
+            // Handled
+          }
+        }
+
+        // Attempt 3: Backend identifier resolver endpoint
+        if (candidateEmails.length === 0) {
+          try {
+            const res = await fetch(`/api/auth/resolve-identifier?username=${encodeURIComponent(lowerUser)}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.email && !candidateEmails.includes(data.email.toLowerCase())) {
+                candidateEmails.push(data.email.toLowerCase());
+              }
+              if (data.fallbackEmail && !candidateEmails.includes(data.fallbackEmail.toLowerCase())) {
+                candidateEmails.push(data.fallbackEmail.toLowerCase());
+              }
+            }
+          } catch {
+            // Handled
+          }
+        }
+
+        // Attempt 4: Static showcase demo credentials map
+        if (showcaseMap[lowerUser]) {
+          const { primary, aliases } = showcaseMap[lowerUser];
+          if (!candidateEmails.includes(primary)) candidateEmails.push(primary);
+          for (const alias of aliases) {
+            if (!candidateEmails.includes(alias)) candidateEmails.push(alias);
+          }
+        }
+
+        if (candidateEmails.length === 0) {
+          const err = 'No KindLink account found matching this username. Please verify or use your registered email address.';
+          setErrorMsg(err);
+          toast.error('Account Not Found', { description: err });
           setLoading(false);
           return;
         }
+      }
 
-        if (signInData.user) {
-          await syncProfileToStore(signInData.user.id, targetEmail);
-          onAuthSuccess?.();
+      // 2. Candidate passwords (seamless primary & secondary demo password support)
+      const candidatePasswords: string[] = [passwordInput];
+      const lowerInput = cleanId.toLowerCase();
+      const isVolunteer = lowerInput === 'kind_volunteer' || candidateEmails.some((e) => e.includes('volunteer'));
+      const isRequester = lowerInput === 'need_aid' || candidateEmails.some((e) => e.includes('requester') || e.includes('need_aid'));
+      const isAdmin = lowerInput === 'admin_kindlink' || candidateEmails.some((e) => e.includes('admin'));
+
+      if (isVolunteer) {
+        if (!candidatePasswords.includes('KindLink#Volunteer2026')) candidatePasswords.push('KindLink#Volunteer2026');
+        if (!candidatePasswords.includes('KindLink#2026')) candidatePasswords.push('KindLink#2026');
+      } else if (isRequester) {
+        if (!candidatePasswords.includes('KindLink#Requester2026')) candidatePasswords.push('KindLink#Requester2026');
+        if (!candidatePasswords.includes('KindLink#2026')) candidatePasswords.push('KindLink#2026');
+      } else if (isAdmin) {
+        if (!candidatePasswords.includes('KindLink#Admin2026')) candidatePasswords.push('KindLink#Admin2026');
+        if (!candidatePasswords.includes('KindLink#2026')) candidatePasswords.push('KindLink#2026');
+      } else if (passwordInput === 'KindLink#2026' || passwordInput.startsWith('KindLink#')) {
+        if (!candidatePasswords.includes('KindLink#2026')) candidatePasswords.push('KindLink#2026');
+      }
+
+      // 3. Attempt authentication across candidate email & password pairs
+      let authenticatedUser: any = null;
+      let authenticatedEmail = '';
+      let lastErrorMessage = '';
+
+      for (const email of candidateEmails) {
+        if (authenticatedUser) break;
+        for (const pass of candidatePasswords) {
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password: pass,
+          });
+
+          if (!signInError && signInData?.user) {
+            authenticatedUser = signInData.user;
+            authenticatedEmail = email;
+            break;
+          }
+
+          if (signInError) {
+            lastErrorMessage = signInError.message;
+          }
         }
       }
+
+      // 4. Fallback to server route /api/auth/login if client-side signIn encountered issues
+      if (!authenticatedUser) {
+        for (const email of candidateEmails) {
+          if (authenticatedUser) break;
+          for (const pass of candidatePasswords) {
+            try {
+              const apiRes = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ identifier: email, password: pass }),
+              });
+              const apiData = await apiRes.json();
+              if (apiRes.ok && apiData.success && apiData.user) {
+                authenticatedUser = apiData.user;
+                authenticatedEmail = email;
+                break;
+              }
+            } catch {
+              // Handled
+            }
+          }
+        }
+      }
+
+      if (authenticatedUser) {
+        await syncProfileToStore(authenticatedUser.id, authenticatedEmail);
+        setSuccessMsg('Signed in successfully!');
+        toast.success('Signed in successfully!', {
+          description: 'Welcome to KindLink Mutual Aid Network.',
+        });
+        onAuthSuccess?.();
+      } else {
+        const errorDesc = lastErrorMessage || 'Incorrect email/username or password. Please try again.';
+        setErrorMsg(errorDesc);
+        toast.error('Authentication Failed', { description: errorDesc });
+      }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Authentication failed. Please try again.');
+      const generalErr = err?.message || 'Authentication failed. Please try again.';
+      setErrorMsg(generalErr);
+      toast.error('Authentication Error', { description: generalErr });
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle Sign In form submit
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await executeLogin(loginIdentifier, loginPassword);
   };
 
   // Handle Sign Up
@@ -605,53 +704,95 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
 
         {/* Demo Showcase Accounts Quick Access */}
         <div className="pt-5 border-t border-border space-y-3">
-          <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span>Showcase Demo Accounts</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <span>Showcase Demo Accounts</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground">Tap card or Quick Sign In</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => handleSelectDemo('kind_volunteer', 'KindLink#Volunteer2026')}
-              className="p-3 rounded-2xl border border-border bg-muted/30 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition text-left text-xs group"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-foreground group-hover:text-emerald-600 transition truncate">
-                  Volunteer
-                </span>
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-              </div>
-              <p className="text-[11px] text-muted-foreground font-mono">kind_volunteer</p>
-            </button>
+            <div className="p-3 rounded-2xl border border-border bg-muted/30 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition text-left text-xs group flex flex-col justify-between">
+              <button
+                type="button"
+                onClick={() => handleSelectDemo('kind_volunteer', 'KindLink#Volunteer2026')}
+                className="text-left w-full"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-foreground group-hover:text-emerald-600 transition truncate">
+                    Volunteer
+                  </span>
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                </div>
+                <p className="text-[11px] text-muted-foreground font-mono">@kind_volunteer</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">
+                  Pass: <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Volunteer2026</span>
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectDemo('kind_volunteer', 'KindLink#Volunteer2026', true)}
+                className="mt-2 w-full py-1 text-[10px] font-bold rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white transition"
+              >
+                Quick Sign In
+              </button>
+            </div>
 
-            <button
-              type="button"
-              onClick={() => handleSelectDemo('need_aid', 'KindLink#NeedAid2026')}
-              className="p-3 rounded-2xl border border-border bg-muted/30 hover:border-rose-500/50 hover:bg-rose-500/5 transition text-left text-xs group"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-foreground group-hover:text-rose-600 transition truncate">
-                  Aid Requester
-                </span>
-                <Heart className="h-3.5 w-3.5 text-rose-500 shrink-0" />
-              </div>
-              <p className="text-[11px] text-muted-foreground font-mono">need_aid</p>
-            </button>
+            <div className="p-3 rounded-2xl border border-border bg-muted/30 hover:border-rose-500/50 hover:bg-rose-500/5 transition text-left text-xs group flex flex-col justify-between">
+              <button
+                type="button"
+                onClick={() => handleSelectDemo('need_aid', 'KindLink#Requester2026')}
+                className="text-left w-full"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-foreground group-hover:text-rose-600 transition truncate">
+                    Aid Requester
+                  </span>
+                  <Heart className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                </div>
+                <p className="text-[11px] text-muted-foreground font-mono">@need_aid</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">
+                  Pass: <span className="text-rose-600 dark:text-rose-400 font-semibold">Requester2026</span>
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectDemo('need_aid', 'KindLink#Requester2026', true)}
+                className="mt-2 w-full py-1 text-[10px] font-bold rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white transition"
+              >
+                Quick Sign In
+              </button>
+            </div>
 
-            <button
-              type="button"
-              onClick={() => handleSelectDemo('admin_kindlink', 'KindLink#Admin2026')}
-              className="p-3 rounded-2xl border border-border bg-muted/30 hover:border-blue-500/50 hover:bg-blue-500/5 transition text-left text-xs group"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-foreground group-hover:text-blue-600 transition truncate">
-                  Admin
-                </span>
-                <ShieldCheck className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-              </div>
-              <p className="text-[11px] text-muted-foreground font-mono">admin_kindlink</p>
-            </button>
+            <div className="p-3 rounded-2xl border border-border bg-muted/30 hover:border-blue-500/50 hover:bg-blue-500/5 transition text-left text-xs group flex flex-col justify-between">
+              <button
+                type="button"
+                onClick={() => handleSelectDemo('admin_kindlink', 'KindLink#Admin2026')}
+                className="text-left w-full"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-foreground group-hover:text-blue-600 transition truncate">
+                    Admin
+                  </span>
+                  <ShieldCheck className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                </div>
+                <p className="text-[11px] text-muted-foreground font-mono">@admin_kindlink</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">
+                  Pass: <span className="text-blue-600 dark:text-blue-400 font-semibold">Admin2026</span>
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectDemo('admin_kindlink', 'KindLink#Admin2026', true)}
+                className="mt-2 w-full py-1 text-[10px] font-bold rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white transition"
+              >
+                Quick Sign In
+              </button>
+            </div>
+          </div>
+          <div className="pt-1 text-[11px] text-muted-foreground text-center">
+            Secondary universal password: <span className="font-mono text-foreground font-semibold">KindLink#2026</span>
           </div>
         </div>
       </div>
