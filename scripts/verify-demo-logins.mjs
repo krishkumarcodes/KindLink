@@ -85,9 +85,9 @@ async function main() {
   console.log(`\nResults: ${passCount} / ${credentials.length} credential checks passed.`);
   if (passCount === 0) {
     console.log('\n👉 NOTE: Demo accounts have not been refreshed yet in the Supabase database.');
-    console.log('   Please copy and execute `supabase/sql/auth_fix/18_refresh_demo_accounts.sql`');
-    console.log('   in your Supabase Dashboard SQL Editor (https://supabase.com/dashboard/project/hxrysrpymeleaipgofqj/sql)');
-    console.log('   to complete the GoTrue repair and demo account provisioning.');
+    console.log('   Please run in your Supabase Dashboard SQL Editor (https://supabase.com/dashboard/project/hxrysrpymeleaipgofqj/sql):');
+    console.log('   1. `supabase/sql/auth_fix/19_cleanup_demo_accounts.sql` (to wipe corrupt demo rows & sanitize tokens)');
+    console.log('   2. `supabase/sql/auth_fix/20_provision_demo_accounts.sql` (to re-provision demo accounts properly)');
   }
 }
 
