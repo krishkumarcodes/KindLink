@@ -204,14 +204,30 @@ CREATE TABLE IF NOT EXISTS public.reports (
   created_at timestamptz DEFAULT now() NOT NULL
 );
 
--- 8. SOS EVENTS TABLE (Kinetic accelerometer fall detection triggers)
+-- 8. SOS EVENTS TABLE (Kinetic accelerometer fall detection triggers & Emergency SOS)
 CREATE TABLE IF NOT EXISTS public.sos_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  token uuid DEFAULT gen_random_uuid() NOT NULL UNIQUE,
   location geography(Point, 4326),
+  address_text text,
   status text DEFAULT 'active' NOT NULL,
-  created_at timestamptz DEFAULT now() NOT NULL
+  expires_at timestamptz DEFAULT (now() + interval '2 hours') NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  resolved_at timestamptz
 );
+
+-- Backward compatibility in case sos_events was previously created without token
+ALTER TABLE public.sos_events ADD COLUMN IF NOT EXISTS token uuid DEFAULT gen_random_uuid();
+ALTER TABLE public.sos_events ADD COLUMN IF NOT EXISTS address_text text;
+ALTER TABLE public.sos_events ADD COLUMN IF NOT EXISTS expires_at timestamptz DEFAULT (now() + interval '2 hours');
+ALTER TABLE public.sos_events ADD COLUMN IF NOT EXISTS resolved_at timestamptz;
+ALTER TABLE public.sos_events ALTER COLUMN user_id DROP NOT NULL;
+UPDATE public.sos_events SET token = gen_random_uuid() WHERE token IS NULL;
+DO $$ BEGIN
+  ALTER TABLE public.sos_events ADD CONSTRAINT sos_events_token_key UNIQUE (token);
+EXCEPTION WHEN others THEN null;
+END $$;
 
 -- ============================================================================
 -- SECTION 4: INDEXES
@@ -1610,13 +1626,25 @@ CREATE TABLE IF NOT EXISTS public.sos_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
   token uuid DEFAULT gen_random_uuid() NOT NULL UNIQUE,
-  location geography(Point, 4326) NOT NULL,
+  location geography(Point, 4326),
   address_text text,
   status text DEFAULT 'active' NOT NULL,
   expires_at timestamptz DEFAULT (now() + interval '2 hours') NOT NULL,
   created_at timestamptz DEFAULT now() NOT NULL,
   resolved_at timestamptz
 );
+
+-- Ensure all columns exist even if sos_events was created by an older migration
+ALTER TABLE public.sos_events ADD COLUMN IF NOT EXISTS token uuid DEFAULT gen_random_uuid();
+ALTER TABLE public.sos_events ADD COLUMN IF NOT EXISTS address_text text;
+ALTER TABLE public.sos_events ADD COLUMN IF NOT EXISTS expires_at timestamptz DEFAULT (now() + interval '2 hours');
+ALTER TABLE public.sos_events ADD COLUMN IF NOT EXISTS resolved_at timestamptz;
+ALTER TABLE public.sos_events ALTER COLUMN user_id DROP NOT NULL;
+UPDATE public.sos_events SET token = gen_random_uuid() WHERE token IS NULL;
+DO $$ BEGIN
+  ALTER TABLE public.sos_events ADD CONSTRAINT sos_events_token_key UNIQUE (token);
+EXCEPTION WHEN others THEN null;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_sos_events_token ON public.sos_events(token);
 CREATE INDEX IF NOT EXISTS idx_sos_events_status ON public.sos_events(status);
