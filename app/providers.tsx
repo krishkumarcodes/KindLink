@@ -3,31 +3,34 @@
 import React, { useEffect } from 'react';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
-import { applyReactGoogleTranslatePatch, getCurrentLanguageCode, changeLanguageInstantly } from '@/lib/translate/googleTranslate';
+import { I18nProvider } from '@/lib/i18n';
+import { applyReactGoogleTranslatePatch } from '@/lib/translate/googleTranslate';
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  initialLocale,
+}: {
+  children: React.ReactNode;
+  initialLocale?: string;
+}) {
   useEffect(() => {
-    // Apply React DOM patch against Google Translate modifications
+    // Apply React DOM patch against external translation modifications
     applyReactGoogleTranslatePatch();
-
-    // Rehydrate saved language preference
-    const savedLang = getCurrentLanguageCode();
-    if (savedLang && savedLang !== 'en') {
-      changeLanguageInstantly(savedLang);
-    }
   }, []);
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      {children}
-      <Toaster
-        position="top-right"
-        richColors
-        closeButton
-        toastOptions={{
-          className: 'notranslate font-sans',
-        }}
-      />
+      <I18nProvider initialLocale={initialLocale}>
+        {children}
+        <Toaster
+          position="top-right"
+          richColors
+          closeButton
+          toastOptions={{
+            className: 'notranslate font-sans',
+          }}
+        />
+      </I18nProvider>
     </ThemeProvider>
   );
 }

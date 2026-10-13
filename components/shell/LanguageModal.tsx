@@ -1,13 +1,14 @@
 'use client';
 
-import React from 'react';
-import { Check, Globe, Info, X } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Check, Globe, Search, Sparkles, X, ChevronRight } from 'lucide-react';
 import {
-  SUPPORTED_LANGUAGES,
-  UNSUPPORTED_REGIONAL_LANGUAGES,
-  changeLanguageInstantly,
-  getCurrentLanguageCode,
-} from '@/lib/translate/googleTranslate';
+  INDIAN_LANGUAGES,
+  INTERNATIONAL_LANGUAGES,
+  LanguageMeta,
+  Locale,
+  useI18n,
+} from '@/lib/i18n';
 
 interface LanguageModalProps {
   open: boolean;
@@ -15,97 +16,280 @@ interface LanguageModalProps {
 }
 
 export function LanguageModal({ open, onClose }: LanguageModalProps) {
+  const { locale, setLocale, t } = useI18n();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeGroup, setActiveGroup] = useState<'all' | 'indian' | 'international'>('all');
+
+  // Filtered languages based on search query
+  const filteredIndian = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return INDIAN_LANGUAGES;
+    return INDIAN_LANGUAGES.filter(
+      (l) =>
+        l.name.toLowerCase().includes(q) ||
+        l.nativeName.toLowerCase().includes(q) ||
+        l.code.toLowerCase().includes(q) ||
+        l.script.toLowerCase().includes(q) ||
+        (l.region && l.region.toLowerCase().includes(q))
+    );
+  }, [searchQuery]);
+
+  const filteredInternational = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return INTERNATIONAL_LANGUAGES;
+    return INTERNATIONAL_LANGUAGES.filter(
+      (l) =>
+        l.name.toLowerCase().includes(q) ||
+        l.nativeName.toLowerCase().includes(q) ||
+        l.code.toLowerCase().includes(q) ||
+        l.script.toLowerCase().includes(q)
+    );
+  }, [searchQuery]);
+
   if (!open) return null;
 
-  const currentLang = getCurrentLanguageCode();
-
-  const handleSelect = (code: string) => {
-    changeLanguageInstantly(code);
+  const handleSelect = async (code: Locale) => {
+    await setLocale(code);
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md rounded-3xl bg-card border border-border p-6 shadow-2xl text-card-foreground max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-border">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <Globe className="h-5 w-5 notranslate" />
+  const renderLanguageButton = (lang: LanguageMeta) => {
+    const isSelected = locale === lang.code;
+
+    return (
+      <button
+        key={lang.code}
+        type="button"
+        onClick={() => handleSelect(lang.code)}
+        translate="no"
+        className={`notranslate relative flex items-center justify-between p-3.5 rounded-2xl border text-left transition-all touch-target group ${
+          isSelected
+            ? 'border-primary bg-primary/10 text-primary font-semibold ring-2 ring-primary/20 shadow-sm'
+            : 'border-border bg-card hover:bg-muted/70 text-foreground hover:border-border/80'
+        }`}
+      >
+        <div className="flex items-center gap-3 min-w-0 pr-2">
+          {/* Avatar / Code indicator */}
+          <div
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-black uppercase transition-colors ${
+              isSelected
+                ? 'bg-primary text-white shadow-xs'
+                : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
+            }`}
+          >
+            {lang.code.slice(0, 2)}
+          </div>
+
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-base font-bold text-foreground tracking-tight">
+                {lang.nativeName}
+              </span>
+
+              {/* Beta Badge for regional/tribal dialects */}
+              {lang.isBeta && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                  <Sparkles className="h-2.5 w-2.5" />
+                  <span>Beta</span>
+                </span>
+              )}
+
+              {/* RTL Badge */}
+              {lang.dir === 'rtl' && (
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-muted text-muted-foreground border border-border">
+                  RTL
+                </span>
+              )}
             </div>
-            <div>
-              <h2 className="text-lg font-bold">Choose your language</h2>
-              <p className="text-xs text-muted-foreground">अपनी भाषा चुनें / আপনার ভাষা নির্বাচন করুন</p>
+
+            <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground truncate">
+              <span className="font-medium truncate">{lang.name}</span>
+              <span>•</span>
+              <span className="text-[11px] opacity-80 truncate">{lang.script}</span>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted touch-target"
-            aria-label="Close dialog"
-          >
-            <X className="h-5 w-5 notranslate" />
-          </button>
         </div>
 
-        {/* Supported Languages List */}
-        <div className="mt-4 space-y-2">
-          {SUPPORTED_LANGUAGES.map((lang) => {
-            const isSelected = currentLang === lang.code;
-            return (
-              <button
-                key={lang.code}
-                onClick={() => handleSelect(lang.code)}
-                className={`flex w-full items-center justify-between p-3.5 rounded-2xl border text-left transition-all touch-target ${
-                  isSelected
-                    ? 'border-primary bg-primary/10 text-primary font-semibold'
-                    : 'border-border bg-background hover:bg-muted text-foreground'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-base font-bold">{lang.nativeName}</span>
-                  <span className="text-xs text-muted-foreground">({lang.name})</span>
-                  {lang.dir === 'rtl' && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">
-                      RTL
-                    </span>
-                  )}
-                </div>
-                {isSelected && <Check className="h-5 w-5 text-primary notranslate" />}
-              </button>
-            );
-          })}
+        {/* Selected Checkmark or Arrow */}
+        <div className="shrink-0 flex items-center pl-2">
+          {isSelected ? (
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-white shadow-xs">
+              <Check className="h-4 w-4" />
+            </div>
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-foreground transition-transform group-hover:translate-x-0.5" />
+          )}
         </div>
+      </button>
+    );
+  };
 
-        {/* Transparency note about regional and tribal languages */}
-        <div className="mt-6 rounded-2xl bg-muted/60 p-4 border border-border">
-          <div className="flex items-start gap-2">
-            <Info className="h-4 w-4 text-primary shrink-0 mt-0.5 notranslate" />
-            <div>
-              <h4 className="text-xs font-semibold text-foreground">Regional Dialect Verification Notice</h4>
-              <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
-                As per KindLink guidelines, languages not officially supported in the Google Translate widget
-                (Santali Ol Chiki, Nagpuri, Khortha, Kurukh, Mundari, Ho) are not artificially faked to prevent broken translations.
-              </p>
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {UNSUPPORTED_REGIONAL_LANGUAGES.map((l) => (
-                  <span
-                    key={l.code}
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-background border border-border text-muted-foreground"
-                  >
-                    {l.name}
-                  </span>
-                ))}
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="language-modal-title"
+      translate="no"
+      className="notranslate fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+    >
+      <div className="w-full max-w-2xl rounded-3xl bg-card border border-border shadow-2xl text-card-foreground flex flex-col max-h-[92vh] overflow-hidden">
+        {/* Header */}
+        <div className="p-5 pb-4 border-b border-border bg-card shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Globe className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 id="language-modal-title" className="text-lg sm:text-xl font-black text-foreground">
+                  Choose your language
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  अपनी भाषा चुनें / আপনার ভাষা নির্বাচন করুন / اپنی زبان منتخب کریں
+                </p>
               </div>
             </div>
+
+            <button
+              onClick={onClose}
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition touch-target"
+              aria-label="Close language selector dialog"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Search Box */}
+          <div className="relative mt-4">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by language, script, or state (e.g. Bengali, বাংলা, Ol Chiki)..."
+              className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/30 transition shadow-inner"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Group Filter Tabs */}
+          <div className="flex items-center gap-2 mt-3 pt-1">
+            <button
+              onClick={() => setActiveGroup('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition touch-target ${
+                activeGroup === 'all'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              All ({filteredIndian.length + filteredInternational.length})
+            </button>
+            <button
+              onClick={() => setActiveGroup('indian')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition touch-target ${
+                activeGroup === 'indian'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              Indian Languages ({filteredIndian.length})
+            </button>
+            <button
+              onClick={() => setActiveGroup('international')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition touch-target ${
+                activeGroup === 'international'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              International ({filteredInternational.length})
+            </button>
           </div>
         </div>
 
-        <button
-          onClick={onClose}
-          className="mt-6 w-full py-3 rounded-2xl bg-secondary text-secondary-foreground font-semibold text-sm hover:bg-secondary/80 transition touch-target"
-        >
-          Cancel
-        </button>
+        {/* Scrollable Language List */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+          {/* SECTION 1: Indian Languages */}
+          {(activeGroup === 'all' || activeGroup === 'indian') && filteredIndian.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between pb-1 border-b border-border/60">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-extrabold tracking-wider uppercase text-primary">
+                    Indian Languages & Regional Dialects
+                  </span>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                    {filteredIndian.length}
+                  </span>
+                </div>
+                <span className="text-[11px] text-muted-foreground">
+                  Bengal • Bihar • Jharkhand • Pan-India
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {filteredIndian.map((lang) => renderLanguageButton(lang))}
+              </div>
+            </div>
+          )}
+
+          {/* SECTION 2: International Languages */}
+          {(activeGroup === 'all' || activeGroup === 'international') &&
+            filteredInternational.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between pb-1 border-b border-border/60">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-extrabold tracking-wider uppercase text-foreground">
+                      International Languages
+                    </span>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                      {filteredInternational.length}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground">Global Community</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {filteredInternational.map((lang) => renderLanguageButton(lang))}
+                </div>
+              </div>
+            )}
+
+          {/* Empty search results */}
+          {filteredIndian.length === 0 && filteredInternational.length === 0 && (
+            <div className="py-12 text-center space-y-2">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground mx-auto">
+                <Search className="h-6 w-6" />
+              </div>
+              <h3 className="text-base font-bold text-foreground">No matching languages found</h3>
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                We couldn&apos;t find any language matching &quot;{searchQuery}&quot;. Try searching for &quot;Hindi&quot;, &quot;Bengali&quot;, or &quot;Santali&quot;.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-border bg-card/80 shrink-0 flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Native JSON dictionary engine • Zero flicker</span>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="px-5 py-2 rounded-xl bg-secondary text-secondary-foreground font-bold hover:bg-secondary/80 transition touch-target"
+          >
+            {t('common.close')}
+          </button>
+        </div>
       </div>
     </div>
   );

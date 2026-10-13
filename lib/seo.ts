@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL || 'https://kindlink.onrender.com'
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://kindlink-gd8e.onrender.com'
 ).replace(/\/$/, '');
 
 export const SITE_NAME = 'KindLink';

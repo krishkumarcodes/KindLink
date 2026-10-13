@@ -8,22 +8,59 @@ import {
   UrgencyLevel,
   UserProfile,
   VerificationState,
+  RequestLifecycleStatus,
+  CommunityLiveStats,
 } from '../data/types';
-import {
-  ASANSOL_CENTER,
-  INITIAL_NOTIFICATIONS,
-  INITIAL_REQUESTS,
-  MOCK_USER,
-} from '../data/mock-requests';
+import { ASANSOL_CENTER } from '../data/mock-requests';
 import { calculateHaversineDistance, calculateHelpGravity } from '../data/physics';
 import { dataAdapter } from '../data';
 
 export type AppView = 'home' | 'requests' | 'map' | 'new' | 'physics' | 'profile' | 'settings';
 
+export const DEFAULT_USER: UserProfile = {
+  id: 'usr-1',
+  name: 'Rahul Sen',
+  username: 'rahulsen',
+  displayName: 'Rahul Sen',
+  email: 'rahul.sen@aec.wb.gov.in',
+  phone: '+91 98320 12345',
+  college: 'Asansol Engineering College (CSE Dept)',
+  avatarUrl: '',
+  homeNeighborhood: 'Kalyanpur Housing, Asansol',
+  languages: ['Bengali', 'Hindi', 'English'],
+  emergencyContacts: [
+    { id: 'ec-1', name: 'Dr. Amit Sen (Father)', phone: '+91 98320 99887', relationship: 'Father' },
+    { id: 'ec-2', name: 'Riya Sen (Sister)', phone: '+91 94340 11223', relationship: 'Sister' },
+  ],
+  rating: 4.9,
+  ratingCount: 19,
+  helpsCount: 18,
+  requestsCount: 2,
+  hoursVolunteered: 42.5,
+  kilometersTraveled: 68.4,
+  verificationState: 'verified',
+  idDocumentName: 'AEC_Student_ID_2024.pdf',
+  idDocumentType: 'College/Student ID',
+  badges: [
+    'First Help',
+    'Life Saver',
+    'Book Buddy',
+    'Wheel Helper',
+    'Elder Friend',
+    'Quick Responder',
+    'Trusted',
+    'Verified',
+    '7-Day Streak',
+  ],
+  emailVerified: true,
+  phoneVerified: true,
+};
+
 interface KindLinkState {
   requests: HelpRequest[];
   userProfile: UserProfile;
   notifications: NotificationItem[];
+  unreadNotificationCount: number;
   currentView: AppView;
   selectedRequestId: string | null;
   activeFeedTab: 'urgent' | 'nearest' | 'newest';
@@ -34,9 +71,12 @@ interface KindLinkState {
   travelMode: TravelMode;
   welcomeSeen: boolean;
   userCoords: { lat: number; lng: number; isLive: boolean };
+  userAreaName: string;
   hasSimulatedUrgentAlert: boolean;
   sensorCalibration: { x: number; y: number; z: number; calibrated: boolean };
   isLoadingRequests: boolean;
+  liveStats: CommunityLiveStats | null;
+  isLoadingStats: boolean;
 
   // Actions
   setCurrentView: (view: AppView) => void;
@@ -48,16 +88,22 @@ interface KindLinkState {
   setSearchQuery: (query: string) => void;
   setTravelMode: (mode: TravelMode) => void;
   setWelcomeSeen: (seen: boolean) => void;
-  setUserCoords: (coords: { lat: number; lng: number; isLive: boolean }) => void;
+  setUserCoords: (coords: { lat: number; lng: number; isLive: boolean }, areaName?: string) => void;
+  setUserAreaName: (name: string) => void;
   setSensorCalibration: (cal: { x: number; y: number; z: number; calibrated: boolean }) => void;
 
   fetchLiveRequests: () => Promise<void>;
+  fetchLiveStats: () => Promise<void>;
   fetchLiveProfile: () => Promise<void>;
   fetchLiveNotifications: () => Promise<void>;
 
   addRequest: (newReq: Omit<HelpRequest, 'id' | 'createdAt' | 'helpGravityScore' | 'status' | 'helpersOffered' | 'distanceKm'>) => Promise<void>;
-  offerHelp: (requestId: string) => Promise<void>;
-  updateVerificationState: (state: VerificationState, docName?: string) => void;
+  offerHelp: (requestId: string, message?: string) => Promise<void>;
+  updateRequestStatus: (requestId: string, status: RequestLifecycleStatus) => Promise<void>;
+  updateUserProfile: (patch: Partial<UserProfile>) => void;
+  addEmergencyContact: (contact: { name: string; phone: string; relationship: string }) => void;
+  removeEmergencyContact: (id: string) => void;
+  updateVerificationState: (state: VerificationState, docName?: string, docType?: string) => void;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
   addNotification: (notif: NotificationItem) => void;
@@ -66,9 +112,10 @@ interface KindLinkState {
 export const useKindLinkStore = create<KindLinkState>()(
   persist(
     (set, get) => ({
-      requests: INITIAL_REQUESTS,
-      userProfile: MOCK_USER,
-      notifications: INITIAL_NOTIFICATIONS,
+      // Real database state - starts empty
+      requests: [],
+      userProfile: DEFAULT_USER,
+      notifications: [],
       currentView: 'home',
       selectedRequestId: null,
       activeFeedTab: 'urgent',
@@ -79,25 +126,37 @@ export const useKindLinkStore = create<KindLinkState>()(
       travelMode: 'bike',
       welcomeSeen: false,
       userCoords: { lat: ASANSOL_CENTER.lat, lng: ASANSOL_CENTER.lng, isLive: false },
+      userAreaName: 'Kalyanpur, Asansol',
       hasSimulatedUrgentAlert: false,
       sensorCalibration: { x: 0, y: 0, z: 0, calibrated: false },
       isLoadingRequests: false,
+      liveStats: null,
+      isLoadingStats: false,
 
       setCurrentView: (view) => set({ currentView: view }),
       setSelectedRequestId: (id) => set({ selectedRequestId: id }),
       setActiveFeedTab: (tab) => set({ activeFeedTab: tab }),
       setFilterCategory: (cat) => set({ filterCategory: cat }),
       setFilterUrgency: (urg) => set({ filterUrgency: urg }),
-      setFilterRadius: (radius) => set({ filterRadius: radius }),
+      setFilterRadius: (radius) => {
+        set({ filterRadius: radius });
+        get().fetchLiveRequests();
+        get().fetchLiveStats();
+      },
       setSearchQuery: (query) => set({ searchQuery: query }),
       setTravelMode: (mode) => set({ travelMode: mode }),
       setWelcomeSeen: (seen) => set({ welcomeSeen: seen }),
       setSensorCalibration: (cal) => set({ sensorCalibration: cal }),
 
-      setUserCoords: (coords) => {
-        set({ userCoords: coords });
+      setUserCoords: (coords, areaName) => {
+        set({
+          userCoords: coords,
+          ...(areaName ? { userAreaName: areaName } : {}),
+        });
         get().fetchLiveRequests();
+        get().fetchLiveStats();
       },
+      setUserAreaName: (name) => set({ userAreaName: name }),
 
       fetchLiveRequests: async () => {
         const { userCoords, filterRadius, filterCategory, filterUrgency } = get();
@@ -110,13 +169,24 @@ export const useKindLinkStore = create<KindLinkState>()(
             category: filterCategory,
             urgency: filterUrgency,
           });
-          if (fresh && fresh.length > 0) {
-            set({ requests: fresh, isLoadingRequests: false });
-          } else {
-            set({ isLoadingRequests: false });
-          }
+          set({ requests: fresh || [], isLoadingRequests: false });
         } catch {
-          set({ isLoadingRequests: false });
+          set({ requests: [], isLoadingRequests: false });
+        }
+      },
+
+      fetchLiveStats: async () => {
+        const { userCoords, filterRadius } = get();
+        set({ isLoadingStats: true });
+        try {
+          const stats = await dataAdapter.getLiveStats({
+            lat: userCoords.lat,
+            lng: userCoords.lng,
+            radiusKm: filterRadius,
+          });
+          set({ liveStats: stats, isLoadingStats: false });
+        } catch {
+          set({ isLoadingStats: false });
         }
       },
 
@@ -143,7 +213,7 @@ export const useKindLinkStore = create<KindLinkState>()(
       },
 
       addRequest: async (newReqData) => {
-        const { userCoords, fetchLiveRequests } = get();
+        const { userCoords, fetchLiveRequests, fetchLiveStats } = get();
         try {
           const res = await dataAdapter.createRequest({
             category: newReqData.category,
@@ -155,13 +225,30 @@ export const useKindLinkStore = create<KindLinkState>()(
             addressText: newReqData.locationName,
             bloodGroup: newReqData.bloodGroup,
             unitsNeeded: newReqData.unitsNeeded,
+            hospitalName: newReqData.hospitalName,
+            neededByTime: newReqData.neededByTime,
             itemType: newReqData.itemType,
             itemDuration: newReqData.itemDuration,
+            elderlyAidType: newReqData.elderlyAidType,
+            elderlyDuration: newReqData.elderlyDuration,
+            scheduledTime: newReqData.scheduledTime,
+            booksClassSubject: newReqData.booksClassSubject,
+            bookTitle: newReqData.bookTitle,
+            bookCondition: newReqData.bookCondition,
+            pickupAddress: newReqData.pickupAddress,
+            dropAddress: newReqData.dropAddress,
+            passengerCount: newReqData.passengerCount,
+            hasLuggage: newReqData.hasLuggage,
+            wheelchairAccessible: newReqData.wheelchairAccessible,
             patientAge: newReqData.patientAge,
+            contactName: newReqData.contactName,
+            contactPhone: newReqData.phone,
+            contactRole: newReqData.contactRole,
           });
 
           if (res.success) {
             await fetchLiveRequests();
+            await fetchLiveStats();
             set({
               selectedRequestId: res.id,
               currentView: 'requests',
@@ -199,10 +286,11 @@ export const useKindLinkStore = create<KindLinkState>()(
         }
       },
 
-      offerHelp: async (requestId) => {
-        const { requests, userProfile } = get();
+      offerHelp: async (requestId, message) => {
+        const { requests, userProfile, fetchLiveStats } = get();
         try {
-          await dataAdapter.offerHelp(requestId);
+          await dataAdapter.offerHelp(requestId, message);
+          fetchLiveStats();
         } catch {
           // Handled
         }
@@ -212,6 +300,7 @@ export const useKindLinkStore = create<KindLinkState>()(
             return {
               ...req,
               helpersOffered: (req.helpersOffered || 0) + 1,
+              status: (req.status === 'open' ? 'offered' : req.status) as RequestLifecycleStatus,
             };
           }
           return req;
@@ -226,13 +315,71 @@ export const useKindLinkStore = create<KindLinkState>()(
         });
       },
 
-      updateVerificationState: (state, docName) => {
+      updateRequestStatus: async (requestId, status) => {
+        const { requests } = get();
+        try {
+          await dataAdapter.updateRequestStatus(requestId, status);
+        } catch {
+          // Handled
+        }
+
+        const updated = requests.map((req) => {
+          if (req.id === requestId) {
+            return { ...req, status };
+          }
+          return req;
+        });
+
+        set({ requests: updated });
+      },
+
+      updateUserProfile: (patch) => {
         const { userProfile } = get();
+        set({
+          userProfile: { ...userProfile, ...patch },
+        });
+      },
+
+      addEmergencyContact: (contact) => {
+        const { userProfile } = get();
+        const newContact = {
+          id: `ec-${Date.now()}`,
+          ...contact,
+        };
+        set({
+          userProfile: {
+            ...userProfile,
+            emergencyContacts: [...(userProfile.emergencyContacts || []), newContact],
+          },
+        });
+      },
+
+      removeEmergencyContact: (id) => {
+        const { userProfile } = get();
+        set({
+          userProfile: {
+            ...userProfile,
+            emergencyContacts: (userProfile.emergencyContacts || []).filter((c) => c.id !== id),
+          },
+        });
+      },
+
+      updateVerificationState: (state, docName, docType) => {
+        const { userProfile } = get();
+        const existingBadges = userProfile.badges || [];
+        const hasVerifiedBadge = existingBadges.includes('Verified');
+        const nextBadges =
+          state === 'verified' && !hasVerifiedBadge
+            ? [...existingBadges, 'Verified']
+            : existingBadges;
+
         set({
           userProfile: {
             ...userProfile,
             verificationState: state,
             ...(docName ? { idDocumentName: docName } : {}),
+            ...(docType ? { idDocumentType: docType } : {}),
+            badges: nextBadges,
           },
         });
       },
@@ -266,7 +413,22 @@ export const useKindLinkStore = create<KindLinkState>()(
     }),
     {
       name: 'kindlink-storage',
+      version: 2,
       storage: createJSONStorage(() => localStorage),
+      migrate: (persistedState: any, version: number) => {
+        if (version < 2) {
+          return {
+            ...persistedState,
+            requests: [],
+            liveStats: null,
+            userProfile:
+              persistedState?.userProfile?.name === 'Rahul Sen'
+                ? DEFAULT_USER
+                : persistedState?.userProfile || DEFAULT_USER,
+          };
+        }
+        return persistedState;
+      },
     }
   )
 );

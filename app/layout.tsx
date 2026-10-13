@@ -1,47 +1,7 @@
 import type { Metadata, Viewport } from 'next';
-import {
-  Inter,
-  Plus_Jakarta_Sans,
-  Noto_Sans_Devanagari,
-  Noto_Sans_Bengali,
-  Noto_Nastaliq_Urdu,
-} from 'next/font/google';
 import Script from 'next/script';
 import { Providers } from './providers';
 import './globals.css';
-
-const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-sans',
-});
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-heading',
-});
-
-const notoDevanagari = Noto_Sans_Devanagari({
-  subsets: ['devanagari'],
-  weight: ['400', '600', '700'],
-  display: 'swap',
-  variable: '--font-devanagari',
-});
-
-const notoBengali = Noto_Sans_Bengali({
-  subsets: ['bengali'],
-  weight: ['400', '600', '700'],
-  display: 'swap',
-  variable: '--font-bengali',
-});
-
-const notoUrdu = Noto_Nastaliq_Urdu({
-  subsets: ['arabic'],
-  weight: ['400', '700'],
-  display: 'swap',
-  variable: '--font-urdu',
-});
 
 import { SITE_URL } from '@/lib/seo';
 
@@ -126,18 +86,35 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
+import { cookies } from 'next/headers';
+import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, isRTL, isValidLocale } from '@/lib/i18n';
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = cookies();
+  const rawLocale =
+    cookieStore.get(LOCALE_COOKIE_NAME)?.value ||
+    cookieStore.get('kindlink_selected_lang')?.value;
+  const initialLocale = rawLocale && isValidLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
+  const dir = isRTL(initialLocale) ? 'rtl' : 'ltr';
+
   return (
     <html
-      lang="en"
+      lang={initialLocale}
+      dir={dir}
       suppressHydrationWarning
-      className={`${inter.variable} ${plusJakartaSans.variable} ${notoDevanagari.variable} ${notoBengali.variable} ${notoUrdu.variable}`}
+      className={`font-sans ${dir === 'rtl' ? 'rtl-layout' : ''}`}
     >
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Noto+Sans+Devanagari:wght@400;500;700&family=Noto+Sans+Bengali:wght@400;500;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap"
+          rel="stylesheet"
+        />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="alternate icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/icon.svg" />
@@ -155,7 +132,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased selection:bg-primary/20">
-        <Providers>
+        <Providers initialLocale={initialLocale}>
           {children}
         </Providers>
 

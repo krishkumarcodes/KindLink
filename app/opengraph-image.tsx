@@ -153,7 +153,7 @@ export default async function Image() {
               color: '#14b8a6',
             }}
           >
-            kindlink.onrender.com
+            kindlink-gd8e.onrender.com
           </span>
         </div>
       </div>

@@ -1524,5 +1524,291 @@ BEGIN
   RAISE NOTICE 'Successfully created showcase accounts: kind_volunteer, need_aid, and admin_kindlink.';
 END $$;
 
+-- ============================================================================
+-- SECTION 14: Comprehensive Realtime Platform Upgrade
+-- ============================================================================
+
+DO $$ BEGIN
+  ALTER TYPE request_status ADD VALUE IF NOT EXISTS 'on_the_way' AFTER 'accepted';
+EXCEPTION WHEN others THEN null;
+END $$;
+
+DO $$ BEGIN
+  ALTER TYPE request_status ADD VALUE IF NOT EXISTS 'arrived' AFTER 'on_the_way';
+EXCEPTION WHEN others THEN null;
+END $$;
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_active_at timestamptz DEFAULT now();
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS home_area_name text;
+
+CREATE INDEX IF NOT EXISTS idx_profiles_last_active ON public.profiles(last_active_at);
+
+CREATE TABLE IF NOT EXISTS public.emergency_contacts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  phone text NOT NULL,
+  relationship text,
+  created_at timestamptz DEFAULT now() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_emergency_contacts_user ON public.emergency_contacts(user_id);
+ALTER TABLE public.emergency_contacts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage own emergency contacts" ON public.emergency_contacts;
+CREATE POLICY "Users can manage own emergency contacts"
+  ON public.emergency_contacts
+  FOR ALL
+  TO authenticated
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+CREATE TABLE IF NOT EXISTS public.sos_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  token uuid DEFAULT gen_random_uuid() NOT NULL UNIQUE,
+  location geography(Point, 4326) NOT NULL,
+  address_text text,
+  status text DEFAULT 'active' NOT NULL,
+  expires_at timestamptz DEFAULT (now() + interval '2 hours') NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  resolved_at timestamptz
+);
+
+CREATE INDEX IF NOT EXISTS idx_sos_events_token ON public.sos_events(token);
+CREATE INDEX IF NOT EXISTS idx_sos_events_status ON public.sos_events(status);
+ALTER TABLE public.sos_events ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public can view active SOS by token" ON public.sos_events;
+CREATE POLICY "Public can view active SOS by token"
+  ON public.sos_events
+  FOR SELECT
+  TO public
+  USING (true);
+
+DROP POLICY IF EXISTS "Users can insert own SOS" ON public.sos_events;
+CREATE POLICY "Users can insert own SOS"
+  ON public.sos_events
+  FOR INSERT
+  TO public
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Users can update own SOS" ON public.sos_events;
+CREATE POLICY "Users can update own SOS"
+  ON public.sos_events
+  FOR UPDATE
+  TO public
+  USING (true)
+  WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS public.active_transit_locations (
+  request_id uuid PRIMARY KEY REFERENCES public.requests(id) ON DELETE CASCADE,
+  helper_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  location geography(Point, 4326) NOT NULL,
+  heading double precision,
+  speed double precision,
+  updated_at timestamptz DEFAULT now() NOT NULL
+);
+
+ALTER TABLE public.active_transit_locations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Helper can update transit location" ON public.active_transit_locations;
+CREATE POLICY "Helper can update transit location"
+  ON public.active_transit_locations
+  FOR ALL
+  TO authenticated
+  USING (helper_id = auth.uid())
+  WITH CHECK (helper_id = auth.uid());
+
+DROP POLICY IF EXISTS "Requester can view helper transit location" ON public.active_transit_locations;
+CREATE POLICY "Requester can view helper transit location"
+  ON public.active_transit_locations
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.requests r
+      WHERE r.id = active_transit_locations.request_id
+        AND (r.requester_id = auth.uid() OR r.accepted_helper_id = auth.uid())
+    )
+  );
+
+CREATE TABLE IF NOT EXISTS public.user_badges (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  badge_key text NOT NULL,
+  unlocked_at timestamptz DEFAULT now() NOT NULL,
+  metadata jsonb DEFAULT '{}'::jsonb,
+  CONSTRAINT unique_user_badge UNIQUE (user_id, badge_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_badges_user ON public.user_badges(user_id);
+ALTER TABLE public.user_badges ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public can view user badges" ON public.user_badges;
+CREATE POLICY "Public can view user badges"
+  ON public.user_badges
+  FOR SELECT
+  TO public
+  USING (true);
+
+DROP POLICY IF EXISTS "Service role manages badges" ON public.user_badges;
+CREATE POLICY "Service role manages badges"
+  ON public.user_badges
+  FOR ALL
+  TO authenticated
+  USING (user_id = auth.uid());
+
+CREATE TABLE IF NOT EXISTS public.auth_otps (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email text NOT NULL,
+  hashed_code text NOT NULL,
+  attempts integer DEFAULT 0 NOT NULL,
+  expires_at timestamptz NOT NULL,
+  verified boolean DEFAULT false NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_otps_email ON public.auth_otps(email);
+ALTER TABLE public.auth_otps ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can verify their own OTPs" ON public.auth_otps;
+CREATE POLICY "Users can verify their own OTPs"
+  ON public.auth_otps
+  FOR ALL
+  TO public
+  USING (true)
+  WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS public.push_subscriptions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  endpoint text NOT NULL,
+  p256dh text NOT NULL,
+  auth text NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT unique_push_endpoint UNIQUE (user_id, endpoint)
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_sub_user ON public.push_subscriptions(user_id);
+ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage own push subscriptions" ON public.push_subscriptions;
+CREATE POLICY "Users can manage own push subscriptions"
+  ON public.push_subscriptions
+  FOR ALL
+  TO authenticated
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+CREATE OR REPLACE FUNCTION public.live_stats(
+  lat double precision,
+  lng double precision,
+  radius_km double precision DEFAULT 20.0
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_point geography;
+  v_helpers_nearby integer := 0;
+  v_avg_response_minutes numeric := NULL;
+  v_acts_of_help integer := 0;
+  v_trust_match_percent numeric := NULL;
+BEGIN
+  v_point := extensions.ST_SetSRID(extensions.ST_MakePoint(lng, lat), 4326)::geography;
+
+  SELECT COUNT(*)
+  INTO v_helpers_nearby
+  FROM public.profiles p
+  WHERE p.verification_status = 'verified'
+    AND (
+      (p.last_active_at IS NOT NULL AND p.last_active_at >= now() - interval '15 minutes')
+      OR
+      (p.home_location IS NOT NULL AND extensions.ST_DWithin(p.home_location, v_point, (radius_km * 1000.0)::double precision))
+    );
+
+  SELECT COUNT(*)
+  INTO v_acts_of_help
+  FROM public.requests r
+  WHERE r.status = 'completed'
+    AND extensions.ST_DWithin(r.location, v_point, (radius_km * 1000.0)::double precision);
+
+  WITH response_times AS (
+    SELECT
+      EXTRACT(EPOCH FROM (MIN(o.created_at) - r.created_at)) / 60.0 AS diff_min
+    FROM public.requests r
+    JOIN public.offers o ON o.request_id = r.id
+    WHERE r.created_at >= now() - interval '30 days'
+      AND extensions.ST_DWithin(r.location, v_point, (radius_km * 1000.0)::double precision)
+    GROUP BY r.id, r.created_at
+    HAVING MIN(o.created_at) >= r.created_at
+  )
+  SELECT
+    CASE
+      WHEN COUNT(*) >= 3 THEN ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY diff_min)::numeric, 1)
+      ELSE NULL
+    END
+  INTO v_avg_response_minutes
+  FROM response_times;
+
+  SELECT
+    CASE
+      WHEN COUNT(*) >= 5 THEN
+        ROUND(
+          (COUNT(*) FILTER (WHERE stars >= 4)::numeric / COUNT(*)::numeric * 100.0),
+          1
+        )
+      ELSE NULL
+    END
+  INTO v_trust_match_percent
+  FROM public.ratings r
+  WHERE r.created_at >= now() - interval '90 days';
+
+  RETURN jsonb_build_object(
+    'helpers_nearby', COALESCE(v_helpers_nearby, 0),
+    'avg_response_minutes', v_avg_response_minutes,
+    'acts_of_help', COALESCE(v_acts_of_help, 0),
+    'trust_match_percent', v_trust_match_percent,
+    'updated_at', now()
+  );
+END;
+$$;
+
+-- ============================================================================
+-- SECTION 15: Safe Cleanup of Legacy Test Data
+-- ============================================================================
+DO $$
+BEGIN
+  DELETE FROM public.requests
+  WHERE id <> 'b0000000-0000-0000-0000-000000000001'
+    AND (
+      title ILIKE '%[test]%'
+      OR title ILIKE '%dummy%'
+      OR title ILIKE '%sample test%'
+      OR description ILIKE '%this is a test%'
+      OR description ILIKE '%dummy description%'
+    );
+
+  DELETE FROM auth.users
+  WHERE id NOT IN (
+    'a0000000-0000-0000-0000-000000000001',
+    'a0000000-0000-0000-0000-000000000002',
+    'a0000000-0000-0000-0000-000000000003'
+  )
+  AND (
+    email ILIKE '%test%@example.com'
+    OR email ILIKE '%dummy%@%'
+    OR raw_user_meta_data->>'username' ILIKE 'test_%'
+    OR raw_user_meta_data->>'username' ILIKE 'dummy_%'
+    OR raw_user_meta_data->>'username' = 'rahul_sen'
+  );
+
+  DELETE FROM public.notifications WHERE request_id IS NOT NULL AND request_id NOT IN (SELECT id FROM public.requests);
+END $$;
+
 -- End of all_in_one.sql
 

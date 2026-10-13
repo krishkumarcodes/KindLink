@@ -23,13 +23,15 @@ export default function KindLinkApp() {
     addNotification,
     hasSimulatedUrgentAlert,
     fetchLiveRequests,
+    fetchLiveStats,
     fetchLiveProfile,
     fetchLiveNotifications,
   } = useKindLinkStore();
 
-  // Load real backend data and bind realtime subscriptions on mount
+  // Load real backend data, live stats, and bind realtime subscriptions on mount
   useEffect(() => {
     fetchLiveRequests();
+    fetchLiveStats();
     fetchLiveProfile();
     fetchLiveNotifications();
     const cleanupRealtime = initializeRealtime();
@@ -37,7 +39,7 @@ export default function KindLinkApp() {
     return () => {
       cleanupRealtime?.();
     };
-  }, [fetchLiveRequests, fetchLiveProfile, fetchLiveNotifications]);
+  }, [fetchLiveRequests, fetchLiveStats, fetchLiveProfile, fetchLiveNotifications]);
 
   useEffect(() => {
     if (hasSimulatedUrgentAlert) return;

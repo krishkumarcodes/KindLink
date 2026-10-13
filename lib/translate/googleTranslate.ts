@@ -1,3 +1,12 @@
+import {
+  SUPPORTED_LANGUAGES as I18N_SUPPORTED_LANGUAGES,
+  DEFAULT_LOCALE,
+  LOCALE_COOKIE_NAME,
+  LOCALE_STORAGE_KEY,
+  isRTL,
+  getLanguage,
+} from '@/lib/i18n';
+
 export interface LanguageOption {
   code: string;
   name: string;
@@ -6,75 +15,27 @@ export interface LanguageOption {
   dir: 'ltr' | 'rtl';
   supportedInWidget: boolean;
   notes?: string;
+  isBeta?: boolean;
 }
 
-export const SUPPORTED_LANGUAGES: LanguageOption[] = [
-  {
-    code: 'en',
-    name: 'English',
-    nativeName: 'English',
-    script: 'Latin',
-    dir: 'ltr',
-    supportedInWidget: true,
-  },
-  {
-    code: 'hi',
-    name: 'Hindi',
-    nativeName: 'हिन्दी',
-    script: 'Devanagari',
-    dir: 'ltr',
-    supportedInWidget: true,
-  },
-  {
-    code: 'bn',
-    name: 'Bengali',
-    nativeName: 'বাংলা',
-    script: 'Bengali',
-    dir: 'ltr',
-    supportedInWidget: true,
-  },
-  {
-    code: 'bho',
-    name: 'Bhojpuri',
-    nativeName: 'भोजपुरी',
-    script: 'Devanagari',
-    dir: 'ltr',
-    supportedInWidget: true,
-  },
-  {
-    code: 'mai',
-    name: 'Maithili',
-    nativeName: 'मैथिली',
-    script: 'Devanagari',
-    dir: 'ltr',
-    supportedInWidget: true,
-  },
-  {
-    code: 'ne',
-    name: 'Nepali',
-    nativeName: 'नेपाली',
-    script: 'Devanagari',
-    dir: 'ltr',
-    supportedInWidget: true,
-  },
-  {
-    code: 'ur',
-    name: 'Urdu',
-    nativeName: 'اردو',
-    script: 'Nastaliq / Arabic',
-    dir: 'rtl',
-    supportedInWidget: true,
-  },
-];
+export const SUPPORTED_LANGUAGES: LanguageOption[] = I18N_SUPPORTED_LANGUAGES.map((lang) => ({
+  code: lang.code,
+  name: lang.name,
+  nativeName: lang.nativeName,
+  script: lang.script,
+  dir: lang.dir,
+  supportedInWidget: true,
+  notes: lang.region,
+  isBeta: lang.isBeta,
+}));
 
-// Languages evaluated but not available in Google Translate website widget dropdown:
 export const UNSUPPORTED_REGIONAL_LANGUAGES = [
-  { name: 'Santali (Ol Chiki)', code: 'sat', reason: 'Not supported in the Google Translate legacy website widget' },
-  { name: 'Nagpuri (Sadri)', code: 'sck', reason: 'Not supported by Google Translate' },
-  { name: 'Khortha', code: 'kht', reason: 'Not supported by Google Translate' },
-  { name: 'Kurukh (Oraon)', code: 'kru', reason: 'Not supported by Google Translate' },
-  { name: 'Mundari', code: 'unr', reason: 'Not supported by Google Translate' },
-  { name: 'Ho', code: 'hoc', reason: 'Not supported by Google Translate' },
+  { name: 'Santali (Ol Chiki)', code: 'sat', reason: 'Now supported natively in KindLink i18n dictionary' },
+  { name: 'Nagpuri (Sadri)', code: 'sck', reason: 'Now supported natively in KindLink i18n dictionary (Beta)' },
+  { name: 'Khortha', code: 'kht', reason: 'Now supported natively in KindLink i18n dictionary (Beta)' },
+  { name: 'Kurukh (Oraon)', code: 'kru', reason: 'Now supported natively in KindLink i18n dictionary (Beta)' },
+  { name: 'Mundari', code: 'unr', reason: 'Now supported natively in KindLink i18n dictionary (Beta)' },
+  { name: 'Ho', code: 'hoc', reason: 'Now supported natively in KindLink i18n dictionary (Beta)' },
 ];
 
 /**
@@ -110,29 +71,33 @@ export function applyReactGoogleTranslatePatch() {
 }
 
 /**
- * Sets googtrans cookie across domains and paths
+ * Sets googtrans and kindlink_locale cookies across domains and paths
  */
 export function setGoogleTransCookie(langCode: string) {
   if (typeof document === 'undefined') return;
   const cookieVal = `/en/${langCode}`;
   const host = window.location.hostname;
-  
-  // Set cookie for path /
-  document.cookie = `googtrans=${cookieVal}; path=/;`;
+  const maxAge = 60 * 60 * 24 * 365; // 1 year
+
+  // Set cookies for path /
+  document.cookie = `googtrans=${cookieVal}; path=/; max-age=${maxAge}; SameSite=Lax;`;
+  document.cookie = `${LOCALE_COOKIE_NAME}=${langCode}; path=/; max-age=${maxAge}; SameSite=Lax;`;
+
   // Also set with domain if applicable
   if (host && host !== 'localhost') {
-    document.cookie = `googtrans=${cookieVal}; domain=.${host}; path=/;`;
+    document.cookie = `googtrans=${cookieVal}; domain=.${host}; path=/; max-age=${maxAge}; SameSite=Lax;`;
+    document.cookie = `${LOCALE_COOKIE_NAME}=${langCode}; domain=.${host}; path=/; max-age=${maxAge}; SameSite=Lax;`;
   }
 }
 
 /**
- * Triggers hidden Google Translate widget language change without reloading
+ * Triggers instant native and widget language change without reloading
  */
 export function changeLanguageInstantly(langCode: string) {
   if (typeof window === 'undefined') return;
 
-  const targetLang = SUPPORTED_LANGUAGES.find((l) => l.code === langCode);
-  const dir = targetLang?.dir || 'ltr';
+  const targetLang = getLanguage(langCode);
+  const dir = targetLang.dir;
 
   // 1. Update HTML attributes
   document.documentElement.setAttribute('lang', langCode);
@@ -145,26 +110,27 @@ export function changeLanguageInstantly(langCode: string) {
 
   // 2. Set Cookies and LocalStorage
   setGoogleTransCookie(langCode);
-  localStorage.setItem('kindlink_selected_lang', langCode);
+  localStorage.setItem(LOCALE_STORAGE_KEY, langCode);
 
-  // 3. Trigger hidden select element if widget is loaded
+  // 3. Trigger hidden select element if legacy widget is mounted
   const selectElem = document.querySelector('.goog-te-combo') as HTMLSelectElement | null;
   if (selectElem) {
     selectElem.value = langCode;
     selectElem.dispatchEvent(new Event('change', { bubbles: true }));
-  } else {
-    // If widget hasn't finished initialising yet, cookie is set and it will pick it up on init
   }
+
+  // 4. Dispatch custom event for React components
+  window.dispatchEvent(new CustomEvent('kindlink:locale-change', { detail: { locale: langCode } }));
 }
 
 /**
  * Gets currently active language code
  */
 export function getCurrentLanguageCode(): string {
-  if (typeof window === 'undefined') return 'en';
-  const saved = localStorage.getItem('kindlink_selected_lang');
-  if (saved && SUPPORTED_LANGUAGES.some((l) => l.code === saved)) {
+  if (typeof window === 'undefined') return DEFAULT_LOCALE;
+  const saved = localStorage.getItem(LOCALE_STORAGE_KEY);
+  if (saved && I18N_SUPPORTED_LANGUAGES.some((l) => l.code === saved)) {
     return saved;
   }
-  return 'en';
+  return DEFAULT_LOCALE;
 }

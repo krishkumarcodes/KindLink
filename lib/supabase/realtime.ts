@@ -39,33 +39,19 @@ export function initializeRealtime() {
           });
         }
 
-        // Refresh feed with current location
-        const coords = store.userCoords;
-        const fresh = await dataAdapter.getRequests({
-          lat: coords.lat,
-          lng: coords.lng,
-          radiusKm: store.filterRadius,
-          category: store.filterCategory,
-          urgency: store.filterUrgency,
-        });
-        useKindLinkStore.setState({ requests: fresh });
+        // Refresh feed and stats with current location
+        store.fetchLiveRequests();
+        store.fetchLiveStats();
       }
     )
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'offers' },
       async () => {
-        // Refresh requests and counts
+        // Refresh requests and live community stats
         const store = useKindLinkStore.getState();
-        const coords = store.userCoords;
-        const fresh = await dataAdapter.getRequests({
-          lat: coords.lat,
-          lng: coords.lng,
-          radiusKm: store.filterRadius,
-          category: store.filterCategory,
-          urgency: store.filterUrgency,
-        });
-        useKindLinkStore.setState({ requests: fresh });
+        store.fetchLiveRequests();
+        store.fetchLiveStats();
       }
     )
     .on(
