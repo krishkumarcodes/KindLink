@@ -1740,6 +1740,24 @@ BEGIN
   EXCEPTION WHEN others THEN null;
   END;
 
+  -- Ensure auth.users phone unique constraint does not block multiple empty strings ('')
+  BEGIN
+    ALTER TABLE auth.users DROP CONSTRAINT IF EXISTS users_phone_key;
+  EXCEPTION WHEN others THEN NULL;
+  END;
+
+  BEGIN
+    DROP INDEX IF EXISTS auth.users_phone_key;
+  EXCEPTION WHEN others THEN NULL;
+  END;
+
+  BEGIN
+    CREATE UNIQUE INDEX IF NOT EXISTS users_phone_partial_key
+      ON auth.users (phone)
+      WHERE phone IS NOT NULL AND phone <> '';
+  EXCEPTION WHEN others THEN NULL;
+  END;
+
   -- --------------------------------------------------------------------------
   -- 1. Create or Update: Showcase Volunteer (kind_volunteer)
   -- --------------------------------------------------------------------------
@@ -1752,10 +1770,21 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
+    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
     role,
+    confirmation_token,
+    recovery_token,
+    email_change,
+    email_change_token_new,
+    email_change_token_current,
+    reauthentication_token,
+    phone,
+    phone_change,
+    phone_change_token,
+    is_super_admin,
     created_at,
     updated_at
   )
@@ -1765,10 +1794,21 @@ BEGIN
     'volunteer@kindlink.demo',
     crypt('KindLink#Volunteer2026', gen_salt('bf')),
     now(),
+    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"kind_volunteer","display_name":"Dr. Ananya Roy (Volunteer)"}'::jsonb,
     'authenticated',
     'authenticated',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    false,
     now(),
     now()
   )
@@ -1776,8 +1816,19 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
+    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    confirmation_token = '',
+    recovery_token = '',
+    email_change = '',
+    email_change_token_new = '',
+    email_change_token_current = '',
+    reauthentication_token = '',
+    phone = '',
+    phone_change = '',
+    phone_change_token = '',
+    is_super_admin = false,
     updated_at = now();
 
   -- CRITICAL: auth.identities record required for GoTrue email/password login
@@ -1855,10 +1906,21 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
+    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
     role,
+    confirmation_token,
+    recovery_token,
+    email_change,
+    email_change_token_new,
+    email_change_token_current,
+    reauthentication_token,
+    phone,
+    phone_change,
+    phone_change_token,
+    is_super_admin,
     created_at,
     updated_at
   )
@@ -1868,10 +1930,21 @@ BEGIN
     'requester@kindlink.demo',
     crypt('KindLink#Requester2026', gen_salt('bf')),
     now(),
+    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"need_aid","display_name":"Sourav Mukherjee"}'::jsonb,
     'authenticated',
     'authenticated',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    false,
     now(),
     now()
   )
@@ -1879,8 +1952,19 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
+    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    confirmation_token = '',
+    recovery_token = '',
+    email_change = '',
+    email_change_token_new = '',
+    email_change_token_current = '',
+    reauthentication_token = '',
+    phone = '',
+    phone_change = '',
+    phone_change_token = '',
+    is_super_admin = false,
     updated_at = now();
 
   -- CRITICAL: auth.identities record required for GoTrue email/password login
@@ -1957,10 +2041,21 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
+    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
     role,
+    confirmation_token,
+    recovery_token,
+    email_change,
+    email_change_token_new,
+    email_change_token_current,
+    reauthentication_token,
+    phone,
+    phone_change,
+    phone_change_token,
+    is_super_admin,
     created_at,
     updated_at
   )
@@ -1970,10 +2065,21 @@ BEGIN
     'admin@kindlink.demo',
     crypt('KindLink#Admin2026', gen_salt('bf')),
     now(),
+    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"admin_kindlink","display_name":"KindLink Administrator"}'::jsonb,
     'authenticated',
     'authenticated',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    false,
     now(),
     now()
   )
@@ -1981,8 +2087,19 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
+    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    confirmation_token = '',
+    recovery_token = '',
+    email_change = '',
+    email_change_token_new = '',
+    email_change_token_current = '',
+    reauthentication_token = '',
+    phone = '',
+    phone_change = '',
+    phone_change_token = '',
+    is_super_admin = false,
     updated_at = now();
 
   -- CRITICAL: auth.identities record required for GoTrue email/password login
@@ -2059,10 +2176,21 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
+    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
     role,
+    confirmation_token,
+    recovery_token,
+    email_change,
+    email_change_token_new,
+    email_change_token_current,
+    reauthentication_token,
+    phone,
+    phone_change,
+    phone_change_token,
+    is_super_admin,
     created_at,
     updated_at
   )
@@ -2072,10 +2200,21 @@ BEGIN
     'kind_volunteer@kindlink.demo',
     crypt('KindLink#2026', gen_salt('bf')),
     now(),
+    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"kind_volunteer_alias","display_name":"Dr. Ananya Roy (Volunteer Alias)"}'::jsonb,
     'authenticated',
     'authenticated',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    false,
     now(),
     now()
   )
@@ -2083,8 +2222,19 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
+    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    confirmation_token = '',
+    recovery_token = '',
+    email_change = '',
+    email_change_token_new = '',
+    email_change_token_current = '',
+    reauthentication_token = '',
+    phone = '',
+    phone_change = '',
+    phone_change_token = '',
+    is_super_admin = false,
     updated_at = now();
 
   DELETE FROM auth.identities WHERE user_id = v_alias_vol_id OR (provider = 'email' AND provider_id = v_alias_vol_id::text) OR id = v_alias_vol_id::text;
@@ -2160,10 +2310,21 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
+    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
     role,
+    confirmation_token,
+    recovery_token,
+    email_change,
+    email_change_token_new,
+    email_change_token_current,
+    reauthentication_token,
+    phone,
+    phone_change,
+    phone_change_token,
+    is_super_admin,
     created_at,
     updated_at
   )
@@ -2173,10 +2334,21 @@ BEGIN
     'need_aid@kindlink.demo',
     crypt('KindLink#2026', gen_salt('bf')),
     now(),
+    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"need_aid_alias","display_name":"Sourav Mukherjee (Requester Alias)"}'::jsonb,
     'authenticated',
     'authenticated',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    false,
     now(),
     now()
   )
@@ -2184,8 +2356,19 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
+    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    confirmation_token = '',
+    recovery_token = '',
+    email_change = '',
+    email_change_token_new = '',
+    email_change_token_current = '',
+    reauthentication_token = '',
+    phone = '',
+    phone_change = '',
+    phone_change_token = '',
+    is_super_admin = false,
     updated_at = now();
 
   DELETE FROM auth.identities WHERE user_id = v_alias_req_id OR (provider = 'email' AND provider_id = v_alias_req_id::text) OR id = v_alias_req_id::text;

@@ -271,25 +271,27 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
 
       // 4. Fallback to server route /api/auth/login if client-side signIn encountered issues
       if (!authenticatedUser) {
-        for (const email of candidateEmails) {
-          if (authenticatedUser) break;
-          for (const pass of candidatePasswords) {
-            try {
-              const apiRes = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ identifier: email, password: pass }),
+        try {
+          const apiRes = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier: cleanId, password: passwordInput }),
+          });
+          const apiData = await apiRes.json();
+          if (apiRes.ok && apiData.success && apiData.user) {
+            authenticatedUser = apiData.user;
+            authenticatedEmail = candidateEmails[0] || '';
+            if (apiData.session?.access_token && apiData.session?.refresh_token) {
+              await supabase.auth.setSession({
+                access_token: apiData.session.access_token,
+                refresh_token: apiData.session.refresh_token,
               });
-              const apiData = await apiRes.json();
-              if (apiRes.ok && apiData.success && apiData.user) {
-                authenticatedUser = apiData.user;
-                authenticatedEmail = email;
-                break;
-              }
-            } catch {
-              // Handled
             }
+          } else if (apiRes.status === 429) {
+            lastErrorMessage = apiData.error || 'Too many login attempts. Please wait a few minutes before trying again.';
           }
+        } catch {
+          // Handled
         }
       }
 

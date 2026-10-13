@@ -177,6 +177,24 @@ BEGIN
     WHERE table_schema = 'auth' AND table_name = 'identities' AND column_name = 'provider_id'
   ) INTO v_has_provider_id;
 
+  -- Ensure auth.users phone unique constraint does not block multiple empty strings ('')
+  BEGIN
+    ALTER TABLE auth.users DROP CONSTRAINT IF EXISTS users_phone_key;
+  EXCEPTION WHEN others THEN NULL;
+  END;
+
+  BEGIN
+    DROP INDEX IF EXISTS auth.users_phone_key;
+  EXCEPTION WHEN others THEN NULL;
+  END;
+
+  BEGIN
+    CREATE UNIQUE INDEX IF NOT EXISTS users_phone_partial_key
+      ON auth.users (phone)
+      WHERE phone IS NOT NULL AND phone <> '';
+  EXCEPTION WHEN others THEN NULL;
+  END;
+
   -- ==========================================================================
   -- 1. PRIMARY VOLUNTEER: volunteer@kindlink.demo (kind_volunteer)
   -- ==========================================================================
@@ -189,10 +207,21 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
+    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
     role,
+    confirmation_token,
+    recovery_token,
+    email_change,
+    email_change_token_new,
+    email_change_token_current,
+    reauthentication_token,
+    phone,
+    phone_change,
+    phone_change_token,
+    is_super_admin,
     created_at,
     updated_at
   )
@@ -202,10 +231,21 @@ BEGIN
     'volunteer@kindlink.demo',
     crypt('KindLink#Volunteer2026', gen_salt('bf')),
     now(),
+    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"kind_volunteer","display_name":"Dr. Ananya Roy (Volunteer)"}'::jsonb,
     'authenticated',
     'authenticated',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    false,
     now(),
     now()
   )
@@ -213,8 +253,19 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
+    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    confirmation_token = '',
+    recovery_token = '',
+    email_change = '',
+    email_change_token_new = '',
+    email_change_token_current = '',
+    reauthentication_token = '',
+    phone = '',
+    phone_change = '',
+    phone_change_token = '',
+    is_super_admin = false,
     updated_at = now();
 
   -- GoTrue auth.identities synchronization
@@ -275,10 +326,21 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
+    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
     role,
+    confirmation_token,
+    recovery_token,
+    email_change,
+    email_change_token_new,
+    email_change_token_current,
+    reauthentication_token,
+    phone,
+    phone_change,
+    phone_change_token,
+    is_super_admin,
     created_at,
     updated_at
   )
@@ -288,10 +350,21 @@ BEGIN
     'requester@kindlink.demo',
     crypt('KindLink#Requester2026', gen_salt('bf')),
     now(),
+    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"need_aid","display_name":"Sourav Mukherjee"}'::jsonb,
     'authenticated',
     'authenticated',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    false,
     now(),
     now()
   )
@@ -299,8 +372,19 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
+    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    confirmation_token = '',
+    recovery_token = '',
+    email_change = '',
+    email_change_token_new = '',
+    email_change_token_current = '',
+    reauthentication_token = '',
+    phone = '',
+    phone_change = '',
+    phone_change_token = '',
+    is_super_admin = false,
     updated_at = now();
 
   DELETE FROM auth.identities WHERE user_id = v_requester_id;
@@ -360,10 +444,21 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
+    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
     role,
+    confirmation_token,
+    recovery_token,
+    email_change,
+    email_change_token_new,
+    email_change_token_current,
+    reauthentication_token,
+    phone,
+    phone_change,
+    phone_change_token,
+    is_super_admin,
     created_at,
     updated_at
   )
@@ -373,10 +468,21 @@ BEGIN
     'admin@kindlink.demo',
     crypt('KindLink#Admin2026', gen_salt('bf')),
     now(),
+    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"admin_kindlink","display_name":"KindLink Administrator"}'::jsonb,
     'authenticated',
     'authenticated',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    false,
     now(),
     now()
   )
@@ -384,8 +490,19 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
+    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    confirmation_token = '',
+    recovery_token = '',
+    email_change = '',
+    email_change_token_new = '',
+    email_change_token_current = '',
+    reauthentication_token = '',
+    phone = '',
+    phone_change = '',
+    phone_change_token = '',
+    is_super_admin = false,
     updated_at = now();
 
   DELETE FROM auth.identities WHERE user_id = v_admin_id;
@@ -445,10 +562,21 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
+    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
     role,
+    confirmation_token,
+    recovery_token,
+    email_change,
+    email_change_token_new,
+    email_change_token_current,
+    reauthentication_token,
+    phone,
+    phone_change,
+    phone_change_token,
+    is_super_admin,
     created_at,
     updated_at
   )
@@ -458,10 +586,21 @@ BEGIN
     'kind_volunteer@kindlink.demo',
     crypt('KindLink#2026', gen_salt('bf')),
     now(),
+    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"kind_volunteer_alias","display_name":"Dr. Ananya Roy (Volunteer Alias)"}'::jsonb,
     'authenticated',
     'authenticated',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    false,
     now(),
     now()
   )
@@ -469,8 +608,19 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
+    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    confirmation_token = '',
+    recovery_token = '',
+    email_change = '',
+    email_change_token_new = '',
+    email_change_token_current = '',
+    reauthentication_token = '',
+    phone = '',
+    phone_change = '',
+    phone_change_token = '',
+    is_super_admin = false,
     updated_at = now();
 
   DELETE FROM auth.identities WHERE user_id = v_alias_vol_id;
@@ -530,10 +680,21 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
+    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
     role,
+    confirmation_token,
+    recovery_token,
+    email_change,
+    email_change_token_new,
+    email_change_token_current,
+    reauthentication_token,
+    phone,
+    phone_change,
+    phone_change_token,
+    is_super_admin,
     created_at,
     updated_at
   )
@@ -543,10 +704,21 @@ BEGIN
     'need_aid@kindlink.demo',
     crypt('KindLink#2026', gen_salt('bf')),
     now(),
+    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"need_aid_alias","display_name":"Sourav Mukherjee (Requester Alias)"}'::jsonb,
     'authenticated',
     'authenticated',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    false,
     now(),
     now()
   )
@@ -554,8 +726,19 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
+    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    confirmation_token = '',
+    recovery_token = '',
+    email_change = '',
+    email_change_token_new = '',
+    email_change_token_current = '',
+    reauthentication_token = '',
+    phone = '',
+    phone_change = '',
+    phone_change_token = '',
+    is_super_admin = false,
     updated_at = now();
 
   DELETE FROM auth.identities WHERE user_id = v_alias_req_id;
@@ -615,10 +798,21 @@ BEGIN
     email,
     encrypted_password,
     email_confirmed_at,
+    confirmed_at,
     raw_app_meta_data,
     raw_user_meta_data,
     aud,
     role,
+    confirmation_token,
+    recovery_token,
+    email_change,
+    email_change_token_new,
+    email_change_token_current,
+    reauthentication_token,
+    phone,
+    phone_change,
+    phone_change_token,
+    is_super_admin,
     created_at,
     updated_at
   )
@@ -628,10 +822,21 @@ BEGIN
     'admin_kindlink@kindlink.demo',
     crypt('KindLink#2026', gen_salt('bf')),
     now(),
+    now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"username":"admin_kindlink_alias","display_name":"KindLink Administrator (Admin Alias)"}'::jsonb,
     'authenticated',
     'authenticated',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    false,
     now(),
     now()
   )
@@ -639,8 +844,19 @@ BEGIN
     email = EXCLUDED.email,
     encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = now(),
+    confirmed_at = now(),
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    confirmation_token = '',
+    recovery_token = '',
+    email_change = '',
+    email_change_token_new = '',
+    email_change_token_current = '',
+    reauthentication_token = '',
+    phone = '',
+    phone_change = '',
+    phone_change_token = '',
+    is_super_admin = false,
     updated_at = now();
 
   DELETE FROM auth.identities WHERE user_id = v_alias_adm_id;
@@ -746,16 +962,12 @@ BEGIN
       email_change_token_new = COALESCE(email_change_token_new, ''),
       email_change_token_current = COALESCE(email_change_token_current, ''),
       email_change = COALESCE(email_change, ''),
+      reauthentication_token = COALESCE(reauthentication_token, ''),
+      phone = COALESCE(phone, ''),
       phone_change = COALESCE(phone_change, ''),
       phone_change_token = COALESCE(phone_change_token, ''),
       confirmed_at = COALESCE(confirmed_at, email_confirmed_at, now()),
-      is_super_admin = COALESCE(is_super_admin, false),
-      is_sso_user = COALESCE(is_sso_user, false),
-      is_anonymous = COALESCE(is_anonymous, false)
-    WHERE id IN (
-      v_volunteer_id, v_requester_id, v_admin_id,
-      v_alias_vol_id, v_alias_req_id, v_alias_adm_id
-    );
+      is_super_admin = COALESCE(is_super_admin, false);
   EXCEPTION WHEN others THEN null;
   END;
 

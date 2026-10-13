@@ -285,29 +285,35 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
 
       // 4. Fallback to server route /api/auth/login if client-side signIn encounters session issues
       if (!authenticated) {
-        for (const email of candidateEmails) {
-          if (authenticated) break;
-          for (const pass of candidatePasswords) {
-            try {
-              const apiRes = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ identifier: email, password: pass }),
+        setLoadingMessage('Verifying credentials with server...');
+        try {
+          const apiRes = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier: cleanInput, password: passwordInput }),
+          });
+          const apiData = await apiRes.json();
+          if (apiRes.ok && apiData.success) {
+            authenticated = true;
+            if (apiData.session?.access_token && apiData.session?.refresh_token) {
+              await supabase.auth.setSession({
+                access_token: apiData.session.access_token,
+                refresh_token: apiData.session.refresh_token,
               });
-              const apiData = await apiRes.json();
-              if (apiRes.ok && apiData.success) {
-                authenticated = true;
-                toast.success('Signed in successfully!', {
-                  description: 'Welcome to KindLink Mutual Aid Network.',
-                });
-                router.push(redirectTarget);
-                router.refresh();
-                return;
-              }
-            } catch {
-              // Proceed
             }
+            const displayName = apiData.user?.displayName || cleanInput;
+            toast.success('Signed in successfully!', {
+              description: `Welcome back, ${displayName}!`,
+            });
+            const finalRedirect = isAdmin && redirectTarget === '/app' ? '/admin' : redirectTarget;
+            router.push(finalRedirect);
+            router.refresh();
+            return;
+          } else if (apiRes.status === 429) {
+            lastErrorMessage = apiData.error || 'Too many login attempts. Please wait a few minutes before trying again.';
           }
+        } catch {
+          // Proceed to error display
         }
       }
 

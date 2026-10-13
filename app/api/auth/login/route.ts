@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: GENERIC_ERROR }, { status: 401 });
     }
 
-    // 4. Return safe session details (Never expose emails in response when username was provided)
+    // 4. Return safe session details with session tokens for client sync
     return NextResponse.json({
       success: true,
       user: {
@@ -163,6 +163,12 @@ export async function POST(req: NextRequest) {
         username: sessionData.user.user_metadata?.username || cleanId,
         displayName: sessionData.user.user_metadata?.display_name || cleanId,
       },
+      session: sessionData.session
+        ? {
+            access_token: sessionData.session.access_token,
+            refresh_token: sessionData.session.refresh_token,
+          }
+        : null,
     });
   } catch (err) {
     return NextResponse.json({ error: GENERIC_ERROR }, { status: 401 });
