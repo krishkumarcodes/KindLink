@@ -49,7 +49,14 @@ export function HomeView() {
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   const [sosModalOpen, setSosModalOpen] = useState(false);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
-  const [resolvedLocation, setResolvedLocation] = useState<string>(userAreaName || 'Asansol Hub');
+  const [resolvedLocation, setResolvedLocation] = useState<string>(userAreaName || 'Local Community');
+
+  // Sync resolved location when userAreaName changes
+  useEffect(() => {
+    if (userAreaName) {
+      setResolvedLocation(userAreaName);
+    }
+  }, [userAreaName]);
 
   // Resolve user coords to human-readable neighborhood via Nominatim
   useEffect(() => {
@@ -93,6 +100,7 @@ export function HomeView() {
     userProfile?.name &&
     userProfile.name.trim() !== '' &&
     userProfile.name !== 'Rahul Sen' &&
+    userProfile.name !== 'Community Member' &&
     userProfile.name !== 'Friend'
       ? userProfile.name.trim()
       : 'Friend';

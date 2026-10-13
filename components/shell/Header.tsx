@@ -12,7 +12,9 @@ import {
   ShieldCheck,
   Atom,
   AlertTriangle,
+  LogOut,
 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { getCurrentLanguageCode, SUPPORTED_LANGUAGES } from '@/lib/translate/googleTranslate';
 import { LanguageModal } from './LanguageModal';
@@ -22,7 +24,7 @@ import { LocationModal } from './LocationModal';
 
 export function Header() {
   const {
-    notifications,
+    unreadNotificationCount,
     userCoords,
     userAreaName,
     userProfile,
@@ -65,7 +67,7 @@ export function Header() {
     };
   }, [profileMenuOpen]);
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const unreadCount = unreadNotificationCount;
 
   // Extract user initials
   const initials = userProfile?.name
@@ -372,6 +374,23 @@ export function Header() {
                     >
                       <Atom className="h-4 w-4 text-primary shrink-0 notranslate" />
                       <span>Physics Lab Engine</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={async () => {
+                        setProfileMenuOpen(false);
+                        try {
+                          const supabaseClient = createClient();
+                          await supabaseClient.auth.signOut();
+                          await fetch('/api/auth/logout', { method: 'POST' });
+                        } catch {}
+                        window.location.reload();
+                      }}
+                      className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-2xl text-xs font-semibold hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-colors min-h-[40px] text-left"
+                    >
+                      <LogOut className="h-4 w-4 shrink-0 notranslate" />
+                      <span>Sign Out</span>
                     </button>
                   </div>
 

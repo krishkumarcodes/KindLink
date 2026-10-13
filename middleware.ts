@@ -50,6 +50,7 @@ export async function middleware(request: NextRequest) {
     path === '/llms-full.txt' ||
     path === '/robots.txt' ||
     path === '/sitemap.xml' ||
+    path.startsWith('/sos') ||
     path.startsWith('/help');
 
   // Support offline mock mode bypass (still setting X-Robots-Tag above)

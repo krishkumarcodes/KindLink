@@ -9,7 +9,8 @@
 -- 1. PROFILES TABLE (linked 1:1 with auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  username text NOT NULL,
+  username text NOT NULL UNIQUE,
+  email text,
   display_name text,
   phone text,
   preferred_language text DEFAULT 'en',
@@ -96,6 +97,7 @@ CREATE TABLE IF NOT EXISTS public.ratings (
   rater_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   ratee_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   stars integer NOT NULL CHECK (stars >= 1 AND stars <= 5),
+  rating_score numeric,
   comment text,
   created_at timestamptz DEFAULT now() NOT NULL,
 

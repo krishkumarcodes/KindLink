@@ -41,7 +41,15 @@ END $$;
 
 -- 5. Help Request Lifecycle Status
 DO $$ BEGIN
-  CREATE TYPE request_status AS ENUM ('open', 'accepted', 'completed', 'cancelled');
+  CREATE TYPE request_status AS ENUM (
+    'open',
+    'offered',
+    'accepted',
+    'on_the_way',
+    'arrived',
+    'completed',
+    'cancelled'
+  );
 EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;

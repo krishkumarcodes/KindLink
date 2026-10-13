@@ -14,4 +14,34 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- 3. PostGIS extension (used for geospatial geography points, distance calculations, and radar queries)
 CREATE EXTENSION IF NOT EXISTS "postgis";
 
+-- 4. PostGIS helper: ensure ST_DWithin resolves gracefully if tolerance is passed as numeric
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgis') THEN
+    CREATE OR REPLACE FUNCTION extensions.st_dwithin(
+      geog1 extensions.geography,
+      geog2 extensions.geography,
+      tolerance numeric
+    )
+    RETURNS boolean
+    LANGUAGE sql
+    IMMUTABLE
+    AS $f$
+      SELECT extensions.ST_DWithin(geog1, geog2, tolerance::double precision);
+    $f$;
+
+    CREATE OR REPLACE FUNCTION public.st_dwithin(
+      geog1 extensions.geography,
+      geog2 extensions.geography,
+      tolerance numeric
+    )
+    RETURNS boolean
+    LANGUAGE sql
+    IMMUTABLE
+    AS $f$
+      SELECT extensions.ST_DWithin(geog1, geog2, tolerance::double precision);
+    $f$;
+  END IF;
+END $$;
+
 -- End of 01_extensions.sql

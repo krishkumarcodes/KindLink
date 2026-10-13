@@ -54,6 +54,7 @@ RETURNS TABLE (
 LANGUAGE sql
 STABLE
 PARALLEL SAFE
+SET search_path = public, extensions
 AS $$
   WITH computed AS (
     SELECT
@@ -68,14 +69,18 @@ AS $$
       ST_Y(r.location::geometry) AS latitude,
       ST_X(r.location::geometry) AS longitude,
       r.address_text,
-      ROUND((ST_Distance(r.location, ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography) / 1000.0)::numeric, 2)::double precision AS distance_km,
+      ROUND((ST_Distance(r.location::geography, ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography) / 1000.0)::numeric, 2)::double precision AS distance_km,
       GREATEST(1, ROUND(EXTRACT(EPOCH FROM (now() - r.created_at)) / 60.0)::integer) AS waiting_minutes,
       r.accepted_helper_id,
       r.created_at
     FROM public.requests r
     WHERE r.status = 'open'
       AND (r.expires_at IS NULL OR r.expires_at > now())
-      AND ST_DWithin(r.location, ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography, radius_km * 1000.0)
+      AND ST_DWithin(
+        r.location::geography,
+        ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography,
+        (radius_km * 1000.0)::double precision
+      )
       AND (filter_cat IS NULL OR r.category = filter_cat)
   )
   SELECT

@@ -148,6 +148,7 @@ export interface CommunityLiveStats {
   actsOfHelp: number;
   trustMatchPercent?: number | null;
   trustMatchPercentage?: number | null;
+  activeRequests?: number;
   updatedAt: string;
 }
 

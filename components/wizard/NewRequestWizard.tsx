@@ -84,9 +84,9 @@ export function NewRequestWizard() {
   const [longitude, setLongitude] = useState(userCoords?.lng || 86.9742);
   const [isLocating, setIsLocating] = useState(false);
 
-  const [contactName, setContactName] = useState(userProfile?.name || 'Rahul Sen');
+  const [contactName, setContactName] = useState(userProfile?.name || '');
   const [contactRole, setContactRole] = useState('Volunteer Requester');
-  const [phone, setPhone] = useState(userProfile?.phone || '+91 98320 12345');
+  const [phone, setPhone] = useState(userProfile?.phone || '');
 
   // Validation
   const [errorMsg, setErrorMsg] = useState('');

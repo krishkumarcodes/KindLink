@@ -19,41 +19,28 @@ export type AppView = 'home' | 'requests' | 'map' | 'new' | 'physics' | 'profile
 
 export const DEFAULT_USER: UserProfile = {
   id: 'usr-1',
-  name: 'Rahul Sen',
-  username: 'rahulsen',
-  displayName: 'Rahul Sen',
-  email: 'rahul.sen@aec.wb.gov.in',
-  phone: '+91 98320 12345',
-  college: 'Asansol Engineering College (CSE Dept)',
+  name: '',
+  username: '',
+  displayName: '',
+  email: '',
+  phone: '',
+  college: '',
   avatarUrl: '',
-  homeNeighborhood: 'Kalyanpur Housing, Asansol',
+  homeNeighborhood: '',
   languages: ['Bengali', 'Hindi', 'English'],
-  emergencyContacts: [
-    { id: 'ec-1', name: 'Dr. Amit Sen (Father)', phone: '+91 98320 99887', relationship: 'Father' },
-    { id: 'ec-2', name: 'Riya Sen (Sister)', phone: '+91 94340 11223', relationship: 'Sister' },
-  ],
-  rating: 4.9,
-  ratingCount: 19,
-  helpsCount: 18,
-  requestsCount: 2,
-  hoursVolunteered: 42.5,
-  kilometersTraveled: 68.4,
-  verificationState: 'verified',
-  idDocumentName: 'AEC_Student_ID_2024.pdf',
-  idDocumentType: 'College/Student ID',
-  badges: [
-    'First Help',
-    'Life Saver',
-    'Book Buddy',
-    'Wheel Helper',
-    'Elder Friend',
-    'Quick Responder',
-    'Trusted',
-    'Verified',
-    '7-Day Streak',
-  ],
-  emailVerified: true,
-  phoneVerified: true,
+  emergencyContacts: [],
+  rating: 5.0,
+  ratingCount: 0,
+  helpsCount: 0,
+  requestsCount: 0,
+  hoursVolunteered: 0,
+  kilometersTraveled: 0,
+  verificationState: 'unverified',
+  idDocumentName: '',
+  idDocumentType: '',
+  badges: [],
+  emailVerified: false,
+  phoneVerified: false,
 };
 
 interface KindLinkState {
@@ -116,6 +103,7 @@ export const useKindLinkStore = create<KindLinkState>()(
       requests: [],
       userProfile: DEFAULT_USER,
       notifications: [],
+      unreadNotificationCount: 0,
       currentView: 'home',
       selectedRequestId: null,
       activeFeedTab: 'urgent',
@@ -204,8 +192,11 @@ export const useKindLinkStore = create<KindLinkState>()(
       fetchLiveNotifications: async () => {
         try {
           const notifs = await dataAdapter.getNotifications();
-          if (notifs && notifs.length > 0) {
-            set({ notifications: notifs });
+          if (notifs) {
+            set({
+              notifications: notifs,
+              unreadNotificationCount: notifs.filter((n) => n.unread).length,
+            });
           }
         } catch {
           // Handled
@@ -389,8 +380,10 @@ export const useKindLinkStore = create<KindLinkState>()(
         try {
           await dataAdapter.markNotificationRead(id);
         } catch {}
+        const updated = notifications.map((n) => (n.id === id ? { ...n, unread: false } : n));
         set({
-          notifications: notifications.map((n) => (n.id === id ? { ...n, unread: false } : n)),
+          notifications: updated,
+          unreadNotificationCount: updated.filter((n) => n.unread).length,
         });
       },
 
@@ -401,33 +394,44 @@ export const useKindLinkStore = create<KindLinkState>()(
         } catch {}
         set({
           notifications: notifications.map((n) => ({ ...n, unread: false })),
+          unreadNotificationCount: 0,
         });
       },
 
       addNotification: (notif) => {
         const { notifications } = get();
+        const updated = [notif, ...notifications];
         set({
-          notifications: [notif, ...notifications],
+          notifications: updated,
+          unreadNotificationCount: updated.filter((n) => n.unread).length,
         });
       },
     }),
     {
       name: 'kindlink-storage',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
       migrate: (persistedState: any, version: number) => {
-        if (version < 2) {
+        const persistedNotifs = persistedState?.notifications || [];
+        const isOldMock =
+          persistedState?.userProfile?.name === 'Rahul Sen' ||
+          persistedState?.userProfile?.name === 'Community Member';
+
+        if (version < 3 || isOldMock) {
           return {
             ...persistedState,
-            requests: [],
-            liveStats: null,
-            userProfile:
-              persistedState?.userProfile?.name === 'Rahul Sen'
-                ? DEFAULT_USER
-                : persistedState?.userProfile || DEFAULT_USER,
+            requests: version < 2 ? [] : persistedState?.requests || [],
+            liveStats: version < 2 ? null : persistedState?.liveStats || null,
+            unreadNotificationCount: persistedNotifs.filter((n: any) => n.unread).length,
+            userProfile: isOldMock
+              ? DEFAULT_USER
+              : persistedState?.userProfile || DEFAULT_USER,
           };
         }
-        return persistedState;
+        return {
+          ...persistedState,
+          unreadNotificationCount: persistedNotifs.filter((n: any) => n.unread).length,
+        };
       },
     }
   )

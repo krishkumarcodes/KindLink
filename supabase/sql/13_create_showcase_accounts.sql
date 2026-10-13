@@ -65,7 +65,12 @@ BEGIN
   WHERE p.id != NEW.requester_id
     AND p.verification_status = 'verified'
     AND p.home_location IS NOT NULL
-    AND extensions.ST_DWithin(p.home_location, NEW.location, 10000.0::double precision);
+    AND NEW.location IS NOT NULL
+    AND ST_DWithin(
+      p.home_location::geography,
+      NEW.location::geography,
+      10000.0
+    );
 
   RETURN NEW;
 EXCEPTION

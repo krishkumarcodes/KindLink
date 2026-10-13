@@ -444,8 +444,22 @@ class SupabaseDataAdapter implements DataAdapter {
         });
         if (res.ok) {
           const json = await res.json();
-          if (json.success && json.data) {
-            return json.data;
+          if (json.helpers !== undefined || (json.success && json.data)) {
+            const d = json.data || {};
+            const trustVal =
+              json.satisfaction_pct !== undefined
+                ? json.satisfaction_pct
+                : d.trustMatchPercentage ?? d.trustMatchPercent ?? null;
+            return {
+              helpersNearby: json.helpers ?? d.helpersNearby ?? 0,
+              avgResponseMinutes:
+                json.avg_response_min !== undefined ? json.avg_response_min : (d.avgResponseMinutes ?? null),
+              actsOfHelp: json.requests_completed ?? d.actsOfHelp ?? 0,
+              trustMatchPercentage: trustVal,
+              trustMatchPercent: trustVal,
+              activeRequests: json.active_requests ?? d.activeRequests ?? 0,
+              updatedAt: new Date().toISOString(),
+            };
           }
         }
       }
@@ -512,6 +526,8 @@ class SupabaseDataAdapter implements DataAdapter {
     return {
       id: profile.id,
       name: profile.display_name || profile.username,
+      displayName: profile.display_name || profile.username,
+      username: profile.username,
       email: user.email || '',
       phone: profile.phone || '',
       college: 'Asansol Engineering College',
@@ -649,37 +665,72 @@ class SupabaseDataAdapter implements DataAdapter {
     if (!user) return { success: false };
 
     const token = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `sos_${Date.now()}`;
-    await supabase.from('sos_events').insert({
+    const { data, error } = await supabase.from('sos_events').insert({
       user_id: user.id,
+      token,
       location: `POINT(${lng} ${lat})`,
+      address_text: addressText || 'Asansol Region',
       status: 'active',
-    });
+    }).select().maybeSingle();
 
-    return { success: true, token };
+    if (error) {
+      return { success: false };
+    }
+
+    return {
+      success: true,
+      token,
+      event: data
+        ? {
+            id: data.id,
+            userId: data.user_id,
+            token: data.token || token,
+            latitude: lat,
+            longitude: lng,
+            addressText: data.address_text || addressText || 'Asansol Region',
+            status: 'active',
+            createdAt: data.created_at || new Date().toISOString(),
+            expiresAt: data.expires_at || new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
+          }
+        : undefined,
+    };
   }
 
   async getSosByToken(token: string): Promise<SosEvent | null> {
     const supabase = this.getSupabase();
-    const { data, error } = await supabase
-      .from('sos_events')
-      .select('*')
-      .eq('id', token)
-      .maybeSingle();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token);
+
+    const query = supabase.from('sos_events').select('*, profiles(name, phone)');
+    const { data, error } = isUuid
+      ? await query.or(`token.eq.${token},id.eq.${token}`).maybeSingle()
+      : await query.eq('id', token).maybeSingle();
 
     if (error || !data) {
       return null;
+    }
+
+    let lat = ASANSOL_CENTER.lat;
+    let lng = ASANSOL_CENTER.lng;
+    if (typeof data.location === 'string' && data.location.includes('POINT')) {
+      const match = data.location.match(/POINT\(([^ ]+)\s+([^)]+)\)/);
+      if (match) {
+        lng = parseFloat(match[1]);
+        lat = parseFloat(match[2]);
+      }
     }
 
     return {
       id: data.id,
       userId: data.user_id,
       token: data.token || data.id,
-      latitude: ASANSOL_CENTER.lat,
-      longitude: ASANSOL_CENTER.lng,
+      latitude: lat,
+      longitude: lng,
       addressText: data.address_text || 'Asansol Region',
       status: data.status,
       createdAt: data.created_at,
       expiresAt: data.expires_at || new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
+      userName: data.profiles?.name || 'KindLink Citizen',
+      userPhone: data.profiles?.phone || '+91 98320 00000',
     };
   }
 
