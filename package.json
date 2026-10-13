@@ -1,6 +1,14 @@
 {
-  "name": "kindlink",
+  "name": "@krishkumarcodes/kindlink",
   "version": "1.0.0",
+  "description": "Hyper-local community mutual aid and emergency response platform",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krishkumarcodes/KindLink.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "license": "MIT",
   "scripts": {
     "dev": "node ./node_modules/next/dist/bin/next dev",
