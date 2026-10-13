@@ -8,6 +8,7 @@
 </p>
 
 <p align="center">
+  <a href="https://kindlink-gd8e.onrender.com"><img src="https://img.shields.io/badge/Live_Site-kindlink--gd8e.onrender.com-0D9488?style=for-the-badge&logo=render&logoColor=white" alt="Live Production Site" /></a>
   <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js-14.2%20App%20Router-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js 14" /></a>
   <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5.6-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
   <a href="https://supabase.com"><img src="https://img.shields.io/badge/Supabase-PostgreSQL%20%2B%20RLS-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" /></a>
@@ -15,7 +16,6 @@
   <a href="https://tailwindcss.com"><img src="https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" /></a>
   <a href="#-physics-engine-breakdown"><img src="https://img.shields.io/badge/Physics_Engine-Antigravity%20Newtonian-FF6B6B?style=for-the-badge&logo=atom&logoColor=white" alt="Antigravity Physics Engine" /></a>
   <a href="https://docker.com"><img src="https://img.shields.io/badge/Docker-Node%2022%20Alpine-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" /></a>
-  <a href="https://render.com"><img src="https://img.shields.io/badge/Deploy-Render%20Cloud-46E3B7?style=for-the-badge&logo=render&logoColor=white" alt="Render" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="MIT License" /></a>
 </p>
 
@@ -224,38 +224,30 @@ For academic grading, portfolio evaluations, and live project presentations, Kin
 
 ## 🛠️ How to Run the Showcase SQL
 
-Follow these steps in your Supabase project to purge legacy mock rows and provision verified showcase accounts:
+Follow these steps in your Supabase project to execute the database migrations and provision verified showcase accounts:
 
-### Step 1: Open Supabase SQL Editor
-1. Log in to your [Supabase Dashboard](https://supabase.com/dashboard).
-2. Select your KindLink project.
-3. In the left-hand navigation sidebar, click on **SQL Editor** (icon: `>_`).
+### Method A: Single Atomic Master Run (Recommended)
+Execute [`supabase/sql/all_in_one_v2.sql`](supabase/sql/all_in_one_v2.sql) — a complete, fully idempotent migration wrapped in an atomic `BEGIN ... COMMIT` transaction:
+1. Log in to your [Supabase Dashboard](https://supabase.com/dashboard) and select your KindLink project.
+2. In the left navigation sidebar, click on **SQL Editor** (icon: `>_`) -> **+ New query**.
+3. Open [`supabase/sql/all_in_one_v2.sql`](supabase/sql/all_in_one_v2.sql), copy its entire content, paste it into the editor, and click **Run**.
+4. **What this accomplishes in one single execution:**
+   - ✅ Activates `uuid-ossp`, `pgcrypto`, and `postgis` with custom tolerance cast overloads.
+   - ✅ Creates and verifies all tables: `profiles`, `requests`, `offers`, `notifications`, `ratings`, `reports`, `sos_events`, `active_transit_locations`, `emergency_contacts`, `user_badges`, `auth_otps`, `push_subscriptions`.
+   - ✅ Applies PostGIS GiST spatial indexes and performance B-Tree indexes.
+   - ✅ Deploys the Help Gravity engine, notification triggers, and RLS security policies.
+   - ✅ Provisions the 3 official showcase demo accounts (`kind_volunteer`, `need_aid`, `admin_kindlink`).
+   - ✅ Deploys the `live_stats(p_lat, p_lng, p_radius_km)` RPC engine for real-time community pulse indicators.
+   - ✅ Deploys `get_email_by_username()` RPC for universal identifier authentication.
+   - ✅ Purges leftover test/dummy data while preserving genuine users and showcase accounts.
 
-### Step 2 (Optional Cleanup): Execute `12_cleanup_demo_users.sql`
-To wipe any old conflicting test accounts, test admins, or orphaned requests:
-1. Click **+ New query**.
-2. Open the file [`supabase/sql/12_cleanup_demo_users.sql`](supabase/sql/12_cleanup_demo_users.sql) in this repository and copy its entire contents.
-3. Paste the SQL into the Supabase query editor and click **Run** (or press `Ctrl+Enter` / `Cmd+Enter`).
-4. **Expected Result**: Successfully removes old demo users with a confirmation notice:
-   ```text
-   Cleaned up X demo/test user accounts and all associated data.
-   ```
+---
 
-### Step 3: Execute `13_create_showcase_accounts.sql`
-To provision the verified showcase accounts and seed interactive demo requests:
-1. Click **+ New query**.
-2. Open the file [`supabase/sql/13_create_showcase_accounts.sql`](supabase/sql/13_create_showcase_accounts.sql) in this repository and copy its entire contents.
-3. Paste the SQL into the Supabase query editor and click **Run**.
-4. **Expected Result**: 
-   - Provisions `kind_volunteer`, `need_aid`, and `admin_kindlink` in `auth.users` with pre-confirmed email status.
-   - Synchronizes `public.profiles` with verified volunteer badges and admin privileges.
-   - Creates a sample emergency blood donation request in Asansol (`b0000000-0000-0000-0000-000000000001`).
-   - Returns a confirmation table displaying the newly provisioned accounts:
-     ```text
-     kind_volunteer | volunteer@kindlink.demo | verified | user
-     need_aid       | requester@kindlink.demo | verified | user
-     admin_kindlink | admin@kindlink.demo     | verified | admin
-     ```
+### Method B: Incremental Upgrade Migrations (For Existing Databases)
+If you already applied the base schema (`01` through `13`), execute these upgrade files in sequence:
+1. **`14_comprehensive_live_upgrade.sql`**: Deploys SOS live tracking, volunteer heartbeat, `live_stats` function, and real-time publications.
+2. **`15_cleanup_test_data.sql`**: Safely purges legacy placeholder requests and test accounts while preserving showcase accounts.
+3. **`16_login_signup_helpers.sql`**: Provisions `get_email_by_username()` RPC and username unique constraint indexing.
 
 ---
 
@@ -321,22 +313,19 @@ flowchart TD
 
 ---
 
-## 🌐 Multilingual System (7 Regional Languages)
+## 🌐 Native Multilingual Engine (34 Languages & Dialects)
 
-To serve diverse communities across West Bengal, Jharkhand, and Bihar, KindLink features an integrated zero-flicker translation engine covering 7 key regional languages:
+KindLink features a high-performance native JSON dictionary internationalization engine (`lib/i18n/dictionaries/`) with zero external API dependencies for core UI elements, complete layout mirroring for Right-to-Left (**RTL**) scripts, and locale persistence in HTTP cookies.
 
-| Language | Code | Script / Layout | Regional Focus |
-| :--- | :--- | :--- | :--- |
-| **English** | `en` | Latin (LTR) | Default International |
-| **हिन्दी (Hindi)** | `hi` | Devanagari (LTR) | Jharkhand, Dhanbad, Asansol Urban |
-| **বাংলা (Bengali)** | `bn` | Bengali (LTR) | West Bengal, Asansol, Durgapur, Burdwan |
-| **भोजपुरी (Bhojpuri)** | `bho` | Devanagari (LTR) | Coalfield & Migrant Worker Belt |
-| **मैथिली (Maithili)** | `mai` | Devanagari (LTR) | Northern & Eastern Migrant Communities |
-| **नेपाली (Nepali)** | `ne` | Devanagari (LTR) | Gorkha & Sub-Himalayan Transit |
-| **اردو (Urdu)** | `ur` | Nastaliq / Perso-Arabic (**RTL**) | Asansol Central, Burnpur Old Town |
+### Language Coverage Overview:
+- 🇮🇳 **17 Scheduled & Regional Indian Languages**: English, हिन्दी (Hindi), বাংলা (Bengali), भोजपुरी (Bhojpuri), मैथिली (Maithili), नेपाली (Nepali), اردو (Urdu - **RTL**), ᱥᱟᱱᱛᱟᱲᱤ (Santali Ol Chiki), ଓଡ଼ିଆ (Odia), অসমীয়া (Assamese), मराठी (Marathi), ગુજરાતી (Gujarati), ਪੰਜਾਬੀ (Punjabi), தமிழ் (Tamil), తెలుగు (Telugu), ಕನ್ನಡ (Kannada), മലയാളം (Malayalam).
+- ⛏️ **5 Jharkhand & Tribal Dialects (Beta)**: नागपुरी (Nagpuri), खोरठा (Khortha), कुड़ुख़ (Kurukh), मुंडारी (Mundari), हो (Ho).
+- 🌍 **12 International Languages**: French, Spanish, German, Portuguese, Italian, Russian, Chinese Simplified (简体中文), Japanese (日本語), Korean (한국어), Arabic (العربية - **RTL**), Indonesian, Turkish.
 
-- **Virtual DOM Protection**: Patches `Node.prototype.removeChild` and `insertBefore` against DOM mismatch crashes caused by external translation modifications.
-- **Bi-directional Support**: Automated switching between LTR and RTL styling based on active locale.
+### Key Internationalization Features:
+- **Zero Translation Flicker**: Native pre-compiled JSON dictionaries load instantly on user selection.
+- **Bi-Directional Layouts**: Automatic `dir="rtl"` layout flipping for Urdu (`ur`) and Arabic (`ar`).
+- **Dynamic Content Safeguards**: Scoped UI containers with `translate="no"` attributes to prevent external browser translation widgets from corrupting sensitive buttons, emergency contact numbers, or blood donation groups.
 
 ---
 
@@ -424,68 +413,57 @@ KindLink/
 ├── app/                              # Next.js 14 App Router Directory
 │   ├── admin/                        # Super Admin Moderation Portal
 │   ├── api/                          # Next.js Server Route Handlers
-│   │   ├── admin/                    # Protected Admin APIs
-│   │   │   ├── reports/route.ts      # Incident & Moderation Reports API
-│   │   │   └── verifications/route.ts# Government ID Verification API
-│   │   ├── auth/                     # Authentication Endpoints
-│   │   │   ├── change-password/      # Authenticated Password Reset
-│   │   │   ├── check-username/       # Debounced Username Availability Check
-│   │   │   ├── login/route.ts        # Identifier & Password Login
-│   │   │   ├── logout/route.ts       # Session Termination
-│   │   │   └── signup/route.ts       # Registration & Profile Init
+│   │   ├── admin/                    # Protected Admin APIs (reports, verifications)
+│   │   ├── auth/                     # Authentication Endpoints (login, signup, OTP, resolve)
+│   │   ├── sos/[token]/              # Realtime SOS Emergency Polling Endpoint
+│   │   ├── stats/live/               # Realtime Live Community Pulse RPC Endpoint
 │   │   └── health/route.ts           # Docker & Render Health Check Endpoint
-│   ├── login/page.tsx                # Universal Sign-in Page
+│   ├── app/page.tsx                  # Authenticated Interactive Radar & Core App
+│   ├── login/page.tsx                # Universal Sign-in Page (Email & Username)
 │   ├── signup/page.tsx               # Citizen Registration Page
+│   ├── sos/[token]/page.tsx          # Public Unauthenticated SOS Live Tracking Page
 │   ├── layout.tsx                    # Root HTML, Fonts & Providers Layout
-│   ├── page.tsx                      # Primary Single-Page Interactive Shell
+│   ├── page.tsx                      # Statically Rendered Public Landing Page
 │   └── globals.css                   # Tailwind Base Directives & Animations
 ├── components/                       # Modular React UI Components
-│   ├── home/                         # Dashboard, Stats & Hero Cards
+│   ├── auth/                         # Inline & Dedicated Auth Modals & Forms
+│   ├── home/                         # Realtime Stats Pulse & Feed Cards
 │   ├── map/                          # Leaflet GIS Radar & Dynamic Markers
-│   ├── onboarding/                   # First-Time User Orientation
 │   ├── physics/                      # Interactive Physics Lab & Gravity Simulator
-│   ├── profile/                      # User Profile, Badges & History
+│   ├── profile/                      # User Profile, Badges, Impact & Verification
 │   ├── requests/                     # Urgent Requests List & Filter Engine
-│   ├── settings/                     # Regional Language, Theme & Audio Controls
-│   ├── shell/                        # Bottom Navigation Bar & Top Header
+│   ├── shell/                        # Header (SOS Pill, Location Chip), Bottom Nav
 │   └── wizard/                       # Multi-step Urgent Request Creation Modal
-├── docs/                             # Documentation & Setup Manuals
-│   └── SETUP_GUIDE.md                # 500+ Line Supabase & Operations Guide
 ├── lib/                              # Core Utility & Service Layer
-│   ├── auth/                         # Rate Limiting & Username Validators
 │   ├── data/                         # Data Adapters & Physics Mechanics
 │   │   ├── adapter.ts                # Abstract Data Adapter Interface
 │   │   ├── mock-adapter.ts           # In-Memory Offline Storage Engine
-│   │   ├── mock-requests.ts          # Regional Seed Data Generator
 │   │   ├── physics.ts                # Help Gravity & Haversine Implementations
 │   │   ├── supabase-adapter.ts       # Live Supabase Production Client Adapter
 │   │   └── types.ts                  # Domain TypeScript Types & Models
-│   ├── store/                        # Zustand Global State Management
-│   ├── supabase/                     # Supabase Client, Server & Admin Factories
-│   └── translate/                    # Google Translate Engine Bridge
-├── public/                           # Static Assets, PWA Icons & Fallbacks
+│   ├── i18n/                         # Native 34-Language JSON Dictionary Engine
+│   ├── store/                        # Zustand Global State Management (v3)
+│   └── supabase/                     # Supabase Client, Server, Admin & Realtime
 ├── supabase/                         # Supabase Database Migrations
-│   ├── sql/                          # Ordered Database Migrations (01 to 13)
-│   │   ├── 01_extensions.sql         # PostGIS Extension Activation
+│   ├── sql/                          # Ordered Database Migrations (01 to 16)
+│   │   ├── 01_extensions.sql         # PostGIS Extension & Cast Overloads
 │   │   ├── 02_types.sql              # Enums (help_category, request_status)
 │   │   ├── 03_tables.sql             # Relational Schema Definition
-│   │   ├── 04_indexes.sql            # Spatial & B-tree Performance Indexes
+│   │   ├── 04_indexes.sql            # Spatial GiST & B-tree Indexes
 │   │   ├── 05_functions.sql          # Stored Procedures & Physics Scoring
-│   │   ├── 06_triggers.sql           # Updated-At & Auto-Profile Triggers
+│   │   ├── 06_triggers.sql           # PostGIS-Safe Dispatch Triggers
 │   │   ├── 07_rls_policies.sql       # Row Level Security Policies
-│   │   ├── 08_storage.sql            # Storage Bucket & Access Rules
-│   │   ├── 09_realtime.sql           # Realtime Publications
-│   │   ├── 10_make_me_admin.sql      # Admin Promotion Utility
 │   │   ├── 12_cleanup_demo_users.sql # Safe Demo User Purge Script
 │   │   ├── 13_create_showcase_accounts.sql # Showcase Credential Provisioning
-│   │   └── all_in_one.sql            # Consolidated Single-Run Migration
-├── .env.example                      # Environment Variable Template
-├── .env.render                       # Pre-configured Render Deployment Config
+│   │   ├── 14_comprehensive_live_upgrade.sql # Realtime Platform Upgrade
+│   │   ├── 15_cleanup_test_data.sql  # Safe Purge of Legacy Test Data
+│   │   ├── 16_login_signup_helpers.sql # Username Authentication Helper RPC
+│   │   ├── all_in_one.sql            # Consolidated Single-Run Migration
+│   │   └── all_in_one_v2.sql         # Master Atomic Migration (BEGIN...COMMIT)
 ├── Dockerfile                        # Multi-Stage Node 22 Alpine Build
 ├── package.json                      # Dependencies & Scripts
 ├── render.yaml                       # Render Infrastructure as Code Blueprint
-├── tailwind.config.ts                # Custom Design Tokens & Colors
-└── tsconfig.json                     # Strict TypeScript Configuration
+└── tailwind.config.ts                # Custom Design Tokens & Colors
 ```
 
 ---
@@ -495,10 +473,15 @@ KindLink/
 | Method | Endpoint | Auth Required | Description |
 | :--- | :--- | :---: | :--- |
 | `GET` | `/api/health` | ❌ No | Health check returning status `ok`, timestamp, and environment. Used by Docker & Render. |
+| `GET` | `/api/stats/live` | ❌ No | Returns live community stats (active helpers, median response time, completed acts, trust %). |
+| `POST` | `/api/auth/resolve-identifier` | ❌ No | Resolves an entered username or email to valid authentication credentials. |
+| `GET` | `/api/sos/[token]` | ❌ No | Streams live emergency location, elapsed time, and status for a given SOS token link. |
 | `POST` | `/api/auth/login` | ❌ No | Authenticates via email or username with rate limiting and returns a signed Supabase session. |
 | `POST` | `/api/auth/signup` | ❌ No | Registers a new account, validates username availability, and provisions public profile. |
 | `POST` | `/api/auth/logout` | ❌ No | Clears active authentication cookies and terminates user session. |
 | `GET` | `/api/auth/check-username` | ❌ No | Debounced verification checking whether a candidate username is unique and valid. |
+| `POST` | `/api/auth/otp/send` | ❌ No | Generates and transmits a secure 6-digit numeric verification OTP with 10-minute expiry. |
+| `POST` | `/api/auth/otp/verify` | ❌ No | Validates 6-digit verification OTP against active rate-limited challenges. |
 | `POST` | `/api/auth/change-password` | ✅ Yes | Validates current password and updates to a new password with session revocation options. |
 | `GET` | `/api/admin/reports` | 🛡️ Admin | Retrieves reported incidents, flagging reasons, and community moderation queue. |
 | `POST` | `/api/admin/reports` | 🛡️ Admin | Actions incident reports (mark resolved, dismiss, or apply moderator actions). |

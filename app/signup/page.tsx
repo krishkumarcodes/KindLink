@@ -2,7 +2,7 @@
 
 import React, { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
-import { AuthPageContent } from '../login/page';
+import { AuthPageContent } from '@/components/auth/AuthPageContent';
 
 export default function SignUpPage() {
   return (
