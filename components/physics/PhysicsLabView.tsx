@@ -16,6 +16,10 @@ import {
   Car,
   Bike,
   Footprints,
+  Gauge,
+  Timer,
+  Route,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { HelpCategory, TravelMode } from '@/lib/data/types';
@@ -37,6 +41,7 @@ export function PhysicsLabView() {
   const [pointA, setPointA] = useState({ name: 'Asansol Engineering College', lat: 23.6889, lng: 86.9661 });
   const [pointB, setPointB] = useState({ name: 'Asansol District Hospital', lat: 23.6845, lng: 86.9742 });
   const [selectedTravelMode, setSelectedTravelMode] = useState<TravelMode>('bike');
+  const [customSpeed, setCustomSpeed] = useState<number>(15);
 
   const calculatedDistance = calculateHaversineDistance(
     pointA.lat,
@@ -44,7 +49,7 @@ export function PhysicsLabView() {
     pointB.lat,
     pointB.lng
   );
-  const calculatedETA = calculateETA(calculatedDistance, selectedTravelMode);
+  const calculatedETA = Math.max(1, Math.round((calculatedDistance / Math.max(1, customSpeed)) * 60));
 
   // -------------------------------------------------------------
   // FEATURE B: HELP GRAVITY SIMULATOR
@@ -200,6 +205,15 @@ export function PhysicsLabView() {
   };
 
   const triggerFallAlert = () => {
+    // Haptic feedback when simulated or real fall detection triggers
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate([200, 100, 200]);
+      } catch (err) {
+        // Haptic feedback might be blocked without gesture or on unsupported hardware
+      }
+    }
+
     setCountdownActive(true);
     setSecondsRemaining(10);
 
@@ -212,6 +226,11 @@ export function PhysicsLabView() {
           setCountdownActive(false);
           const { userCoords } = useKindLinkStore.getState();
           dataAdapter.submitSos(userCoords.lat, userCoords.lng).catch(() => {});
+          if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+            try {
+              navigator.vibrate([400, 150, 400]);
+            } catch (err) {}
+          }
           toast.error('Emergency SOS Beacon Triggered!', {
             description: 'Automated fall detection broadcasted alert to nearby KindLink helpers.',
           });
@@ -224,6 +243,11 @@ export function PhysicsLabView() {
   };
 
   const cancelFallAlert = () => {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate(50);
+      } catch (err) {}
+    }
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     setCountdownActive(false);
     toast.success('Fall alert cancelled - glad you are safe!');
@@ -253,83 +277,147 @@ export function PhysicsLabView() {
       </div>
 
       {/* FEATURE A: HAVERSINE & KINEMATICS */}
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-5">
-        <div className="flex items-center justify-between border-b border-border pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+      <div className="rounded-3xl border border-border/80 bg-card/85 dark:bg-card/75 backdrop-blur-md p-6 sm:p-7 shadow-lg space-y-6 hover:border-teal-500/40 transition-all duration-300">
+        <div className="flex items-center justify-between border-b border-border/70 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 shadow-sm">
               <Compass className="h-5 w-5 notranslate" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-foreground">
-                Feature A: Great-Circle Haversine & Kinematics
+                Feature A: Great-Circle Haversine &amp; Kinematics
               </h2>
               <p className="text-xs text-muted-foreground">
-                Spherical trigonometry distance & arrival time (v = d / t)
+                Spherical trigonometry distance &amp; kinematic arrival velocity (v = d / t &rarr; t = d / v)
               </p>
             </div>
           </div>
-          <span className="text-xs font-mono font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">
+          <span className="text-xs font-mono font-bold text-teal-600 dark:text-teal-400 bg-teal-500/10 border border-teal-500/20 px-3 py-1 rounded-full shadow-xs">
             R = 6,371 km
           </span>
         </div>
 
         {/* Formula Representation */}
-        <div className="p-4 rounded-2xl bg-muted/50 border border-border">
-          <div className="font-mono text-xs sm:text-sm text-center text-foreground font-semibold notranslate">
-            d = 2R · arcsin(√(sin²(Δφ/2) + cos φ₁ · cos φ₂ · sin²(Δλ/2)))
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/90 dark:bg-slate-950/95 border border-teal-500/30 shadow-xl text-slate-100 space-y-2">
+          <div className="flex items-center justify-between text-[11px] text-teal-400 uppercase tracking-wider font-semibold">
+            <span className="flex items-center gap-1.5 font-sans">
+              <Sparkles className="h-3.5 w-3.5" />
+              Haversine Formulation
+            </span>
+            <span className="font-sans text-slate-400">Earth Curvature Baseline</span>
           </div>
-          <div className="mt-2 text-center font-mono text-xs text-primary notranslate">
-            ETA = distance / speed = {calculatedDistance} km ÷{' '}
-            {selectedTravelMode === 'walking' ? '5 km/h' : selectedTravelMode === 'bike' ? '15 km/h' : '30 km/h'}
-            {' = '}
-            <strong>{formatETA(calculatedETA)}</strong>
+          <div className="font-mono text-xs sm:text-sm text-center text-teal-200 font-bold notranslate py-1 overflow-x-auto">
+            d = 2R &middot; arcsin(&radic;(sin&sup2;(&Delta;&phi;/2) + cos &phi;&sub1; &middot; cos &phi;&sub2; &middot; sin&sup2;(&Delta;&lambda;/2)))
+          </div>
+          <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-center gap-2 text-xs font-mono text-slate-300 notranslate">
+            <span>ETA = {calculatedDistance} km &divide; {customSpeed} km/h =</span>
+            <span className="px-2.5 py-0.5 rounded-lg bg-teal-500/20 border border-teal-500/40 text-teal-300 font-bold">
+              {formatETA(calculatedETA)}
+            </span>
           </div>
         </div>
 
         {/* Interactive Travel Modes */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {(['walking', 'bike', 'car'] as TravelMode[]).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setSelectedTravelMode(mode)}
-              className={`p-3.5 rounded-2xl border text-left transition touch-target flex items-center justify-between ${
-                selectedTravelMode === mode
-                  ? 'border-primary bg-primary/10 font-bold text-primary shadow-xs'
-                  : 'border-border bg-background text-foreground hover:bg-muted'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                {mode === 'walking' && <Footprints className="h-4 w-4 notranslate" />}
-                {mode === 'bike' && <Bike className="h-4 w-4 notranslate" />}
-                {mode === 'car' && <Car className="h-4 w-4 notranslate" />}
-                <span className="text-xs capitalize">{mode} ({mode === 'walking' ? '5 km/h' : mode === 'bike' ? '15 km/h' : '30 km/h'})</span>
-              </div>
-              <span className="text-xs font-black">{formatETA(calculateETA(calculatedDistance, mode))}</span>
-            </button>
-          ))}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <Route className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+              <span>Select Mode of Transit (Preset Velocity)</span>
+            </span>
+            <span className="text-[11px] text-teal-600 dark:text-teal-400">Dynamic Kinematic Models</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {[
+              { mode: 'walking' as TravelMode, speed: 5, label: 'Walking', icon: Footprints, tooltip: 'Urban sidewalk pace (5 km/h)' },
+              { mode: 'bike' as TravelMode, speed: 15, label: 'Bicycle / E-Bike', icon: Bike, tooltip: 'Asansol arterial lanes (15 km/h)' },
+              { mode: 'car' as TravelMode, speed: 30, label: 'Motor Vehicle / Auto', icon: Car, tooltip: 'GT Road mixed traffic (30 km/h)' },
+            ].map(({ mode, speed, label, icon: ModeIcon, tooltip }) => {
+              const isSelected = selectedTravelMode === mode;
+              const modeETA = Math.max(1, Math.round((calculatedDistance / speed) * 60));
+              return (
+                <button
+                  key={mode}
+                  onClick={() => {
+                    setSelectedTravelMode(mode);
+                    setCustomSpeed(speed);
+                  }}
+                  title={tooltip}
+                  className={`p-4 rounded-2xl border text-left transition-all duration-200 touch-target flex items-center justify-between group hover:-translate-y-0.5 active:scale-[0.98] ${
+                    isSelected
+                      ? 'border-primary bg-primary/10 font-bold text-primary shadow-md ring-2 ring-primary/30'
+                      : 'border-border/80 bg-background/80 hover:bg-muted/70 text-foreground'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-xl transition-transform duration-200 group-hover:scale-110 ${
+                      isSelected ? 'bg-primary text-white shadow-soft' : 'bg-muted text-muted-foreground'
+                    }`}>
+                      <ModeIcon className="h-4 w-4 notranslate" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold block">{label}</span>
+                      <span className="text-[11px] text-muted-foreground font-normal">{speed} km/h baseline</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-black block font-mono">{formatETA(modeETA)}</span>
+                    <span className="text-[10px] text-muted-foreground font-normal">estimated</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Custom Velocity Slider */}
+        <div className="p-4 rounded-2xl bg-muted/40 border border-border/80 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold text-foreground flex items-center gap-1.5">
+              <Gauge className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+              <span>Simulate Custom Velocity Slider (v)</span>
+            </span>
+            <span className="font-mono font-bold text-teal-600 dark:text-teal-400">
+              {customSpeed} km/h &bull; {formatETA(calculatedETA)}
+            </span>
+          </div>
+          <input
+            type="range"
+            min="2"
+            max="60"
+            step="1"
+            value={customSpeed}
+            onChange={(e) => setCustomSpeed(Number(e.target.value))}
+            className="w-full accent-primary h-2 bg-muted rounded-lg cursor-pointer"
+          />
+          <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
+            <span>2 km/h (Pedestrian)</span>
+            <span>15 km/h (Cycle)</span>
+            <span>30 km/h (Auto)</span>
+            <span>60 km/h (Highway)</span>
+          </div>
         </div>
 
         {/* Points between AEC and Asansol Hospital */}
-        <div className="p-4 rounded-2xl bg-background border border-border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        <div className="p-4 rounded-2xl bg-background/80 dark:bg-card/70 border border-border/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-sm">
           <div>
-            <span className="text-muted-foreground block text-[11px]">Point A (Origin):</span>
-            <strong className="text-foreground">{pointA.name} (23.6889° N, 86.9661° E)</strong>
+            <span className="text-muted-foreground block text-[11px]">Point A (Origin Geofence):</span>
+            <strong className="text-foreground">{pointA.name} (23.6889&deg; N, 86.9661&deg; E)</strong>
           </div>
-          <div className="text-center px-4 py-1.5 rounded-xl bg-primary/10 text-primary font-bold">
-            ↔ {calculatedDistance} km
+          <div className="text-center px-4 py-1.5 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-700 dark:text-teal-300 font-bold font-mono shadow-xs">
+            &harr; {calculatedDistance} km Great-Circle
           </div>
           <div className="text-right">
-            <span className="text-muted-foreground block text-[11px]">Point B (Destination):</span>
-            <strong className="text-foreground">{pointB.name} (23.6845° N, 86.9742° E)</strong>
+            <span className="text-muted-foreground block text-[11px]">Point B (Destination Geofence):</span>
+            <strong className="text-foreground">{pointB.name} (23.6845&deg; N, 86.9742&deg; E)</strong>
           </div>
         </div>
       </div>
 
       {/* FEATURE B: HELP GRAVITY SIMULATOR */}
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-6">
-        <div className="flex items-center justify-between border-b border-border pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+      <div className="rounded-3xl border border-border/80 bg-card/85 dark:bg-card/75 backdrop-blur-md p-6 sm:p-7 shadow-lg space-y-6 hover:border-teal-500/40 transition-all duration-300">
+        <div className="flex items-center justify-between border-b border-border/70 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 shadow-sm">
               <Sliders className="h-5 w-5 notranslate" />
             </div>
             <div>
@@ -337,50 +425,53 @@ export function PhysicsLabView() {
                 Feature B: Newton-Inspired Help Gravity Simulator
               </h2>
               <p className="text-xs text-muted-foreground">
-                Score = Weight × (1 + 0.05 × t) / (1 + r)² (Inspired by inverse-square gravitation)
+                Score = Weight &times; (1 + 0.05 &times; &Delta;t) / (1 + r)&sup2; (Inverse-Square Gravitational Analogy)
               </p>
             </div>
           </div>
           <div className="text-right">
-            <span className="text-[10px] text-muted-foreground block">Simulated Score</span>
-            <span className="text-2xl font-black text-primary">{liveGravityScore}</span>
+            <span className="text-[10px] text-muted-foreground block font-medium">Live Computed Score</span>
+            <span className="text-2xl font-black text-teal-600 dark:text-teal-400 font-mono">{liveGravityScore}</span>
           </div>
         </div>
 
-        <div className="rounded-2xl bg-muted/40 p-4 border border-border flex items-start gap-2.5 text-xs text-muted-foreground">
-          <Info className="h-4 w-4 text-primary shrink-0 mt-0.5 notranslate" />
+        <div className="rounded-2xl bg-muted/40 p-4 border border-border/80 flex items-start gap-3 text-xs text-muted-foreground leading-relaxed">
+          <Info className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5 notranslate" />
           <p>
-            <strong>Note for Examiners:</strong> This formula is <em>inspired by</em> Newton&apos;s
-            universal law of gravitation (F = G·m₁·m₂/r²), where distance acts as an inverse-square dampener while urgency acts as mass. It models how urgently community volunteers are pulled toward nearby emergencies.
+            <strong className="text-foreground">Examination Note:</strong> This formulation is <em>directly inspired by</em> Newton&apos;s
+            universal law of gravitation (F = G&middot;m&sub1;&middot;m&sub2;/r&sup2;), where geographical distance serves as an inverse-square dampener while urgency category acts as gravitational mass. It models how urgently neighborhood volunteers are drawn toward critical emergencies.
           </p>
         </div>
 
         {/* Interactive Sliders */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-1">
           {/* 1. Category Type Weight Slider */}
-          <div className="space-y-2">
+          <div className="space-y-2 p-3.5 rounded-2xl bg-background/80 dark:bg-card/70 border border-border/80 shadow-xs">
             <div className="flex justify-between text-xs">
-              <span className="font-semibold text-muted-foreground">Type Weight (Mass m₁)</span>
-              <span className="font-bold text-primary">{liveWeight} / 10</span>
+              <span className="font-semibold text-muted-foreground">Type Weight (Mass m&sub1;)</span>
+              <span className="font-bold text-teal-600 dark:text-teal-400 font-mono">{liveWeight} / 10</span>
             </div>
             <select
               value={simCategory}
               onChange={(e) => setSimCategory(e.target.value as HelpCategory)}
-              className="w-full rounded-xl border border-border bg-background p-2.5 text-xs font-bold text-foreground"
+              className="w-full rounded-xl border border-border/80 bg-background p-2.5 text-xs font-bold text-foreground focus:ring-2 focus:ring-primary/40 focus:outline-none transition-all"
             >
               <option value="blood">Blood Donation (Weight 10)</option>
               <option value="transport">Emergency Transport (Weight 9)</option>
               <option value="elderly">Elderly Care (Weight 6)</option>
               <option value="equipment">Medical Equipment (Weight 5)</option>
-              <option value="books">Books & Study Material (Weight 2)</option>
+              <option value="books">Books &amp; Study Material (Weight 2)</option>
             </select>
+            <span className="text-[10px] text-muted-foreground block">
+              Urgency hierarchy establishes life sensitivity priority
+            </span>
           </div>
 
           {/* 2. Waiting Time Slider */}
-          <div className="space-y-2">
+          <div className="space-y-2 p-3.5 rounded-2xl bg-background/80 dark:bg-card/70 border border-border/80 shadow-xs">
             <div className="flex justify-between text-xs">
-              <span className="font-semibold text-muted-foreground">Waiting Duration (Time Factor)</span>
-              <span className="font-bold text-foreground">{simWaitingTime} min ({liveTimeFactor}x)</span>
+              <span className="font-semibold text-muted-foreground">Waiting Duration (&Delta;t)</span>
+              <span className="font-bold text-foreground font-mono">{simWaitingTime}m ({liveTimeFactor}x)</span>
             </div>
             <input
               type="range"
@@ -391,18 +482,21 @@ export function PhysicsLabView() {
               onChange={(e) => setSimWaitingTime(Number(e.target.value))}
               className="w-full accent-primary h-2 bg-muted rounded-lg cursor-pointer"
             />
-            <div className="flex justify-between text-[10px] text-muted-foreground">
+            <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
               <span>0m</span>
-              <span>60m</span>
-              <span>120m</span>
+              <span>60m (4x)</span>
+              <span>120m (7x)</span>
             </div>
+            <span className="text-[10px] text-muted-foreground block">
+              Time factor (1 + 0.05&Delta;t) prevents neglected requests
+            </span>
           </div>
 
           {/* 3. Distance Proximity Slider */}
-          <div className="space-y-2">
+          <div className="space-y-2 p-3.5 rounded-2xl bg-background/80 dark:bg-card/70 border border-border/80 shadow-xs">
             <div className="flex justify-between text-xs">
-              <span className="font-semibold text-muted-foreground">Distance (Radius r)</span>
-              <span className="font-bold text-foreground">{simDistance} km (r²: {liveDistDenominator})</span>
+              <span className="font-semibold text-muted-foreground">Distance Radius (r)</span>
+              <span className="font-bold text-foreground font-mono">{simDistance} km (r&sup2;: {liveDistDenominator})</span>
             </div>
             <input
               type="range"
@@ -413,49 +507,70 @@ export function PhysicsLabView() {
               onChange={(e) => setSimDistance(Number(e.target.value))}
               className="w-full accent-primary h-2 bg-muted rounded-lg cursor-pointer"
             />
-            <div className="flex justify-between text-[10px] text-muted-foreground">
+            <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
               <span>0.1 km</span>
               <span>10 km</span>
               <span>20 km</span>
             </div>
+            <span className="text-[10px] text-muted-foreground block">
+              Inverse-square (1 + r)&sup2; prioritizes immediate neighbors
+            </span>
           </div>
         </div>
 
-        {/* Live Calculation Gauge */}
-        <div className="p-4 rounded-2xl bg-background border border-border flex items-center justify-between text-xs font-mono">
-          <div>
-            Score = ({liveWeight} × {liveTimeFactor}) ÷ {liveDistDenominator}
+        {/* Live Calculation Panel (Dark Slate with High-Contrast Mathematical Substitution) */}
+        <div className="p-5 rounded-2xl bg-slate-950/90 dark:bg-slate-950/95 border border-teal-500/30 text-slate-100 shadow-xl space-y-3">
+          <div className="flex items-center justify-between text-xs font-semibold text-teal-400">
+            <span className="flex items-center gap-1.5 uppercase tracking-wider font-sans">
+              <Zap className="h-3.5 w-3.5" />
+              Real-Time Mathematical Substitution Panel
+            </span>
+            <span className="text-[10px] text-slate-400 border border-teal-500/20 px-2 py-0.5 rounded-full font-mono">
+              Newtonian Dispatch Model
+            </span>
           </div>
-          <div className="text-primary font-black text-base">
-            = {liveGravityScore}
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-xs">
+            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-teal-500/20">
+              <span className="text-slate-400 text-[10px] block">Numerator: Mass &times; Time</span>
+              <strong className="text-teal-300 text-sm">{liveWeight} &times; {liveTimeFactor} = {(liveWeight * liveTimeFactor).toFixed(2)}</strong>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-teal-500/20">
+              <span className="text-slate-400 text-[10px] block">Denominator: (1 + r)&sup2;</span>
+              <strong className="text-amber-300 text-sm">(1 + {simDistance})&sup2; = {liveDistDenominator}</strong>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-teal-500/20">
+              <span className="text-slate-400 text-[10px] block">Calculated Gravity Score</span>
+              <strong className="text-teal-400 text-base">{liveGravityScore}</strong>
+            </div>
           </div>
         </div>
       </div>
 
       {/* FEATURE C: SENSOR CALIBRATION & FALL DETECTOR */}
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-6">
-        <div className="flex items-center justify-between border-b border-border pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2.5 rounded-xl bg-urgency-critical/10 text-urgency-critical">
+      <div className="rounded-3xl border border-border/80 bg-card/85 dark:bg-card/75 backdrop-blur-md p-6 sm:p-7 shadow-lg space-y-6 hover:border-teal-500/40 transition-all duration-300">
+        <div className="flex items-center justify-between border-b border-border/70 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-urgency-critical/10 text-urgency-critical border border-urgency-critical/20 shadow-sm">
               <Activity className="h-5 w-5 notranslate" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-foreground">
-                Feature C: DeviceMotion Calibration & Fall Detector
+                Feature C: DeviceMotion Calibration &amp; Fall Detector
               </h2>
               <p className="text-xs text-muted-foreground">
-                3-axis accelerometer calibration, low-pass filtering & impact trigger
+                3-axis accelerometer calibration, low-pass filtering (&alpha;=0.3) &amp; haptic impact alert
               </p>
             </div>
           </div>
           <span
-            className={`text-xs px-3 py-1 rounded-full font-bold ${
+            className={`text-xs px-3 py-1 rounded-full font-bold border ${
               calibrated
-                ? 'bg-emerald-500/10 text-emerald-600'
-                : 'bg-amber-500/10 text-amber-600'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
             }`}
           >
-            {calibrated ? 'Calibrated ✓' : 'Uncalibrated'}
+            {calibrated ? 'Calibrated &bull; Offsets Zeroed ✓' : 'Uncalibrated Baseline'}
           </span>
         </div>
 
@@ -464,7 +579,7 @@ export function PhysicsLabView() {
           {sensorPermissionNeeded && (
             <button
               onClick={handleRequestSensorPermission}
-              className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold shadow-soft"
+              className="px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-soft hover:bg-primary/90 transition touch-target"
             >
               Enable Motion Sensors (iOS)
             </button>
@@ -473,7 +588,7 @@ export function PhysicsLabView() {
           <button
             onClick={handleCalibrate}
             disabled={isCalibrating}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-soft hover:bg-primary/90 transition disabled:opacity-50 touch-target"
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-soft transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 touch-target"
           >
             <RotateCcw className={`h-4 w-4 notranslate ${isCalibrating ? 'animate-spin' : ''}`} />
             <span>{isCalibrating ? 'Calibrating (3s)...' : '1. Calibrate 3s Stationary'}</span>
@@ -481,58 +596,117 @@ export function PhysicsLabView() {
 
           <button
             onClick={() => setLowPassFilterEnabled(!lowPassFilterEnabled)}
-            className={`px-4 py-2.5 rounded-xl border text-xs font-bold transition touch-target ${
+            className={`px-4 py-2.5 rounded-xl border text-xs font-bold transition-all hover:-translate-y-0.5 active:scale-95 touch-target ${
               lowPassFilterEnabled
-                ? 'border-primary bg-primary/10 text-primary'
+                ? 'border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-300 shadow-xs'
                 : 'border-border bg-background text-muted-foreground'
             }`}
           >
-            2. Low-Pass Filter: {lowPassFilterEnabled ? 'Active (α=0.3)' : 'Off'}
+            2. Low-Pass Filter: {lowPassFilterEnabled ? 'Active (&alpha;=0.3)' : 'Off (Raw Sensor)'}
           </button>
 
           <button
             onClick={triggerFallAlert}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-urgency-critical text-white text-xs font-bold shadow-soft hover:bg-red-700 transition touch-target"
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-urgency-critical text-white text-xs font-bold shadow-lg shadow-red-900/20 hover:bg-red-700 transition-all hover:-translate-y-0.5 active:scale-95 touch-target"
           >
             <Play className="h-4 w-4 notranslate" />
-            <span>3. Simulate Fall Impact (Spike)</span>
+            <span>3. Simulate Fall Impact (&gt; 22 m/s&sup2;)</span>
           </button>
         </div>
 
-        {/* Live Accelerometer Telemetry */}
+        {/* Live Accelerometer Telemetry Cards (with visual meters and tooltips) */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
-          <div className="p-3 rounded-2xl bg-background border border-border">
-            <span className="text-muted-foreground block text-[10px]">X-Axis (Lateral)</span>
-            <strong className="text-foreground text-sm">{currentAccel.x.toFixed(2)} m/s²</strong>
+          <div className="p-3.5 rounded-2xl bg-background/80 dark:bg-card/70 border border-border/80 hover:border-teal-500/40 transition-all shadow-sm">
+            <div className="flex items-center justify-between text-muted-foreground text-[10px] mb-1">
+              <span>X-Axis (Lateral)</span>
+              <span className="text-[9px] text-teal-600 dark:text-teal-400 font-sans font-medium">Tilt</span>
+            </div>
+            <strong className="text-foreground text-sm font-bold block">{currentAccel.x.toFixed(2)} m/s&sup2;</strong>
+            <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-teal-500 transition-all duration-150"
+                style={{ width: `${Math.min(100, (Math.abs(currentAccel.x) / 15) * 100)}%` }}
+              />
+            </div>
           </div>
-          <div className="p-3 rounded-2xl bg-background border border-border">
-            <span className="text-muted-foreground block text-[10px]">Y-Axis (Longitudinal)</span>
-            <strong className="text-foreground text-sm">{currentAccel.y.toFixed(2)} m/s²</strong>
+
+          <div className="p-3.5 rounded-2xl bg-background/80 dark:bg-card/70 border border-border/80 hover:border-teal-500/40 transition-all shadow-sm">
+            <div className="flex items-center justify-between text-muted-foreground text-[10px] mb-1">
+              <span>Y-Axis (Longitudinal)</span>
+              <span className="text-[9px] text-teal-600 dark:text-teal-400 font-sans font-medium">Pitch</span>
+            </div>
+            <strong className="text-foreground text-sm font-bold block">{currentAccel.y.toFixed(2)} m/s&sup2;</strong>
+            <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-teal-500 transition-all duration-150"
+                style={{ width: `${Math.min(100, (Math.abs(currentAccel.y) / 15) * 100)}%` }}
+              />
+            </div>
           </div>
-          <div className="p-3 rounded-2xl bg-background border border-border">
-            <span className="text-muted-foreground block text-[10px]">Z-Axis (Vertical)</span>
-            <strong className="text-foreground text-sm">{currentAccel.z.toFixed(2)} m/s²</strong>
+
+          <div className="p-3.5 rounded-2xl bg-background/80 dark:bg-card/70 border border-border/80 hover:border-teal-500/40 transition-all shadow-sm">
+            <div className="flex items-center justify-between text-muted-foreground text-[10px] mb-1">
+              <span>Z-Axis (Vertical 1G)</span>
+              <span className="text-[9px] text-teal-600 dark:text-teal-400 font-sans font-medium">Gravity</span>
+            </div>
+            <strong className="text-foreground text-sm font-bold block">{currentAccel.z.toFixed(2)} m/s&sup2;</strong>
+            <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-teal-500 transition-all duration-150"
+                style={{ width: `${Math.min(100, (Math.abs(currentAccel.z) / 15) * 100)}%` }}
+              />
+            </div>
           </div>
-          <div className="p-3 rounded-2xl bg-background border border-border">
-            <span className="text-muted-foreground block text-[10px]">Net Vector Magnitude</span>
-            <strong className="text-primary text-sm">{currentAccel.mag.toFixed(2)} m/s²</strong>
+
+          <div className={`p-3.5 rounded-2xl border transition-all shadow-sm ${
+            currentAccel.mag > 20
+              ? 'border-urgency-critical bg-urgency-critical/10 text-urgency-critical shadow-lg shadow-red-500/20 animate-pulse'
+              : 'bg-background/80 dark:bg-card/70 border-border/80 hover:border-teal-500/40 text-foreground'
+          }`}>
+            <div className="flex items-center justify-between text-muted-foreground text-[10px] mb-1">
+              <span>Net Vector Magnitude</span>
+              <span className="text-[9px] font-sans font-bold text-teal-600 dark:text-teal-400">&radic;(x&sup2;+y&sup2;+z&sup2;)</span>
+            </div>
+            <strong className={`text-sm font-bold block ${currentAccel.mag > 20 ? 'text-urgency-critical' : 'text-teal-600 dark:text-teal-400'}`}>
+              {currentAccel.mag.toFixed(2)} m/s&sup2;
+            </strong>
+            <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-150 ${currentAccel.mag > 20 ? 'bg-red-500' : 'bg-teal-500'}`}
+                style={{ width: `${Math.min(100, (currentAccel.mag / 30) * 100)}%` }}
+              />
+            </div>
           </div>
         </div>
 
-        {/* Live Sparkline Graph */}
-        <div className="p-4 rounded-2xl bg-background border border-border space-y-2">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Live Accelerometer Magnitude Trend (m/s²)</span>
-            <span className="font-mono text-primary">{currentAccel.mag.toFixed(1)} m/s²</span>
+        {/* Live Sparkline Graph with Threshold Marker */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-background/80 dark:bg-card/70 border border-border/80 space-y-2 shadow-sm">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5 font-medium">
+              <Activity className="h-3.5 w-3.5 text-teal-500" />
+              <span>Live Accelerometer Magnitude Trend (m/s&sup2;)</span>
+            </span>
+            <div className="flex items-center gap-3 text-[11px] font-mono">
+              <span className="text-amber-500 flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-amber-500" /> Threshold: 22.0 m/s&sup2;
+              </span>
+              <span className="text-teal-600 dark:text-teal-400 font-bold">{currentAccel.mag.toFixed(1)} m/s&sup2;</span>
+            </div>
           </div>
-          <div className="flex items-end gap-1.5 h-16 pt-2">
+          <div className="relative flex items-end gap-1.5 h-20 pt-2 border-b border-border/60">
+            {/* 22 m/s² Threshold line */}
+            <div className="absolute top-[26%] left-0 right-0 border-b border-dashed border-red-500/50 pointer-events-none z-10 flex justify-end">
+              <span className="text-[9px] font-mono text-red-500/80 bg-background/90 px-1 rounded -translate-y-2.5">
+                Impact Spike &gt; 22 m/s&sup2;
+              </span>
+            </div>
             {history.map((val, idx) => {
               const heightPct = Math.min(100, Math.max(10, (val / 30) * 100));
               const isSpike = val > 20;
               return (
                 <div
                   key={idx}
-                  className="flex-1 rounded-t transition-all duration-150"
+                  className="flex-1 rounded-t transition-all duration-150 relative group"
                   style={{
                     height: `${heightPct}%`,
                     backgroundColor: isSpike ? '#E5484D' : '#0D9488',
@@ -544,32 +718,37 @@ export function PhysicsLabView() {
           </div>
         </div>
 
-        {/* 10-Second Fall Emergency Countdown Modal */}
+        {/* 10-Second Fall Emergency Countdown Modal with Haptic Feedback */}
         {countdownActive && (
-          <div className="p-6 rounded-3xl bg-urgency-critical/10 border-2 border-urgency-critical text-center space-y-4 animate-in zoom-in-95 duration-200">
+          <div className="p-6 rounded-3xl bg-urgency-critical/10 border-2 border-urgency-critical text-center space-y-4 animate-in zoom-in-95 duration-200 shadow-2xl">
             <div className="flex items-center justify-center gap-2 text-urgency-critical">
               <ShieldAlert className="h-8 w-8 animate-bounce notranslate" />
               <h3 className="text-xl font-black">Fall Impact Detected! Are you okay?</h3>
             </div>
             <p className="text-xs text-muted-foreground max-w-md mx-auto">
-              Sudden kinetic deceleration spike registered. Alerting 48 nearby Asansol helpers unless cancelled.
+              Sudden kinetic deceleration spike registered (&gt; 22 m/s&sup2;). Haptic emergency beacon active. Alerting verified Asansol helpers unless cancelled.
             </p>
-            <div className="text-5xl font-black text-urgency-critical font-mono">
+            <div className="text-5xl font-black text-urgency-critical font-mono tracking-tight">
               00:{secondsRemaining < 10 ? `0${secondsRemaining}` : secondsRemaining}
             </div>
             <div className="flex justify-center gap-3">
               <button
                 onClick={cancelFallAlert}
-                className="px-6 py-3 rounded-xl bg-card border border-border text-foreground text-xs font-bold hover:bg-muted transition shadow-sm touch-target"
+                className="px-6 py-3 rounded-xl bg-card border border-border text-foreground text-xs font-bold hover:bg-muted transition-all active:scale-95 shadow-sm touch-target"
               >
                 I Am Safe (Cancel)
               </button>
               <button
                 onClick={() => {
                   setCountdownActive(false);
+                  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+                    try {
+                      navigator.vibrate([400, 150, 400]);
+                    } catch (err) {}
+                  }
                   toast.error('Emergency SOS Dispatched Immediately!');
                 }}
-                className="px-6 py-3 rounded-xl bg-urgency-critical text-white text-xs font-bold hover:bg-red-700 transition shadow-soft touch-target"
+                className="px-6 py-3 rounded-xl bg-urgency-critical text-white text-xs font-bold hover:bg-red-700 transition-all active:scale-95 shadow-soft touch-target"
               >
                 Send SOS Now
               </button>

@@ -18,6 +18,7 @@ import { HelpCategory, HelpRequest, UrgencyLevel } from '@/lib/data/types';
 import { RequestCard } from './RequestCard';
 import { RequestDetailModal } from './RequestDetailModal';
 import { WhyThisRankModal } from './WhyThisRankModal';
+import { HelpFlowModal } from './HelpFlowModal';
 
 export function RequestsView() {
   const {
@@ -35,10 +36,12 @@ export function RequestsView() {
     travelMode,
     selectedRequestId,
     setSelectedRequestId,
+    fetchLiveRequests,
   } = useKindLinkStore();
 
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [whyRankModalReq, setWhyRankModalReq] = useState<HelpRequest | null>(null);
+  const [helpFlowReq, setHelpFlowReq] = useState<HelpRequest | null>(null);
 
   // Selected request for details modal
   const activeDetailRequest = requests.find((r) => r.id === selectedRequestId) || null;
@@ -122,12 +125,14 @@ export function RequestsView() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search blood, wheelchair, medicine..."
-              className="w-full rounded-2xl border border-border bg-card pl-10 pr-4 py-2.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition"
+              className="w-full rounded-2xl border border-border/80 bg-card/90 focus:bg-background pl-10 pr-9 py-2.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-xs"
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-md hover:bg-muted"
+                aria-label="Clear search"
               >
                 <X className="h-4 w-4 notranslate" />
               </button>
@@ -135,11 +140,12 @@ export function RequestsView() {
           </div>
 
           <button
+            type="button"
             onClick={() => setFilterPanelOpen(!filterPanelOpen)}
-            className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl border text-xs font-bold transition touch-target ${
+            className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl border text-xs font-bold transition-all active:scale-95 touch-target ${
               filterCategory !== 'all' || filterUrgency !== 'all' || filterRadius < 25
-                ? 'border-primary bg-primary text-white shadow-soft'
-                : 'border-border bg-card text-foreground hover:bg-muted'
+                ? 'border-primary bg-primary text-white shadow-soft ring-2 ring-primary/20'
+                : 'border-border/80 bg-card text-foreground hover:bg-muted hover:border-border'
             }`}
           >
             <SlidersHorizontal className="h-4 w-4 notranslate" />
@@ -149,59 +155,63 @@ export function RequestsView() {
       </div>
 
       {/* Tabs Row: Most Urgent, Nearest, Newest */}
-      <div className="flex items-center justify-between border-b border-border pb-2">
-        <div className="flex items-center gap-1 sm:gap-2">
+      <div className="flex items-center justify-between border-b border-border/80 pb-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <button
+            type="button"
             onClick={() => setActiveFeedTab('urgent')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition touch-target ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition-all active:scale-95 touch-target ${
               activeFeedTab === 'urgent'
-                ? 'bg-primary text-white shadow-soft'
+                ? 'bg-primary text-white shadow-soft ring-2 ring-primary/20'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted'
             }`}
           >
-            <Flame className="h-4 w-4 notranslate" />
+            <Flame className="h-4 w-4 notranslate text-rose-400" />
             <span>Most Urgent</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveFeedTab('nearest')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition touch-target ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition-all active:scale-95 touch-target ${
               activeFeedTab === 'nearest'
-                ? 'bg-primary text-white shadow-soft'
+                ? 'bg-primary text-white shadow-soft ring-2 ring-primary/20'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted'
             }`}
           >
-            <Navigation className="h-4 w-4 notranslate" />
+            <Navigation className="h-4 w-4 notranslate text-teal-400" />
             <span>Nearest</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveFeedTab('newest')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition touch-target ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition-all active:scale-95 touch-target ${
               activeFeedTab === 'newest'
-                ? 'bg-primary text-white shadow-soft'
+                ? 'bg-primary text-white shadow-soft ring-2 ring-primary/20'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted'
             }`}
           >
-            <Clock className="h-4 w-4 notranslate" />
+            <Clock className="h-4 w-4 notranslate text-blue-400" />
             <span>Newest</span>
           </button>
         </div>
 
-        <span className="text-xs text-muted-foreground font-medium hidden sm:inline">
-          Showing {sortedRequests.length} requests
+        <span className="text-xs text-muted-foreground font-semibold hidden sm:inline">
+          Showing {sortedRequests.length} request{sortedRequests.length === 1 ? '' : 's'}
         </span>
       </div>
 
       {/* Expandable Filter Panel */}
       {filterPanelOpen && (
-        <div className="rounded-3xl border border-border bg-card p-5 shadow-soft space-y-4 animate-in fade-in duration-200">
+        <div className="rounded-3xl border border-border/80 bg-card/95 backdrop-blur-xs p-5 shadow-soft space-y-4 animate-in fade-in duration-200">
           <div className="flex items-center justify-between pb-2 border-b border-border">
             <div className="flex items-center gap-2 text-sm font-bold text-foreground">
               <Filter className="h-4 w-4 text-primary notranslate" />
               <span>Filter Options</span>
             </div>
             <button
+              type="button"
               onClick={() => {
                 setFilterCategory('all');
                 setFilterUrgency('all');
@@ -220,11 +230,12 @@ export function RequestsView() {
               {categories.map((c) => (
                 <button
                   key={c.key}
+                  type="button"
                   onClick={() => setFilterCategory(c.key)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all active:scale-95 ${
                     filterCategory === c.key
-                      ? 'border-primary bg-primary text-white font-bold'
-                      : 'border-border bg-background hover:bg-muted text-foreground'
+                      ? 'border-primary bg-primary text-white font-bold shadow-xs'
+                      : 'border-border/80 bg-background hover:bg-muted text-foreground'
                   }`}
                 >
                   {c.label}
@@ -240,11 +251,12 @@ export function RequestsView() {
               {urgencies.map((u) => (
                 <button
                   key={u.key}
+                  type="button"
                   onClick={() => setFilterUrgency(u.key)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all active:scale-95 ${
                     filterUrgency === u.key
-                      ? 'border-primary bg-primary text-white font-bold'
-                      : 'border-border bg-background hover:bg-muted text-foreground'
+                      ? 'border-primary bg-primary text-white font-bold shadow-xs'
+                      : 'border-border/80 bg-background hover:bg-muted text-foreground'
                   }`}
                 >
                   {u.label}
@@ -279,7 +291,7 @@ export function RequestsView() {
 
       {/* Requests Feed Grid */}
       {sortedRequests.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center shadow-soft">
+        <div className="rounded-3xl border border-dashed border-border/80 bg-card/60 p-12 text-center shadow-soft">
           <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-3 text-muted-foreground">
             <Inbox className="h-8 w-8 notranslate" />
           </div>
@@ -288,13 +300,14 @@ export function RequestsView() {
             Try expanding your distance radius slider or clearing the category and search filters.
           </p>
           <button
+            type="button"
             onClick={() => {
               setSearchQuery('');
               setFilterCategory('all');
               setFilterUrgency('all');
               setFilterRadius(25);
             }}
-            className="mt-5 px-5 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition shadow-soft"
+            className="mt-5 px-5 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition active:scale-95 shadow-soft"
           >
             Clear All Filters
           </button>
@@ -308,6 +321,7 @@ export function RequestsView() {
               travelMode={travelMode}
               onSelect={(r) => setSelectedRequestId(r.id)}
               onWhyRank={(r) => setWhyRankModalReq(r)}
+              onHelp={(r) => setHelpFlowReq(r)}
             />
           ))}
         </div>
@@ -324,6 +338,15 @@ export function RequestsView() {
         request={whyRankModalReq}
         open={Boolean(whyRankModalReq)}
         onClose={() => setWhyRankModalReq(null)}
+      />
+
+      <HelpFlowModal
+        request={helpFlowReq}
+        open={Boolean(helpFlowReq)}
+        onClose={() => setHelpFlowReq(null)}
+        onHelpSubmitted={() => {
+          fetchLiveRequests();
+        }}
       />
     </div>
   );

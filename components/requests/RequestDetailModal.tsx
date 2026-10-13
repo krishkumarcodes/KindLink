@@ -182,6 +182,26 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     }
   }, [open, request, loadContact, loadOffers, checkTransitLocation]);
 
+  // Modal keyboard focus handling & body scroll locking
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (ratingModalOpen) setRatingModalOpen(false);
+        else if (reportModalOpen) setReportModalOpen(false);
+        else if (locationConsentOpen) setLocationConsentOpen(false);
+        else onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open, onClose, ratingModalOpen, reportModalOpen, locationConsentOpen]);
+
   if (!open || !request) return null;
 
   const etaMinutes = calculateETA(request.distanceKm, travelMode);
@@ -359,10 +379,21 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/65 backdrop-blur-sm animate-in fade-in duration-200">
-        <div className="w-full max-w-2xl rounded-3xl bg-card border border-border p-5 sm:p-7 shadow-2xl text-card-foreground max-h-[92vh] overflow-y-auto">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="request-detail-title"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="w-full max-w-2xl rounded-3xl bg-card border border-border/80 dark:border-white/10 p-5 sm:p-7 shadow-2xl text-card-foreground max-h-[92vh] overflow-y-auto"
+        >
           {/* Header */}
-          <div className="flex items-start justify-between pb-4 border-b border-border">
+          <div className="flex items-start justify-between pb-4 border-b border-border/80">
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 flex-wrap">
                 <span
@@ -383,22 +414,24 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                 </span>
 
                 <button
+                  type="button"
                   onClick={() => setWhyRankOpen(true)}
-                  className="flex items-center gap-1 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-0.5 rounded-full transition touch-target"
+                  className="flex items-center gap-1 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-0.5 rounded-full transition-all active:scale-95 touch-target border border-primary/20"
                 >
                   <Atom className="h-3.5 w-3.5 notranslate" />
                   <span>Help Gravity: {request.helpGravityScore}</span>
                 </button>
               </div>
 
-              <h2 className="text-xl sm:text-2xl font-bold text-foreground mt-1">
+              <h2 id="request-detail-title" className="text-xl sm:text-2xl font-bold text-foreground mt-1">
                 {request.title}
               </h2>
             </div>
 
             <button
+              type="button"
               onClick={onClose}
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted touch-target shrink-0"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-95 touch-target shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               aria-label="Close details"
             >
               <X className="h-5 w-5 notranslate" />
@@ -806,8 +839,9 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
             <div className="pt-2 flex flex-col sm:flex-row gap-3">
               {currentStatus === 'open' && (
                 <button
+                  type="button"
                   onClick={() => setHelpFlowOpen(true)}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 px-4 text-sm font-bold text-white shadow-soft hover:bg-primary/90 transition active:scale-98 touch-target"
+                  className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 px-4 text-sm font-bold text-white shadow-md shadow-primary/25 hover:bg-primary/90 transition-all active:scale-95 touch-target"
                 >
                   <HeartHandshake className="h-5 w-5 notranslate" />
                   <span>Offer Help Now</span>
@@ -823,16 +857,18 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
 
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={handleShare}
-                  className="flex items-center justify-center gap-1.5 rounded-2xl border border-border bg-card px-4 py-3 text-xs font-bold text-foreground hover:bg-muted transition touch-target"
+                  className="flex items-center justify-center gap-1.5 rounded-2xl border border-border/80 bg-card px-4 py-3 text-xs font-bold text-foreground hover:bg-muted transition-all active:scale-95 touch-target shadow-xs"
                   title="Share request"
                 >
                   <Share2 className="h-4 w-4 notranslate" />
                   <span className="hidden sm:inline">Share</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => setReportModalOpen(true)}
-                  className="flex items-center justify-center gap-1.5 rounded-2xl border border-border bg-card px-4 py-3 text-xs font-bold text-muted-foreground hover:text-rose-500 hover:bg-muted transition touch-target"
+                  className="flex items-center justify-center gap-1.5 rounded-2xl border border-border/80 bg-card px-4 py-3 text-xs font-bold text-muted-foreground hover:text-rose-500 hover:bg-muted transition-all active:scale-95 touch-target shadow-xs"
                   title="Report request"
                 >
                   <Flag className="h-4 w-4 notranslate" />
@@ -848,8 +884,8 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
           LOCATION SHARING PRIVACY CONSENT MODAL
          ===================================================================== */}
       {locationConsentOpen && (
-        <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in zoom-in-95 duration-150">
-          <div className="w-full max-w-sm rounded-3xl bg-card border border-border p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in zoom-in-95 duration-150">
+          <div className="w-full max-w-sm rounded-3xl bg-card border border-border/80 p-6 shadow-2xl space-y-4">
             <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
               <Radio className="h-6 w-6 notranslate animate-pulse" />
             </div>
@@ -861,14 +897,16 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
             </p>
             <div className="flex gap-2 pt-2">
               <button
+                type="button"
                 onClick={() => setLocationConsentOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold hover:bg-muted"
+                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold hover:bg-muted transition active:scale-95"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleConfirmLocationConsent}
-                className="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90"
+                className="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition active:scale-95 shadow-soft"
               >
                 I Agree & Share
               </button>
@@ -881,8 +919,8 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
           5-STAR MUTUAL RATING & FEEDBACK MODAL
          ===================================================================== */}
       {ratingModalOpen && (
-        <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in zoom-in-95 duration-150">
-          <div className="w-full max-w-sm rounded-3xl bg-card border border-border p-6 shadow-2xl text-center space-y-4">
+        <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in zoom-in-95 duration-150">
+          <div className="w-full max-w-sm rounded-3xl bg-card border border-border/80 p-6 shadow-2xl text-center space-y-4">
             <div className="h-12 w-12 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center mx-auto">
               <Star className="h-6 w-6 notranslate fill-amber-500" />
             </div>
@@ -898,9 +936,10 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                   key={s}
                   type="button"
                   onClick={() => setStars(s)}
-                  className={`text-3xl transition ${
-                    s <= stars ? 'text-amber-500 scale-110' : 'text-muted-foreground/30'
+                  className={`text-3xl transition-transform active:scale-95 ${
+                    s <= stars ? 'text-amber-500 scale-110' : 'text-muted-foreground/30 hover:text-amber-400/50'
                   }`}
+                  aria-label={`Rate ${s} star${s > 1 ? 's' : ''}`}
                 >
                   ★
                 </button>
@@ -914,10 +953,10 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                   key={tag}
                   type="button"
                   onClick={() => toggleRatingTag(tag)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all active:scale-95 ${
                     selectedTags.includes(tag)
-                      ? 'bg-primary text-white font-bold'
-                      : 'border border-border bg-muted/60 text-muted-foreground hover:bg-muted'
+                      ? 'bg-primary text-white font-bold shadow-xs'
+                      : 'border border-border/80 bg-muted/60 text-muted-foreground hover:bg-muted'
                   }`}
                 >
                   {tag}
@@ -930,19 +969,21 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
               value={ratingComment}
               onChange={(e) => setRatingComment(e.target.value)}
               placeholder="Leave a short word of appreciation..."
-              className="w-full p-3 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:border-primary"
+              className="w-full p-3 rounded-xl border border-border/80 bg-background text-foreground text-xs focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
             />
 
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={() => setRatingModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold"
+                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold hover:bg-muted transition-all active:scale-95"
               >
                 Skip
               </button>
               <button
+                type="button"
                 onClick={handleRate}
-                className="flex-2 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 shadow-soft"
+                className="flex-2 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all active:scale-95 shadow-soft"
               >
                 Submit Rating
               </button>
@@ -955,8 +996,8 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
           REPORT INAPPROPRIATE REQUEST MODAL
          ===================================================================== */}
       {reportModalOpen && (
-        <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in zoom-in-95 duration-150">
-          <div className="w-full max-w-sm rounded-3xl bg-card border border-border p-6 shadow-2xl text-left space-y-4">
+        <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in zoom-in-95 duration-150">
+          <div className="w-full max-w-sm rounded-3xl bg-card border border-border/80 p-6 shadow-2xl text-left space-y-4">
             <h3 className="text-base font-bold text-foreground">Report Inappropriate Request</h3>
             <p className="text-xs text-muted-foreground">
               Please specify reason (e.g. spam, commercial service, incorrect urgency):
@@ -966,18 +1007,20 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
               value={reportReason}
               onChange={(e) => setReportReason(e.target.value)}
               placeholder="Explain the safety or policy concern..."
-              className="w-full p-3 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:border-primary"
+              className="w-full p-3 rounded-xl border border-border/80 bg-background text-foreground text-xs focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
             />
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={() => setReportModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold"
+                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold hover:bg-muted transition-all active:scale-95"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleReport}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700"
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 transition-all active:scale-95 shadow-soft"
               >
                 Submit Report
               </button>

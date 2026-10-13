@@ -455,8 +455,36 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
             href="/"
             className="flex items-center gap-2.5 group transition-transform active:scale-95"
           >
-            <div className="w-9 h-9 rounded-xl bg-teal-600 flex items-center justify-center text-white shadow-lg shadow-teal-600/25 group-hover:scale-105 transition-transform">
-              <Heart className="w-5 h-5 fill-white" />
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center transition-transform duration-200 group-hover:scale-105">
+              <svg
+                viewBox="0 0 64 64"
+                className="h-10 w-10 drop-shadow-sm select-none"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <defs>
+                  <linearGradient id="auth-kl-grad" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#0F766E" />
+                    <stop offset="40%" stopColor="#0D9488" />
+                    <stop offset="75%" stopColor="#06B6D4" />
+                    <stop offset="100%" stopColor="#2563EB" />
+                  </linearGradient>
+                  <radialGradient id="auth-kl-beacon" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="#FDE047" />
+                    <stop offset="50%" stopColor="#F59E0B" />
+                    <stop offset="100%" stopColor="#EF4444" />
+                  </radialGradient>
+                </defs>
+                <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#auth-kl-grad)" />
+                <rect x="2.5" y="2.5" width="59" height="59" rx="15.5" stroke="#FFFFFF" strokeOpacity="0.25" strokeWidth="1" />
+                <ellipse cx="32" cy="32" rx="22" ry="11" transform="rotate(-25 32 32)" stroke="#FFFFFF" strokeOpacity="0.4" strokeWidth="2.5" strokeDasharray="4 2" />
+                <ellipse cx="32" cy="32" rx="22" ry="11" transform="rotate(25 32 32)" stroke="#FFFFFF" strokeOpacity="0.4" strokeWidth="2.5" strokeDasharray="4 2" />
+                <circle cx="32" cy="32" r="18" stroke="#FFFFFF" strokeOpacity="0.18" strokeWidth="1.5" />
+                <path d="M22 28 C18 22, 12 25, 12 32 C12 39, 24 46, 32 50 C40 46, 52 39, 52 32 C52 25, 46 22, 42 28 C39 32, 35 34, 32 34 C29 34, 25 32, 22 28 Z" fill="#FFFFFF" fillOpacity="0.96" />
+                <circle cx="32" cy="32" r="5" fill="url(#auth-kl-beacon)" />
+                <circle cx="32" cy="32" r="2" fill="#FFFFFF" />
+              </svg>
             </div>
             <div>
               <span className="font-heading font-extrabold text-lg text-white tracking-tight">
@@ -498,19 +526,19 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
           </div>
 
           {/* Card Container */}
-          <div className="rounded-2xl border border-slate-800/90 bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 shadow-2xl shadow-black/60 relative">
+          <div className="rounded-2xl border border-slate-800/90 bg-slate-900/85 backdrop-blur-xl p-6 sm:p-8 shadow-2xl shadow-black/70 relative">
             {/* Tabs Switcher */}
-            <div className="grid grid-cols-2 p-1 bg-slate-950/80 rounded-xl border border-slate-800/80 mb-6">
+            <div className="grid grid-cols-2 p-1.5 bg-slate-950/80 rounded-xl border border-slate-800/80 mb-6">
               <button
                 type="button"
                 onClick={() => {
                   setActiveTab('login');
                   setError(null);
                 }}
-                className={`py-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${
+                className={`py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 ${
                   activeTab === 'login'
-                    ? 'bg-teal-600 text-white shadow-md shadow-teal-600/30'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-lg shadow-teal-900/40 hover:-translate-y-0.5 active:scale-[0.98]'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
                 }`}
               >
                 Sign In
@@ -521,10 +549,10 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                   setActiveTab('signup');
                   setError(null);
                 }}
-                className={`py-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${
+                className={`py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 ${
                   activeTab === 'signup'
-                    ? 'bg-teal-600 text-white shadow-md shadow-teal-600/30'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-lg shadow-teal-900/40 hover:-translate-y-0.5 active:scale-[0.98]'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
                 }`}
               >
                 Create Account
@@ -535,7 +563,7 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
             {error && (
               <div
                 role="alert"
-                className="mb-5 p-3.5 rounded-xl bg-red-950/60 border border-red-500/40 text-red-200 text-xs sm:text-sm flex items-start gap-3 animate-in fade-in duration-200"
+                className="mb-5 p-3.5 rounded-xl bg-red-950/60 border border-red-500/40 text-red-200 text-xs sm:text-sm flex items-start gap-3 animate-in fade-in duration-200 shadow-sm"
               >
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                 <div className="flex-1 font-medium leading-relaxed">{error}</div>
@@ -548,12 +576,12 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                 <div>
                   <label
                     htmlFor="login-identifier"
-                    className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5"
+                    className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5"
                   >
                     Email or Username
                   </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <div className="relative group">
+                    <Mail className="w-4 h-4 text-slate-400 group-focus-within:text-teal-400 absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200" />
                     <input
                       id="login-identifier"
                       type="text"
@@ -563,7 +591,7 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                       value={loginIdentifier}
                       onChange={(e) => setLoginIdentifier(e.target.value)}
                       placeholder="e.g. kind_volunteer or email@domain.com"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-700/80 bg-slate-950/60 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition-colors disabled:opacity-50"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-700/80 bg-slate-950/70 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200 disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -572,13 +600,13 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                   <div className="flex items-center justify-between mb-1.5">
                     <label
                       htmlFor="login-password"
-                      className="block text-xs font-semibold text-slate-300 uppercase tracking-wider"
+                      className="block text-xs font-bold text-slate-300 uppercase tracking-wider"
                     >
                       Password
                     </label>
                   </div>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <div className="relative group">
+                    <Lock className="w-4 h-4 text-slate-400 group-focus-within:text-teal-400 absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200" />
                     <input
                       id="login-password"
                       type={showLoginPassword ? 'text' : 'password'}
@@ -588,12 +616,12 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-700/80 bg-slate-950/60 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition-colors disabled:opacity-50"
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-700/80 bg-slate-950/70 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200 disabled:opacity-50"
                     />
                     <button
                       type="button"
                       onClick={() => setShowLoginPassword(!showLoginPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 transition-colors"
                       aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
                     >
                       {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -605,7 +633,7 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                   id="btn-login-submit"
                   type="submit"
                   disabled={loading}
-                  className="w-full mt-2 py-3 px-4 bg-teal-600 hover:bg-teal-500 active:scale-[0.99] text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-teal-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full mt-3 py-3 px-4 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 hover:-translate-y-0.5 active:scale-[0.98] text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-teal-900/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
                   {loading ? (
                     <>
@@ -629,12 +657,12 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                 <div>
                   <label
                     htmlFor="signup-fullname"
-                    className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5"
+                    className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5"
                   >
                     Full Name <span className="text-teal-400">*</span>
                   </label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <div className="relative group">
+                    <User className="w-4 h-4 text-slate-400 group-focus-within:text-teal-400 absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200" />
                     <input
                       id="signup-fullname"
                       type="text"
@@ -644,7 +672,7 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                       value={signupFullName}
                       onChange={(e) => setSignupFullName(e.target.value)}
                       placeholder="e.g. Community Member"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-700/80 bg-slate-950/60 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition-colors disabled:opacity-50"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-700/80 bg-slate-950/70 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200 disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -653,12 +681,12 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                 <div>
                   <label
                     htmlFor="signup-username"
-                    className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5"
+                    className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5"
                   >
                     Username <span className="text-teal-400">*</span>
                   </label>
-                  <div className="relative">
-                    <AtSign className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <div className="relative group">
+                    <AtSign className="w-4 h-4 text-slate-400 group-focus-within:text-teal-400 absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200" />
                     <input
                       id="signup-username"
                       type="text"
@@ -668,10 +696,11 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                       value={signupUsername}
                       onChange={(e) => setSignupUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, ''))}
                       placeholder="e.g. rahul_sen"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-700/80 bg-slate-950/60 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition-colors disabled:opacity-50"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-700/80 bg-slate-950/70 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200 disabled:opacity-50"
                     />
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-1">
+                  <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1.5">
+                    <span className="inline-block w-1 h-1 rounded-full bg-teal-400"></span>
                     3-20 characters: letters, numbers, _ and .
                   </p>
                 </div>
@@ -680,12 +709,12 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                 <div>
                   <label
                     htmlFor="signup-email"
-                    className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5"
+                    className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5"
                   >
                     Email Address <span className="text-teal-400">*</span>
                   </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <div className="relative group">
+                    <Mail className="w-4 h-4 text-slate-400 group-focus-within:text-teal-400 absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200" />
                     <input
                       id="signup-email"
                       type="email"
@@ -695,7 +724,7 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                       value={signupEmail}
                       onChange={(e) => setSignupEmail(e.target.value)}
                       placeholder="name@example.com"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-700/80 bg-slate-950/60 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition-colors disabled:opacity-50"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-700/80 bg-slate-950/70 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200 disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -704,12 +733,12 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                 <div>
                   <label
                     htmlFor="signup-password"
-                    className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5"
+                    className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5"
                   >
                     Password <span className="text-teal-400">*</span>
                   </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <div className="relative group">
+                    <Lock className="w-4 h-4 text-slate-400 group-focus-within:text-teal-400 absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200" />
                     <input
                       id="signup-password"
                       type={showSignupPassword ? 'text' : 'password'}
@@ -719,12 +748,12 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                       value={signupPassword}
                       onChange={(e) => setSignupPassword(e.target.value)}
                       placeholder="At least 8 characters"
-                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-700/80 bg-slate-950/60 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition-colors disabled:opacity-50"
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-700/80 bg-slate-950/70 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200 disabled:opacity-50"
                     />
                     <button
                       type="button"
                       onClick={() => setShowSignupPassword(!showSignupPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 transition-colors"
                       aria-label={showSignupPassword ? 'Hide password' : 'Show password'}
                     >
                       {showSignupPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -736,7 +765,7 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                   id="btn-signup-submit"
                   type="submit"
                   disabled={loading}
-                  className="w-full mt-2 py-3 px-4 bg-teal-600 hover:bg-teal-500 active:scale-[0.99] text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-teal-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full mt-3 py-3 px-4 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 hover:-translate-y-0.5 active:scale-[0.98] text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-teal-900/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
                   {loading ? (
                     <>
@@ -790,33 +819,37 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
           </div>
 
           {/* DEMO ACCOUNTS PANEL */}
-          <div className="mt-8 rounded-2xl border border-slate-800/80 bg-slate-900/50 backdrop-blur-md p-5">
-            <div className="flex items-center justify-between mb-3.5">
+          <div className="mt-8 rounded-2xl border border-slate-800/80 bg-slate-900/60 backdrop-blur-xl p-5 shadow-xl shadow-black/40">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <KeyRound className="w-4 h-4 text-teal-400" />
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                  Showcase Demo Accounts
-                </h2>
+                <div className="w-7 h-7 rounded-lg bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-teal-400">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                    Showcase Demo Accounts
+                  </h2>
+                </div>
               </div>
-              <span className="text-[10px] font-semibold text-teal-400 bg-teal-500/10 border border-teal-500/20 px-2 py-0.5 rounded-full">
-                Tap card to populate
+              <span className="text-[10px] font-semibold text-teal-300 bg-teal-500/10 border border-teal-500/30 px-2.5 py-1 rounded-full shadow-sm shadow-teal-900/30">
+                1-Click Quick Sign In
               </span>
             </div>
 
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {DEMO_ACCOUNTS.map((acc) => {
                 const Icon = acc.icon;
                 return (
                   <div
                     key={acc.username}
-                    className="group border border-slate-800/70 hover:border-teal-500/50 rounded-xl p-3 bg-slate-950/50 hover:bg-slate-950/90 transition-all flex items-center justify-between gap-3 text-left"
+                    className="group border border-slate-800 hover:border-teal-500/50 rounded-xl p-3.5 backdrop-blur-md bg-slate-900/80 hover:bg-slate-900/95 transition-all duration-200 flex items-center justify-between gap-3 text-left shadow-sm hover:shadow-md hover:shadow-teal-950/40"
                   >
                     <button
                       type="button"
                       onClick={() => fillDemoAccount(acc, false)}
                       className="flex-1 flex items-start gap-3 min-w-0"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-slate-800/80 flex items-center justify-center shrink-0 text-teal-400 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                      <div className="w-9 h-9 rounded-xl bg-slate-800/90 border border-slate-700/60 flex items-center justify-center shrink-0 text-teal-400 group-hover:bg-gradient-to-br group-hover:from-teal-600 group-hover:to-emerald-600 group-hover:text-white group-hover:border-teal-500/40 transition-all duration-200 shadow-sm">
                         <Icon className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
@@ -824,13 +857,16 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                           <span className="text-xs font-bold text-white group-hover:text-teal-300 transition-colors">
                             @{acc.username}
                           </span>
-                          <span className={`text-[10px] font-semibold px-2 py-0.2 rounded-full border ${acc.badgeColor}`}>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shadow-sm ${acc.badgeColor}`}>
                             {acc.badge}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-400 truncate mt-0.5">{acc.desc}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                          Password: <span className="text-teal-300 font-semibold">{acc.password}</span>{' '}
+                        <p className="text-[11px] text-slate-300 font-medium truncate mt-0.5">{acc.desc}</p>
+                        <p className="text-[10px] text-slate-400 mt-1 font-mono flex items-center gap-1.5 flex-wrap">
+                          <span>Password:</span>
+                          <span className="text-teal-300 font-semibold bg-teal-950/60 px-1.5 py-0.5 rounded border border-teal-800/50">
+                            {acc.password}
+                          </span>{' '}
                           <span className="text-slate-500">(or {acc.fallbackPassword})</span>
                         </p>
                       </div>
@@ -840,10 +876,11 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
                       type="button"
                       onClick={() => fillDemoAccount(acc, true)}
                       disabled={loading}
-                      className="shrink-0 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-teal-600/20 text-teal-300 hover:bg-teal-600 hover:text-white transition-colors border border-teal-500/30"
+                      className="shrink-0 text-xs font-bold px-3 py-2 rounded-xl bg-teal-500/15 text-teal-300 hover:bg-gradient-to-r hover:from-teal-600 hover:to-emerald-600 hover:text-white hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 border border-teal-500/30 hover:border-transparent shadow-sm hover:shadow-teal-900/40 flex items-center gap-1.5 disabled:opacity-50"
                       title={`Sign in immediately as @${acc.username}`}
                     >
-                      Quick Sign In
+                      <span>Quick Sign In</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 );
@@ -851,11 +888,11 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
             </div>
 
             <div className="mt-3.5 pt-3 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
-                Live Supabase Auth &amp; SSR
+                <span>Live Supabase Auth &amp; SSR</span>
               </span>
-              <span>Showcase passwords: Role-specific or KindLink#2026</span>
+              <span className="font-mono text-[10px] text-slate-400">Universal: <span className="text-slate-300 font-semibold">KindLink#2026</span></span>
             </div>
           </div>
         </div>

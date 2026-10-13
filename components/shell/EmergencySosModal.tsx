@@ -72,6 +72,11 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
     setIsSubmitting(true);
     setStatus('activated');
 
+    // Tactile haptic feedback on emergency trigger
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate([200, 100, 200]);
+    }
+
     // Generate random token for SOS tracking URL
     const generatedToken =
       typeof crypto !== 'undefined' && crypto.randomUUID
@@ -92,7 +97,8 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
       const fullUrl = `${origin}/sos/${finalToken}`;
       setTrackingUrl(fullUrl);
 
-      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+      // Extended emergency haptic sequence on verified broadcast
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate([200, 100, 200, 100, 400]);
       }
 
@@ -115,8 +121,9 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
     setStatus('countdown');
     setCountdown(5);
 
-    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-      navigator.vibrate([150, 100, 150]);
+    // Tactile haptic feedback on countdown start
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate([200, 100, 200]);
     }
 
     let current = 5;
@@ -124,7 +131,8 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
       current -= 1;
       setCountdown(current);
 
-      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+      // Haptic tick per countdown second
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate(80);
       }
 
@@ -140,6 +148,10 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
     setStatus('holding');
     setHoldProgress(0);
     holdStartTimeRef.current = Date.now();
+
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(40);
+    }
 
     holdTimerRef.current = setInterval(() => {
       const elapsed = Date.now() - holdStartTimeRef.current;
@@ -165,6 +177,9 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
 
   const handleCancelCountdown = () => {
     resetAll();
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(50);
+    }
     toast.info('Emergency SOS alert canceled.');
   };
 
@@ -172,6 +187,9 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
     if (!trackingUrl) return;
     navigator.clipboard.writeText(trackingUrl);
     setCopied(true);
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(25);
+    }
     toast.success('Live SOS tracking link copied to clipboard!');
     setTimeout(() => setCopied(false), 2500);
   };
@@ -180,21 +198,23 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xl animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
       aria-labelledby="emergency-sos-title"
     >
-      <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl bg-card border-2 border-urgency-critical p-5 sm:p-6 shadow-2xl text-card-foreground">
+      <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl bg-card/95 dark:bg-slate-950/95 border-2 border-rose-500/40 p-5 sm:p-6 shadow-[0_0_50px_rgba(244,63,94,0.2)] text-card-foreground">
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-border">
-          <div className="flex items-center gap-2.5 text-urgency-critical">
-            <AlertTriangle className="h-6 w-6 animate-pulse notranslate" />
+        <div className="flex items-center justify-between pb-3.5 border-b border-border/80">
+          <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500/15 border border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.3)]">
+              <AlertTriangle className="h-5 w-5 animate-pulse notranslate" />
+            </div>
             <div>
-              <h2 id="emergency-sos-title" className="text-xl font-black tracking-tight leading-none">
+              <h2 id="emergency-sos-title" className="text-xl font-black tracking-tight leading-none text-foreground">
                 KindLink Emergency SOS
               </h2>
-              <span className="text-[11px] font-semibold text-muted-foreground">
+              <span className="text-[11px] font-bold text-rose-600/90 dark:text-rose-400/90 tracking-wide">
                 Asansol &amp; West Bengal Rapid Response
               </span>
             </div>
@@ -202,7 +222,7 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted touch-target transition"
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted touch-target transition-colors"
             aria-label="Close dialog"
           >
             <X className="h-5 w-5 notranslate" />
@@ -210,9 +230,9 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
         </div>
 
         {/* Real User Profile Banner */}
-        <div className="mt-3.5 p-3 rounded-2xl bg-muted/60 border border-border flex items-center justify-between text-xs">
+        <div className="mt-3.5 p-3 rounded-2xl bg-muted/60 dark:bg-slate-900/60 border border-border/80 flex items-center justify-between text-xs">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0 font-bold">
               <User className="h-4 w-4 notranslate" />
             </div>
             <div className="truncate">
@@ -224,7 +244,7 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
               </span>
             </div>
           </div>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
             Verified Requester
           </span>
         </div>
@@ -237,15 +257,28 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
               broadcast to nearby community responders.
             </p>
 
-            {/* Circular Hold Button with SVG Progress Ring */}
+            {/* Circular Hold Button with SVG Progress Ring and Glow */}
             <div className="relative mt-6 flex items-center justify-center">
+              {/* Ambient pulse glow */}
+              <div
+                className={`absolute -inset-4 rounded-full bg-rose-500/20 blur-xl pointer-events-none transition-opacity duration-300 ${
+                  status === 'holding' ? 'opacity-100 scale-110' : 'opacity-40 animate-pulse'
+                }`}
+              />
+
               {/* SVG circular progress ring */}
-              <svg className="w-48 h-48 -rotate-90" viewBox="0 0 160 160">
+              <svg className="w-52 h-52 -rotate-90 relative" viewBox="0 0 160 160">
+                <defs>
+                  <linearGradient id="roseGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#f43f5e" />
+                    <stop offset="100%" stopColor="#e11d48" />
+                  </linearGradient>
+                </defs>
                 <circle
                   cx="80"
                   cy="80"
                   r="72"
-                  className="stroke-muted"
+                  className="stroke-muted/40 dark:stroke-zinc-800/80"
                   strokeWidth="8"
                   fill="transparent"
                 />
@@ -253,12 +286,13 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
                   cx="80"
                   cy="80"
                   r="72"
-                  className="stroke-red-600 transition-all duration-75"
+                  stroke="url(#roseGradient)"
                   strokeWidth="8"
                   strokeDasharray={2 * Math.PI * 72}
                   strokeDashoffset={2 * Math.PI * 72 * (1 - holdProgress / 100)}
                   strokeLinecap="round"
                   fill="transparent"
+                  className="transition-all duration-75 drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]"
                 />
               </svg>
 
@@ -269,18 +303,18 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
                 onPointerUp={handlePointerUp}
                 onPointerLeave={handlePointerUp}
                 onPointerCancel={handlePointerUp}
-                className={`absolute flex h-36 w-36 flex-col items-center justify-center rounded-full bg-urgency-critical text-white shadow-2xl transition-transform select-none touch-target ${
+                className={`absolute flex h-36 w-36 flex-col items-center justify-center rounded-full bg-gradient-to-tr from-rose-600 via-red-600 to-rose-700 text-white shadow-2xl transition-all duration-150 select-none touch-target ring-4 ring-rose-500/30 ${
                   status === 'holding'
-                    ? 'scale-95 bg-red-700 shadow-red-600/50'
-                    : 'hover:scale-105 active:scale-95 animate-beacon'
+                    ? 'scale-95 from-red-700 via-rose-700 to-red-800 shadow-[0_0_40px_rgba(225,29,72,0.6)]'
+                    : 'hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(225,29,72,0.4)] animate-beacon'
                 }`}
                 aria-label="Press and hold for 2 seconds to activate SOS"
               >
                 <Radio className="h-9 w-9 mb-1 notranslate animate-pulse" />
-                <span className="text-base font-black tracking-wider uppercase">
+                <span className="text-base font-black tracking-wider uppercase drop-shadow-sm">
                   {status === 'holding' ? 'HOLDING...' : 'HOLD SOS'}
                 </span>
-                <span className="text-[10px] font-semibold opacity-90">
+                <span className="text-[10px] font-bold tracking-wider opacity-90">
                   {status === 'holding' ? `${Math.round(holdProgress)}%` : '2 SECONDS'}
                 </span>
               </button>
@@ -294,41 +328,94 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
           </div>
         )}
 
-        {/* State 3: COUNTDOWN TO CANCEL (5 seconds) */}
+        {/* State 3: PULSING CIRCULAR COUNTDOWN TIMER (5 seconds) */}
         {status === 'countdown' && (
           <div className="mt-5 flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
-            <div className="p-3 rounded-full bg-red-600/15 text-red-600 mb-2 animate-bounce">
+            <div className="p-3 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 mb-2 border border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.3)] animate-bounce">
               <AlertTriangle className="h-8 w-8 notranslate" />
             </div>
 
-            <h3 className="text-lg font-black text-urgency-critical uppercase tracking-tight">
+            <h3 className="text-lg font-black text-rose-600 dark:text-rose-400 uppercase tracking-tight">
               SOS Broadcast in Progress
             </h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              Sending high-priority emergency beacon in:
+            <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+              Sending high-priority emergency beacon with GPS coordinates in:
             </p>
 
-            {/* Giant Countdown Clock */}
-            <div className="my-5 flex h-28 w-28 items-center justify-center rounded-full bg-urgency-critical/10 border-4 border-urgency-critical text-urgency-critical font-black text-5xl shadow-xl animate-pulse">
-              {countdown}
+            {/* Pulsing circular countdown timer with high-contrast glowing rose/red gradients */}
+            <div className="relative my-6 flex items-center justify-center">
+              {/* Ambient radial glow backdrop */}
+              <div className="absolute inset-0 rounded-full bg-rose-500/25 blur-2xl animate-pulse pointer-events-none" />
+
+              <svg className="w-48 h-48 -rotate-90 relative" viewBox="0 0 160 160">
+                <defs>
+                  <linearGradient id="countdownGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#fb7185" />
+                    <stop offset="50%" stopColor="#f43f5e" />
+                    <stop offset="100%" stopColor="#e11d48" />
+                  </linearGradient>
+                </defs>
+                <circle
+                  cx="80"
+                  cy="80"
+                  r="70"
+                  className="stroke-muted/40 dark:stroke-zinc-800"
+                  strokeWidth="8"
+                  fill="transparent"
+                />
+                <circle
+                  cx="80"
+                  cy="80"
+                  r="70"
+                  stroke="url(#countdownGrad)"
+                  strokeWidth="9"
+                  strokeDasharray={2 * Math.PI * 70}
+                  strokeDashoffset={2 * Math.PI * 70 * (countdown / 5)}
+                  strokeLinecap="round"
+                  fill="transparent"
+                  className="transition-all duration-1000 ease-linear drop-shadow-[0_0_14px_rgba(244,63,94,0.85)]"
+                />
+              </svg>
+
+              {/* Center Countdown Numerals with Pulsing Beacon Aura */}
+              <div className="absolute flex flex-col items-center justify-center">
+                <span className="text-6xl font-black text-rose-600 dark:text-rose-400 drop-shadow-[0_0_18px_rgba(244,63,94,0.7)] tracking-tighter animate-pulse">
+                  {countdown}
+                </span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-0.5">
+                  SECONDS
+                </span>
+              </div>
             </div>
 
-            {/* Cancel Button */}
-            <button
-              type="button"
-              onClick={handleCancelCountdown}
-              className="w-full py-3.5 px-6 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white font-extrabold text-sm tracking-wide shadow-lg transition flex items-center justify-center gap-2 touch-target"
-            >
-              <RotateCcw className="h-4 w-4 notranslate" />
-              <span>CANCEL SOS ALERT</span>
-            </button>
+            {/* Refined Action Buttons: Cancel or Immediate Trigger */}
+            <div className="w-full space-y-2.5">
+              <button
+                type="button"
+                onClick={handleCancelCountdown}
+                className="w-full py-3.5 px-6 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white font-extrabold text-sm tracking-wide shadow-lg border border-zinc-700/80 transition-all active:scale-[0.98] flex items-center justify-center gap-2 touch-target"
+              >
+                <RotateCcw className="h-4 w-4 notranslate text-zinc-400" />
+                <span>CANCEL SOS ALERT</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={triggerActivation}
+                disabled={isSubmitting}
+                className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-extrabold text-xs tracking-wider shadow-md shadow-rose-600/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2 touch-target disabled:opacity-50"
+              >
+                <Radio className="h-4 w-4 notranslate animate-pulse" />
+                <span>BROADCAST NOW (SKIP TIMER)</span>
+              </button>
+            </div>
           </div>
         )}
 
         {/* State 4: ACTIVATED & LIVE TRACKING URL */}
         {status === 'activated' && (
           <div className="mt-5 flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 mb-2">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 mb-2 border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
               <CheckCircle2 className="h-10 w-10 notranslate" />
             </div>
 
@@ -341,12 +428,12 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
             </p>
 
             {/* Live Tracking URL Card */}
-            <div className="mt-4 w-full p-4 rounded-2xl bg-muted/80 border border-border text-left">
+            <div className="mt-4 w-full p-4 rounded-2xl bg-muted/80 dark:bg-slate-900/80 border border-border/80 text-left">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-primary">
                   Live SOS Tracking Link
                 </span>
-                <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-bold">
+                <span className="flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
                   Live Beacon
                 </span>
@@ -363,7 +450,7 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
                 <button
                   type="button"
                   onClick={handleCopyLink}
-                  className="px-3 py-2 rounded-xl bg-primary text-primary-foreground font-bold text-xs flex items-center gap-1.5 hover:bg-primary/90 transition shrink-0 touch-target"
+                  className="px-3 py-2 rounded-xl bg-primary text-primary-foreground font-bold text-xs flex items-center gap-1.5 hover:bg-primary/90 transition shrink-0 touch-target active:scale-95 shadow-xs"
                   title="Copy Tracking Link"
                 >
                   <Copy className="h-3.5 w-3.5 notranslate" />
@@ -392,7 +479,7 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
         )}
 
         {/* Direct Emergency Hotlines (112 Police, 108 Ambulance, 100 Emergency) */}
-        <div className="mt-5 space-y-2 border-t border-border pt-4">
+        <div className="mt-5 space-y-2 border-t border-border/80 pt-4">
           <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground">
             Direct Emergency Lines (West Bengal / Asansol)
           </h4>
@@ -400,7 +487,7 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
           {/* 112 National Emergency */}
           <a
             href="tel:112"
-            className="flex items-center justify-between p-3 rounded-2xl bg-red-600/10 hover:bg-red-600/20 text-red-600 dark:text-red-400 transition border border-red-500/20 touch-target"
+            className="flex items-center justify-between p-3 rounded-2xl bg-red-600/10 hover:bg-red-600/20 text-red-600 dark:text-red-400 transition-colors border border-red-500/25 touch-target shadow-xs"
           >
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-red-600 text-white shadow-xs">
@@ -419,7 +506,7 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
           {/* 108 Ambulance */}
           <a
             href="tel:108"
-            className="flex items-center justify-between p-3 rounded-2xl bg-muted/80 hover:bg-muted transition border border-border touch-target"
+            className="flex items-center justify-between p-3 rounded-2xl bg-muted/80 hover:bg-muted transition-colors border border-border touch-target"
           >
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-primary/10 text-primary">
@@ -438,7 +525,7 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
           {/* 100 Police Control Room */}
           <a
             href="tel:100"
-            className="flex items-center justify-between p-3 rounded-2xl bg-muted/80 hover:bg-muted transition border border-border touch-target"
+            className="flex items-center justify-between p-3 rounded-2xl bg-muted/80 hover:bg-muted transition-colors border border-border touch-target"
           >
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-primary/10 text-primary">
@@ -446,16 +533,16 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
               </div>
               <div className="text-left">
                 <p className="text-sm font-bold text-foreground">100 - Police Control Room</p>
-                <p className="text-[11px] text-muted-foreground">Asansol Durgapur Police Commisionerate</p>
+                <p className="text-[11px] text-muted-foreground">Asansol Durgapur Police Commissionerate</p>
               </div>
             </div>
             <span className="text-xs font-bold text-primary">Call 100</span>
           </a>
 
-          {/* Asansol District Hospital Emergency */}
+          {/* Asansol District Hospital Emergency Desk */}
           <a
             href="tel:03412202611"
-            className="flex items-center justify-between p-2.5 rounded-2xl bg-muted/40 hover:bg-muted/70 transition border border-border/80 text-xs text-muted-foreground touch-target"
+            className="flex items-center justify-between p-2.5 rounded-2xl bg-muted/40 hover:bg-muted/70 transition-colors border border-border/80 text-xs text-muted-foreground touch-target"
           >
             <span className="truncate">Asansol District Hospital Desk: 0341-2202611</span>
             <span className="font-bold text-foreground shrink-0">Call Desk</span>

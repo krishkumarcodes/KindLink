@@ -456,7 +456,7 @@ export function NewRequestWizard() {
       <div className="mb-6">
         <div className="flex items-center justify-between text-xs font-bold text-muted-foreground mb-2">
           <span className="uppercase tracking-wider">Step {step} of 5</span>
-          <span className="text-primary font-extrabold">
+          <span className="text-primary font-extrabold truncate max-w-[200px] text-right">
             {step === 1 && '1. Choose Category'}
             {step === 2 && '2. Specific Details'}
             {step === 3 && '3. Urgency & Timing'}
@@ -471,17 +471,32 @@ export function NewRequestWizard() {
           />
         </div>
 
-        {/* Step dots */}
-        <div className="grid grid-cols-5 gap-1.5 mt-2 text-[10px] text-center font-bold text-muted-foreground">
-          <span className={step >= 1 ? 'text-primary' : ''}>Category</span>
-          <span className={step >= 2 ? 'text-primary' : ''}>Details</span>
-          <span className={step >= 3 ? 'text-primary' : ''}>Urgency</span>
-          <span className={step >= 4 ? 'text-primary' : ''}>Location</span>
-          <span className={step >= 5 ? 'text-primary' : ''}>Review</span>
+        {/* Compact responsive breadcrumb indicator on narrow mobile screens (<360px) to prevent label clipping */}
+        <div className="flex min-[360px]:hidden items-center justify-between text-[11px] font-bold text-muted-foreground mt-2 px-0.5">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-black">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+            Step {step} of 5
+          </span>
+          <span className="text-foreground font-bold">
+            {step === 1 && 'Category'}
+            {step === 2 && 'Details'}
+            {step === 3 && 'Urgency'}
+            {step === 4 && 'Location'}
+            {step === 5 && 'Review'}
+          </span>
+        </div>
+
+        {/* Step dots on screens >= 360px */}
+        <div className="hidden min-[360px]:grid grid-cols-5 gap-1.5 mt-2 text-[10px] text-center font-bold text-muted-foreground">
+          <span className={step >= 1 ? 'text-primary font-black' : ''}>Category</span>
+          <span className={step >= 2 ? 'text-primary font-black' : ''}>Details</span>
+          <span className={step >= 3 ? 'text-primary font-black' : ''}>Urgency</span>
+          <span className={step >= 4 ? 'text-primary font-black' : ''}>Location</span>
+          <span className={step >= 5 ? 'text-primary font-black' : ''}>Review</span>
         </div>
       </div>
 
-      <div className="rounded-3xl border border-border bg-card p-5 sm:p-8 shadow-soft">
+      <div className="rounded-3xl border border-border/80 dark:border-white/10 bg-card/95 backdrop-blur-xs p-5 sm:p-8 shadow-soft">
         {/* =========================================================================
             STEP 1: CATEGORY SELECTION
            ========================================================================= */}
@@ -541,15 +556,16 @@ export function NewRequestWizard() {
               ].map((item) => (
                 <button
                   key={item.id}
+                  type="button"
                   onClick={() => handleSelectCategory(item.id)}
-                  className={`p-4 rounded-2xl border text-left transition-all touch-target flex flex-col justify-between ${
+                  className={`p-4 rounded-2xl border text-left transition-all duration-200 touch-target flex flex-col justify-between group active:scale-98 ${
                     category === item.id
-                      ? 'border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20'
-                      : 'border-border bg-background hover:bg-muted/70'
+                      ? 'border-primary bg-primary/10 shadow-md ring-2 ring-primary/30 -translate-y-0.5'
+                      : 'border-border/80 bg-background hover:bg-muted/60 hover:border-border hover:-translate-y-0.5'
                   }`}
                 >
                   <div className="flex items-start justify-between">
-                    <div className="p-3 rounded-2xl bg-card border border-border shadow-xs">
+                    <div className="p-3 rounded-2xl bg-card border border-border shadow-xs group-hover:scale-105 transition">
                       {item.icon}
                     </div>
                     <span
@@ -568,10 +584,11 @@ export function NewRequestWizard() {
               ))}
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-border">
+            <div className="flex justify-end pt-4 border-t border-border/80">
               <button
+                type="button"
                 onClick={handleNextFromStep1}
-                className="flex items-center gap-2 rounded-2xl bg-primary px-7 py-3.5 text-sm font-bold text-white shadow-soft hover:bg-primary/90 transition touch-target"
+                className="flex items-center gap-2 rounded-2xl bg-primary px-7 py-3.5 text-sm font-bold text-white shadow-md shadow-primary/25 hover:bg-primary/90 transition-all active:scale-95 touch-target"
               >
                 <span>Continue to Details</span>
                 <ChevronRight className="h-4 w-4 notranslate" />
@@ -615,7 +632,7 @@ export function NewRequestWizard() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. O+ Blood Needed at Asansol District Hospital"
-                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary transition"
+                  className="w-full rounded-2xl border border-border/80 bg-background/80 focus:bg-background px-4 py-3 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-xs hover:border-border"
                 />
               </div>
 
@@ -628,7 +645,7 @@ export function NewRequestWizard() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Explain patient status, timing specifics, or specific instructions for volunteers..."
-                  className="w-full rounded-2xl border border-border bg-background p-4 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary transition"
+                  className="w-full rounded-2xl border border-border/80 bg-background/80 focus:bg-background p-4 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-xs hover:border-border"
                 />
               </div>
 
@@ -937,17 +954,19 @@ export function NewRequestWizard() {
               )}
             </div>
 
-            <div className="flex justify-between pt-4 border-t border-border">
+            <div className="flex justify-between pt-4 border-t border-border/80">
               <button
+                type="button"
                 onClick={() => setStep(1)}
-                className="flex items-center gap-1.5 rounded-2xl border border-border px-5 py-3 text-xs font-semibold text-foreground hover:bg-muted transition"
+                className="flex items-center gap-1.5 rounded-2xl border border-border/80 px-5 py-3 text-xs font-bold text-foreground hover:bg-muted transition-all active:scale-95 touch-target shadow-xs"
               >
                 <ChevronLeft className="h-4 w-4 notranslate" />
                 <span>Back</span>
               </button>
               <button
+                type="button"
                 onClick={handleNextFromStep2}
-                className="flex items-center gap-1.5 rounded-2xl bg-primary px-6 py-3.5 text-xs font-bold text-white shadow-soft hover:bg-primary/90 transition"
+                className="flex items-center gap-1.5 rounded-2xl bg-primary px-6 py-3.5 text-xs font-bold text-white shadow-md shadow-primary/25 hover:bg-primary/90 transition-all active:scale-95 touch-target"
               >
                 <span>Urgency & Timing</span>
                 <ChevronRight className="h-4 w-4 notranslate" />
@@ -1016,10 +1035,10 @@ export function NewRequestWizard() {
                   key={lvl.id}
                   type="button"
                   onClick={() => setUrgency(lvl.id)}
-                  className={`p-4 rounded-2xl border text-left transition-all touch-target flex flex-col justify-between ${
+                  className={`p-4 rounded-2xl border text-left transition-all duration-200 touch-target flex flex-col justify-between group active:scale-98 ${
                     urgency === lvl.id
-                      ? 'border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20'
-                      : 'border-border bg-background hover:bg-muted/70'
+                      ? 'border-primary bg-primary/10 shadow-md ring-2 ring-primary/30 -translate-y-0.5'
+                      : 'border-border/80 bg-background hover:bg-muted/60 hover:border-border hover:-translate-y-0.5'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -1036,7 +1055,7 @@ export function NewRequestWizard() {
             </div>
 
             {/* Needed by time */}
-            <div className="p-4 rounded-2xl bg-muted/40 border border-border space-y-3">
+            <div className="p-4 rounded-2xl bg-muted/40 border border-border/80 space-y-3">
               <label className="text-xs font-bold text-foreground flex items-center gap-2">
                 <Clock className="h-4 w-4 text-primary notranslate" />
                 <span>When is this needed by? *</span>
@@ -1054,10 +1073,10 @@ export function NewRequestWizard() {
                     key={timeOption}
                     type="button"
                     onClick={() => setNeededByTime(timeOption)}
-                    className={`px-3 py-1.5 rounded-xl border text-xs transition ${
+                    className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all active:scale-95 ${
                       neededByTime === timeOption
-                        ? 'border-primary bg-primary text-white font-bold'
-                        : 'border-border bg-card text-foreground hover:bg-muted'
+                        ? 'border-primary bg-primary text-white font-bold shadow-xs'
+                        : 'border-border/80 bg-card text-foreground hover:bg-muted hover:border-border'
                     }`}
                   >
                     {timeOption}
@@ -1070,21 +1089,23 @@ export function NewRequestWizard() {
                 value={neededByTime}
                 onChange={(e) => setNeededByTime(e.target.value)}
                 placeholder="Or specify custom time (e.g. Today 5:30 PM sharp)"
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary"
+                className="w-full rounded-xl border border-border/80 bg-background/80 focus:bg-background px-3.5 py-2.5 text-xs text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-xs"
               />
             </div>
 
-            <div className="flex justify-between pt-4 border-t border-border">
+            <div className="flex justify-between pt-4 border-t border-border/80">
               <button
+                type="button"
                 onClick={() => setStep(2)}
-                className="flex items-center gap-1.5 rounded-2xl border border-border px-5 py-3 text-xs font-semibold text-foreground hover:bg-muted transition"
+                className="flex items-center gap-1.5 rounded-2xl border border-border/80 px-5 py-3 text-xs font-bold text-foreground hover:bg-muted transition-all active:scale-95 touch-target shadow-xs"
               >
                 <ChevronLeft className="h-4 w-4 notranslate" />
                 <span>Back</span>
               </button>
               <button
+                type="button"
                 onClick={handleNextFromStep3}
-                className="flex items-center gap-1.5 rounded-2xl bg-primary px-6 py-3.5 text-xs font-bold text-white shadow-soft hover:bg-primary/90 transition"
+                className="flex items-center gap-1.5 rounded-2xl bg-primary px-6 py-3.5 text-xs font-bold text-white shadow-md shadow-primary/25 hover:bg-primary/90 transition-all active:scale-95 touch-target"
               >
                 <span>Location & Contact</span>
                 <ChevronRight className="h-4 w-4 notranslate" />
@@ -1120,7 +1141,7 @@ export function NewRequestWizard() {
                 type="button"
                 onClick={handleUseCurrentGPS}
                 disabled={isLocating}
-                className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90 transition shadow-xs touch-target disabled:opacity-50"
+                className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90 transition-all active:scale-95 shadow-xs touch-target disabled:opacity-50"
               >
                 {isLocating ? (
                   <Loader2 className="h-4 w-4 animate-spin notranslate" />
@@ -1129,7 +1150,7 @@ export function NewRequestWizard() {
                 )}
                 <span>{isLocating ? 'Locking GPS...' : 'Use Current Live GPS'}</span>
               </button>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground font-medium">
                 Lat: {latitude.toFixed(4)}, Lng: {longitude.toFixed(4)}
               </span>
             </div>
@@ -1151,7 +1172,7 @@ export function NewRequestWizard() {
                     value={pickupAddress}
                     onChange={(e) => setPickupAddress(e.target.value)}
                     placeholder="e.g. Asansol Railway Station (Platform 1 Exit)"
-                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary"
+                    className="w-full rounded-xl border border-border/80 bg-card/90 focus:bg-card px-4 py-3 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-xs"
                   />
                 </div>
 
@@ -1164,7 +1185,7 @@ export function NewRequestWizard() {
                     value={dropAddress}
                     onChange={(e) => setDropAddress(e.target.value)}
                     placeholder="e.g. Asansol District Hospital, SB Gorai Road"
-                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary"
+                    className="w-full rounded-xl border border-border/80 bg-card/90 focus:bg-card px-4 py-3 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-xs"
                   />
                 </div>
               </div>
@@ -1178,7 +1199,7 @@ export function NewRequestWizard() {
                   value={locationName}
                   onChange={(e) => setLocationName(e.target.value)}
                   placeholder="Hospital ward, bed number, street name, landmark..."
-                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary transition"
+                  className="w-full rounded-2xl border border-border/80 bg-background/80 focus:bg-background px-4 py-3 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-xs hover:border-border"
                 />
               </div>
             )}
@@ -1201,10 +1222,10 @@ export function NewRequestWizard() {
                         setDropAddress(lm.name);
                       }
                     }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs transition ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all active:scale-95 ${
                       locationName === lm.name
-                        ? 'border-primary bg-primary text-white font-bold'
-                        : 'border-border bg-card hover:bg-muted text-foreground'
+                        ? 'border-primary bg-primary text-white font-bold shadow-xs'
+                        : 'border-border/80 bg-card hover:bg-muted text-foreground hover:border-border'
                     }`}
                   >
                     <MapPin className="h-3 w-3 notranslate" />
@@ -1215,7 +1236,7 @@ export function NewRequestWizard() {
             </div>
 
             {/* Contact Person Details */}
-            <div className="pt-2 border-t border-border space-y-3">
+            <div className="pt-2 border-t border-border/80 space-y-3">
               <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">
                 Requester Contact Information
               </h4>
@@ -1228,7 +1249,7 @@ export function NewRequestWizard() {
                     type="text"
                     value={contactName}
                     onChange={(e) => setContactName(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary"
+                    className="w-full rounded-xl border border-border/80 bg-background/80 focus:bg-background px-4 py-2.5 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-xs"
                   />
                 </div>
 
@@ -1241,23 +1262,25 @@ export function NewRequestWizard() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+91 98320 XXXXX"
-                    className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary"
+                    className="w-full rounded-xl border border-border/80 bg-background/80 focus:bg-background px-4 py-2.5 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-xs"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-between pt-4 border-t border-border">
+            <div className="flex justify-between pt-4 border-t border-border/80">
               <button
+                type="button"
                 onClick={() => setStep(3)}
-                className="flex items-center gap-1.5 rounded-2xl border border-border px-5 py-3 text-xs font-semibold text-foreground hover:bg-muted transition"
+                className="flex items-center gap-1.5 rounded-2xl border border-border/80 px-5 py-3 text-xs font-bold text-foreground hover:bg-muted transition-all active:scale-95 touch-target shadow-xs"
               >
                 <ChevronLeft className="h-4 w-4 notranslate" />
                 <span>Back</span>
               </button>
               <button
+                type="button"
                 onClick={handleNextFromStep4}
-                className="flex items-center gap-1.5 rounded-2xl bg-primary px-6 py-3.5 text-xs font-bold text-white shadow-soft hover:bg-primary/90 transition"
+                className="flex items-center gap-1.5 rounded-2xl bg-primary px-6 py-3.5 text-xs font-bold text-white shadow-md shadow-primary/25 hover:bg-primary/90 transition-all active:scale-95 touch-target"
               >
                 <span>Review & Submit</span>
                 <ChevronRight className="h-4 w-4 notranslate" />
@@ -1298,14 +1321,14 @@ export function NewRequestWizard() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 self-start sm:self-center px-3.5 py-1.5 rounded-2xl bg-background border border-border text-xs font-bold text-foreground">
+              <div className="flex items-center gap-2 self-start sm:self-center px-3.5 py-1.5 rounded-2xl bg-background border border-border text-xs font-bold text-foreground shadow-xs">
                 <Users className="h-4 w-4 text-emerald-500 notranslate" />
                 <span>{nearbyHelpersCount} Verified Helpers Nearby</span>
               </div>
             </div>
 
             {/* Live Request Preview Card */}
-            <div className="p-5 rounded-3xl bg-muted/40 border border-border space-y-4">
+            <div className="p-5 rounded-3xl bg-muted/40 border border-border/80 space-y-4">
               <div className="flex items-start justify-between">
                 <div>
                   <span
@@ -1324,12 +1347,12 @@ export function NewRequestWizard() {
                     {title}
                   </h3>
                 </div>
-                <div className="p-2.5 rounded-2xl bg-card border border-border text-primary font-bold text-xs uppercase">
+                <div className="p-2.5 rounded-2xl bg-card border border-border text-primary font-bold text-xs uppercase shadow-xs">
                   {category}
                 </div>
               </div>
 
-              <p className="text-xs text-foreground/80 leading-relaxed bg-card p-3 rounded-2xl border border-border">
+              <p className="text-xs text-foreground/80 leading-relaxed bg-card p-3.5 rounded-2xl border border-border/80">
                 {description}
               </p>
 
@@ -1361,7 +1384,7 @@ export function NewRequestWizard() {
                   </span>
                 )}
 
-                <span className="px-3 py-1 rounded-xl bg-card text-foreground font-semibold border border-border">
+                <span className="px-3 py-1 rounded-xl bg-card text-foreground font-semibold border border-border/80 shadow-xs">
                   ⏰ Needed: {category === 'blood' ? bloodNeededBy : neededByTime}
                 </span>
               </div>
@@ -1392,25 +1415,27 @@ export function NewRequestWizard() {
               </div>
             </div>
 
-            <div className="flex justify-between pt-4 border-t border-border">
+            <div className="flex justify-between pt-4 border-t border-border/80">
               <button
+                type="button"
                 onClick={() => setStep(4)}
-                className="flex items-center gap-1.5 rounded-2xl border border-border px-5 py-3 text-xs font-semibold text-foreground hover:bg-muted transition"
+                className="flex items-center gap-1.5 rounded-2xl border border-border/80 px-5 py-3 text-xs font-bold text-foreground hover:bg-muted transition-all active:scale-95 touch-target shadow-xs"
               >
                 <ChevronLeft className="h-4 w-4 notranslate" />
                 <span>Back</span>
               </button>
               <button
+                type="button"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="flex items-center gap-2 rounded-2xl bg-primary px-8 py-3.5 text-sm font-bold text-white shadow-soft hover:bg-primary/90 transition active:scale-98 touch-target disabled:opacity-50"
+                className="flex items-center gap-2 rounded-2xl bg-primary px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all active:scale-95 touch-target disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <Loader2 className="h-4 w-4 animate-spin notranslate" />
                 ) : (
                   <Sparkles className="h-4 w-4 notranslate" />
                 )}
-                <span>{isSubmitting ? 'Broadcasting...' : 'Broadcast Request Now'}</span>
+                <span>{isSubmitting ? 'Publishing...' : 'Publish Request'}</span>
               </button>
             </div>
           </div>

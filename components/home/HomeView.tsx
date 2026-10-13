@@ -227,32 +227,36 @@ export function HomeView() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             {/* Stat 1: Helpers Nearby */}
             <div
-              className="relative p-3.5 rounded-2xl bg-background border border-border/80 flex items-center gap-3 group transition hover:border-emerald-500/40"
+              className="relative p-4 rounded-2xl bg-card/90 dark:bg-card/75 border border-emerald-500/30 hover:border-emerald-500/60 shadow-xs hover:shadow-lg hover:shadow-emerald-500/10 hover:-translate-y-0.5 flex items-center gap-3.5 group transition-all duration-200 cursor-pointer backdrop-blur-xs"
               onMouseEnter={() => setActiveTooltip('helpers')}
               onMouseLeave={() => setActiveTooltip(null)}
+              onClick={() => setActiveTooltip(activeTooltip === 'helpers' ? null : 'helpers')}
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600">
-                <span className="relative flex h-3 w-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 group-hover:scale-105 transition">
+                <span className="relative flex h-3.5 w-3.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
                 </span>
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-lg font-extrabold text-foreground leading-none">
+                  <p className="text-xl font-black text-foreground leading-none tracking-tight">
                     {isLoadingStats && !liveStats ? '...' : (liveStats?.helpersNearby ?? 0)}
                   </p>
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-wider">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[9px] font-black uppercase tracking-wider border border-emerald-500/20">
                     <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
                     Live
                   </span>
                 </div>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <p className="text-xs text-muted-foreground truncate">Helpers Nearby</p>
+                <div className="flex items-center gap-1 mt-1">
+                  <p className="text-xs font-semibold text-muted-foreground truncate">Helpers Nearby</p>
                   <button
                     type="button"
-                    onClick={() => setActiveTooltip(activeTooltip === 'helpers' ? null : 'helpers')}
-                    className="text-muted-foreground/60 hover:text-muted-foreground focus:outline-none"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveTooltip(activeTooltip === 'helpers' ? null : 'helpers');
+                    }}
+                    className="text-muted-foreground/50 hover:text-emerald-600 transition focus:outline-none"
                     aria-label="Information about helpers nearby"
                   >
                     <Info className="h-3 w-3 notranslate" />
@@ -261,39 +265,46 @@ export function HomeView() {
               </div>
 
               {activeTooltip === 'helpers' && (
-                <div className="absolute left-0 bottom-full mb-2 z-20 w-56 p-2.5 rounded-xl bg-popover text-popover-foreground text-[11px] shadow-lg border border-border animate-in fade-in duration-150">
-                  Verified helpers active in the last 15 min or registered within {filterRadius} km. Updated just now.
+                <div className="absolute left-0 bottom-full mb-2.5 z-30 w-60 p-3 rounded-2xl bg-popover/95 backdrop-blur-md text-popover-foreground text-xs shadow-xl border border-border animate-in fade-in zoom-in-95 duration-150">
+                  <p className="font-semibold text-foreground mb-0.5">Active Local Responders</p>
+                  <p className="text-muted-foreground text-[11px] leading-relaxed">
+                    Verified helpers active in the last 15 min or registered within {filterRadius} km. Updated in real-time.
+                  </p>
                 </div>
               )}
             </div>
 
             {/* Stat 2: Avg Response Time */}
             <div
-              className="relative p-3.5 rounded-2xl bg-background border border-border/80 flex items-center gap-3 group transition hover:border-amber-500/40"
+              className="relative p-4 rounded-2xl bg-card/90 dark:bg-card/75 border border-amber-500/30 hover:border-amber-500/60 shadow-xs hover:shadow-lg hover:shadow-amber-500/10 hover:-translate-y-0.5 flex items-center gap-3.5 group transition-all duration-200 cursor-pointer backdrop-blur-xs"
               onMouseEnter={() => setActiveTooltip('response')}
               onMouseLeave={() => setActiveTooltip(null)}
+              onClick={() => setActiveTooltip(activeTooltip === 'response' ? null : 'response')}
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 group-hover:scale-105 transition">
                 <Zap className="h-5 w-5 notranslate" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-lg font-extrabold text-foreground leading-none">
+                  <p className="text-xl font-black text-foreground leading-none tracking-tight">
                     {liveStats?.avgResponseMinutes !== null && liveStats?.avgResponseMinutes !== undefined
                       ? `${liveStats.avgResponseMinutes} min`
                       : '-'}
                   </p>
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-wider">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[9px] font-black uppercase tracking-wider border border-emerald-500/20">
                     <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
                     Live
                   </span>
                 </div>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <p className="text-xs text-muted-foreground truncate">Avg Response</p>
+                <div className="flex items-center gap-1 mt-1">
+                  <p className="text-xs font-semibold text-muted-foreground truncate">Avg Response</p>
                   <button
                     type="button"
-                    onClick={() => setActiveTooltip(activeTooltip === 'response' ? null : 'response')}
-                    className="text-muted-foreground/60 hover:text-muted-foreground focus:outline-none"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveTooltip(activeTooltip === 'response' ? null : 'response');
+                    }}
+                    className="text-muted-foreground/50 hover:text-amber-600 transition focus:outline-none"
                     aria-label="Information about average response time"
                   >
                     <Info className="h-3 w-3 notranslate" />
@@ -302,37 +313,44 @@ export function HomeView() {
               </div>
 
               {activeTooltip === 'response' && (
-                <div className="absolute left-0 bottom-full mb-2 z-20 w-56 p-2.5 rounded-xl bg-popover text-popover-foreground text-[11px] shadow-lg border border-border animate-in fade-in duration-150">
-                  Median time from request creation to first offer in last 30 days. Shows &apos;-&apos; if fewer than 3 requests. Updated just now.
+                <div className="absolute left-0 bottom-full mb-2.5 z-30 w-60 p-3 rounded-2xl bg-popover/95 backdrop-blur-md text-popover-foreground text-xs shadow-xl border border-border animate-in fade-in zoom-in-95 duration-150">
+                  <p className="font-semibold text-foreground mb-0.5">Rapid Turnaround</p>
+                  <p className="text-muted-foreground text-[11px] leading-relaxed">
+                    Median time from request creation to first offer in last 30 days. Shows &apos;-&apos; if fewer than 3 requests.
+                  </p>
                 </div>
               )}
             </div>
 
             {/* Stat 3: Acts of Help */}
             <div
-              className="relative p-3.5 rounded-2xl bg-background border border-border/80 flex items-center gap-3 group transition hover:border-primary/40"
+              className="relative p-4 rounded-2xl bg-card/90 dark:bg-card/75 border border-primary/30 hover:border-primary/60 shadow-xs hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-0.5 flex items-center gap-3.5 group transition-all duration-200 cursor-pointer backdrop-blur-xs"
               onMouseEnter={() => setActiveTooltip('acts')}
               onMouseLeave={() => setActiveTooltip(null)}
+              onClick={() => setActiveTooltip(activeTooltip === 'acts' ? null : 'acts')}
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Heart className="h-5 w-5 notranslate" />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary border border-primary/20 group-hover:scale-105 transition">
+                <Heart className="h-5 w-5 notranslate fill-primary/20" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-lg font-extrabold text-foreground leading-none">
+                  <p className="text-xl font-black text-foreground leading-none tracking-tight">
                     {isLoadingStats && !liveStats ? '...' : (liveStats?.actsOfHelp ?? 0)}
                   </p>
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-wider">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[9px] font-black uppercase tracking-wider border border-emerald-500/20">
                     <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
                     Live
                   </span>
                 </div>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <p className="text-xs text-muted-foreground truncate">Acts of Help</p>
+                <div className="flex items-center gap-1 mt-1">
+                  <p className="text-xs font-semibold text-muted-foreground truncate">Acts of Help</p>
                   <button
                     type="button"
-                    onClick={() => setActiveTooltip(activeTooltip === 'acts' ? null : 'acts')}
-                    className="text-muted-foreground/60 hover:text-muted-foreground focus:outline-none"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveTooltip(activeTooltip === 'acts' ? null : 'acts');
+                    }}
+                    className="text-muted-foreground/50 hover:text-primary transition focus:outline-none"
                     aria-label="Information about acts of help"
                   >
                     <Info className="h-3 w-3 notranslate" />
@@ -341,39 +359,46 @@ export function HomeView() {
               </div>
 
               {activeTooltip === 'acts' && (
-                <div className="absolute left-0 bottom-full mb-2 z-20 w-56 p-2.5 rounded-xl bg-popover text-popover-foreground text-[11px] shadow-lg border border-border animate-in fade-in duration-150">
-                  Total completed mutual aid deliveries in this area. Updated just now.
+                <div className="absolute left-0 bottom-full mb-2.5 z-30 w-60 p-3 rounded-2xl bg-popover/95 backdrop-blur-md text-popover-foreground text-xs shadow-xl border border-border animate-in fade-in zoom-in-95 duration-150">
+                  <p className="font-semibold text-foreground mb-0.5">Delivered Mutual Aid</p>
+                  <p className="text-muted-foreground text-[11px] leading-relaxed">
+                    Total completed aid acts recorded in Asansol and neighboring wards.
+                  </p>
                 </div>
               )}
             </div>
 
             {/* Stat 4: Trust Match */}
             <div
-              className="relative p-3.5 rounded-2xl bg-background border border-border/80 flex items-center gap-3 group transition hover:border-blue-500/40"
+              className="relative p-4 rounded-2xl bg-card/90 dark:bg-card/75 border border-blue-500/30 hover:border-blue-500/60 shadow-xs hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-0.5 flex items-center gap-3.5 group transition-all duration-200 cursor-pointer backdrop-blur-xs"
               onMouseEnter={() => setActiveTooltip('trust')}
               onMouseLeave={() => setActiveTooltip(null)}
+              onClick={() => setActiveTooltip(activeTooltip === 'trust' ? null : 'trust')}
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20 group-hover:scale-105 transition">
                 <ShieldCheck className="h-5 w-5 notranslate" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-lg font-extrabold text-foreground leading-none">
+                  <p className="text-xl font-black text-foreground leading-none tracking-tight">
                     {liveStats?.trustMatchPercentage !== null && liveStats?.trustMatchPercentage !== undefined
                       ? `${liveStats.trustMatchPercentage}%`
                       : '-'}
                   </p>
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-wider">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[9px] font-black uppercase tracking-wider border border-emerald-500/20">
                     <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
                     Live
                   </span>
                 </div>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <p className="text-xs text-muted-foreground truncate">Trust Match</p>
+                <div className="flex items-center gap-1 mt-1">
+                  <p className="text-xs font-semibold text-muted-foreground truncate">Trust Match</p>
                   <button
                     type="button"
-                    onClick={() => setActiveTooltip(activeTooltip === 'trust' ? null : 'trust')}
-                    className="text-muted-foreground/60 hover:text-muted-foreground focus:outline-none"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveTooltip(activeTooltip === 'trust' ? null : 'trust');
+                    }}
+                    className="text-muted-foreground/50 hover:text-blue-600 transition focus:outline-none"
                     aria-label="Information about trust match score"
                   >
                     <Info className="h-3 w-3 notranslate" />
@@ -382,8 +407,11 @@ export function HomeView() {
               </div>
 
               {activeTooltip === 'trust' && (
-                <div className="absolute right-0 bottom-full mb-2 z-20 w-56 p-2.5 rounded-xl bg-popover text-popover-foreground text-[11px] shadow-lg border border-border animate-in fade-in duration-150">
-                  Percentage of 4+ star ratings in the last 90 days. Shows &apos;-&apos; if fewer than 5 ratings. Updated just now.
+                <div className="absolute right-0 bottom-full mb-2.5 z-30 w-60 p-3 rounded-2xl bg-popover/95 backdrop-blur-md text-popover-foreground text-xs shadow-xl border border-border animate-in fade-in zoom-in-95 duration-150">
+                  <p className="font-semibold text-foreground mb-0.5">High Trust Ratio</p>
+                  <p className="text-muted-foreground text-[11px] leading-relaxed">
+                    Percentage of 4+ star volunteer deliveries over the last 90 days.
+                  </p>
                 </div>
               )}
             </div>
@@ -409,12 +437,15 @@ export function HomeView() {
           {categories.map((cat) => (
             <button
               key={cat.key}
+              type="button"
               onClick={() => handleCategoryClick(cat.key)}
-              className="flex items-center gap-2 shrink-0 px-4 py-2.5 rounded-2xl border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition text-foreground text-xs font-semibold shadow-sm touch-target"
+              className="group flex items-center gap-2.5 shrink-0 px-4 py-2.5 rounded-2xl border border-border/80 bg-card hover:border-primary/50 hover:bg-primary/5 hover:shadow-md hover:shadow-primary/5 hover:-translate-y-0.5 active:scale-95 transition-all duration-150 text-foreground text-xs font-bold shadow-xs touch-target"
             >
-              {cat.icon}
+              <span className="p-1.5 rounded-xl bg-background border border-border/60 group-hover:border-primary/30 group-hover:scale-105 transition">
+                {cat.icon}
+              </span>
               <span>{cat.label}</span>
-              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-muted text-[10px] text-muted-foreground font-bold">
+              <span className="ml-0.5 px-2 py-0.5 rounded-full bg-muted text-[10px] text-muted-foreground font-black group-hover:bg-primary/10 group-hover:text-primary transition">
                 {cat.count}
               </span>
             </button>
@@ -483,27 +514,27 @@ export function HomeView() {
               <div
                 key={req.id}
                 onClick={() => handleRequestClick(req)}
-                className="group rounded-3xl border border-border bg-card p-5 shadow-soft hover:shadow-md hover:border-primary/50 transition cursor-pointer flex flex-col justify-between text-left"
+                className="group rounded-3xl border border-border/80 dark:border-white/10 bg-card/95 backdrop-blur-xs p-5 shadow-soft hover:-translate-y-0.5 hover:shadow-xl hover:shadow-teal-950/25 hover:border-primary/50 dark:hover:border-primary/60 transition-all duration-200 cursor-pointer flex flex-col justify-between text-left"
               >
                 <div>
                   {/* Header row with badges */}
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider ${
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider border shadow-xs ${
                         req.urgency === 'critical'
-                          ? 'bg-urgency-critical/10 text-urgency-critical border border-urgency-critical/20'
+                          ? 'bg-gradient-to-r from-rose-500/15 to-red-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30'
                           : req.urgency === 'high'
-                          ? 'bg-urgency-high/10 text-urgency-high border border-urgency-high/20'
+                          ? 'bg-gradient-to-r from-amber-500/15 to-orange-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
                           : req.urgency === 'medium'
-                          ? 'bg-urgency-medium/10 text-urgency-medium border border-urgency-medium/20'
-                          : 'bg-urgency-low/10 text-urgency-low border border-urgency-low/20'
+                          ? 'bg-gradient-to-r from-blue-500/15 to-sky-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30'
+                          : 'bg-gradient-to-r from-slate-500/15 to-zinc-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30'
                       }`}
                     >
                       <AlertTriangle className="h-3 w-3 notranslate" />
-                      {req.urgency}
+                      <span>{req.urgency}</span>
                     </span>
 
-                    <div className="flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                    <div className="flex items-center gap-1 text-[11px] font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full">
                       <Atom className="h-3 w-3 notranslate" />
                       <span>Score: {req.helpGravityScore}</span>
                     </div>
@@ -518,40 +549,68 @@ export function HomeView() {
                   </p>
 
                   {/* Specific category details */}
-                  {req.bloodGroup && (
-                    <div className="mt-3 inline-block px-2.5 py-1 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-bold">
-                      Blood Group: {req.bloodGroup} ({req.unitsNeeded || 1} units)
-                    </div>
-                  )}
-                  {req.itemType && (
-                    <div className="mt-3 inline-block px-2.5 py-1 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 text-xs font-bold">
-                      Item: {req.itemType}
-                    </div>
-                  )}
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    {req.bloodGroup && (
+                      <span className="px-2.5 py-1 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-bold border border-rose-500/20">
+                        🩸 {req.bloodGroup} ({req.unitsNeeded || 1} units)
+                      </span>
+                    )}
+                    {req.itemType && (
+                      <span className="px-2.5 py-1 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 text-xs font-bold border border-teal-500/20">
+                        🩺 {req.itemType}
+                      </span>
+                    )}
+                    {req.verified && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] border border-emerald-500/20">
+                        <ShieldCheck className="h-3.5 w-3.5 notranslate" />
+                        <span>{req.verificationBadge}</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Footer with distance & button */}
-                <div className="mt-5 pt-4 border-t border-border flex items-center justify-between text-xs">
-                  <div className="space-y-0.5 text-muted-foreground">
+                {/* Footer with distance & high-contrast buttons */}
+                <div className="mt-5 pt-4 border-t border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="space-y-1 text-muted-foreground">
                     <span className="flex items-center gap-1 font-medium">
-                      <MapPin className="h-3.5 w-3.5 text-primary notranslate" />
+                      <MapPin className="h-3.5 w-3.5 text-primary notranslate shrink-0" />
                       <span className="truncate max-w-[130px] sm:max-w-[160px]">{req.locationName}</span>
                     </span>
-                    <span className="flex items-center gap-1 text-[11px]">
-                      <Clock className="h-3 w-3 notranslate" />
-                      <span>{req.distanceKm} km away · waiting {req.waitingMinutes}m</span>
-                    </span>
+                    <div className="flex items-center gap-2 text-[11px] flex-wrap">
+                      <span className="font-semibold text-foreground">
+                        {req.distanceKm} km away
+                      </span>
+                      <span className="text-muted-foreground/60">•</span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-muted/80 text-[10px] font-bold text-foreground/80 border border-border/60">
+                        <Clock className="h-3 w-3 text-primary notranslate" />
+                        <span>waiting {req.waitingMinutes}m</span>
+                      </span>
+                    </div>
                   </div>
 
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRequestClick(req);
-                    }}
-                    className="rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-white hover:bg-primary/90 transition shadow-sm touch-target"
-                  >
-                    Help
-                  </button>
+                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRequestClick(req);
+                      }}
+                      className="rounded-xl border border-border/80 bg-background/80 hover:bg-muted px-3 py-2 text-xs font-semibold text-foreground hover:text-primary transition active:scale-95 touch-target shadow-xs"
+                    >
+                      Details
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRequestClick(req);
+                      }}
+                      className="rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-primary/25 hover:bg-primary/90 transition active:scale-95 touch-target flex items-center gap-1.5"
+                    >
+                      <HeartHandshake className="h-3.5 w-3.5 notranslate" />
+                      <span>I Can Help</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   HeartHandshake,
@@ -39,6 +39,20 @@ export function HelpFlowModal({
 
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open, onClose]);
 
   if (!open || !request) return null;
 
@@ -93,10 +107,21 @@ export function HelpFlowModal({
   };
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-lg rounded-3xl bg-card border border-border p-6 shadow-2xl text-card-foreground max-h-[90vh] overflow-y-auto">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="help-flow-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg rounded-3xl bg-card border border-border/80 dark:border-white/10 p-6 shadow-2xl text-card-foreground max-h-[90vh] overflow-y-auto"
+      >
         {/* Header */}
-        <div className="flex items-start justify-between pb-4 border-b border-border">
+        <div className="flex items-start justify-between pb-4 border-b border-border/80">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span
@@ -115,12 +140,13 @@ export function HelpFlowModal({
                 {request.category}
               </span>
             </div>
-            <h2 className="text-lg font-bold text-foreground mt-1">{request.title}</h2>
+            <h2 id="help-flow-title" className="text-lg font-bold text-foreground mt-1">{request.title}</h2>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted touch-target"
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-95 touch-target focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Close"
           >
             <X className="h-5 w-5 notranslate" />
@@ -146,10 +172,10 @@ export function HelpFlowModal({
                   key={mode}
                   type="button"
                   onClick={() => setTravelMode(mode)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold border transition touch-target ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold border transition-all active:scale-95 touch-target ${
                     travelMode === mode
                       ? 'border-primary bg-primary text-white shadow-xs font-bold'
-                      : 'border-border bg-card text-muted-foreground hover:bg-muted'
+                      : 'border-border/80 bg-card text-muted-foreground hover:bg-muted'
                   }`}
                 >
                   {mode === 'bike' && <Bike className="h-3.5 w-3.5 notranslate" />}
@@ -172,8 +198,9 @@ export function HelpFlowModal({
                 To safeguard patients and family members in Asansol, only verified community volunteers can submit aid offers. Verification takes only 2 minutes by uploading your Student ID or Government ID.
               </p>
               <button
+                type="button"
                 onClick={handleVerifyRedirect}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition shadow-soft"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all active:scale-95 shadow-soft"
               >
                 <ShieldCheck className="h-4 w-4 notranslate" />
                 <span>Get Verified to Help</span>
@@ -202,7 +229,7 @@ export function HelpFlowModal({
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="e.g. I am 10 mins away from Asansol District Hospital with my donor card ready..."
-                  className="w-full p-3.5 rounded-2xl border border-border bg-background text-foreground text-xs sm:text-sm focus:outline-none focus:border-primary transition"
+                  className="w-full p-3.5 rounded-2xl border border-border/80 bg-background text-foreground text-xs sm:text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                 />
 
                 <div className="mt-2 flex flex-wrap gap-1.5">
@@ -211,7 +238,7 @@ export function HelpFlowModal({
                       key={p}
                       type="button"
                       onClick={() => handlePresetClick(p)}
-                      className="px-2.5 py-1 rounded-lg border border-border bg-muted/60 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted transition"
+                      className="px-2.5 py-1 rounded-lg border border-border/80 bg-muted/60 text-[11px] text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all active:scale-95"
                     >
                       + {p}
                     </button>
@@ -224,7 +251,7 @@ export function HelpFlowModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 py-3 rounded-2xl border border-border bg-card text-xs font-semibold hover:bg-muted transition touch-target"
+                  className="flex-1 py-3 rounded-2xl border border-border/80 bg-card text-xs font-semibold hover:bg-muted transition-all active:scale-95 touch-target"
                 >
                   Cancel
                 </button>
@@ -232,7 +259,7 @@ export function HelpFlowModal({
                   type="button"
                   onClick={handleConfirmHelp}
                   disabled={isSubmitting}
-                  className="flex-2 flex items-center justify-center gap-2 rounded-2xl bg-primary py-3 px-5 text-sm font-bold text-white shadow-soft hover:bg-primary/90 transition active:scale-98 touch-target disabled:opacity-50"
+                  className="flex-2 flex items-center justify-center gap-2 rounded-2xl bg-primary py-3 px-5 text-sm font-bold text-white shadow-md shadow-primary/25 hover:bg-primary/90 transition-all active:scale-95 touch-target disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <Loader2 className="h-4 w-4 animate-spin notranslate" />

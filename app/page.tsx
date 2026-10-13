@@ -46,8 +46,10 @@ export default function PublicHomePage() {
       description:
         'Urgent donor matching for rare groups (O-, AB-) during accidents and critical surgeries at Asansol District Hospital, Burnpur, and Durgapur clinics.',
       icon: Droplet,
-      accent: 'from-rose-500/15 to-rose-600/5 border-rose-500/20 text-rose-600 dark:text-rose-400',
-      badgeBg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+      accent: 'from-rose-500/20 via-rose-500/10 to-transparent border-rose-500/30 text-rose-600 dark:text-rose-400',
+      badgeBg: 'bg-rose-500/10 text-rose-700 dark:text-rose-300',
+      badgeBorder: 'border-rose-500/30',
+      glowColor: 'shadow-rose-500/15',
     },
     {
       title: 'Emergency Transport',
@@ -57,8 +59,10 @@ export default function PublicHomePage() {
       description:
         'Community transit assistance for urgent medical appointments, hospital transfers, and localized emergencies when commercial ambulances are delayed.',
       icon: Car,
-      accent: 'from-amber-500/15 to-amber-600/5 border-amber-500/20 text-amber-600 dark:text-amber-400',
-      badgeBg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+      accent: 'from-amber-500/20 via-amber-500/10 to-transparent border-amber-500/30 text-amber-600 dark:text-amber-400',
+      badgeBg: 'bg-amber-500/10 text-amber-700 dark:text-amber-300',
+      badgeBorder: 'border-amber-500/30',
+      glowColor: 'shadow-amber-500/15',
     },
     {
       title: 'Elderly Assistance',
@@ -68,8 +72,10 @@ export default function PublicHomePage() {
       description:
         'Support for senior citizens living alone: essential grocery runs, prescription medicine pickup, and hospital accompaniment with verified local volunteers.',
       icon: HeartHandshake,
-      accent: 'from-teal-500/15 to-teal-600/5 border-teal-500/20 text-teal-600 dark:text-teal-400',
-      badgeBg: 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
+      accent: 'from-teal-500/20 via-teal-500/10 to-transparent border-teal-500/30 text-teal-600 dark:text-teal-400',
+      badgeBg: 'bg-teal-500/10 text-teal-700 dark:text-teal-300',
+      badgeBorder: 'border-teal-500/30',
+      glowColor: 'shadow-teal-500/15',
     },
     {
       title: 'Medical Equipment',
@@ -79,8 +85,10 @@ export default function PublicHomePage() {
       description:
         'Free short-term lending of wheelchairs, oxygen concentrators, nebulizers, walkers, and crutches from neighbors with unused equipment at home.',
       icon: Stethoscope,
-      accent: 'from-cyan-500/15 to-cyan-600/5 border-cyan-500/20 text-cyan-600 dark:text-cyan-400',
-      badgeBg: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
+      accent: 'from-cyan-500/20 via-cyan-500/10 to-transparent border-cyan-500/30 text-cyan-600 dark:text-cyan-400',
+      badgeBg: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300',
+      badgeBorder: 'border-cyan-500/30',
+      glowColor: 'shadow-cyan-500/15',
     },
     {
       title: 'Study Materials',
@@ -90,8 +98,10 @@ export default function PublicHomePage() {
       description:
         'Academic textbook lending for engineering (AEC MAKAUT syllabus), CBSE, and state board curriculums, reducing semester costs for hardworking students.',
       icon: BookOpen,
-      accent: 'from-indigo-500/15 to-indigo-600/5 border-indigo-500/20 text-indigo-600 dark:text-indigo-400',
-      badgeBg: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+      accent: 'from-indigo-500/20 via-indigo-500/10 to-transparent border-indigo-500/30 text-indigo-600 dark:text-indigo-400',
+      badgeBg: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300',
+      badgeBorder: 'border-indigo-500/30',
+      glowColor: 'shadow-indigo-500/15',
     },
   ];
 
@@ -155,7 +165,7 @@ export default function PublicHomePage() {
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
                 <Link
                   href="/login"
-                  className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-teal-600/25 transition-all hover:bg-teal-700 active:scale-[0.98]"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-teal-900/30 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200"
                 >
                   <Sparkles className="h-4 w-4" />
                   <span>Get Started / Login</span>
@@ -163,7 +173,7 @@ export default function PublicHomePage() {
 
                 <Link
                   href="/app"
-                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3.5 text-sm font-semibold text-foreground transition-all hover:bg-muted active:scale-[0.98]"
+                  className="inline-flex items-center gap-2 rounded-xl border border-border/80 bg-card/80 backdrop-blur-md px-5 py-3.5 text-sm font-semibold text-foreground hover:bg-card hover:border-teal-500/40 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200"
                 >
                   <span>Launch KindLink App</span>
                   <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -171,7 +181,7 @@ export default function PublicHomePage() {
 
                 <Link
                   href="/signup"
-                  className="inline-flex items-center gap-2 rounded-xl border border-teal-500/30 bg-teal-500/5 px-5 py-3.5 text-sm font-semibold text-teal-700 dark:text-teal-300 transition-all hover:bg-teal-500/10 active:scale-[0.98]"
+                  className="inline-flex items-center gap-2 rounded-xl border border-teal-500/30 bg-teal-500/10 backdrop-blur-md px-5 py-3.5 text-sm font-semibold text-teal-700 dark:text-teal-300 hover:bg-teal-500/20 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200"
                 >
                   <Users className="h-4 w-4" />
                   <span>Join as Volunteer</span>
@@ -216,19 +226,19 @@ export default function PublicHomePage() {
                 return (
                   <div
                     key={cat.href}
-                    className="group relative flex flex-col justify-between rounded-2xl border border-border/80 bg-card p-6 shadow-sm transition-all hover:border-teal-500/50 hover:shadow-md"
+                    className="group relative flex flex-col justify-between rounded-3xl border border-border/80 bg-card/85 dark:bg-card/75 backdrop-blur-md p-6 shadow-sm hover:shadow-xl hover:shadow-teal-500/10 hover:border-teal-500/50 hover:-translate-y-1 transition-all duration-300"
                   >
                     <div>
                       <div className="flex items-center justify-between gap-3">
-                        <div className={`rounded-xl border p-2.5 bg-gradient-to-br ${cat.accent}`}>
+                        <div className={`relative rounded-2xl border p-3 bg-gradient-to-br ${cat.accent} shadow-md group-hover:scale-110 group-hover:shadow-lg transition-transform duration-300 ring-1 ring-white/10`}>
                           <Icon className="h-5 w-5" />
                         </div>
-                        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${cat.badgeBg}`}>
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold border ${cat.badgeBorder} ${cat.badgeBg} shadow-xs`}>
                           {cat.weight}
                         </span>
                       </div>
 
-                      <h3 className="mt-4 font-heading text-lg font-bold text-foreground group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+                      <h3 className="mt-5 font-heading text-lg font-bold text-foreground group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
                         {cat.title}
                       </h3>
 
@@ -238,14 +248,14 @@ export default function PublicHomePage() {
                     </div>
 
                     <div className="mt-6 pt-4 border-t border-border/60 flex items-center justify-between text-xs">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Clock className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
-                        {cat.eta}
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-muted/60 dark:bg-muted/40 border border-border/60 text-[11px] font-semibold text-foreground">
+                        <Clock className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                        <span>{cat.eta}</span>
                       </span>
 
                       <Link
                         href={cat.href}
-                        className="font-semibold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
+                        className="font-bold text-teal-600 dark:text-teal-400 hover:text-teal-500 group-hover:translate-x-0.5 transition-all flex items-center gap-1 text-xs"
                       >
                         <span>Guidelines</span>
                         <ArrowRight className="h-3 w-3" />
@@ -256,12 +266,12 @@ export default function PublicHomePage() {
               })}
 
               {/* Extra Interactive Card */}
-              <div className="flex flex-col justify-between rounded-2xl border border-dashed border-teal-500/40 bg-teal-500/5 p-6">
+              <div className="group flex flex-col justify-between rounded-3xl border border-dashed border-teal-500/40 bg-gradient-to-br from-teal-500/10 via-card/90 to-emerald-500/10 backdrop-blur-md p-6 shadow-sm hover:shadow-xl hover:shadow-teal-500/10 hover:border-teal-500/60 hover:-translate-y-1 transition-all duration-300">
                 <div>
-                  <div className="rounded-xl border border-teal-500/30 bg-teal-500/10 p-2.5 text-teal-600 dark:text-teal-400 w-fit">
-                    <Atom className="h-5 w-5" />
+                  <div className="relative rounded-2xl border border-teal-500/40 bg-gradient-to-br from-teal-500/20 to-emerald-500/10 p-3 text-teal-600 dark:text-teal-300 w-fit shadow-md group-hover:scale-110 transition-transform duration-300 ring-1 ring-white/10">
+                    <Atom className="h-5 w-5 animate-spin-slow" />
                   </div>
-                  <h3 className="mt-4 font-heading text-lg font-bold text-foreground">
+                  <h3 className="mt-5 font-heading text-lg font-bold text-foreground group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
                     Real-Time Kinematics &amp; IMU Sensor
                   </h3>
                   <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
@@ -272,7 +282,7 @@ export default function PublicHomePage() {
                 <div className="mt-6 pt-4 border-t border-teal-500/20">
                   <Link
                     href="/physics"
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 dark:text-teal-300 hover:underline"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 dark:text-teal-300 hover:underline group-hover:translate-x-0.5 transition-all"
                   >
                     <span>Read Applied Physics Breakdown</span>
                     <ArrowRight className="h-3.5 w-3.5" />
@@ -384,24 +394,40 @@ export default function PublicHomePage() {
                   square of the distance, KindLink treats urgent needs like celestial masses:
                 </p>
 
-                <div className="mt-5 rounded-2xl border border-teal-500/30 bg-card p-5 font-mono text-xs sm:text-sm shadow-sm">
-                  <div className="text-teal-600 dark:text-teal-400 font-bold mb-1">
-                    Help Gravity Equation:
+                <div className="mt-6 rounded-3xl border border-teal-500/30 bg-slate-950/90 dark:bg-slate-950/95 text-slate-100 p-6 sm:p-7 shadow-2xl shadow-teal-950/30 backdrop-blur-xl relative overflow-hidden group hover:border-teal-400/50 transition-all duration-300">
+                  <div className="absolute -top-20 -right-20 w-44 h-44 bg-teal-500/15 rounded-full blur-3xl pointer-events-none group-hover:bg-teal-500/25 transition-all duration-500" />
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-teal-400 font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                      <Zap className="h-3.5 w-3.5 text-teal-400" />
+                      Help Gravity Formulation
+                    </div>
+                    <span className="text-[10px] text-teal-300/80 border border-teal-500/30 px-2.5 py-0.5 rounded-full bg-teal-500/10 font-sans">
+                      Inverse-Square Decay
+                    </span>
                   </div>
-                  <div className="text-foreground bg-muted/60 p-3 rounded-xl overflow-x-auto">
-                    Score = [TypeWeight &times; (1 + 0.05 &times; &Delta;t)] / (1 + Distance)^2
+                  <div className="text-teal-200 bg-slate-900/95 border border-teal-500/25 p-4 rounded-2xl overflow-x-auto font-mono text-xs sm:text-sm font-bold shadow-inner tracking-wide">
+                    Score = [TypeWeight &times; (1 + 0.05 &times; &Delta;t)] / (1 + Distance)&sup2;
                   </div>
-                  <div className="mt-3 text-[11px] font-sans text-muted-foreground leading-relaxed">
-                    Where <strong>TypeWeight</strong> reflects life sensitivity (Blood = 10, Transport = 9, Books = 2),
-                    <strong>&Delta;t</strong> represents waiting minutes amplifying priority over time, and
-                    <strong>Distance</strong> creates an inverse-square attenuation so immediate neighbors see it first.
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] font-sans text-slate-300">
+                    <div className="p-2.5 rounded-xl bg-slate-900/70 border border-teal-500/15">
+                      <strong className="text-rose-400 block mb-0.5">TypeWeight</strong>
+                      Blood: 10, Transit: 9, Books: 2
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-900/70 border border-teal-500/15">
+                      <strong className="text-teal-400 block mb-0.5">&Delta;t (Waiting min)</strong>
+                      Priority amplifies as minutes pass
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-900/70 border border-teal-500/15">
+                      <strong className="text-amber-400 block mb-0.5">1 / (1 + Distance)&sup2;</strong>
+                      Immediate neighbors prioritized
+                    </div>
                   </div>
                 </div>
 
                 <div className="mt-6">
                   <Link
                     href="/physics"
-                    className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-teal-600/20 hover:bg-teal-700 transition-all"
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 px-5 py-3 text-xs font-bold text-white shadow-lg shadow-teal-900/30 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200"
                   >
                     <span>Explore Physics Formulations &amp; Simulator</span>
                     <ArrowRight className="h-3.5 w-3.5" />
@@ -410,39 +436,41 @@ export default function PublicHomePage() {
               </div>
 
               {/* Visual Formula Card */}
-              <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-sm">
-                <h3 className="font-heading text-base font-bold text-foreground mb-4">
+              <div className="rounded-3xl border border-teal-500/30 bg-slate-950/80 dark:bg-slate-950/90 text-slate-100 p-6 sm:p-8 shadow-2xl shadow-teal-950/20 backdrop-blur-xl relative overflow-hidden group hover:border-teal-400/50 transition-all duration-300">
+                <div className="absolute -bottom-20 -left-20 w-44 h-44 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/20 transition-all duration-500" />
+                <h3 className="font-heading text-base font-bold text-slate-100 mb-5 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-teal-400" />
                   Why Deterministic Physics Outperforms Social Feeds
                 </h3>
-                <div className="space-y-4 text-xs text-muted-foreground">
+                <div className="space-y-4 text-xs text-slate-300">
                   <div className="flex gap-3 items-start">
-                    <div className="rounded-lg bg-teal-500/10 p-1.5 text-teal-600 dark:text-teal-400 shrink-0">
+                    <div className="rounded-xl bg-teal-500/15 border border-teal-500/30 p-2 text-teal-400 shrink-0 shadow-sm shadow-teal-500/10">
                       <CheckCircle2 className="h-4 w-4" />
                     </div>
                     <div>
-                      <strong className="text-foreground block">Zero Algorithm Bias</strong>
+                      <strong className="text-slate-100 block font-semibold mb-0.5">Zero Algorithm Bias</strong>
                       Commercial social platforms rank content to maximize rage and dwell time. KindLink ranks solely
                       by medical urgency, waiting time, and real physical proximity.
                     </div>
                   </div>
 
                   <div className="flex gap-3 items-start">
-                    <div className="rounded-lg bg-teal-500/10 p-1.5 text-teal-600 dark:text-teal-400 shrink-0">
+                    <div className="rounded-xl bg-teal-500/15 border border-teal-500/30 p-2 text-teal-400 shrink-0 shadow-sm shadow-teal-500/10">
                       <CheckCircle2 className="h-4 w-4" />
                     </div>
                     <div>
-                      <strong className="text-foreground block">Kinematic ETA Calculation</strong>
+                      <strong className="text-slate-100 block font-semibold mb-0.5">Kinematic ETA Calculation</strong>
                       Helpers see realistic travel times (t = d / v) computed for walking (5 km/h), bicycle (15 km/h),
                       and motor vehicles (30 km/h) before committing.
                     </div>
                   </div>
 
                   <div className="flex gap-3 items-start">
-                    <div className="rounded-lg bg-teal-500/10 p-1.5 text-teal-600 dark:text-teal-400 shrink-0">
+                    <div className="rounded-xl bg-teal-500/15 border border-teal-500/30 p-2 text-teal-400 shrink-0 shadow-sm shadow-teal-500/10">
                       <CheckCircle2 className="h-4 w-4" />
                     </div>
                     <div>
-                      <strong className="text-foreground block">Autonomous Fall Impact Alert</strong>
+                      <strong className="text-slate-100 block font-semibold mb-0.5">Autonomous Fall Impact Alert</strong>
                       A hardware low-pass filtered accelerometer detects sudden deceleration (&gt; 22 m/s&sup2;)
                       and activates a 10-second safety countdown for vulnerable seniors.
                     </div>
@@ -466,20 +494,20 @@ export default function PublicHomePage() {
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
               <Link
                 href="/login"
-                className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-teal-600/25 hover:bg-teal-700 transition-all active:scale-[0.98]"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-teal-900/30 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200"
               >
                 <Sparkles className="h-4 w-4" />
                 <span>Get Started / Login</span>
               </Link>
               <Link
                 href="/app"
-                className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3.5 text-sm font-semibold text-foreground hover:bg-muted transition-all active:scale-[0.98]"
+                className="inline-flex items-center gap-2 rounded-xl border border-border/80 bg-card/80 backdrop-blur-md px-5 py-3.5 text-sm font-semibold text-foreground hover:bg-card hover:border-teal-500/40 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200"
               >
                 <span>Launch Interactive App Now</span>
               </Link>
               <Link
                 href="/safety-and-verification"
-                className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3.5 text-sm font-semibold text-foreground hover:bg-muted transition-all"
+                className="inline-flex items-center gap-2 rounded-xl border border-border/80 bg-card/80 backdrop-blur-md px-5 py-3.5 text-sm font-semibold text-foreground hover:bg-card hover:border-teal-500/40 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200"
               >
                 <ShieldCheck className="h-4 w-4 text-emerald-500" />
                 <span>Our Safety Guarantees</span>

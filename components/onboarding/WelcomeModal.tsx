@@ -104,8 +104,30 @@ export function WelcomeModal() {
         {/* SLIDE 1: INTRO 1 - HELP IS JUST NEXT DOOR */}
         {slide === 1 && (
           <div className="text-center space-y-5 animate-in slide-in-from-right duration-200">
-            <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10 text-primary mx-auto">
-              <HeartHandshake className="h-10 w-10 notranslate" />
+            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center mx-auto drop-shadow-md">
+              <svg viewBox="0 0 64 64" className="h-20 w-20 select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="welcome-kl-grad" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#0F766E" />
+                    <stop offset="40%" stopColor="#0D9488" />
+                    <stop offset="75%" stopColor="#06B6D4" />
+                    <stop offset="100%" stopColor="#2563EB" />
+                  </linearGradient>
+                  <radialGradient id="welcome-kl-beacon" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="#FDE047" />
+                    <stop offset="50%" stopColor="#F59E0B" />
+                    <stop offset="100%" stopColor="#EF4444" />
+                  </radialGradient>
+                </defs>
+                <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#welcome-kl-grad)" />
+                <rect x="2.5" y="2.5" width="59" height="59" rx="15.5" stroke="#FFFFFF" strokeOpacity="0.25" strokeWidth="1" />
+                <ellipse cx="32" cy="32" rx="22" ry="11" transform="rotate(-25 32 32)" stroke="#FFFFFF" strokeOpacity="0.4" strokeWidth="2.5" strokeDasharray="4 2" />
+                <ellipse cx="32" cy="32" rx="22" ry="11" transform="rotate(25 32 32)" stroke="#FFFFFF" strokeOpacity="0.4" strokeWidth="2.5" strokeDasharray="4 2" />
+                <circle cx="32" cy="32" r="18" stroke="#FFFFFF" strokeOpacity="0.18" strokeWidth="1.5" />
+                <path d="M22 28 C18 22, 12 25, 12 32 C12 39, 24 46, 32 50 C40 46, 52 39, 52 32 C52 25, 46 22, 42 28 C39 32, 35 34, 32 34 C29 34, 25 32, 22 28 Z" fill="#FFFFFF" fillOpacity="0.96" />
+                <circle cx="32" cy="32" r="5" fill="url(#welcome-kl-beacon)" />
+                <circle cx="32" cy="32" r="2" fill="#FFFFFF" />
+              </svg>
             </div>
 
             <div className="space-y-2">
