@@ -40,9 +40,45 @@ export async function GET(
         createdAt: now.toISOString(),
         expiresAt: expires.toISOString(),
         userName: 'KindLink Citizen',
-        userPhone: '+91 98320 00000',
+        userPhone: '',
       },
     });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message || 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { token: string } }
+) {
+  try {
+    const token = params.token;
+    if (!token) {
+      return NextResponse.json({ success: false, error: 'Token is required' }, { status: 400 });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const { action, notes } = body;
+
+    if (action === 'resolve' || action === 'safe') {
+      if (dataAdapter.resolveSos) {
+        await dataAdapter.resolveSos(token);
+      }
+      return NextResponse.json({ success: true, status: 'resolved' });
+    }
+
+    if (action === 'update_details' && notes) {
+      if (dataAdapter.updateSosDetails) {
+        await dataAdapter.updateSosDetails(token, notes);
+      }
+      return NextResponse.json({ success: true, notes });
+    }
+
+    return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || 'Internal server error' },

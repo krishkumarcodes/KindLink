@@ -17,6 +17,8 @@
     "lint": "node ./node_modules/next/dist/bin/next lint",
     "type-check": "node ./node_modules/typescript/bin/tsc --noEmit",
     "seed": "node scripts/seed.mjs",
+    "seed:demo": "node scripts/seed.mjs",
+    "seed:demo:remove": "node scripts/seed.mjs --clean",
     "indexnow": "node scripts/indexnow.mjs",
     "seo:check": "node scripts/seo-check.mjs",
     "check:layout": "node scripts/check-layout.mjs",

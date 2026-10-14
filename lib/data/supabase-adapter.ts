@@ -544,14 +544,21 @@ class SupabaseDataAdapter implements DataAdapter {
       name: profile.display_name || profile.username,
       displayName: profile.display_name || profile.username,
       username: profile.username,
-      email: user.email || '',
+      email: user.email || profile.email || '',
       phone: profile.phone || '',
-      college: 'Asansol Engineering College',
+      college: profile.college || '',
+      bio: profile.bio || '',
+      avatarUrl: profile.avatar_url || '',
+      homeNeighborhood: profile.home_neighborhood || '',
+      languages: profile.languages || ['Bengali', 'Hindi', 'English'],
+      emergencyContacts: profile.emergency_contacts || [],
       rating: Number(profile.rating_average) || 5.0,
+      ratingCount: profile.rating_count || 0,
       helpsCount: profile.rating_count || 0,
       requestsCount: 0,
-      verificationState: profile.verification_status,
-      badges: profile.verification_status === 'verified' ? ['Identity Verified', 'Local Guardian'] : ['Volunteer'],
+      verificationState: profile.verification_status || 'unverified',
+      badges: profile.verification_status === 'verified' ? ['Identity Verified'] : [],
+      createdAt: profile.created_at || user.created_at || '',
     };
   }
 
@@ -675,7 +682,12 @@ class SupabaseDataAdapter implements DataAdapter {
     return { success: true };
   }
 
-  async submitSos(lat: number, lng: number, addressText?: string): Promise<{ success: boolean; token?: string; event?: SosEvent }> {
+  async submitSos(
+    lat: number,
+    lng: number,
+    addressText?: string,
+    details?: { notes?: string; category?: HelpCategory }
+  ): Promise<{ success: boolean; token?: string; event?: SosEvent; requestId?: string }> {
     const supabase = this.getSupabase();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false };
@@ -693,9 +705,50 @@ class SupabaseDataAdapter implements DataAdapter {
       return { success: false };
     }
 
+    // Create a CRITICAL urgency emergency request in requests table
+    let requestId: string | undefined;
+    try {
+      const reqRes = await this.createRequest({
+        category: details?.category || 'transport',
+        title: '🚨 CRITICAL EMERGENCY SOS BEACON',
+        description: details?.notes
+          ? `Emergency SOS broadcast: ${details.notes}`
+          : `High-priority SOS beacon triggered in ${addressText || 'Asansol Region'}. Immediate community assistance requested.`,
+        urgency: 'critical',
+        latitude: lat,
+        longitude: lng,
+        addressText: addressText || 'Asansol Region',
+      });
+      if (reqRes?.success) {
+        requestId = reqRes.id;
+      }
+    } catch {
+      // Non-blocking fallback
+    }
+
+    // Broadcast emergency beacon on Realtime channel
+    try {
+      const channel = supabase.channel('kindlink-realtime-channel');
+      await channel.send({
+        type: 'broadcast',
+        event: 'emergency_sos',
+        payload: {
+          token,
+          lat,
+          lng,
+          addressText: addressText || 'Asansol Region',
+          requestId,
+          timestamp: Date.now(),
+        },
+      });
+    } catch {
+      // Realtime broadcast best-effort
+    }
+
     return {
       success: true,
       token,
+      requestId,
       event: data
         ? {
             id: data.id,
@@ -707,6 +760,8 @@ class SupabaseDataAdapter implements DataAdapter {
             status: 'active',
             createdAt: data.created_at || new Date().toISOString(),
             expiresAt: data.expires_at || new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
+            notes: details?.notes,
+            requestId,
           }
         : undefined,
     };
@@ -746,16 +801,43 @@ class SupabaseDataAdapter implements DataAdapter {
       createdAt: data.created_at,
       expiresAt: data.expires_at || new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
       userName: data.profiles?.name || 'KindLink Citizen',
-      userPhone: data.profiles?.phone || '+91 98320 00000',
+      userPhone: data.profiles?.phone || '',
     };
   }
 
   async resolveSos(token: string): Promise<{ success: boolean }> {
     const supabase = this.getSupabase();
-    const { error } = await supabase
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token);
+    const query = supabase
       .from('sos_events')
-      .update({ status: 'resolved' })
-      .eq('id', token);
+      .update({ status: 'resolved', resolved_at: new Date().toISOString() });
+
+    const { error } = isUuid
+      ? await query.or(`token.eq.${token},id.eq.${token}`)
+      : await query.eq('id', token);
+
+    try {
+      const channel = supabase.channel('kindlink-realtime-channel');
+      await channel.send({
+        type: 'broadcast',
+        event: 'emergency_sos_resolved',
+        payload: { token, timestamp: Date.now() },
+      });
+    } catch {}
+
+    return { success: !error };
+  }
+
+  async updateSosDetails(token: string, notes: string): Promise<{ success: boolean }> {
+    const supabase = this.getSupabase();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token);
+    const query = supabase
+      .from('sos_events')
+      .update({ address_text: notes });
+
+    const { error } = isUuid
+      ? await query.or(`token.eq.${token},id.eq.${token}`)
+      : await query.eq('id', token);
 
     return { success: !error };
   }

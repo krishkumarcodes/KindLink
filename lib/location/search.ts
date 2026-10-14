@@ -1,5 +1,82 @@
 import { LocationSearchResult } from './types';
 
+export interface SuggestedArea {
+  id: string;
+  name: string;
+  label: string;
+  lat: number;
+  lng: number;
+  type: 'campus' | 'hospital' | 'station' | 'residential' | 'market' | 'city';
+}
+
+// Honest curated list of prominent local hubs in Asansol and neighboring areas
+export const SUGGESTED_AREAS: SuggestedArea[] = [
+  {
+    id: 'sug-aec',
+    name: 'Asansol Engineering College',
+    label: 'College Campus Hub · Kalyanpur',
+    lat: 23.6889,
+    lng: 86.9661,
+    type: 'campus',
+  },
+  {
+    id: 'sug-hospital',
+    name: 'Asansol District Hospital / Court',
+    label: 'Medical & Civic Center · SB Gorai Rd',
+    lat: 23.6845,
+    lng: 86.9742,
+    type: 'hospital',
+  },
+  {
+    id: 'sug-station',
+    name: 'Asansol Junction Railway Station',
+    label: 'Main Rail Transit Hub · Railpar',
+    lat: 23.6936,
+    lng: 86.9746,
+    type: 'station',
+  },
+  {
+    id: 'sug-ushagram',
+    name: 'Ushagram & GT Road',
+    label: 'Residential & Commercial Area',
+    lat: 23.6791,
+    lng: 86.9814,
+    type: 'residential',
+  },
+  {
+    id: 'sug-burnpur',
+    name: 'Burnpur & IISCO Steel Town',
+    label: 'Industrial Township · Riverside Rd',
+    lat: 23.6642,
+    lng: 86.9388,
+    type: 'residential',
+  },
+  {
+    id: 'sug-hlg',
+    name: 'HLG Memorial Hospital',
+    label: 'Sen Raleigh Road, Asansol',
+    lat: 23.7012,
+    lng: 86.9554,
+    type: 'hospital',
+  },
+  {
+    id: 'sug-raniganj',
+    name: 'Raniganj Bazar',
+    label: 'GT Road · Coalfield Belt',
+    lat: 23.6238,
+    lng: 87.1128,
+    type: 'market',
+  },
+  {
+    id: 'sug-durgapur',
+    name: 'City Centre, Durgapur',
+    label: 'Commercial Hub · Paschim Bardhaman',
+    lat: 23.5385,
+    lng: 87.2941,
+    type: 'city',
+  },
+];
+
 // Built-in verified landmarks in Asansol and neighboring region for instant offline search
 const KNOWN_LANDMARKS: LocationSearchResult[] = [
   {
@@ -84,8 +161,17 @@ const KNOWN_LANDMARKS: LocationSearchResult[] = [
   },
 ];
 
+// In-memory cache for Nominatim search queries (10 minute TTL)
+interface SearchCacheEntry {
+  data: LocationSearchResult[];
+  timestamp: number;
+}
+const searchCache = new Map<string, SearchCacheEntry>();
+const CACHE_TTL_MS = 10 * 60 * 1000;
+
 /**
  * Searches OSM Nominatim for address suggestions, falling back to or augmenting with local landmarks.
+ * Results are cached in memory to minimize external network requests and respect rate limits.
  */
 export async function searchAddressNominatim(
   query: string,
@@ -96,12 +182,17 @@ export async function searchAddressNominatim(
     return [];
   }
 
+  const cacheKey = cleanQuery.toLowerCase();
+  const cached = searchCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
   // 1. Find local landmark matches
-  const qLower = cleanQuery.toLowerCase();
   const localMatches = KNOWN_LANDMARKS.filter(
     (lm) =>
-      lm.displayName.toLowerCase().includes(qLower) ||
-      lm.shortLabel.toLowerCase().includes(qLower)
+      lm.displayName.toLowerCase().includes(cacheKey) ||
+      lm.shortLabel.toLowerCase().includes(cacheKey)
   );
 
   // 2. Fetch from OSM Nominatim with 4-second timeout
@@ -190,6 +281,12 @@ export async function searchAddressNominatim(
       uniqueResults.push(item);
     }
   }
+
+  // Cache results
+  searchCache.set(cacheKey, {
+    data: uniqueResults,
+    timestamp: Date.now(),
+  });
 
   return uniqueResults;
 }

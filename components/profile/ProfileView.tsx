@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
+import React, { useState } from 'react';
 import {
   User,
   ShieldCheck,
@@ -13,9 +12,7 @@ import {
   Upload,
   CheckCircle2,
   Clock,
-  Sparkles,
   Award,
-  LogOut,
   ChevronRight,
   X,
   Mail,
@@ -23,59 +20,44 @@ import {
   GraduationCap,
   Plus,
   Trash2,
-  ExternalLink,
-  Globe,
-  Sun,
-  Moon,
-  Monitor,
-  Bell,
-  Lock,
-  Eye,
-  EyeOff,
-  Smartphone,
-  Download,
+  Share2,
+  AlertCircle,
+  Edit3,
+  Sliders,
   TrendingUp,
   Droplet,
   BookOpen,
   Heart,
-  Shield,
-  Share2,
-  AlertCircle,
-  Check,
-  Edit3,
-  Sliders,
-  Flame,
-  Volume2,
+  MessageCircle,
 } from 'lucide-react';
-import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { dataAdapter } from '@/lib/data';
 import { EmergencyContact } from '@/lib/data/types';
-import { LanguageModal } from '@/components/shell/LanguageModal';
-import { getCurrentLanguageCode, SUPPORTED_LANGUAGES } from '@/lib/translate/googleTranslate';
+import { EditProfileModal } from './EditProfileModal';
+import { SettingsView } from '@/components/settings/SettingsView';
 
 type ProfileTab = 'overview' | 'activity' | 'badges' | 'impact' | 'verification' | 'settings';
 
 export function ProfileView() {
   const {
     userProfile,
-    updateUserProfile,
     updateVerificationState,
     addEmergencyContact,
+    updateEmergencyContact,
     removeEmergencyContact,
     requests,
+    setCurrentView,
   } = useKindLinkStore();
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
   const [activitySubTab, setActivitySubTab] = useState<'all' | 'history' | 'my-requests'>('all');
 
   // Modals
-  const [idModalOpen, setIdModalOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
-  const [addContactOpen, setAddContactOpen] = useState(false);
-  const [langModalOpen, setLangModalOpen] = useState(false);
-  const [pwaModalOpen, setPwaModalOpen] = useState(false);
+  const [idModalOpen, setIdModalOpen] = useState(false);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<EmergencyContact | null>(null);
 
   // Verification upload state
   const [phoneInput, setPhoneInput] = useState(userProfile.phone || '');
@@ -83,109 +65,121 @@ export function ProfileView() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  // Emergency contact state
-  const [contactName, setContactName] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
-  const [contactRelation, setContactRelation] = useState('Parent');
-
-  // Profile edit state
-  const [editName, setEditName] = useState(userProfile.name || '');
-  const [editUsername, setEditUsername] = useState(userProfile.username || '');
-  const [editCollege, setEditCollege] = useState(userProfile.college || '');
-  const [editNeighborhood, setEditNeighborhood] = useState(userProfile.homeNeighborhood || '');
-  const [editBio, setEditBio] = useState('Dedicated community volunteer in Asansol. Ready to assist with emergency transport, blood drives, and student tutoring.');
-
-  // Notification & Privacy toggles
-  const [smsAlerts, setSmsAlerts] = useState(true);
-  const [pushAlerts, setPushAlerts] = useState(true);
-  const [soundAlerts, setSoundAlerts] = useState(true);
-  const [maskPhone, setMaskPhone] = useState(true);
-  const [transitGpsPrivacy, setTransitGpsPrivacy] = useState(true);
-
-  // PWA deferred prompt
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
-
-  // Sync PWA install prompt
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      if (window.matchMedia('(display-mode: standalone)').matches) {
-        setIsPwaInstalled(true);
-      }
-    }
-
-    return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      }
-    };
-  }, []);
-
-  const handleInstallPwa = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
-      if (choice.outcome === 'accepted') {
-        toast.success('KindLink app installation initiated!');
-        setIsPwaInstalled(true);
-      }
-      setDeferredPrompt(null);
-    } else {
-      setPwaModalOpen(true);
-    }
-  };
-
   // Real requests created by this user
   const myActiveRequests = (requests || []).filter(
     (r) =>
-      (userProfile.name && r.contactName.toLowerCase() === userProfile.name.toLowerCase()) ||
-      (userProfile.phone && r.phone === userProfile.phone)
+      (userProfile.id && r.id && (r as any).requesterId === userProfile.id) ||
+      (userProfile.name && r.contactName && r.contactName.toLowerCase() === userProfile.name.toLowerCase()) ||
+      (userProfile.phone && r.phone && r.phone === userProfile.phone)
   );
 
-  // Completed history sample
-  const myHelpHistory = [
+  // Real completed helps where current user was the helper
+  const myCompletedHelps = (requests || []).filter(
+    (r) =>
+      r.status === 'completed' &&
+      ((userProfile.id && r.acceptedHelperId === userProfile.id) ||
+        (userProfile.name && r.acceptedHelperName && r.acceptedHelperName.toLowerCase() === userProfile.name.toLowerCase()))
+  );
+
+  // Calculated display values - ONLY REAL DATA
+  const displayName = userProfile.displayName || userProfile.name || (userProfile.username ? `@${userProfile.username}` : 'KindLink Member');
+  const displayUsername = userProfile.username || 'user';
+  const emergencyContacts = userProfile.emergencyContacts || [];
+
+  // Account creation date formatting
+  const formatAccountCreatedDate = () => {
+    const rawDate = userProfile.createdAt || userProfile.created_at;
+    if (!rawDate) return 'Active Member';
+    try {
+      const d = new Date(rawDate);
+      if (isNaN(d.getTime())) return 'Active Member';
+      return `Member since ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
+    } catch {
+      return 'Active Member';
+    }
+  };
+
+  // Real Trust Score formatting (dash "—" until at least 5 ratings exist)
+  const ratingCount = userProfile.ratingCount || 0;
+  const hasEnoughRatings = ratingCount >= 5;
+  const trustScoreDisplay = hasEnoughRatings ? (userProfile.rating ?? 5.0).toFixed(1) : '—';
+
+  // Badges catalog evaluated against REAL data
+  const masterBadges = [
     {
-      id: 'hist-1',
-      title: 'Delivered Emergency Blood Unit to District Hospital',
-      category: 'Blood Donation',
-      categoryColor: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
-      date: 'Yesterday at 4:30 PM',
-      rating: 5.0,
-      beneficiary: 'Pritam K.',
-      impact: 'Immediate matched transfusion supported',
+      id: 'blood-hero',
+      title: 'Life Saver (Blood Donor)',
+      category: 'Emergency',
+      description: 'Donated blood or coordinated urgent units for emergency hospital patients.',
+      icon: '/illustrations/badge-blood-hero.svg',
+      earned: userProfile.badges?.some((b) => /blood|life saver/i.test(b)) ?? false,
+      progress: userProfile.badges?.some((b) => /blood|life saver/i.test(b)) ? 100 : 0,
+      progressLabel: userProfile.badges?.some((b) => /blood|life saver/i.test(b))
+        ? 'Verified Blood Transfer'
+        : '0/1 Emergency Blood Transfer',
     },
     {
-      id: 'hist-2',
-      title: 'Provided Foldable Wheelchair to Senior Citizen',
-      category: 'Medical Equipment',
-      categoryColor: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20',
-      date: '3 days ago',
-      rating: 5.0,
-      beneficiary: 'Ananya B.',
-      impact: 'Mobility restored for medical checkup',
+      id: 'first-aid',
+      title: 'Emergency First Responder',
+      category: 'Urgent Care',
+      description: 'Responded to critical high-urgency community distress calls within 15 minutes.',
+      icon: '/illustrations/badge-first-aid.svg',
+      earned: userProfile.badges?.some((b) => /responder|first aid/i.test(b)) ?? false,
+      progress: userProfile.badges?.some((b) => /responder|first aid/i.test(b)) ? 100 : 0,
+      progressLabel: userProfile.badges?.some((b) => /responder|first aid/i.test(b))
+        ? 'Active Responder'
+        : '0/3 Critical Distress Responses',
     },
     {
-      id: 'hist-3',
-      title: 'Assisted High School Student with Madhyamik Books',
-      category: 'Books & Study',
-      categoryColor: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20',
-      date: 'Last week',
-      rating: 4.8,
-      beneficiary: 'Bikash D.',
-      impact: 'Standard-X syllabus materials shared',
+      id: 'student-verified',
+      title: 'Verified Student Member',
+      category: 'Education',
+      description: 'Academic student identity authenticated with official college credentials.',
+      icon: '/illustrations/badge-student-verified.svg',
+      earned: userProfile.verificationState === 'verified' && !!userProfile.college,
+      progress: userProfile.verificationState === 'verified' && !!userProfile.college ? 100 : 0,
+      progressLabel: userProfile.college ? `${userProfile.college} Verified` : 'College ID Pending',
+    },
+    {
+      id: 'trusted-neighbor',
+      title: 'Trusted Local Neighbor',
+      category: 'Community',
+      description: 'Maintained a 4.8+ Trust Score across at least 5 verified acts of mutual aid.',
+      icon: '/illustrations/badge-trusted-neighbor.svg',
+      earned: hasEnoughRatings && (userProfile.rating ?? 0) >= 4.8,
+      progress: Math.min(100, Math.round((ratingCount / 5) * 100)),
+      progressLabel: hasEnoughRatings ? `${ratingCount} Verified Reviews` : `${ratingCount} of 5 Reviews needed`,
+    },
+    {
+      id: 'community-pillar',
+      title: 'Community Pillar',
+      category: 'Leadership',
+      description: 'Completed 10 or more acts of verified mutual assistance for local neighbors.',
+      icon: '/illustrations/badge-community-pillar.svg',
+      earned: (userProfile.helpsCount ?? 0) >= 10,
+      progress: Math.min(100, Math.round(((userProfile.helpsCount ?? 0) / 10) * 100)),
+      progressLabel: `${userProfile.helpsCount ?? 0} of 10 Helps Given`,
+    },
+    {
+      id: 'study-mentor',
+      title: 'Study & Books Mentor',
+      category: 'Education',
+      description: 'Shared semester engineering textbooks or study guides with junior students.',
+      icon: '/illustrations/badge-study-mentor.svg',
+      earned: userProfile.badges?.some((b) => /study|mentor|books/i.test(b)) ?? false,
+      progress: userProfile.badges?.some((b) => /study|mentor|books/i.test(b)) ? 100 : 0,
+      progressLabel: userProfile.badges?.some((b) => /study|mentor|books/i.test(b))
+        ? 'Course Booksets Shared'
+        : '0/1 Study Material Loan',
     },
   ];
+
+  const earnedBadgesCount = masterBadges.filter((b) => b.earned).length;
 
   // Upload ID to private storage
   const handleUploadId = async () => {
     if (!phoneInput || phoneInput.trim().length < 10) {
-      toast.error('Please enter a valid 10-digit phone number');
+      toast.error('Please enter a valid 10-digit Indian phone number');
       return;
     }
     if (!selectedFile) {
@@ -214,139 +208,28 @@ export function ProfileView() {
     }
   };
 
-  // Add emergency contact handler
-  const handleAddEmergencyContact = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!contactName.trim()) {
-      toast.error('Please provide the contact full name');
-      return;
-    }
-    if (!contactPhone.trim() || contactPhone.trim().length < 10) {
-      toast.error('Please enter a valid 10-digit phone number');
-      return;
-    }
-
-    addEmergencyContact({
-      name: contactName.trim(),
-      phone: contactPhone.trim(),
-      relationship: contactRelation,
-    });
-
-    setContactName('');
-    setContactPhone('');
-    setAddContactOpen(false);
-    toast.success('Emergency Contact Added', {
-      description: `${contactName.trim()} will be alerted during SOS calls.`,
-    });
-  };
-
-  // Save profile edits
-  const handleSaveProfileEdits = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateUserProfile({
-      name: editName.trim() || userProfile.name,
-      username: editUsername.trim() || userProfile.username,
-      college: editCollege.trim() || userProfile.college,
-      homeNeighborhood: editNeighborhood.trim() || userProfile.homeNeighborhood,
-    });
-    setEditProfileOpen(false);
-    toast.success('Profile updated successfully');
-  };
-
-  // Calculated display values
-  const displayName = userProfile.name || userProfile.displayName || 'Community Member';
-  const displayUsername = userProfile.username || displayName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'kindlink_member';
-  const hoursVolunteered = userProfile.hoursVolunteered ?? Math.max(12, Math.round(userProfile.helpsCount * 2.5));
-  const peopleSupported = Math.max(userProfile.helpsCount, 8);
-  const emergencyContacts = userProfile.emergencyContacts || [];
-
-  // Badges catalog
-  const masterBadges = [
-    {
-      id: 'blood-hero',
-      title: 'Life Saver (Blood Donor)',
-      category: 'Emergency',
-      description: 'Donated blood or coordinated urgent units for emergency hospital patients.',
-      icon: '/illustrations/badge-blood-hero.svg',
-      earned: userProfile.badges?.some((b) => /blood|life saver/i.test(b)) ?? false,
-      progress: 100,
-      progressLabel: 'Completed 1/1 Blood Transfer',
-    },
-    {
-      id: 'first-aid',
-      title: 'Emergency First Responder',
-      category: 'Urgent Care',
-      description: 'Responded to critical high-urgency community distress calls within 15 minutes.',
-      icon: '/illustrations/badge-first-aid.svg',
-      earned: userProfile.badges?.some((b) => /responder|first aid/i.test(b)) ?? false,
-      progress: 66,
-      progressLabel: '2 of 3 Urgent Responses',
-    },
-    {
-      id: 'student-verified',
-      title: 'Verified College Student',
-      category: 'Education',
-      description: 'Academic student identity authenticated at MAKAUT / Asansol Engineering College.',
-      icon: '/illustrations/badge-student-verified.svg',
-      earned: userProfile.verificationState === 'verified' || !!userProfile.college,
-      progress: 100,
-      progressLabel: 'AEC Student Authenticated',
-    },
-    {
-      id: 'trusted-neighbor',
-      title: 'Trusted Local Neighbor',
-      category: 'Community',
-      description: 'Maintained a 4.8+ Trust Score across verified acts of neighborly mutual aid.',
-      icon: '/illustrations/badge-trusted-neighbor.svg',
-      earned: (userProfile.rating ?? 5.0) >= 4.8,
-      progress: 80,
-      progressLabel: '4 of 5 Five-Star Reviews',
-    },
-    {
-      id: 'community-pillar',
-      title: 'Community Pillar',
-      category: 'Leadership',
-      description: 'Completed 10 or more acts of verified mutual assistance for local neighbors.',
-      icon: '/illustrations/badge-community-pillar.svg',
-      earned: (userProfile.helpsCount ?? 0) >= 10,
-      progress: Math.min(100, Math.round(((userProfile.helpsCount ?? 3) / 10) * 100)),
-      progressLabel: `${userProfile.helpsCount ?? 3} of 10 Helps Given`,
-    },
-    {
-      id: 'study-mentor',
-      title: 'Study & Books Mentor',
-      category: 'Education',
-      description: 'Shared semester engineering textbooks or study guides with junior students.',
-      icon: '/illustrations/badge-study-mentor.svg',
-      earned: userProfile.badges?.some((b) => /study|mentor|books/i.test(b)) ?? true,
-      progress: 100,
-      progressLabel: 'Shared 2 Course Booksets',
-    },
-  ];
-
-  const earnedBadgesCount = masterBadges.filter((b) => b.earned).length;
-
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto w-full pb-36 lg:pb-16">
+    <div className="flex-1 space-y-6 p-3 sm:p-6 lg:p-8 max-w-5xl mx-auto w-full pb-36 lg:pb-16 text-foreground overflow-x-hidden">
       {/* =========================================================================
-          1. HEADER CARD: Avatar / Initials, Name, @username, Verification, Rating & Quick Stats
+          1. HEADER CARD: User's full name (wraps onto 2 lines, never cut off),
+             username, verification badge, location, and quick stats in 2x2 grid.
          ========================================================================= */}
-      <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-soft">
+      <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-5 sm:p-8 shadow-soft">
         {/* Subtle decorative background gradient accent */}
         <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
         <div className="pointer-events-none absolute -left-16 -bottom-16 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
 
-        <div className="relative flex flex-col md:flex-row items-center md:items-start gap-6 text-center md:text-left">
-          {/* Avatar / Uppercase Initials Badge */}
+        <div className="relative flex flex-col md:flex-row items-center md:items-start gap-5 sm:gap-6 text-center md:text-left">
+          {/* Avatar / Uppercase Initial */}
           <div className="relative shrink-0">
             {userProfile.avatarUrl ? (
               <img
                 src={userProfile.avatarUrl}
                 alt={displayName}
-                className="h-24 w-24 sm:h-28 sm:w-28 rounded-3xl object-cover border-2 border-primary/20 shadow-soft"
+                className="h-24 w-24 sm:h-28 sm:w-28 rounded-3xl object-cover border-2 border-primary/30 shadow-soft"
               />
             ) : (
-              <div className="flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-3xl bg-gradient-to-br from-teal-600 via-teal-500 to-emerald-600 text-white text-3xl sm:text-4xl font-extrabold shadow-soft ring-4 ring-primary/20">
+              <div className="flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-3xl bg-gradient-to-br from-teal-600 via-teal-500 to-emerald-600 text-white text-3xl sm:text-4xl font-black shadow-soft ring-4 ring-primary/20">
                 {displayName.charAt(0).toUpperCase()}
               </div>
             )}
@@ -373,16 +256,23 @@ export function ProfileView() {
           </div>
 
           {/* User Details & Identity */}
-          <div className="space-y-3 flex-1 min-w-0">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-                  <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
-                    {displayName}
-                  </h1>
-                  {/* Verification Status Pill */}
+          <div className="space-y-3 flex-1 min-w-0 w-full">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+              <div className="space-y-1 min-w-0">
+                {/* Full name wrapping onto 2 lines if needed, never cut off */}
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-foreground tracking-tight break-words line-clamp-2 leading-tight">
+                  {displayName}
+                </h1>
+
+                {/* Sub-identity: @username and Verification Status Pill */}
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-0.5">
+                  <span className="text-xs sm:text-sm font-semibold text-primary font-mono">
+                    @{displayUsername}
+                  </span>
+
+                  {/* Truthful Verification Badge: Verified, Pending, or Not verified */}
                   <span
-                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide ${
                       userProfile.verificationState === 'verified'
                         ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                         : userProfile.verificationState === 'pending'
@@ -392,39 +282,29 @@ export function ProfileView() {
                   >
                     {userProfile.verificationState === 'verified' ? (
                       <>
-                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-500 notranslate" />
-                        <span>Verified Volunteer</span>
+                        <ShieldCheck className="h-3 w-3 text-emerald-500 notranslate" />
+                        <span>Verified</span>
                       </>
                     ) : userProfile.verificationState === 'pending' ? (
                       <>
-                        <Clock className="h-3.5 w-3.5 text-amber-500 notranslate" />
-                        <span>Verification In Review</span>
+                        <Clock className="h-3 w-3 text-amber-500 notranslate" />
+                        <span>Pending</span>
                       </>
                     ) : (
                       <>
-                        <ShieldAlert className="h-3.5 w-3.5 text-muted-foreground notranslate" />
-                        <span>Unverified Account</span>
+                        <ShieldAlert className="h-3 w-3 text-muted-foreground notranslate" />
+                        <span>Not verified</span>
                       </>
                     )}
                   </span>
                 </div>
-                {/* @username */}
-                <p className="text-xs sm:text-sm font-semibold text-primary mt-0.5">
-                  @{displayUsername}
-                </p>
               </div>
 
-              {/* Action Buttons: Edit Profile & Share */}
-              <div className="flex items-center justify-center md:justify-end gap-2">
+              {/* Action Buttons: Edit Profile & Share Profile */}
+              <div className="flex items-center justify-center md:justify-end gap-2 shrink-0">
                 <button
-                  onClick={() => {
-                    setEditName(displayName);
-                    setEditUsername(displayUsername);
-                    setEditCollege(userProfile.college || 'Asansol Engineering College');
-                    setEditNeighborhood(userProfile.homeNeighborhood || 'Kalyanpur, Asansol');
-                    setEditProfileOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-border bg-background text-foreground hover:bg-muted text-xs font-bold transition shadow-xs touch-target"
+                  onClick={() => setEditProfileOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-border bg-background text-foreground hover:bg-muted text-xs font-bold transition shadow-xs touch-target"
                 >
                   <Edit3 className="h-3.5 w-3.5 text-muted-foreground notranslate" />
                   <span>Edit Profile</span>
@@ -448,69 +328,80 @@ export function ProfileView() {
             {/* Sub-identity row: College & Location */}
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-y-1.5 gap-x-4 text-xs text-muted-foreground font-medium">
               <span className="inline-flex items-center gap-1">
-                <GraduationCap className="h-3.5 w-3.5 text-primary notranslate" />
-                <span>{userProfile.college || 'Asansol Engineering College'}</span>
+                <MapPin className="h-3.5 w-3.5 text-rose-500 notranslate shrink-0" />
+                <span className="truncate max-w-[200px] sm:max-w-none">
+                  {userProfile.homeNeighborhood || 'Asansol, West Bengal'}
+                </span>
               </span>
-              <span className="inline-flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5 text-rose-500 notranslate" />
-                <span>{userProfile.homeNeighborhood || 'Kalyanpur, Asansol'} · WB</span>
-              </span>
-              {(userProfile.phone || userProfile.email) && (
-                <span className="inline-flex items-center gap-1 font-mono">
-                  <Phone className="h-3.5 w-3.5 text-emerald-500 notranslate" />
-                  <span>{userProfile.phone || userProfile.email}</span>
+
+              {userProfile.college && (
+                <span className="inline-flex items-center gap-1">
+                  <GraduationCap className="h-3.5 w-3.5 text-primary notranslate shrink-0" />
+                  <span className="truncate max-w-[200px] sm:max-w-none">{userProfile.college}</span>
                 </span>
               )}
+
+              <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80">
+                <Clock className="h-3 w-3 notranslate shrink-0" />
+                <span>{formatAccountCreatedDate()}</span>
+              </span>
             </div>
 
-            {/* Quick Stats Row: Helps Given, Requests Posted, Hours Volunteered, Rating Star */}
+            {/* Quick Stats: Evenly Aligned 2x2 Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3 border-t border-border/80">
               {/* Stat 1: Helps Given */}
               <div className="p-3 rounded-2xl bg-background/80 border border-border/80 flex flex-col items-center md:items-start">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
-                  <HeartHandshake className="h-4 w-4 text-primary notranslate" />
+                  <HeartHandshake className="h-4 w-4 text-primary notranslate shrink-0" />
                   <span>Helps Given</span>
                 </div>
                 <span className="text-xl font-extrabold text-foreground mt-0.5">
-                  {userProfile.helpsCount || 3}
+                  {userProfile.helpsCount || 0}
                 </span>
               </div>
 
               {/* Stat 2: Requests Posted */}
               <div className="p-3 rounded-2xl bg-background/80 border border-border/80 flex flex-col items-center md:items-start">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
-                  <FileCheck className="h-4 w-4 text-teal-500 notranslate" />
+                  <FileCheck className="h-4 w-4 text-teal-500 notranslate shrink-0" />
                   <span>Requests</span>
                 </div>
                 <span className="text-xl font-extrabold text-foreground mt-0.5">
-                  {userProfile.requestsCount || myActiveRequests.length || 1}
+                  {myActiveRequests.length || userProfile.requestsCount || 0}
                 </span>
               </div>
 
-              {/* Stat 3: Hours Volunteered */}
+              {/* Stat 3: Hours Active */}
               <div className="p-3 rounded-2xl bg-background/80 border border-border/80 flex flex-col items-center md:items-start">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
-                  <Clock className="h-4 w-4 text-indigo-500 notranslate" />
+                  <Clock className="h-4 w-4 text-indigo-500 notranslate shrink-0" />
                   <span>Hours Active</span>
                 </div>
                 <span className="text-xl font-extrabold text-foreground mt-0.5">
-                  {hoursVolunteered}h
+                  {userProfile.hoursVolunteered ?? 0}h
                 </span>
               </div>
 
-              {/* Stat 4: Rating Star & Trust Score */}
+              {/* Stat 4: Trust Score (Dash "—" until at least 5 ratings exist) */}
               <div className="p-3 rounded-2xl bg-background/80 border border-border/80 flex flex-col items-center md:items-start">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
-                  <Star className="h-4 w-4 fill-amber-400 text-amber-500 notranslate" />
+                  <Star className="h-4 w-4 fill-amber-400 text-amber-500 notranslate shrink-0" />
                   <span>Trust Score</span>
                 </div>
                 <div className="flex items-baseline gap-1 mt-0.5">
                   <span className="text-xl font-extrabold text-foreground">
-                    {(userProfile.rating ?? 5.0).toFixed(1)}
+                    {trustScoreDisplay}
                   </span>
-                  <span className="text-[10px] text-muted-foreground font-semibold">
-                    / 5.0
-                  </span>
+                  {hasEnoughRatings && (
+                    <span className="text-[10px] text-muted-foreground font-semibold">
+                      / 5.0
+                    </span>
+                  )}
+                  {!hasEnoughRatings && (
+                    <span className="text-[10px] text-muted-foreground font-medium">
+                      ({ratingCount}/5 reviews)
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -519,15 +410,31 @@ export function ProfileView() {
       </div>
 
       {/* =========================================================================
-          2. TAB NAVIGATION BAR: Overview, Activity, Badges, Impact, Verification, Settings
+          2. TAB NAVIGATION BAR: Horizontally scrollable tab strip with smooth snap,
+             clear active indicator, and labels never truncated.
          ========================================================================= */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none border-b border-border">
+      <div className="snap-x snap-mandatory flex overflow-x-auto scrollbar-none gap-2 pb-2 px-1 border-b border-border">
         {[
           { id: 'overview' as const, label: 'Overview', icon: User },
-          { id: 'activity' as const, label: 'Activity', icon: Clock, badge: myActiveRequests.length + myHelpHistory.length },
-          { id: 'badges' as const, label: 'Badges', icon: Award, badge: earnedBadgesCount },
+          {
+            id: 'activity' as const,
+            label: 'Activity',
+            icon: Clock,
+            badge: myActiveRequests.length + myCompletedHelps.length,
+          },
+          {
+            id: 'badges' as const,
+            label: 'Badges',
+            icon: Award,
+            badge: earnedBadgesCount > 0 ? earnedBadgesCount : undefined,
+          },
           { id: 'impact' as const, label: 'Impact', icon: TrendingUp },
-          { id: 'verification' as const, label: 'Verification', icon: ShieldCheck, alert: userProfile.verificationState !== 'verified' },
+          {
+            id: 'verification' as const,
+            label: 'Verification',
+            icon: ShieldCheck,
+            alert: userProfile.verificationState !== 'verified',
+          },
           { id: 'settings' as const, label: 'Settings', icon: Sliders },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -536,17 +443,17 @@ export function ProfileView() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all touch-target shrink-0 ${
+              className={`snap-start shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all touch-target ${
                 isActive
-                  ? 'bg-primary text-white shadow-soft'
+                  ? 'bg-primary text-white shadow-soft ring-2 ring-primary/20'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
-              <Icon className="h-4 w-4 notranslate" />
+              <Icon className="h-4 w-4 notranslate shrink-0" />
               <span>{tab.label}</span>
               {tab.badge !== undefined && (
                 <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
                     isActive ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'
                   }`}
                 >
@@ -562,153 +469,179 @@ export function ProfileView() {
       </div>
 
       {/* =========================================================================
-          3. TAB 1: OVERVIEW (Summary, Contact Info, Emergency Contacts List)
+          3. TAB 1: OVERVIEW (Real bio, verification stepper, contact info note,
+             emergency contacts with single clean empty state)
          ========================================================================= */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          {/* Section A: Profile Summary Card */}
-          <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-4">
+          {/* Section A: Community Bio Card */}
+          <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="p-2.5 rounded-2xl bg-primary/10 text-primary">
                   <User className="h-5 w-5 notranslate" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-foreground">Community Bio & Presence</h2>
-                  <p className="text-xs text-muted-foreground">Personal summary and public mutual aid profile</p>
+                  <h2 className="text-base font-bold text-foreground">Community Bio</h2>
+                  <p className="text-xs text-muted-foreground">About you and how you help neighbors</p>
                 </div>
               </div>
               <button
                 onClick={() => setEditProfileOpen(true)}
-                className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
+                className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1 touch-target"
               >
                 <Edit3 className="h-3.5 w-3.5 notranslate" />
-                <span>Edit</span>
+                <span>{userProfile.bio ? 'Edit' : 'Add Bio'}</span>
               </button>
             </div>
 
-            <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed font-normal bg-muted/30 p-4 rounded-2xl border border-border/60">
-              "{editBio}"
-            </p>
+            {userProfile.bio ? (
+              <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed bg-muted/30 p-4 rounded-2xl border border-border/60">
+                "{userProfile.bio}"
+              </p>
+            ) : (
+              <div className="p-4 rounded-2xl bg-muted/20 border border-dashed border-border text-center space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  No bio added yet. Tell neighbors what mutual aid or skills you can offer.
+                </p>
+                <button
+                  onClick={() => setEditProfileOpen(true)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-background border border-border text-xs font-bold text-primary hover:bg-muted transition"
+                >
+                  <Plus className="h-3.5 w-3.5 notranslate" />
+                  <span>Add Community Bio</span>
+                </button>
+              </div>
+            )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
-              <div className="p-3.5 rounded-2xl bg-background border border-border flex items-center gap-3">
-                <Clock className="h-4 w-4 text-primary shrink-0 notranslate" />
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">Member Since</span>
-                  <strong className="text-foreground">October 2024</strong>
-                </div>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-background border border-border flex items-center gap-3">
-                <Globe className="h-4 w-4 text-emerald-500 shrink-0 notranslate" />
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">Languages Spoken</span>
-                  <strong className="text-foreground">Bengali, Hindi, English</strong>
-                </div>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-background border border-border flex items-center gap-3">
-                <ShieldCheck className="h-4 w-4 text-teal-500 shrink-0 notranslate" />
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">Verification Tier</span>
-                  <strong className="text-foreground">
-                    {userProfile.verificationState === 'verified' ? 'Tier-A Peer Authenticated' : 'Basic Member'}
+            {/* Stepper Prompt to Continue Verification */}
+            {userProfile.verificationState !== 'verified' && (
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <strong className="text-xs font-bold text-amber-800 dark:text-amber-300 block flex items-center gap-1.5">
+                    <ShieldAlert className="h-4 w-4 text-amber-600 notranslate shrink-0" />
+                    <span>Account Verification Incomplete</span>
                   </strong>
+                  <p className="text-[11px] text-amber-700/90 dark:text-amber-300/80 leading-relaxed">
+                    Verify your student or citizen ID to accept high-urgency blood and medical emergency tasks.
+                  </p>
                 </div>
+                <button
+                  onClick={() => setActiveTab('verification')}
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs transition touch-target shrink-0 self-start sm:self-auto"
+                >
+                  <span>Continue Verification</span>
+                  <ChevronRight className="h-3.5 w-3.5 notranslate" />
+                </button>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Section B: Contact Info Card */}
-          <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-600">
-                  <Phone className="h-5 w-5 notranslate" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-foreground">Verified Contact Information</h2>
-                  <p className="text-xs text-muted-foreground">Encrypted channels for matched emergency responders</p>
-                </div>
+          {/* Section B: Contact Information Card */}
+          <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-600">
+                <Phone className="h-5 w-5 notranslate" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-foreground">Contact Information</h2>
+                <p className="text-xs text-muted-foreground">
+                  Visible only to you and matched helpers during active aid requests
+                </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
               {/* Phone */}
               <div className="p-4 rounded-2xl bg-background border border-border flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 shrink-0">
                     <Phone className="h-4 w-4 notranslate" />
                   </div>
-                  <div>
-                    <span className="text-[10px] font-bold uppercase text-muted-foreground block">Phone (Primary OTP)</span>
-                    <strong className="text-foreground font-mono text-xs">
-                      {userProfile.phone || '+91 98765 43210'}
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground block">Mobile Phone</span>
+                    <strong className="text-foreground font-mono text-xs block truncate">
+                      {userProfile.phone || 'Not provided'}
                     </strong>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                  Verified
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                    userProfile.phone
+                      ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {userProfile.phone ? 'Registered' : 'Unset'}
                 </span>
               </div>
 
               {/* Email */}
               <div className="p-4 rounded-2xl bg-background border border-border flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
                     <Mail className="h-4 w-4 notranslate" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[10px] font-bold uppercase text-muted-foreground block">Email Address</span>
-                    <strong className="text-foreground font-mono text-xs truncate max-w-[160px] sm:max-w-none block">
-                      {userProfile.email || 'volunteer@asansol.kindlink.org'}
+                    <strong className="text-foreground font-mono text-xs block truncate">
+                      {userProfile.email || 'Not provided'}
                     </strong>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                  Verified
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                    userProfile.email
+                      ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {userProfile.email ? 'Registered' : 'Unset'}
                 </span>
               </div>
 
-              {/* College / Institution */}
+              {/* College / Institution (with "Added by you" badge) */}
               <div className="p-4 rounded-2xl bg-background border border-border flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 shrink-0">
                     <GraduationCap className="h-4 w-4 notranslate" />
                   </div>
-                  <div>
-                    <span className="text-[10px] font-bold uppercase text-muted-foreground block">Academic College</span>
-                    <strong className="text-foreground">
-                      {userProfile.college || 'Asansol Engineering College (WB)'}
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground block">College / Organization</span>
+                    <strong className="text-foreground text-xs block truncate">
+                      {userProfile.college || 'Not specified'}
                     </strong>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
-                  MAKAUT Affiliated
-                </span>
+                {userProfile.college && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-muted-foreground border border-border shrink-0">
+                    Added by you
+                  </span>
+                )}
               </div>
 
-              {/* Neighborhood / Area */}
+              {/* Neighborhood */}
               <div className="p-4 rounded-2xl bg-background border border-border flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 shrink-0">
                     <MapPin className="h-4 w-4 notranslate" />
                   </div>
-                  <div>
-                    <span className="text-[10px] font-bold uppercase text-muted-foreground block">Home Neighborhood</span>
-                    <strong className="text-foreground">
-                      {userProfile.homeNeighborhood || 'Kalyanpur, Asansol'}
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground block">Area / Neighborhood</span>
+                    <strong className="text-foreground text-xs block truncate">
+                      {userProfile.homeNeighborhood || 'Asansol, West Bengal'}
                     </strong>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-muted-foreground">
-                  West Bengal
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-muted-foreground shrink-0">
+                  WB
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Section C: Emergency Contacts List with Quick Add/Remove */}
-          <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-4">
+          {/* Section C: Emergency Contacts List (Single clean empty state illustration, up to 3 contacts) */}
+          <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-600">
@@ -717,22 +650,33 @@ export function ProfileView() {
                 <div>
                   <h2 className="text-base font-bold text-foreground">Emergency SOS Contacts</h2>
                   <p className="text-xs text-muted-foreground">
-                    Automatically notified via SMS & phone if you trigger an SOS distress call
+                    When you start an SOS you can send your live location to these contacts in one tap on WhatsApp or SMS.
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setAddContactOpen(true)}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition shadow-soft touch-target"
-              >
-                <Plus className="h-4 w-4 notranslate" />
-                <span>Add Emergency Contact</span>
-              </button>
+
+              {emergencyContacts.length < 3 ? (
+                <button
+                  onClick={() => {
+                    setEditingContact(null);
+                    setContactModalOpen(true);
+                  }}
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition shadow-soft touch-target shrink-0 self-start sm:self-auto"
+                >
+                  <Plus className="h-4 w-4 notranslate" />
+                  <span>Add Contact ({emergencyContacts.length}/3)</span>
+                </button>
+              ) : (
+                <span className="text-[11px] font-bold text-muted-foreground bg-muted px-3 py-1 rounded-xl self-start sm:self-auto">
+                  Maximum 3 contacts reached
+                </span>
+              )}
             </div>
 
+            {/* Exactly ONE clean empty state illustration */}
             {emergencyContacts.length === 0 ? (
               <div className="p-8 rounded-3xl border border-dashed border-border bg-muted/20 text-center space-y-3">
-                <div className="mx-auto w-36 h-28 relative">
+                <div className="mx-auto w-32 h-24 relative">
                   <img
                     src="/illustrations/empty-contacts.svg"
                     alt="No emergency contacts"
@@ -740,58 +684,86 @@ export function ProfileView() {
                   />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-foreground">No Emergency Contacts Registered</h4>
-                  <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1">
-                    Add at least one family member or trusted local neighbor. They will receive automated SMS alerts with your live coordinates during emergencies.
+                  <h3 className="text-sm font-bold text-foreground">No Emergency Contacts Registered</h3>
+                  <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1 leading-relaxed">
+                    When you start an SOS you can send your live location to these contacts in one tap on WhatsApp or SMS.
                   </p>
                 </div>
                 <button
-                  onClick={() => setAddContactOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-background border border-border hover:bg-muted text-xs font-bold text-primary transition shadow-xs touch-target"
+                  onClick={() => {
+                    setEditingContact(null);
+                    setContactModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition shadow-soft touch-target"
                 >
                   <Plus className="h-4 w-4 notranslate" />
-                  <span>Register Contact Now</span>
+                  <span>Add First Emergency Contact</span>
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {emergencyContacts.map((contact) => (
                   <div
                     key={contact.id}
-                    className="p-4 rounded-2xl border border-border bg-background shadow-xs flex items-center justify-between"
+                    className="p-4 rounded-2xl border border-border bg-background shadow-xs flex flex-col justify-between space-y-3"
                   >
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <strong className="text-sm font-bold text-foreground">{contact.name}</strong>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                      <div className="flex items-center justify-between gap-2">
+                        <strong className="text-sm font-bold text-foreground truncate">{contact.name}</strong>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 border border-rose-500/20 shrink-0">
                           {contact.relationship}
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        {contact.phone}
-                      </p>
+                      <p className="text-xs text-muted-foreground font-mono">{contact.phone}</p>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
-                      <a
-                        href={`tel:${contact.phone}`}
-                        className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition touch-target"
-                        title={`Call ${contact.name}`}
-                        aria-label={`Call ${contact.name}`}
-                      >
-                        <Phone className="h-4 w-4 notranslate" />
-                      </a>
-                      <button
-                        onClick={() => {
-                          removeEmergencyContact(contact.id);
-                          toast.success('Emergency contact removed');
-                        }}
-                        className="p-2 rounded-xl bg-muted hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 transition touch-target"
-                        title="Remove contact"
-                        aria-label="Remove contact"
-                      >
-                        <Trash2 className="h-4 w-4 notranslate" />
-                      </button>
+                    <div className="flex items-center justify-between pt-2 border-t border-border/60">
+                      {/* One-tap WhatsApp & Phone actions */}
+                      <div className="flex items-center gap-1.5">
+                        <a
+                          href={`https://wa.me/${contact.phone.replace(/\D/g, '')}?text=${encodeURIComponent('KindLink Emergency SOS alert: I may need urgent assistance.')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition touch-target"
+                          title="Send WhatsApp SOS message"
+                          aria-label={`Send WhatsApp message to ${contact.name}`}
+                        >
+                          <MessageCircle className="h-4 w-4 notranslate" />
+                        </a>
+                        <a
+                          href={`tel:${contact.phone}`}
+                          className="p-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition touch-target"
+                          title={`Call ${contact.name}`}
+                          aria-label={`Call ${contact.name}`}
+                        >
+                          <Phone className="h-4 w-4 notranslate" />
+                        </a>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => {
+                            setEditingContact(contact);
+                            setContactModalOpen(true);
+                          }}
+                          className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition touch-target"
+                          title="Edit contact"
+                          aria-label="Edit contact"
+                        >
+                          <Edit3 className="h-3.5 w-3.5 notranslate" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            removeEmergencyContact(contact.id);
+                            toast.success('Emergency contact removed');
+                          }}
+                          className="p-2 rounded-xl text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 transition touch-target"
+                          title="Remove contact"
+                          aria-label="Remove contact"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 notranslate" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -802,21 +774,21 @@ export function ProfileView() {
       )}
 
       {/* =========================================================================
-          4. TAB 2: ACTIVITY (Active Requests & Completed Help History)
+          4. TAB 2: ACTIVITY (Real completed helps & real posted requests with honest illustrations)
          ========================================================================= */}
       {activeTab === 'activity' && (
         <div className="space-y-6">
           {/* Sub-filter segmented control */}
-          <div className="flex items-center gap-2 border-b border-border pb-2">
+          <div className="flex items-center gap-2 border-b border-border pb-2 overflow-x-auto scrollbar-none">
             {[
-              { id: 'all' as const, label: `All Activity (${myHelpHistory.length + myActiveRequests.length})` },
-              { id: 'history' as const, label: `Completed Helps (${myHelpHistory.length})` },
+              { id: 'all' as const, label: `All Activity (${myCompletedHelps.length + myActiveRequests.length})` },
+              { id: 'history' as const, label: `Completed Helps (${myCompletedHelps.length})` },
               { id: 'my-requests' as const, label: `My Requests (${myActiveRequests.length})` },
             ].map((sub) => (
               <button
                 key={sub.id}
                 onClick={() => setActivitySubTab(sub.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition touch-target ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition touch-target shrink-0 whitespace-nowrap ${
                   activitySubTab === sub.id
                     ? 'bg-foreground text-background shadow-xs'
                     : 'text-muted-foreground hover:bg-muted'
@@ -830,19 +802,14 @@ export function ProfileView() {
           {/* Section 1: Completed Help Acts */}
           {(activitySubTab === 'all' || activitySubTab === 'history') && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500 notranslate" />
-                  <span>Completed Mutual Aid Acts</span>
-                </h3>
-                <span className="text-xs text-muted-foreground">
-                  Verified with OTP and beneficiary signature
-                </span>
-              </div>
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500 notranslate" />
+                <span>Completed Mutual Aid Acts</span>
+              </h3>
 
-              {myHelpHistory.length === 0 ? (
+              {myCompletedHelps.length === 0 ? (
                 <div className="p-8 rounded-3xl border border-dashed border-border bg-muted/20 text-center space-y-3">
-                  <div className="mx-auto w-36 h-28 relative">
+                  <div className="mx-auto w-32 h-24 relative">
                     <img
                       src="/illustrations/empty-history.svg"
                       alt="No completed helps"
@@ -851,40 +818,34 @@ export function ProfileView() {
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-foreground">No Completed Helps Yet</h4>
-                    <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1">
-                      Offer help to open requests on the map or home feed to start building your verified impact ledger!
+                    <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1 leading-relaxed">
+                      When you accept and complete urgent neighbor requests on the map or feed, your verified mutual aid acts will be cataloged here.
                     </p>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {myHelpHistory.map((item) => (
+                  {myCompletedHelps.map((req) => (
                     <div
-                      key={item.id}
+                      key={req.id}
                       className="p-5 rounded-2xl border border-border bg-card shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                     >
                       <div className="space-y-1.5 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-bold text-foreground text-sm">{item.title}</span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${item.categoryColor}`}>
-                            {item.category}
+                          <span className="font-bold text-foreground text-sm">{req.title}</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 uppercase">
+                            {req.category}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Assisted <strong className="text-foreground">{item.beneficiary}</strong> · {item.date} · {item.impact}
+                          {req.locationName} · Completed with community OTP verification
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2 self-start sm:self-center">
-                        <div className="flex items-center gap-1 font-bold text-amber-500 bg-amber-500/10 px-3 py-1 rounded-xl text-xs">
-                          <Star className="h-3.5 w-3.5 fill-amber-400 notranslate" />
-                          <span>{item.rating.toFixed(1)} Trust</span>
-                        </div>
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-xl">
-                          <CheckCircle2 className="h-3.5 w-3.5 notranslate" />
-                          <span>Verified</span>
-                        </span>
-                      </div>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-500/10 px-3 py-1 rounded-xl self-start sm:self-center">
+                        <CheckCircle2 className="h-3.5 w-3.5 notranslate" />
+                        <span>Completed</span>
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -895,16 +856,14 @@ export function ProfileView() {
           {/* Section 2: Active Requests Posted */}
           {(activitySubTab === 'all' || activitySubTab === 'my-requests') && (
             <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                  <FileCheck className="h-4 w-4 text-primary notranslate" />
-                  <span>My Posted Requests ({myActiveRequests.length})</span>
-                </h3>
-              </div>
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <FileCheck className="h-4 w-4 text-primary notranslate" />
+                <span>My Posted Requests ({myActiveRequests.length})</span>
+              </h3>
 
               {myActiveRequests.length === 0 ? (
                 <div className="p-8 rounded-3xl border border-dashed border-border bg-muted/20 text-center space-y-3">
-                  <div className="mx-auto w-36 h-28 relative">
+                  <div className="mx-auto w-32 h-24 relative">
                     <img
                       src="/illustrations/empty-requests.svg"
                       alt="No active requests"
@@ -912,11 +871,18 @@ export function ProfileView() {
                     />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-foreground">No Active Requests Posted</h4>
-                    <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1">
-                      You haven't requested any assistance yet. Need emergency blood, medical equipment, or study books? Tap "New Request" anytime.
+                    <h4 className="text-sm font-bold text-foreground">No Requests Posted</h4>
+                    <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1 leading-relaxed">
+                      You haven't posted any help requests yet. Need emergency blood, medical equipment, or elderly transport?
                     </p>
                   </div>
+                  <button
+                    onClick={() => setCurrentView('new')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition shadow-soft touch-target"
+                  >
+                    <Plus className="h-4 w-4 notranslate" />
+                    <span>Create New Request</span>
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -937,7 +903,7 @@ export function ProfileView() {
                                 : 'bg-primary/10 text-primary border border-primary/20'
                             }`}
                           >
-                            {req.urgency} urgency
+                            {req.urgency}
                           </span>
                         </div>
 
@@ -947,7 +913,7 @@ export function ProfileView() {
                       </div>
 
                       <p className="text-xs text-muted-foreground">
-                        {req.locationName} · Posted {req.createdAt}
+                        {req.locationName} · Created {req.createdAt}
                       </p>
                     </div>
                   ))}
@@ -959,85 +925,79 @@ export function ProfileView() {
       )}
 
       {/* =========================================================================
-          5. TAB 3: BADGES (Earned Glowing & Locked Grayscale with Progress Bars)
+          5. TAB 3: BADGES (Real earned badges or honest progress tracking)
          ========================================================================= */}
       {activeTab === 'badges' && (
         <div className="space-y-6">
-          {/* Header Card */}
-          <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500">
-                  <Award className="h-6 w-6 notranslate" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-foreground">Verified Community Badges</h2>
-                  <p className="text-xs text-muted-foreground">
-                    Peer-reviewed trust credentials recognized across Asansol mutual aid networks
-                  </p>
-                </div>
+          <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500">
+                <Award className="h-6 w-6 notranslate" />
               </div>
-              <div className="px-3.5 py-1.5 rounded-2xl bg-primary/10 text-primary font-extrabold text-xs self-start sm:self-auto">
-                {earnedBadgesCount} of {masterBadges.length} Badges Unlocked
+              <div>
+                <h2 className="text-base font-bold text-foreground">Community Trust Badges</h2>
+                <p className="text-xs text-muted-foreground">
+                  Credentials earned through verified in-person assistance and peer reviews
+                </p>
               </div>
+            </div>
+            <div className="px-3.5 py-1.5 rounded-2xl bg-primary/10 text-primary font-extrabold text-xs self-start sm:self-auto">
+              {earnedBadgesCount} of {masterBadges.length} Unlocked
             </div>
           </div>
 
-          {/* Badges Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {masterBadges.map((badge) => (
               <div
                 key={badge.id}
-                className={`relative rounded-3xl border p-5 shadow-soft transition-all ${
+                className={`relative rounded-3xl border p-5 shadow-soft transition-all flex flex-col justify-between ${
                   badge.earned
-                    ? 'border-primary/30 bg-card hover:border-primary/60'
+                    ? 'border-primary/40 bg-card hover:border-primary/70'
                     : 'border-border/60 bg-muted/20 opacity-80'
                 }`}
               >
-                {/* Glowing status tag */}
-                <div className="flex items-center justify-between mb-4">
-                  <span
-                    className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                      badge.earned
-                        ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
-                        : 'bg-muted text-muted-foreground border border-border'
-                    }`}
-                  >
-                    {badge.earned ? 'Earned & Active' : 'Locked Badge'}
-                  </span>
-                  <span className="text-[10px] font-semibold text-muted-foreground">
-                    {badge.category}
-                  </span>
-                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <span
+                      className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                        badge.earned
+                          ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                          : 'bg-muted text-muted-foreground border border-border'
+                      }`}
+                    >
+                      {badge.earned ? 'Earned' : 'Locked'}
+                    </span>
+                    <span className="text-[10px] font-semibold text-muted-foreground">
+                      {badge.category}
+                    </span>
+                  </div>
 
-                {/* SVG Badge Illustration */}
-                <div className="flex justify-center my-3">
-                  <div
-                    className={`h-24 w-24 relative transition-transform hover:scale-105 ${
-                      !badge.earned ? 'filter grayscale contrast-75 opacity-70' : ''
-                    }`}
-                  >
-                    <img
-                      src={badge.icon}
-                      alt={badge.title}
-                      className="w-full h-full object-contain"
-                    />
+                  <div className="flex justify-center my-3">
+                    <div
+                      className={`h-24 w-24 relative transition-transform ${
+                        !badge.earned ? 'filter grayscale contrast-75 opacity-60' : ''
+                      }`}
+                    >
+                      <img
+                        src={badge.icon}
+                        alt={badge.title}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-center space-y-1.5 mt-2">
+                    <h4 className="text-sm font-bold text-foreground">{badge.title}</h4>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      {badge.description}
+                    </p>
                   </div>
                 </div>
 
-                {/* Content */}
-                <div className="text-center space-y-1.5 mt-2">
-                  <h4 className="text-sm font-bold text-foreground">{badge.title}</h4>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    {badge.description}
-                  </p>
-                </div>
-
-                {/* Progress / Status Bar */}
                 <div className="mt-4 pt-3 border-t border-border/60 space-y-1.5">
                   <div className="flex items-center justify-between text-[10px] font-semibold">
                     <span className="text-muted-foreground">{badge.progressLabel}</span>
-                    <span className={badge.earned ? 'text-emerald-600' : 'text-primary'}>
+                    <span className={badge.earned ? 'text-emerald-600 font-bold' : 'text-primary font-bold'}>
                       {badge.progress}%
                     </span>
                   </div>
@@ -1057,256 +1017,161 @@ export function ProfileView() {
       )}
 
       {/* =========================================================================
-          6. TAB 4: IMPACT (Community Impact Stats, Hours, Beneficiaries, CO2)
+          6. TAB 4: IMPACT (Honest real stats, hours, neighbors supported)
          ========================================================================= */}
       {activeTab === 'impact' && (
         <div className="space-y-6">
-          {/* Header Banner */}
-          <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-2">
+          <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-2">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-600">
                 <TrendingUp className="h-6 w-6 notranslate" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-foreground">Community Impact Analytics</h2>
+                <h2 className="text-base font-bold text-foreground">Verified Mutual Aid Impact</h2>
                 <p className="text-xs text-muted-foreground">
-                  Empirical record of mutual aid delivered across Asansol city coordinates
+                  Record of emergency tasks completed and neighbors supported
                 </p>
               </div>
             </div>
           </div>
 
-          {/* 4 Primary High-Level Stat Cards */}
+          {/* 4 Real Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Helps Provided */}
-            <div className="rounded-3xl border border-border bg-card p-5 shadow-soft space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 rounded-2xl bg-primary/10 text-primary">
-                  <HeartHandshake className="h-5 w-5 notranslate" />
-                </div>
-                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                  +25% this month
-                </span>
-              </div>
-              <div>
-                <span className="text-2xl sm:text-3xl font-extrabold text-foreground block">
-                  {userProfile.helpsCount || 3}
-                </span>
-                <span className="text-xs font-semibold text-muted-foreground">
-                  Acts of Help Delivered
-                </span>
-              </div>
+            <div className="rounded-3xl border border-border bg-card p-5 shadow-soft space-y-2">
+              <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                <HeartHandshake className="h-4 w-4 text-primary notranslate" />
+                <span>Helps Delivered</span>
+              </span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-foreground block">
+                {userProfile.helpsCount || 0}
+              </span>
+              <span className="text-[11px] text-muted-foreground block">
+                Verified acts of community help
+              </span>
             </div>
 
-            {/* Hours Volunteered */}
-            <div className="rounded-3xl border border-border bg-card p-5 shadow-soft space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-600">
-                  <Clock className="h-5 w-5 notranslate" />
-                </div>
-                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-500/10 px-2 py-0.5 rounded-full">
-                  Verified
-                </span>
-              </div>
-              <div>
-                <span className="text-2xl sm:text-3xl font-extrabold text-foreground block">
-                  {hoursVolunteered}h
-                </span>
-                <span className="text-xs font-semibold text-muted-foreground">
-                  Hours Volunteered
-                </span>
-              </div>
+            <div className="rounded-3xl border border-border bg-card p-5 shadow-soft space-y-2">
+              <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                <Clock className="h-4 w-4 text-indigo-500 notranslate" />
+                <span>Hours Volunteered</span>
+              </span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-foreground block">
+                {userProfile.hoursVolunteered ?? 0}h
+              </span>
+              <span className="text-[11px] text-muted-foreground block">
+                Dedicated mutual aid time
+              </span>
             </div>
 
-            {/* People Supported */}
-            <div className="rounded-3xl border border-border bg-card p-5 shadow-soft space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-600">
-                  <Heart className="h-5 w-5 notranslate" />
-                </div>
-                <span className="text-[10px] font-bold text-rose-600 bg-rose-500/10 px-2 py-0.5 rounded-full">
-                  Beneficiaries
-                </span>
-              </div>
-              <div>
-                <span className="text-2xl sm:text-3xl font-extrabold text-foreground block">
-                  {peopleSupported}
-                </span>
-                <span className="text-xs font-semibold text-muted-foreground">
-                  Local Neighbors Supported
-                </span>
-              </div>
+            <div className="rounded-3xl border border-border bg-card p-5 shadow-soft space-y-2">
+              <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                <Heart className="h-4 w-4 text-rose-500 notranslate" />
+                <span>Neighbors Supported</span>
+              </span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-foreground block">
+                {userProfile.helpsCount || 0}
+              </span>
+              <span className="text-[11px] text-muted-foreground block">
+                Beneficiaries assisted directly
+              </span>
             </div>
 
-            {/* Kilometers Traveled */}
-            <div className="rounded-3xl border border-border bg-card p-5 shadow-soft space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-600">
-                  <MapPin className="h-5 w-5 notranslate" />
-                </div>
-                <span className="text-[10px] font-bold text-teal-600 bg-teal-500/10 px-2 py-0.5 rounded-full">
-                  Kinematics
-                </span>
-              </div>
-              <div>
-                <span className="text-2xl sm:text-3xl font-extrabold text-foreground block">
-                  {userProfile.kilometersTraveled ?? 42} km
-                </span>
-                <span className="text-xs font-semibold text-muted-foreground">
-                  Transit Distance Covered
-                </span>
-              </div>
+            <div className="rounded-3xl border border-border bg-card p-5 shadow-soft space-y-2">
+              <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                <MapPin className="h-4 w-4 text-teal-500 notranslate" />
+                <span>Distance Covered</span>
+              </span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-foreground block">
+                {userProfile.kilometersTraveled ?? 0} km
+              </span>
+              <span className="text-[11px] text-muted-foreground block">
+                Hyperlocal transit logged
+              </span>
             </div>
           </div>
 
-          {/* Categorical Breakdown & Environmental Efficiency */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Categorical Assistance Breakdown */}
-            <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-4">
-              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <Award className="h-4 w-4 text-primary notranslate" />
-                <span>Assistance by Domain</span>
-              </h3>
-
-              <div className="space-y-3 text-xs">
-                <div className="p-3.5 rounded-2xl bg-background border border-border flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <Droplet className="h-4 w-4 text-rose-500 notranslate" />
-                    <span className="font-semibold text-foreground">Blood Donation Units</span>
-                  </div>
-                  <strong className="text-foreground font-mono">2 Units Emergency Blood</strong>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-background border border-border flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <HeartHandshake className="h-4 w-4 text-teal-500 notranslate" />
-                    <span className="font-semibold text-foreground">Mobility & Wheelchair Aid</span>
-                  </div>
-                  <strong className="text-foreground font-mono">3 Items Loaned</strong>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-background border border-border flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <BookOpen className="h-4 w-4 text-violet-500 notranslate" />
-                    <span className="font-semibold text-foreground">Semester Study Textbooks</span>
-                  </div>
-                  <strong className="text-foreground font-mono">6 Textbooks Shared</strong>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-background border border-border flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <User className="h-4 w-4 text-amber-500 notranslate" />
-                    <span className="font-semibold text-foreground">Senior Citizen Companionship</span>
-                  </div>
-                  <strong className="text-foreground font-mono">4 Home Sessions</strong>
-                </div>
-              </div>
-            </div>
-
-            {/* Hyperlocal Efficiency & Carbon Offset */}
-            <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-4 flex flex-col justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-emerald-500 notranslate" />
-                  <span>Hyperlocal Aid & Green Footprint</span>
-                </h3>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  By matching volunteers located within 2.5 km of distress points, KindLink minimizes motorized traffic and maximizes emergency response velocity.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                    Estimated Carbon Footprint Offset
-                  </span>
-                  <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
-                    ~14.2 kg CO₂e
-                  </span>
-                </div>
-                <p className="text-[11px] text-emerald-800/80 dark:text-emerald-200/80 leading-relaxed">
-                  Saved by routing critical assistance on bicycle and foot compared to commercial motorized dispatch.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-background border border-border flex items-center justify-between text-xs">
-                <span className="text-muted-foreground font-medium">Average Response Velocity:</span>
-                <strong className="text-primary font-bold">11.4 Minutes in Asansol City</strong>
-              </div>
-            </div>
+          {/* Honest Impact Explanation */}
+          <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-3">
+            <h3 className="text-sm font-bold text-foreground">How Impact Tracking Works</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              KindLink records real mutual aid metrics only after both the requester and volunteer verify task completion via mutual OTP or delivery handshake. No estimated or simulated counts are credited.
+            </p>
           </div>
         </div>
       )}
 
       {/* =========================================================================
-          7. TAB 5: VERIFICATION (Step-by-Step Stepper & Document Upload Modal)
+          7. TAB 5: VERIFICATION (3-tier protocol & ID document upload)
          ========================================================================= */}
       {activeTab === 'verification' && (
         <div className="space-y-6">
-          {/* Header Card */}
-          <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-primary/10 text-primary">
-                  <FileCheck className="h-6 w-6 notranslate" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-foreground">Volunteer Trust & Verification Stepper</h2>
-                  <p className="text-xs text-muted-foreground">
-                    Three-tier verification protocol required to respond to urgent blood and medical tasks
-                  </p>
-                </div>
+          <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-primary/10 text-primary">
+                <FileCheck className="h-6 w-6 notranslate" />
               </div>
-              <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                  userProfile.verificationState === 'verified'
-                    ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
-                    : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
-                }`}
-              >
-                <ShieldCheck className="h-4 w-4 notranslate" />
-                <span>Current Status: {userProfile.verificationState}</span>
-              </span>
+              <div>
+                <h2 className="text-base font-bold text-foreground">Volunteer Verification</h2>
+                <p className="text-xs text-muted-foreground">
+                  Verification ensures safety during critical medical, transport, and equipment requests
+                </p>
+              </div>
             </div>
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase self-start sm:self-auto ${
+                userProfile.verificationState === 'verified'
+                  ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                  : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+              }`}
+            >
+              <ShieldCheck className="h-4 w-4 notranslate" />
+              <span>Status: {userProfile.verificationState}</span>
+            </span>
           </div>
 
-          {/* Stepper Card */}
+          {/* 3 Step Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Step 1: Phone Verification */}
+            {/* Step 1: Phone */}
             <div className="p-5 rounded-3xl bg-card border border-border shadow-soft space-y-3 flex flex-col justify-between">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-xs font-extrabold text-foreground">
                     <Phone className="h-4 w-4 text-primary notranslate" />
-                    <span>Step 1: Phone Verified</span>
+                    <span>Step 1: Phone Number</span>
                   </span>
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500 notranslate" />
+                  {userProfile.phone ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500 notranslate" />
+                  ) : (
+                    <Clock className="h-4 w-4 text-muted-foreground notranslate" />
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   {userProfile.phone
-                    ? `Verified via OTP with ${userProfile.phone}. SMS alerts enabled.`
-                    : 'Add and verify your mobile number for emergency notifications.'}
+                    ? `Registered as ${userProfile.phone}. Verified for dispatch calls.`
+                    : 'Register your mobile number so matched beneficiaries can contact you.'}
                 </p>
               </div>
 
               <div className="pt-2 border-t border-border/60 flex items-center justify-between">
-                <span className="text-[11px] font-bold text-emerald-600">OTP Active</span>
+                <span className="text-[11px] font-bold text-emerald-600">
+                  {userProfile.phone ? 'Phone Added' : 'Required'}
+                </span>
                 <button
-                  onClick={() => setIdModalOpen(true)}
-                  className="text-xs font-bold text-primary hover:underline"
+                  onClick={() => setEditProfileOpen(true)}
+                  className="text-xs font-bold text-primary hover:underline touch-target"
                 >
-                  Update Phone →
+                  {userProfile.phone ? 'Update →' : 'Add Phone →'}
                 </button>
               </div>
             </div>
 
-            {/* Step 2: ID Uploaded */}
+            {/* Step 2: Document */}
             <div className="p-5 rounded-3xl bg-card border border-border shadow-soft space-y-3 flex flex-col justify-between">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-xs font-extrabold text-foreground">
                     <Upload className="h-4 w-4 text-teal-500 notranslate" />
-                    <span>Step 2: ID Uploaded</span>
+                    <span>Step 2: ID Document</span>
                   </span>
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -1320,8 +1185,8 @@ export function ProfileView() {
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   {userProfile.idDocumentName
-                    ? `${userProfile.idDocumentName} uploaded securely to encrypted storage.`
-                    : 'Upload a student ID or Government photo card for identity verification.'}
+                    ? `${userProfile.idDocumentName} submitted for verification.`
+                    : 'Upload a Student ID (AEC/MAKAUT) or Government Photo ID for identity authentication.'}
                 </p>
               </div>
 
@@ -1331,20 +1196,20 @@ export function ProfileView() {
                 </span>
                 <button
                   onClick={() => setIdModalOpen(true)}
-                  className="text-xs font-bold text-primary hover:underline"
+                  className="text-xs font-bold text-primary hover:underline touch-target"
                 >
                   {userProfile.idDocumentName ? 'Replace ID →' : 'Upload ID →'}
                 </button>
               </div>
             </div>
 
-            {/* Step 3: Admin Review & Community Peer Trust */}
+            {/* Step 3: Admin Review */}
             <div className="p-5 rounded-3xl bg-card border border-border shadow-soft space-y-3 flex flex-col justify-between">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-xs font-extrabold text-foreground">
                     <Award className="h-4 w-4 text-indigo-500 notranslate" />
-                    <span>Step 3: Admin Review</span>
+                    <span>Step 3: Verification Review</span>
                   </span>
                   <CheckCircle2
                     className={`h-4 w-4 notranslate ${
@@ -1356,8 +1221,10 @@ export function ProfileView() {
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   {userProfile.verificationState === 'verified'
-                    ? 'Verified Volunteer badge unlocked. You can accept high-urgency blood and transit tasks.'
-                    : 'Admin review takes less than 4 hours. Peer endorsements speed up trust activation.'}
+                    ? 'Verified Volunteer badge unlocked. You can respond to emergency blood and medical transit tasks.'
+                    : userProfile.verificationState === 'pending'
+                    ? 'Your submission is under admin review. Verification typically takes under 24 hours.'
+                    : 'Submit your document to initiate the verification review.'}
                 </p>
               </div>
 
@@ -1366,17 +1233,25 @@ export function ProfileView() {
                   className={`text-[11px] font-bold ${
                     userProfile.verificationState === 'verified'
                       ? 'text-emerald-600'
-                      : 'text-amber-600'
+                      : userProfile.verificationState === 'pending'
+                      ? 'text-amber-600'
+                      : 'text-muted-foreground'
                   }`}
                 >
-                  {userProfile.verificationState === 'verified' ? 'Badge Unlocked' : 'Under Review'}
+                  {userProfile.verificationState === 'verified'
+                    ? 'Verified'
+                    : userProfile.verificationState === 'pending'
+                    ? 'Under Review'
+                    : 'Not Submitted'}
                 </span>
-                <button
-                  onClick={() => setIdModalOpen(true)}
-                  className="text-xs font-bold text-primary hover:underline"
-                >
-                  Check Status →
-                </button>
+                {userProfile.verificationState !== 'verified' && (
+                  <button
+                    onClick={() => setIdModalOpen(true)}
+                    className="text-xs font-bold text-primary hover:underline touch-target"
+                  >
+                    Submit Document →
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1384,33 +1259,24 @@ export function ProfileView() {
       )}
 
       {/* =========================================================================
-          8. TAB 6: SETTINGS (Theme, Language, Notifications, Privacy, PWA, Password, Sign Out)
+          8. TAB 6: SETTINGS (Renders complete SettingsView component)
          ========================================================================= */}
-      {activeTab === 'settings' && (
-        <ProfileSettingsSection
-          smsAlerts={smsAlerts}
-          setSmsAlerts={setSmsAlerts}
-          pushAlerts={pushAlerts}
-          setPushAlerts={setPushAlerts}
-          soundAlerts={soundAlerts}
-          setSoundAlerts={setSoundAlerts}
-          maskPhone={maskPhone}
-          setMaskPhone={setMaskPhone}
-          transitGpsPrivacy={transitGpsPrivacy}
-          setTransitGpsPrivacy={setTransitGpsPrivacy}
-          onOpenLanguageModal={() => setLangModalOpen(true)}
-          onInstallPwa={handleInstallPwa}
-          isPwaInstalled={isPwaInstalled}
-        />
-      )}
+      {activeTab === 'settings' && <SettingsView />}
 
       {/* =========================================================================
-          MODALS & OVERLAYS
+          MODALS
          ========================================================================= */}
 
-      {/* MODAL 1: ID UPLOAD & VERIFICATION */}
+      {/* EDIT PROFILE MODAL */}
+      <EditProfileModal open={editProfileOpen} onClose={() => setEditProfileOpen(false)} />
+
+      {/* ID UPLOAD MODAL */}
       {idModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+        >
           <div className="w-full max-w-md rounded-3xl bg-card border border-border p-6 shadow-2xl text-left space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -1432,43 +1298,38 @@ export function ProfileView() {
             </div>
 
             <p className="text-xs text-muted-foreground leading-relaxed">
-              To respond to urgent medical and blood requests, please provide your contact number and student or citizen ID. Documents are stored encrypted in private storage.
+              To respond to urgent medical and blood requests, please provide your mobile number and student or citizen ID. Documents are stored in secure private storage.
             </p>
 
-            {/* Phone Number Input */}
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">
+              <label className="block text-xs font-bold text-foreground mb-1">
                 Verified Phone Number (10 digits)
               </label>
               <input
                 type="tel"
                 value={phoneInput}
                 onChange={(e) => setPhoneInput(e.target.value)}
-                placeholder="+91 98765 43210"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="+91 98320 12345"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target font-mono"
               />
             </div>
 
-            {/* Document Type Dropdown */}
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                Document Type
-              </label>
+              <label className="block text-xs font-bold text-foreground mb-1">Document Type</label>
               <select
                 value={docTypeInput}
                 onChange={(e) => setDocTypeInput(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
               >
-                <option value="Student ID Card">College / University Student ID (AEC / MAKAUT)</option>
+                <option value="Student ID Card">College Student ID (AEC / MAKAUT / University)</option>
                 <option value="Government Photo ID">Government Photo ID (Aadhaar / Voter ID)</option>
                 <option value="Driving License">Driving License</option>
                 <option value="Healthcare Certificate">Healthcare / First Responder Certificate</option>
               </select>
             </div>
 
-            {/* File Picker */}
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">
+              <label className="block text-xs font-bold text-foreground mb-1">
                 Attach Document File (PDF, JPG, PNG - Max 5 MB)
               </label>
               <label className="p-5 rounded-2xl border-2 border-dashed border-border bg-muted/30 text-xs text-muted-foreground flex flex-col items-center gap-2 cursor-pointer hover:bg-muted/60 transition">
@@ -1477,7 +1338,7 @@ export function ProfileView() {
                   {selectedFile ? selectedFile.name : 'Click to select document'}
                 </span>
                 <span className="text-[11px] text-muted-foreground">
-                  {selectedFile ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB` : 'Encrypted AES-256 Storage'}
+                  {selectedFile ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB` : 'Secure Private Storage'}
                 </span>
                 <input
                   type="file"
@@ -1497,13 +1358,12 @@ export function ProfileView() {
               </label>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex gap-2.5 pt-2">
               <button
                 type="button"
                 onClick={() => setIdModalOpen(false)}
                 disabled={uploading}
-                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-bold hover:bg-muted transition"
+                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-bold hover:bg-muted transition touch-target"
               >
                 Cancel
               </button>
@@ -1511,7 +1371,7 @@ export function ProfileView() {
                 type="button"
                 onClick={handleUploadId}
                 disabled={uploading}
-                className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold shadow-soft transition disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-soft transition disabled:opacity-50 touch-target"
               >
                 {uploading ? 'Submitting...' : 'Submit Verification'}
               </button>
@@ -1520,768 +1380,174 @@ export function ProfileView() {
         </div>
       )}
 
-      {/* MODAL 2: ADD EMERGENCY CONTACT */}
-      {addContactOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <form
-            onSubmit={handleAddEmergencyContact}
-            className="w-full max-w-sm rounded-3xl bg-card border border-border p-6 shadow-2xl text-left space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600">
-                  <AlertCircle className="h-5 w-5 notranslate" />
-                </div>
-                <h3 className="text-base font-bold text-foreground">Add Emergency Contact</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setAddContactOpen(false)}
-                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition"
-                aria-label="Close modal"
-              >
-                <X className="h-5 w-5 notranslate" />
-              </button>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                Contact Full Name
-              </label>
-              <input
-                type="text"
-                required
-                value={contactName}
-                onChange={(e) => setContactName(e.target.value)}
-                placeholder="e.g. Ramesh Sharma"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                Relationship
-              </label>
-              <select
-                value={contactRelation}
-                onChange={(e) => setContactRelation(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="Parent">Parent</option>
-                <option value="Spouse">Spouse / Partner</option>
-                <option value="Sibling">Sibling</option>
-                <option value="Child">Child</option>
-                <option value="Friend">Close Friend</option>
-                <option value="Neighbor">Local Neighbor</option>
-                <option value="Colleague">Colleague / Peer</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                required
-                value={contactPhone}
-                onChange={(e) => setContactPhone(e.target.value)}
-                placeholder="+91 98765 43210"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-
-            <div className="flex gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setAddContactOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-bold hover:bg-muted transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold shadow-soft transition"
-              >
-                Save Contact
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* MODAL 3: EDIT PROFILE */}
-      {editProfileOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <form
-            onSubmit={handleSaveProfileEdits}
-            className="w-full max-w-md rounded-3xl bg-card border border-border p-6 shadow-2xl text-left space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                  <Edit3 className="h-5 w-5 notranslate" />
-                </div>
-                <h3 className="text-base font-bold text-foreground">Edit Profile Information</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditProfileOpen(false)}
-                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition"
-                aria-label="Close modal"
-              >
-                <X className="h-5 w-5 notranslate" />
-              </button>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                Display Name
-              </label>
-              <input
-                type="text"
-                required
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                Username (@handle)
-              </label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">
-                  @
-                </span>
-                <input
-                  type="text"
-                  value={editUsername}
-                  onChange={(e) => setEditUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                  className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                Academic College / Institution
-              </label>
-              <input
-                type="text"
-                value={editCollege}
-                onChange={(e) => setEditCollege(e.target.value)}
-                placeholder="Asansol Engineering College"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                Home Neighborhood
-              </label>
-              <input
-                type="text"
-                value={editNeighborhood}
-                onChange={(e) => setEditNeighborhood(e.target.value)}
-                placeholder="Kalyanpur, Asansol"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                Community Bio
-              </label>
-              <textarea
-                rows={3}
-                value={editBio}
-                onChange={(e) => setEditBio(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-              />
-            </div>
-
-            <div className="flex gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setEditProfileOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-bold hover:bg-muted transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold shadow-soft transition"
-              >
-                Save Changes
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* MODAL 4: PWA INSTALL GUIDANCE */}
-      {pwaModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-sm rounded-3xl bg-card border border-border p-6 shadow-2xl text-left space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-600">
-                  <Download className="h-5 w-5 notranslate" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-foreground">Install KindLink PWA</h3>
-                  <p className="text-xs text-muted-foreground">Instant home screen access</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setPwaModalOpen(false)}
-                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition"
-                aria-label="Close modal"
-              >
-                <X className="h-5 w-5 notranslate" />
-              </button>
-            </div>
-
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              KindLink works offline and installs directly without going to app stores:
-            </p>
-
-            <div className="space-y-2.5 text-xs">
-              <div className="p-3 rounded-2xl bg-background border border-border space-y-1">
-                <strong className="text-foreground block">📱 On Chrome / Android:</strong>
-                <p className="text-muted-foreground text-[11px]">
-                  Tap browser menu (⋮) → Select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.
-                </p>
-              </div>
-              <div className="p-3 rounded-2xl bg-background border border-border space-y-1">
-                <strong className="text-foreground block">🍏 On Safari / iOS:</strong>
-                <p className="text-muted-foreground text-[11px]">
-                  Tap Share (📤) → Select <strong>"Add to Home Screen"</strong>.
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setPwaModalOpen(false)}
-              className="w-full py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-soft transition"
-            >
-              Got it
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* LANGUAGE MODAL */}
-      <LanguageModal open={langModalOpen} onClose={() => setLangModalOpen(false)} />
-    </div>
-  );
-}
-
-{/* =========================================================================
-    SUB-COMPONENT: PROFILE SETTINGS SECTION
-   ========================================================================= */}
-interface ProfileSettingsProps {
-  smsAlerts: boolean;
-  setSmsAlerts: (v: boolean) => void;
-  pushAlerts: boolean;
-  setPushAlerts: (v: boolean) => void;
-  soundAlerts: boolean;
-  setSoundAlerts: (v: boolean) => void;
-  maskPhone: boolean;
-  setMaskPhone: (v: boolean) => void;
-  transitGpsPrivacy: boolean;
-  setTransitGpsPrivacy: (v: boolean) => void;
-  onOpenLanguageModal: () => void;
-  onInstallPwa: () => void;
-  isPwaInstalled: boolean;
-}
-
-function ProfileSettingsSection({
-  smsAlerts,
-  setSmsAlerts,
-  pushAlerts,
-  setPushAlerts,
-  soundAlerts,
-  setSoundAlerts,
-  maskPhone,
-  setMaskPhone,
-  transitGpsPrivacy,
-  setTransitGpsPrivacy,
-  onOpenLanguageModal,
-  onInstallPwa,
-  isPwaInstalled,
-}: ProfileSettingsProps) {
-  const { theme, setTheme } = useTheme();
-  const [textSize, setTextSize] = useState<'normal' | 'compact' | 'large'>('normal');
-
-  const currentLangCode = getCurrentLanguageCode();
-  const currentLang = SUPPORTED_LANGUAGES.find((l) => l.code === currentLangCode);
-
-  const handleTextSizeChange = (size: 'normal' | 'compact' | 'large') => {
-    setTextSize(size);
-    if (typeof document !== 'undefined') {
-      if (size === 'compact') {
-        document.documentElement.style.fontSize = '14px';
-      } else if (size === 'large') {
-        document.documentElement.style.fontSize = '18px';
-      } else {
-        document.documentElement.style.fontSize = '16px';
-      }
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* 1. Appearance & Theme Controls */}
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500">
-            <Sun className="h-5 w-5 notranslate" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-foreground">Appearance Theme</h3>
-            <p className="text-xs text-muted-foreground">Switch between light, dark, or system follow</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2.5 pt-1">
-          {[
-            { id: 'light', label: 'Light', icon: Sun },
-            { id: 'dark', label: 'Dark', icon: Moon },
-            { id: 'system', label: 'System', icon: Monitor },
-          ].map((m) => {
-            const Icon = m.icon;
-            const isSelected = theme === m.id;
-            return (
-              <button
-                key={m.id}
-                onClick={() => setTheme(m.id)}
-                className={`py-2.5 px-3 rounded-2xl border text-xs font-bold transition flex items-center justify-center gap-2 touch-target ${
-                  isSelected
-                    ? 'border-primary bg-primary text-white shadow-soft'
-                    : 'border-border bg-background text-foreground hover:bg-muted'
-                }`}
-              >
-                <Icon className="h-4 w-4 notranslate" />
-                <span>{m.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Text Size Accessibility */}
-        <div className="pt-3 border-t border-border/60 space-y-2">
-          <span className="text-xs font-semibold text-muted-foreground block">
-            Text Size & Readability
-          </span>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { id: 'compact' as const, label: 'Compact' },
-              { id: 'normal' as const, label: 'Standard' },
-              { id: 'large' as const, label: 'Elderly Mode (Large)' },
-            ].map((s) => (
-              <button
-                key={s.id}
-                onClick={() => handleTextSizeChange(s.id)}
-                className={`py-2 px-2.5 rounded-xl border text-[11px] font-bold transition touch-target ${
-                  textSize === s.id
-                    ? 'border-primary bg-primary text-white shadow-soft'
-                    : 'border-border bg-background text-foreground hover:bg-muted'
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Language Selector */}
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-soft flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-primary/10 text-primary">
-            <Globe className="h-5 w-5 notranslate" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-foreground">Language / भाषा / ভাষা</h3>
-            <p className="text-xs text-muted-foreground">
-              Current: <strong className="text-foreground">{currentLang?.nativeName || 'English'}</strong> ({currentLang?.name || 'English'})
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={onOpenLanguageModal}
-          className="px-4 py-2 rounded-xl bg-background border border-border text-xs font-bold text-primary hover:bg-muted transition touch-target"
-        >
-          Change Language
-        </button>
-      </div>
-
-      {/* 3. Notifications Controls */}
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-600">
-            <Bell className="h-5 w-5 notranslate" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-foreground">Notification Preferences</h3>
-            <p className="text-xs text-muted-foreground">Control how you receive urgent community alerts</p>
-          </div>
-        </div>
-
-        <div className="space-y-3 pt-1 text-xs">
-          {/* SMS Alerts */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-background border border-border">
-            <div>
-              <strong className="text-foreground block">Emergency SMS Dispatches</strong>
-              <span className="text-muted-foreground text-[11px]">
-                Receive instant SMS OTPs and critical alerts even when offline
-              </span>
-            </div>
-            <input
-              type="checkbox"
-              checked={smsAlerts}
-              onChange={(e) => {
-                setSmsAlerts(e.target.checked);
-                toast.success(`SMS alerts ${e.target.checked ? 'enabled' : 'disabled'}`);
-              }}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
-            />
-          </div>
-
-          {/* Browser Push */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-background border border-border">
-            <div>
-              <strong className="text-foreground block">Browser Push Notifications</strong>
-              <span className="text-muted-foreground text-[11px]">
-                Pop-up notifications when urgent requests appear within your radius
-              </span>
-            </div>
-            <input
-              type="checkbox"
-              checked={pushAlerts}
-              onChange={async (e) => {
-                const checked = e.target.checked;
-                if (checked && typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
-                  const perm = await Notification.requestPermission();
-                  if (perm !== 'granted') {
-                    toast.error('Browser push permission was denied');
-                    return;
-                  }
-                }
-                setPushAlerts(checked);
-                toast.success(`Push notifications ${checked ? 'enabled' : 'disabled'}`);
-              }}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
-            />
-          </div>
-
-          {/* Critical Sound Alarm */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-background border border-border">
-            <div>
-              <strong className="text-foreground block">Critical Audio Siren for Blood & SOS</strong>
-              <span className="text-muted-foreground text-[11px]">
-                Plays resonant auditory beacon when critical blood requests match
-              </span>
-            </div>
-            <input
-              type="checkbox"
-              checked={soundAlerts}
-              onChange={(e) => {
-                setSoundAlerts(e.target.checked);
-                toast.success(`Audio alert sirens ${e.target.checked ? 'enabled' : 'muted'}`);
-              }}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* 4. Privacy Controls */}
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-600">
-            <Lock className="h-5 w-5 notranslate" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-foreground">Privacy & Shield Controls</h3>
-            <p className="text-xs text-muted-foreground">Manage your contact disclosure and transit telemetry</p>
-          </div>
-        </div>
-
-        <div className="space-y-3 pt-1 text-xs">
-          {/* Mask Phone */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-background border border-border">
-            <div>
-              <strong className="text-foreground block">Mask Phone Number Until Match Confirmed</strong>
-              <span className="text-muted-foreground text-[11px]">
-                Keeps your direct phone number private until you mutually accept an aid request
-              </span>
-            </div>
-            <input
-              type="checkbox"
-              checked={maskPhone}
-              onChange={(e) => {
-                setMaskPhone(e.target.checked);
-                toast.success(`Phone masking ${e.target.checked ? 'activated' : 'deactivated'}`);
-              }}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
-            />
-          </div>
-
-          {/* GPS Transit Telemetry */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-background border border-border">
-            <div>
-              <strong className="text-foreground block">Real-time GPS Transit Sharing</strong>
-              <span className="text-muted-foreground text-[11px]">
-                Broadcast live kinematic transit coordinates only while en route to a beneficiary
-              </span>
-            </div>
-            <input
-              type="checkbox"
-              checked={transitGpsPrivacy}
-              onChange={(e) => {
-                setTransitGpsPrivacy(e.target.checked);
-                toast.success(`Transit GPS sharing ${e.target.checked ? 'enabled' : 'restricted'}`);
-              }}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* 5. Install PWA Button */}
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-600">
-            <Smartphone className="h-5 w-5 notranslate" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-foreground">Install KindLink Web App</h3>
-            <p className="text-xs text-muted-foreground">
-              {isPwaInstalled
-                ? 'App is currently installed and active on this device'
-                : 'Access offline mode, full-screen UI, and faster emergency loading'}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={onInstallPwa}
-          disabled={isPwaInstalled}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold shadow-soft transition disabled:opacity-50 touch-target"
-        >
-          <Download className="h-4 w-4 notranslate" />
-          <span>{isPwaInstalled ? 'Installed' : 'Install PWA'}</span>
-        </button>
-      </div>
-
-      {/* 6. Change Password Form */}
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-500">
-            <ShieldCheck className="h-5 w-5 notranslate" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-foreground">Security & Password</h3>
-            <p className="text-xs text-muted-foreground">Update your account credentials safely</p>
-          </div>
-        </div>
-
-        <ChangePasswordForm />
-      </div>
-
-      {/* 7. Sign Out Button & Session Control */}
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-soft flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-bold text-foreground">Session Control</h3>
-          <p className="text-xs text-muted-foreground">Sign out of your active KindLink session</p>
-        </div>
-        <button
-          onClick={async () => {
-            try {
-              await fetch('/api/auth/logout', { method: 'POST' });
-              window.location.href = '/login';
-            } catch {
-              window.location.href = '/login';
-            }
+      {/* EMERGENCY CONTACT ADD / EDIT MODAL */}
+      {contactModalOpen && (
+        <EmergencyContactFormModal
+          contact={editingContact}
+          onClose={() => {
+            setContactModalOpen(false);
+            setEditingContact(null);
           }}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition touch-target"
-        >
-          <LogOut className="h-4 w-4 notranslate" />
-          <span>Sign Out</span>
-        </button>
-      </div>
+          onSave={(contactData) => {
+            if (editingContact) {
+              updateEmergencyContact({
+                id: editingContact.id,
+                ...contactData,
+              });
+              toast.success('Emergency contact updated');
+            } else {
+              addEmergencyContact(contactData);
+              toast.success('Emergency contact added');
+            }
+            setContactModalOpen(false);
+            setEditingContact(null);
+          }}
+        />
+      )}
     </div>
   );
 }
 
 {/* =========================================================================
-    SUB-COMPONENT: CHANGE PASSWORD FORM
+    EMERGENCY CONTACT ADD / EDIT FORM MODAL
    ========================================================================= */}
-function ChangePasswordForm() {
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [signOutOthers, setSignOutOthers] = useState(true);
+function EmergencyContactFormModal({
+  contact,
+  onClose,
+  onSave,
+}: {
+  contact?: EmergencyContact | null;
+  onClose: () => void;
+  onSave: (data: { name: string; phone: string; relationship: string }) => void;
+}) {
+  const [name, setName] = useState(contact?.name || '');
+  const [phone, setPhone] = useState(contact?.phone || '');
+  const [relationship, setRelationship] = useState(contact?.relationship || 'Parent');
 
-  const [showOld, setShowOld] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const validateIndianPhone = (num: string): boolean => {
+    const cleaned = num.replace(/[\s\-\(\)]/g, '');
+    return /^(?:\+91)?[6-9]\d{9}$/.test(cleaned);
+  };
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
-
-    if (newPassword.length < 8) {
-      setError('New password must be at least 8 characters long.');
+    if (!name.trim()) {
+      toast.error('Please enter the contact full name');
       return;
     }
 
-    if (newPassword !== confirmPassword) {
-      setError('New passwords do not match.');
+    if (!validateIndianPhone(phone)) {
+      toast.error('Please enter a valid 10-digit Indian phone number (+91...)');
       return;
     }
 
-    setLoading(true);
-
-    try {
-      const res = await fetch('/api/auth/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          oldPassword,
-          newPassword,
-          confirmPassword,
-          signOutOthers,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Failed to update password.');
-        setLoading(false);
-        return;
-      }
-
-      setSuccess('Password updated successfully! Next time you sign in, use your new password.');
-      setOldPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setLoading(false);
-    } catch {
-      setError('Connection error. Please try again.');
-      setLoading(false);
+    // Format phone
+    let formattedPhone = phone.trim();
+    const cleanDigits = formattedPhone.replace(/\D/g, '');
+    if (cleanDigits.length === 10) {
+      formattedPhone = `+91 ${cleanDigits.slice(0, 5)} ${cleanDigits.slice(5)}`;
     }
+
+    onSave({
+      name: name.trim(),
+      phone: formattedPhone,
+      relationship,
+    });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3.5 pt-1">
-      {error && (
-        <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-xl text-xs text-rose-700 dark:text-rose-300">
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded-xl text-xs text-emerald-700 dark:text-emerald-300">
-          {success}
-        </div>
-      )}
-
-      {/* Old Password */}
-      <div>
-        <label className="block text-xs font-semibold text-muted-foreground mb-1">Current Password</label>
-        <div className="relative">
-          <input
-            type={showOld ? 'text' : 'password'}
-            required
-            value={oldPassword}
-            onChange={(e) => setOldPassword(e.target.value)}
-            placeholder="••••••••"
-            className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <button
-            type="button"
-            onClick={() => setShowOld(!showOld)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
-            aria-label={showOld ? 'Hide password' : 'Show password'}
-          >
-            {showOld ? <EyeOff className="h-4 w-4 notranslate" /> : <Eye className="h-4 w-4 notranslate" />}
-          </button>
-        </div>
-      </div>
-
-      {/* New Password */}
-      <div>
-        <label className="block text-xs font-semibold text-muted-foreground mb-1">New Password (min 8 chars)</label>
-        <div className="relative">
-          <input
-            type={showNew ? 'text' : 'password'}
-            required
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="••••••••"
-            className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <button
-            type="button"
-            onClick={() => setShowNew(!showNew)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
-            aria-label={showNew ? 'Hide password' : 'Show password'}
-          >
-            {showNew ? <EyeOff className="h-4 w-4 notranslate" /> : <Eye className="h-4 w-4 notranslate" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Confirm New Password */}
-      <div>
-        <label className="block text-xs font-semibold text-muted-foreground mb-1">Confirm New Password</label>
-        <div className="relative">
-          <input
-            type={showConfirm ? 'text' : 'password'}
-            required
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="••••••••"
-            className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <button
-            type="button"
-            onClick={() => setShowConfirm(!showConfirm)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
-            aria-label={showConfirm ? 'Hide password' : 'Show password'}
-          >
-            {showConfirm ? <EyeOff className="h-4 w-4 notranslate" /> : <Eye className="h-4 w-4 notranslate" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Sign out of other devices checkbox */}
-      <label className="flex items-center gap-2 cursor-pointer pt-1">
-        <input
-          type="checkbox"
-          checked={signOutOthers}
-          onChange={(e) => setSignOutOthers(e.target.checked)}
-          className="rounded border-border text-primary focus:ring-primary/20"
-        />
-        <span className="text-xs text-muted-foreground">Sign out of other devices</span>
-      </label>
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold transition disabled:opacity-50 touch-target"
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+    >
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-sm rounded-3xl bg-card border border-border p-6 shadow-2xl text-left space-y-4"
       >
-        {loading ? 'Updating Password...' : 'Update Password'}
-      </button>
-    </form>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600">
+              <AlertCircle className="h-5 w-5 notranslate" />
+            </div>
+            <h3 className="text-base font-bold text-foreground">
+              {contact ? 'Edit Emergency Contact' : 'Add Emergency Contact'}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition"
+            aria-label="Close modal"
+          >
+            <X className="h-5 w-5 notranslate" />
+          </button>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-foreground mb-1">
+            Contact Full Name <span className="text-rose-500">*</span>
+          </label>
+          <input
+            type="text"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Ramesh Sharma"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-foreground mb-1">Relationship</label>
+          <select
+            value={relationship}
+            onChange={(e) => setRelationship(e.target.value)}
+            className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
+          >
+            <option value="Parent">Parent</option>
+            <option value="Spouse">Spouse / Partner</option>
+            <option value="Sibling">Sibling</option>
+            <option value="Child">Child</option>
+            <option value="Friend">Close Friend</option>
+            <option value="Neighbor">Local Neighbor</option>
+            <option value="Colleague">Colleague / Peer</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-foreground mb-1">
+            Phone Number (Indian Format) <span className="text-rose-500">*</span>
+          </label>
+          <input
+            type="tel"
+            required
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+91 98320 12345"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
+          />
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Must be a valid 10-digit mobile number starting with 6, 7, 8, or 9.
+          </p>
+        </div>
+
+        <div className="flex gap-2.5 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-border text-xs font-bold hover:bg-muted transition touch-target"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-soft transition touch-target"
+          >
+            Save Contact
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }

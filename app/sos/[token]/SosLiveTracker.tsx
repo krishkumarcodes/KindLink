@@ -33,7 +33,7 @@ function maskName(name?: string): string {
 }
 
 function maskPhone(phone?: string): string {
-  if (!phone) return '+91 ••••• •••••';
+  if (!phone || phone.trim().length === 0) return 'Emergency Responders Only';
   const digits = phone.trim();
   if (digits.length <= 6) return digits;
   return digits.slice(0, 7) + ' •••••';
@@ -44,6 +44,29 @@ export function SosLiveTracker({ initialEvent, token }: SosLiveTrackerProps) {
   const [elapsedText, setElapsedText] = useState<string>('0m 0s');
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
+
+  const handleMarkSafe = async () => {
+    setIsResolving(true);
+    try {
+      const res = await fetch(`/api/sos/${encodeURIComponent(token)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'safe' }),
+      });
+      if (res.ok) {
+        setEvent((prev) => ({
+          ...prev,
+          status: 'resolved',
+          resolvedAt: new Date().toISOString(),
+        }));
+      }
+    } catch {
+      // Handled
+    } finally {
+      setIsResolving(false);
+    }
+  };
 
   // Live elapsed time counter (updates every 1s)
   useEffect(() => {
@@ -142,22 +165,43 @@ export function SosLiveTracker({ initialEvent, token }: SosLiveTrackerProps) {
         {/* Urgent Status Card */}
         <section
           aria-labelledby="status-title"
-          className="rounded-3xl border-2 border-urgency-critical bg-card p-5 sm:p-6 shadow-xl text-card-foreground"
+          className={`rounded-3xl border-2 ${
+            event.status === 'resolved'
+              ? 'border-emerald-500/80 bg-emerald-500/5'
+              : 'border-urgency-critical bg-card'
+          } p-5 sm:p-6 shadow-xl text-card-foreground transition-all duration-300`}
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-urgency-critical text-white shadow-md shrink-0">
-                <AlertTriangle className="h-6 w-6 animate-pulse notranslate" />
+              <div
+                className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
+                  event.status === 'resolved'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-urgency-critical text-white'
+                } shadow-md shrink-0`}
+              >
+                {event.status === 'resolved' ? (
+                  <CheckCircle2 className="h-6 w-6 notranslate" />
+                ) : (
+                  <AlertTriangle className="h-6 w-6 animate-pulse notranslate" />
+                )}
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h1 id="status-title" className="text-xl sm:text-2xl font-black tracking-tight">
-                    Active SOS Beacon
+                    {event.status === 'resolved' ? 'Emergency Resolved' : 'Active SOS Beacon'}
                   </h1>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-urgency-critical/15 text-urgency-critical border border-urgency-critical/30 animate-pulse">
-                    <span className="h-2 w-2 rounded-full bg-urgency-critical" />
-                    LIVE
-                  </span>
+                  {event.status === 'resolved' ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/15 text-emerald-600 border border-emerald-500/30">
+                      <CheckCircle2 className="h-3 w-3" />
+                      SAFE
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-urgency-critical/15 text-urgency-critical border border-urgency-critical/30 animate-pulse">
+                      <span className="h-2 w-2 rounded-full bg-urgency-critical" />
+                      LIVE
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Token ID: <span className="font-mono text-foreground">{token}</span>
@@ -165,17 +209,32 @@ export function SosLiveTracker({ initialEvent, token }: SosLiveTrackerProps) {
               </div>
             </div>
 
-            {/* Elapsed Time Counter */}
-            <div className="flex items-center gap-2 p-2.5 px-4 rounded-2xl bg-muted/80 border border-border shrink-0">
-              <Clock className="h-4 w-4 text-primary notranslate" />
-              <div className="text-right sm:text-left">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                  Elapsed Time
-                </span>
-                <span className="text-sm font-black text-foreground font-mono block">
-                  {elapsedText}
-                </span>
+            <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+              {/* Elapsed Time Counter */}
+              <div className="flex items-center gap-2 p-2.5 px-4 rounded-2xl bg-muted/80 border border-border shrink-0">
+                <Clock className="h-4 w-4 text-primary notranslate" />
+                <div className="text-right sm:text-left">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                    {event.status === 'resolved' ? 'Duration' : 'Elapsed Time'}
+                  </span>
+                  <span className="text-sm font-black text-foreground font-mono block">
+                    {elapsedText}
+                  </span>
+                </div>
               </div>
+
+              {/* I am Safe action button */}
+              {event.status !== 'resolved' && (
+                <button
+                  type="button"
+                  onClick={handleMarkSafe}
+                  disabled={isResolving}
+                  className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md touch-target active:scale-95 disabled:opacity-60"
+                >
+                  <CheckCircle2 className="h-4 w-4 notranslate" />
+                  <span>{isResolving ? 'Resolving...' : 'I am safe'}</span>
+                </button>
+              )}
             </div>
           </div>
 

@@ -41,7 +41,7 @@ export default function PublicHomePage() {
     {
       title: 'Blood Donation',
       href: '/help/blood-donation',
-      weight: 'Weight 10/10',
+      urgencyHint: 'Usually Critical',
       eta: '< 15 min response target',
       description:
         'Urgent donor matching for rare groups (O-, AB-) during accidents and critical surgeries at Asansol District Hospital, Burnpur, and Durgapur clinics.',
@@ -54,7 +54,7 @@ export default function PublicHomePage() {
     {
       title: 'Emergency Transport',
       href: '/help/emergency-transport',
-      weight: 'Weight 9/10',
+      urgencyHint: 'Usually High',
       eta: '< 10 min transit matching',
       description:
         'Community transit assistance for urgent medical appointments, hospital transfers, and localized emergencies when commercial ambulances are delayed.',
@@ -67,7 +67,7 @@ export default function PublicHomePage() {
     {
       title: 'Elderly Assistance',
       href: '/help/elderly-assistance',
-      weight: 'Weight 6/10',
+      urgencyHint: 'Flexible timing',
       eta: 'Same-day scheduled support',
       description:
         'Support for senior citizens living alone: essential grocery runs, prescription medicine pickup, and hospital accompaniment with verified local volunteers.',
@@ -80,7 +80,7 @@ export default function PublicHomePage() {
     {
       title: 'Medical Equipment',
       href: '/help/wheelchair-and-equipment',
-      weight: 'Weight 5/10',
+      urgencyHint: 'Standard priority',
       eta: 'Community lending pool',
       description:
         'Free short-term lending of wheelchairs, oxygen concentrators, nebulizers, walkers, and crutches from neighbors with unused equipment at home.',
@@ -93,7 +93,7 @@ export default function PublicHomePage() {
     {
       title: 'Study Materials',
       href: '/help/books-and-study-material',
-      weight: 'Weight 2/10',
+      urgencyHint: 'Community aid',
       eta: 'Peer semester book bank',
       description:
         'Academic textbook lending for engineering (AEC MAKAUT syllabus), CBSE, and state board curriculums, reducing semester costs for hardworking students.',
@@ -215,7 +215,7 @@ export default function PublicHomePage() {
                 Five Specialized Mutual Aid Pillars
               </h2>
               <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                Every category is governed by custom urgency weights and dispatch rules to ensure life-saving
+                Every category is governed by intelligent urgency priority levels and dispatch rules to ensure life-saving
                 emergencies are never crowded out by everyday requests.
               </p>
             </div>
@@ -234,7 +234,7 @@ export default function PublicHomePage() {
                           <Icon className="h-5 w-5" />
                         </div>
                         <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold border ${cat.badgeBorder} ${cat.badgeBg} shadow-xs`}>
-                          {cat.weight}
+                          {cat.urgencyHint}
                         </span>
                       </div>
 

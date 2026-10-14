@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Search,
   Filter,
@@ -11,12 +11,24 @@ import {
   X,
   SlidersHorizontal,
   Inbox,
+  RotateCw,
+  ShieldCheck,
+  Check,
+  ChevronDown,
+  PlusCircle,
+  AlertTriangle,
+  Droplets,
+  Stethoscope,
+  Users,
+  BookOpen,
+  Car,
 } from 'lucide-react';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { HelpCategory, HelpRequest, UrgencyLevel } from '@/lib/data/types';
 import { RequestCard } from './RequestCard';
 import { RequestDetailModal } from './RequestDetailModal';
 import { HelpFlowModal } from './HelpFlowModal';
+import { useTranslation } from '@/lib/i18n';
 
 export function RequestsView() {
   const {
@@ -35,41 +47,143 @@ export function RequestsView() {
     selectedRequestId,
     setSelectedRequestId,
     fetchLiveRequests,
+    setCurrentView,
+    isLoadingRequests,
   } = useKindLinkStore();
+
+  const { t } = useTranslation();
 
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [helpFlowReq, setHelpFlowReq] = useState<HelpRequest | null>(null);
 
+  // Advanced Multi-Select Filters
+  const [selectedCategories, setSelectedCategories] = useState<HelpCategory[]>(() =>
+    filterCategory !== 'all' ? [filterCategory] : []
+  );
+  const [selectedUrgencies, setSelectedUrgencies] = useState<UrgencyLevel[]>(() =>
+    filterUrgency !== 'all' ? [filterUrgency] : []
+  );
+  const [radiusKm, setRadiusKm] = useState<number>(filterRadius || 25);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'accepted'>('all');
+  const [neededInFilter, setNeededInFilter] = useState<'all' | 'immediate' | 'today' | 'within24h'>('all');
+  const [verifiedOnly, setVerifiedOnly] = useState<boolean>(false);
+
+  // Sync external filterCategory changes (e.g. from Home category clicks)
+  useEffect(() => {
+    if (filterCategory !== 'all') {
+      setSelectedCategories([filterCategory]);
+    }
+  }, [filterCategory]);
+
+  // Sync external filterUrgency changes
+  useEffect(() => {
+    if (filterUrgency !== 'all') {
+      setSelectedUrgencies([filterUrgency]);
+    }
+  }, [filterUrgency]);
+
+  // Sync external filterRadius changes
+  useEffect(() => {
+    if (filterRadius) {
+      setRadiusKm(filterRadius);
+    }
+  }, [filterRadius]);
+
+  // Pagination / Infinite Scroll
+  const [visibleCount, setVisibleCount] = useState<number>(9);
+
+  // "New requests" alert tracking
+  const [hasNewRequestsBanner, setHasNewRequestsBanner] = useState<boolean>(false);
+  const prevCountRef = useRef<number>(requests.length);
+
+  useEffect(() => {
+    if (requests.length > prevCountRef.current && prevCountRef.current > 0) {
+      setHasNewRequestsBanner(true);
+    }
+    prevCountRef.current = requests.length;
+  }, [requests.length]);
+
+  const handleDismissNewRequestsBanner = () => {
+    setHasNewRequestsBanner(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Selected request for details modal
   const activeDetailRequest = requests.find((r) => r.id === selectedRequestId) || null;
 
-  // Filter & Search Logic
-  const filteredRequests = requests.filter((req) => {
-    // 1. Category filter
-    if (filterCategory !== 'all' && req.category !== filterCategory) {
-      return false;
-    }
-    // 2. Urgency filter
-    if (filterUrgency !== 'all' && req.urgency !== filterUrgency) {
-      return false;
-    }
-    // 3. Radius filter
-    if (req.distanceKm > filterRadius) {
-      return false;
-    }
-    // 4. Search query
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchTitle = req.title.toLowerCase().includes(q);
-      const matchDesc = req.description.toLowerCase().includes(q);
-      const matchLoc = req.locationName.toLowerCase().includes(q);
-      const matchBlood = req.bloodGroup?.toLowerCase().includes(q);
-      if (!matchTitle && !matchDesc && !matchLoc && !matchBlood) {
+  // Filter Logic
+  const filteredRequests = useMemo(() => {
+    return requests.filter((req) => {
+      // 1. Categories Multi-Select
+      if (selectedCategories.length > 0 && !selectedCategories.includes(req.category)) {
         return false;
       }
-    }
-    return true;
-  });
+
+      // 2. Urgencies Checkboxes
+      if (selectedUrgencies.length > 0 && !selectedUrgencies.includes(req.urgency)) {
+        return false;
+      }
+
+      // 3. Distance Radius Slider (1-50 km)
+      if (req.distanceKm > radiusKm) {
+        return false;
+      }
+
+      // 4. Status Filter (open / accepted)
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'open' && req.status !== 'open') return false;
+        if (statusFilter === 'accepted' && req.status !== 'accepted') return false;
+      }
+
+      // 5. "Needed in" timing
+      if (neededInFilter !== 'all') {
+        const lowerNeeded = (req.neededByTime || '').toLowerCase();
+        if (neededInFilter === 'immediate') {
+          if (!lowerNeeded.includes('immediate') && !lowerNeeded.includes('2 hour') && !lowerNeeded.includes('urgent')) {
+            return false;
+          }
+        } else if (neededInFilter === 'today') {
+          if (!lowerNeeded.includes('today') && !lowerNeeded.includes('hour') && !lowerNeeded.includes('immediate')) {
+            return false;
+          }
+        } else if (neededInFilter === 'within24h') {
+          if (lowerNeeded.includes('flexible') || lowerNeeded.includes('scheduled')) {
+            return false;
+          }
+        }
+      }
+
+      // 6. Verified requesters only toggle
+      if (verifiedOnly && !req.verified) {
+        return false;
+      }
+
+      // 7. Search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchTitle = req.title.toLowerCase().includes(q);
+        const matchDesc = req.description.toLowerCase().includes(q);
+        const matchLoc = req.locationName.toLowerCase().includes(q);
+        const matchBlood = req.bloodGroup?.toLowerCase().includes(q);
+        const matchItem = req.itemType?.toLowerCase().includes(q);
+        const matchCategory = req.category.toLowerCase().includes(q);
+        if (!matchTitle && !matchDesc && !matchLoc && !matchBlood && !matchItem && !matchCategory) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [
+    requests,
+    selectedCategories,
+    selectedUrgencies,
+    radiusKm,
+    statusFilter,
+    neededInFilter,
+    verifiedOnly,
+    searchQuery,
+  ]);
 
   const URGENCY_PRIORITY: Record<string, number> = {
     critical: 1,
@@ -78,60 +192,136 @@ export function RequestsView() {
     low: 4,
   };
 
-  // Sorting logic based on tab
-  const sortedRequests = [...filteredRequests].sort((a, b) => {
-    if (activeFeedTab === 'urgent') {
+  // Sorting logic based on tab:
+  // Most Urgent: urgency > distance > waiting time
+  // Nearest: road/geodesic distance > urgency > waiting time
+  // Newest: waitingMinutes ascending (creation time) > urgency
+  const sortedRequests = useMemo(() => {
+    return [...filteredRequests].sort((a, b) => {
+      if (activeFeedTab === 'urgent') {
+        const urgA = URGENCY_PRIORITY[a.urgency] ?? 5;
+        const urgB = URGENCY_PRIORITY[b.urgency] ?? 5;
+        if (urgA !== urgB) return urgA - urgB;
+        if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
+        return b.waitingMinutes - a.waitingMinutes;
+      }
+      if (activeFeedTab === 'nearest') {
+        if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
+        const urgA = URGENCY_PRIORITY[a.urgency] ?? 5;
+        const urgB = URGENCY_PRIORITY[b.urgency] ?? 5;
+        if (urgA !== urgB) return urgA - urgB;
+        return b.waitingMinutes - a.waitingMinutes;
+      }
+      // newest: most recently posted (smallest waitingMinutes or createdAt)
+      if (a.waitingMinutes !== b.waitingMinutes) {
+        return a.waitingMinutes - b.waitingMinutes;
+      }
       const urgA = URGENCY_PRIORITY[a.urgency] ?? 5;
       const urgB = URGENCY_PRIORITY[b.urgency] ?? 5;
-      if (urgA !== urgB) return urgA - urgB;
-      if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
-      return b.waitingMinutes - a.waitingMinutes;
-    }
-    if (activeFeedTab === 'nearest') {
-      if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
-      const urgA = URGENCY_PRIORITY[a.urgency] ?? 5;
-      const urgB = URGENCY_PRIORITY[b.urgency] ?? 5;
-      if (urgA !== urgB) return urgA - urgB;
-      return b.waitingMinutes - a.waitingMinutes;
-    }
-    // newest
-    return a.waitingMinutes - b.waitingMinutes;
-  });
+      return urgA - urgB;
+    });
+  }, [filteredRequests, activeFeedTab]);
 
-  const categories: { key: HelpCategory | 'all'; label: string }[] = [
-    { key: 'all', label: 'All Needs' },
-    { key: 'blood', label: 'Blood' },
-    { key: 'equipment', label: 'Medical Gear' },
-    { key: 'elderly', label: 'Elderly Care' },
-    { key: 'books', label: 'Books' },
-    { key: 'transport', label: 'Transit' },
+  const displayedRequests = useMemo(() => {
+    return sortedRequests.slice(0, visibleCount);
+  }, [sortedRequests, visibleCount]);
+
+  const categoriesList: { key: HelpCategory; label: string; icon: React.ReactNode }[] = [
+    { key: 'blood', label: t('categories.blood') || 'Blood Donation', icon: <Droplets className="h-3.5 w-3.5 text-rose-500 notranslate" /> },
+    { key: 'equipment', label: t('categories.equipment') || 'Medical Gear', icon: <Stethoscope className="h-3.5 w-3.5 text-teal-500 notranslate" /> },
+    { key: 'elderly', label: t('categories.elderly') || 'Elderly Care', icon: <Users className="h-3.5 w-3.5 text-blue-500 notranslate" /> },
+    { key: 'books', label: t('categories.books') || 'Books and Study', icon: <BookOpen className="h-3.5 w-3.5 text-emerald-500 notranslate" /> },
+    { key: 'transport', label: t('categories.transport') || 'Emergency Transit', icon: <Car className="h-3.5 w-3.5 text-amber-500 notranslate" /> },
   ];
 
-  const urgencies: { key: UrgencyLevel | 'all'; label: string }[] = [
-    { key: 'all', label: 'All Urgencies' },
-    { key: 'critical', label: 'Critical' },
-    { key: 'high', label: 'High' },
-    { key: 'medium', label: 'Medium' },
-    { key: 'low', label: 'Low' },
+  const urgenciesList: { key: UrgencyLevel; label: string; color: string }[] = [
+    { key: 'critical', label: 'Critical', color: 'text-rose-600 bg-rose-500/10 border-rose-500/30' },
+    { key: 'high', label: 'High', color: 'text-amber-600 bg-amber-500/10 border-amber-500/30' },
+    { key: 'medium', label: 'Medium', color: 'text-blue-600 bg-blue-500/10 border-blue-500/30' },
+    { key: 'low', label: 'Low', color: 'text-slate-600 bg-slate-500/10 border-slate-500/30' },
   ];
+
+  const toggleCategory = (cat: HelpCategory) => {
+    setSelectedCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    );
+  };
+
+  const toggleUrgency = (urg: UrgencyLevel) => {
+    setSelectedUrgencies((prev) =>
+      prev.includes(urg) ? prev.filter((u) => u !== urg) : [...prev, urg]
+    );
+  };
+
+  const resetAllFilters = () => {
+    setSelectedCategories([]);
+    setSelectedUrgencies([]);
+    setRadiusKm(50);
+    setFilterRadius(50);
+    setStatusFilter('all');
+    setNeededInFilter('all');
+    setVerifiedOnly(false);
+    setSearchQuery('');
+    setFilterCategory('all');
+    setFilterUrgency('all');
+  };
+
+  const hasActiveFilters =
+    selectedCategories.length > 0 ||
+    selectedUrgencies.length > 0 ||
+    radiusKm < 50 ||
+    statusFilter !== 'all' ||
+    neededInFilter !== 'all' ||
+    verifiedOnly ||
+    Boolean(searchQuery.trim());
 
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-36 lg:pb-16">
-      {/* Top Header & Search Bar */}
+      {/* "New requests arrived" banner */}
+      {hasNewRequestsBanner && (
+        <div className="sticky top-2 z-30 flex items-center justify-between p-3 sm:p-3.5 rounded-2xl bg-primary text-white shadow-lg animate-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center gap-2.5 text-xs sm:text-sm font-bold">
+            <Sparkles className="h-4 w-4 shrink-0 notranslate animate-spin" />
+            <span>New community aid requests arrived in your area!</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDismissNewRequestsBanner}
+              className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-xs font-black transition active:scale-95"
+            >
+              Show New Requests
+            </button>
+            <button
+              type="button"
+              onClick={() => setHasNewRequestsBanner(false)}
+              className="p-1 rounded-lg hover:bg-white/20 text-white/80 hover:text-white"
+              aria-label="Dismiss banner"
+            >
+              <X className="h-4 w-4 notranslate" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Top Header & Search Bar with perfectly vertically centered icon */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
             Community Aid Requests
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Browse and filter live needs in Asansol, Durgapur, and nearby regions
+            Browse and filter live needs in Asansol, Durgapur, and neighboring districts
           </p>
         </div>
 
         {/* Search & Filter trigger */}
         <div className="flex items-center gap-2 w-full md:w-auto">
-          <div className="relative flex-1 md:w-72">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground notranslate" />
+          {/* Search container with precise vertical centering */}
+          <div className="relative flex-1 md:w-80 flex items-center">
+            <div className="absolute left-3.5 flex items-center pointer-events-none text-muted-foreground">
+              <Search className="h-4 w-4 notranslate" />
+            </div>
             <input
               type="text"
               value={searchQuery}
@@ -143,28 +333,362 @@ export function RequestsView() {
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-md hover:bg-muted"
+                className="absolute right-3 p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
                 aria-label="Clear search"
               >
-                <X className="h-4 w-4 notranslate" />
+                <X className="h-3.5 w-3.5 notranslate" />
               </button>
             )}
           </div>
 
+          {/* Refresh Button */}
+          <button
+            type="button"
+            onClick={() => fetchLiveRequests()}
+            title="Refresh feed"
+            aria-label="Refresh feed"
+            className="h-10 w-10 min-h-[40px] min-w-[40px] shrink-0 rounded-2xl border border-border/80 bg-card/90 hover:bg-muted text-muted-foreground hover:text-foreground transition-all shadow-xs flex items-center justify-center touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <RotateCw className={`h-4 w-4 notranslate ${isLoadingRequests ? 'animate-spin text-primary' : ''}`} />
+          </button>
+
+          {/* Filter sheet trigger */}
           <button
             type="button"
             onClick={() => setFilterPanelOpen(!filterPanelOpen)}
             className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl border text-xs font-bold transition-all active:scale-95 touch-target ${
-              filterCategory !== 'all' || filterUrgency !== 'all' || filterRadius < 25
+              hasActiveFilters
                 ? 'border-primary bg-primary text-white shadow-soft ring-2 ring-primary/20'
                 : 'border-border/80 bg-card text-foreground hover:bg-muted hover:border-border'
             }`}
           >
             <SlidersHorizontal className="h-4 w-4 notranslate" />
             <span className="hidden sm:inline">Filters</span>
+            {hasActiveFilters && (
+              <span className="flex h-2 w-2 rounded-full bg-white" />
+            )}
           </button>
         </div>
       </div>
+
+      {/* Expandable Filter Sheet / Panel */}
+      {filterPanelOpen && (
+        <div className="rounded-3xl border border-border/80 bg-card/95 backdrop-blur-md p-5 sm:p-6 shadow-xl space-y-5 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between pb-3 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-primary notranslate" />
+              <span className="text-sm font-bold text-foreground">Filter Aid Requests</span>
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
+                Matching {filteredRequests.length} of {requests.length}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={resetAllFilters}
+                className="text-xs text-primary font-semibold hover:underline"
+              >
+                Reset all
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterPanelOpen(false)}
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                aria-label="Close filters"
+              >
+                <X className="h-4 w-4 notranslate" />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* 1. Category Multi-Select */}
+            <div>
+              <label className="text-xs font-bold text-foreground block mb-2">
+                Categories (Select Multiple)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {categoriesList.map((c) => {
+                  const isSelected = selectedCategories.includes(c.key);
+                  return (
+                    <button
+                      key={c.key}
+                      type="button"
+                      onClick={() => toggleCategory(c.key)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
+                        isSelected
+                          ? 'border-primary bg-primary text-white font-bold shadow-xs'
+                          : 'border-border/80 bg-background hover:bg-muted text-foreground'
+                      }`}
+                    >
+                      {c.icon}
+                      <span>{c.label}</span>
+                      {isSelected && <Check className="h-3 w-3 notranslate stroke-[3]" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. Urgency Checkboxes */}
+            <div>
+              <label className="text-xs font-bold text-foreground block mb-2">
+                Urgency Level
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {urgenciesList.map((u) => {
+                  const isSelected = selectedUrgencies.includes(u.key);
+                  return (
+                    <button
+                      key={u.key}
+                      type="button"
+                      onClick={() => toggleUrgency(u.key)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
+                        isSelected
+                          ? 'border-primary bg-primary text-white font-bold shadow-xs'
+                          : 'border-border/80 bg-background hover:bg-muted text-foreground'
+                      }`}
+                    >
+                      <AlertTriangle className="h-3 w-3 notranslate" />
+                      <span>{u.label}</span>
+                      {isSelected && <Check className="h-3 w-3 notranslate stroke-[3]" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Distance Radius Slider (1-50 km) */}
+          <div className="space-y-2 pt-2 border-t border-border/80">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-foreground">Alert Distance Radius</span>
+              <span className="font-extrabold text-primary px-2.5 py-0.5 rounded-full bg-primary/10">
+                {radiusKm} km
+              </span>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="50"
+              step="1"
+              value={radiusKm}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setRadiusKm(val);
+                setFilterRadius(val);
+              }}
+              className="w-full accent-primary h-2 bg-muted rounded-lg cursor-pointer"
+            />
+            <div className="flex justify-between text-[10px] text-muted-foreground font-semibold">
+              <span>1 km (Hyper-local)</span>
+              <span>10 km (Asansol City)</span>
+              <span>25 km (Greater Corridor)</span>
+              <span>50 km (Regional Wide)</span>
+            </div>
+          </div>
+
+          {/* 4. Status, Needed In, and Verified Requesters row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-border/80">
+            {/* Status */}
+            <div>
+              <label className="text-xs font-bold text-foreground block mb-1.5">
+                Lifecycle Status
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="w-full rounded-xl border border-border bg-background p-2.5 text-xs text-foreground font-semibold focus:outline-none focus:border-primary"
+              >
+                <option value="all">All Statuses</option>
+                <option value="open">Open Needs Only</option>
+                <option value="accepted">Accepted / In Progress</option>
+              </select>
+            </div>
+
+            {/* Needed in time */}
+            <div>
+              <label className="text-xs font-bold text-foreground block mb-1.5">
+                Needed In Timeframe
+              </label>
+              <select
+                value={neededInFilter}
+                onChange={(e) => setNeededInFilter(e.target.value as any)}
+                className="w-full rounded-xl border border-border bg-background p-2.5 text-xs text-foreground font-semibold focus:outline-none focus:border-primary"
+              >
+                <option value="all">Any Timing</option>
+                <option value="immediate">Immediate (0-2 hours)</option>
+                <option value="today">Today</option>
+                <option value="within24h">Within 24 Hours</option>
+              </select>
+            </div>
+
+            {/* Verified Requesters Only Toggle */}
+            <div className="flex flex-col justify-end">
+              <label
+                onClick={() => setVerifiedOnly(!verifiedOnly)}
+                className="flex items-center gap-2 p-2.5 rounded-xl border border-border bg-background cursor-pointer hover:bg-muted transition text-xs font-bold text-foreground select-none"
+              >
+                <input
+                  type="checkbox"
+                  checked={verifiedOnly}
+                  onChange={(e) => setVerifiedOnly(e.target.checked)}
+                  className="rounded border-border text-primary focus:ring-primary h-4 w-4 accent-primary"
+                />
+                <ShieldCheck className="h-4 w-4 text-emerald-500 notranslate" />
+                <span>Verified Requesters Only</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Footer Controls: Live Count, Reset & Apply */}
+          <div className="flex items-center justify-between pt-3 border-t border-border">
+            <span className="text-xs font-bold text-muted-foreground">
+              {filteredRequests.length} matching request{filteredRequests.length === 1 ? '' : 's'}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={resetAllFilters}
+                className="px-4 py-2 rounded-xl border border-border text-xs font-semibold text-foreground hover:bg-muted transition"
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterPanelOpen(false)}
+                className="px-5 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition shadow-xs"
+              >
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active Filter Chips */}
+      {hasActiveFilters && (
+        <div className="flex items-center flex-wrap gap-2 text-xs">
+          <span className="text-muted-foreground font-bold text-[11px] uppercase tracking-wider mr-1">
+            Active:
+          </span>
+
+          {searchQuery && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-bold">
+              <span>"{searchQuery}"</span>
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="hover:text-primary/70"
+                aria-label="Remove search filter"
+              >
+                <X className="h-3 w-3 notranslate" />
+              </button>
+            </span>
+          )}
+
+          {selectedCategories.map((c) => (
+            <span
+              key={c}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-border text-foreground font-semibold"
+            >
+              <span className="capitalize">{c}</span>
+              <button
+                type="button"
+                onClick={() => toggleCategory(c)}
+                className="hover:text-rose-500"
+                aria-label={`Remove ${c} filter`}
+              >
+                <X className="h-3 w-3 notranslate" />
+              </button>
+            </span>
+          ))}
+
+          {selectedUrgencies.map((u) => (
+            <span
+              key={u}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-border text-foreground font-semibold"
+            >
+              <span className="capitalize">{u}</span>
+              <button
+                type="button"
+                onClick={() => toggleUrgency(u)}
+                className="hover:text-rose-500"
+                aria-label={`Remove ${u} filter`}
+              >
+                <X className="h-3 w-3 notranslate" />
+              </button>
+            </span>
+          ))}
+
+          {radiusKm < 50 && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-border text-foreground font-semibold">
+              <span>Within {radiusKm} km</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setRadiusKm(50);
+                  setFilterRadius(50);
+                }}
+                className="hover:text-rose-500"
+                aria-label="Reset radius filter"
+              >
+                <X className="h-3 w-3 notranslate" />
+              </button>
+            </span>
+          )}
+
+          {statusFilter !== 'all' && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-border text-foreground font-semibold">
+              <span>Status: {statusFilter}</span>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('all')}
+                className="hover:text-rose-500"
+                aria-label="Reset status filter"
+              >
+                <X className="h-3 w-3 notranslate" />
+              </button>
+            </span>
+          )}
+
+          {neededInFilter !== 'all' && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-border text-foreground font-semibold">
+              <span>Needed: {neededInFilter}</span>
+              <button
+                type="button"
+                onClick={() => setNeededInFilter('all')}
+                className="hover:text-rose-500"
+                aria-label="Reset needed filter"
+              >
+                <X className="h-3 w-3 notranslate" />
+              </button>
+            </span>
+          )}
+
+          {verifiedOnly && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 font-bold">
+              <span>Verified Only</span>
+              <button
+                type="button"
+                onClick={() => setVerifiedOnly(false)}
+                className="hover:text-emerald-900"
+                aria-label="Remove verified only filter"
+              >
+                <X className="h-3 w-3 notranslate" />
+              </button>
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={resetAllFilters}
+            className="text-xs font-bold text-primary hover:underline ml-1"
+          >
+            Clear all filters
+          </button>
+        </div>
+      )}
 
       {/* Tabs Row: Most Urgent, Nearest, Newest */}
       <div className="flex items-center justify-between border-b border-border/80 pb-2.5">
@@ -210,131 +734,112 @@ export function RequestsView() {
         </div>
 
         <span className="text-xs text-muted-foreground font-semibold hidden sm:inline">
-          Showing {sortedRequests.length} request{sortedRequests.length === 1 ? '' : 's'}
+          Showing {displayedRequests.length} of {sortedRequests.length} request{sortedRequests.length === 1 ? '' : 's'}
         </span>
       </div>
 
-      {/* Expandable Filter Panel */}
-      {filterPanelOpen && (
-        <div className="rounded-3xl border border-border/80 bg-card/95 backdrop-blur-xs p-5 shadow-soft space-y-4 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between pb-2 border-b border-border">
-            <div className="flex items-center gap-2 text-sm font-bold text-foreground">
-              <Filter className="h-4 w-4 text-primary notranslate" />
-              <span>Filter Options</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setFilterCategory('all');
-                setFilterUrgency('all');
-                setFilterRadius(20);
-              }}
-              className="text-xs text-primary font-semibold hover:underline"
-            >
-              Reset all filters
-            </button>
-          </div>
-
-          {/* Categories */}
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground block mb-2">Category</label>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((c) => (
-                <button
-                  key={c.key}
-                  type="button"
-                  onClick={() => setFilterCategory(c.key)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all active:scale-95 ${
-                    filterCategory === c.key
-                      ? 'border-primary bg-primary text-white font-bold shadow-xs'
-                      : 'border-border/80 bg-background hover:bg-muted text-foreground'
-                  }`}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Urgencies */}
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground block mb-2">Urgency Level</label>
-            <div className="flex flex-wrap gap-2">
-              {urgencies.map((u) => (
-                <button
-                  key={u.key}
-                  type="button"
-                  onClick={() => setFilterUrgency(u.key)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all active:scale-95 ${
-                    filterUrgency === u.key
-                      ? 'border-primary bg-primary text-white font-bold shadow-xs'
-                      : 'border-border/80 bg-background hover:bg-muted text-foreground'
-                  }`}
-                >
-                  {u.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Distance Radius Slider */}
-          <div>
-            <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="font-semibold text-muted-foreground">Alert Distance Radius</span>
-              <span className="font-bold text-primary">{filterRadius} km</span>
-            </div>
-            <input
-              type="range"
-              min="1"
-              max="25"
-              step="1"
-              value={filterRadius}
-              onChange={(e) => setFilterRadius(Number(e.target.value))}
-              className="w-full accent-primary h-2 bg-muted rounded-lg cursor-pointer"
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-              <span>1 km (Hyper-local)</span>
-              <span>10 km</span>
-              <span>25 km (Greater Asansol)</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Requests Feed Grid */}
-      {sortedRequests.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-border/80 bg-card/60 p-12 text-center shadow-soft">
-          <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-3 text-muted-foreground">
-            <Inbox className="h-8 w-8 notranslate" />
-          </div>
-          <h3 className="text-lg font-bold text-foreground">No matching requests found</h3>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1">
-            Try expanding your distance radius slider or clearing the category and search filters.
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              setSearchQuery('');
-              setFilterCategory('all');
-              setFilterUrgency('all');
-              setFilterRadius(25);
-            }}
-            className="mt-5 px-5 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition active:scale-95 shadow-soft"
-          >
-            Clear All Filters
-          </button>
-        </div>
-      ) : (
+      {/* Requests Feed Grid with Skeleton Loading & Honest Empty States */}
+      {isLoadingRequests && requests.length === 0 ? (
+        /* Skeleton Loading */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {sortedRequests.map((req) => (
-            <RequestCard
-              key={req.id}
-              request={req}
-              travelMode={travelMode}
-              onSelect={(r) => setSelectedRequestId(r.id)}
-              onHelp={(r) => setHelpFlowReq(r)}
-            />
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div
+              key={i}
+              className="rounded-3xl border border-border/80 bg-card/60 p-5 space-y-4 animate-pulse"
+              aria-busy="true"
+            >
+              <div className="flex justify-between items-center">
+                <div className="h-6 w-24 bg-muted rounded-full" />
+                <div className="h-4 w-16 bg-muted rounded-full" />
+              </div>
+              <div className="h-5 w-3/4 bg-muted rounded-lg" />
+              <div className="h-4 w-full bg-muted/60 rounded-md" />
+              <div className="h-4 w-2/3 bg-muted/40 rounded-md" />
+              <div className="pt-3 border-t border-border flex justify-between items-center">
+                <div className="h-4 w-28 bg-muted rounded-md" />
+                <div className="h-8 w-20 bg-muted rounded-xl" />
+              </div>
+            </div>
           ))}
+        </div>
+      ) : sortedRequests.length === 0 ? (
+        /* Honest Empty States */
+        requests.length === 0 ? (
+          /* Case 1: Feed is completely empty in database */
+          <div className="rounded-3xl border border-dashed border-border/80 bg-card/60 p-10 sm:p-14 text-center shadow-soft space-y-4">
+            <div className="h-16 w-16 rounded-3xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+              <Inbox className="h-8 w-8 notranslate" />
+            </div>
+            <div className="max-w-md mx-auto space-y-1.5">
+              <h3 className="text-lg font-bold text-foreground">No requests found</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                There are currently no active mutual aid requests in the community feed. You can be the first to broadcast a need for assistance!
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setCurrentView('new')}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition active:scale-95 shadow-soft"
+              >
+                <PlusCircle className="h-4 w-4 notranslate" />
+                <span>Post a Request</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Case 2: Requests exist, but hidden by current filters */
+          <div className="rounded-3xl border border-dashed border-border/80 bg-card/60 p-10 sm:p-14 text-center shadow-soft space-y-4">
+            <div className="h-16 w-16 rounded-3xl bg-muted flex items-center justify-center mx-auto text-muted-foreground">
+              <SlidersHorizontal className="h-8 w-8 notranslate" />
+            </div>
+            <div className="max-w-md mx-auto space-y-1.5">
+              <h3 className="text-lg font-bold text-foreground">
+                {requests.length} request{requests.length === 1 ? '' : 's'} hidden by your filters
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                None of the active community requests match your current combination of categories, urgency levels, or search query.
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={resetAllFilters}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition active:scale-95 shadow-soft"
+              >
+                <span>Clear all filters</span>
+              </button>
+            </div>
+          </div>
+        )
+      ) : (
+        /* Requests Grid */
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {displayedRequests.map((req) => (
+              <RequestCard
+                key={req.id}
+                request={req}
+                travelMode={travelMode}
+                onSelect={(r) => setSelectedRequestId(r.id)}
+                onHelp={(r) => setHelpFlowReq(r)}
+              />
+            ))}
+          </div>
+
+          {/* Infinite Scroll / Load More */}
+          {sortedRequests.length > visibleCount && (
+            <div className="flex justify-center pt-4">
+              <button
+                type="button"
+                onClick={() => setVisibleCount((prev) => prev + 9)}
+                className="px-6 py-3 rounded-2xl border border-border/80 bg-card hover:bg-muted text-xs font-bold text-foreground transition active:scale-95 shadow-xs flex items-center gap-2"
+              >
+                <span>Load More Requests ({sortedRequests.length - visibleCount} remaining)</span>
+                <ChevronDown className="h-4 w-4 notranslate" />
+              </button>
+            </div>
+          )}
         </div>
       )}
 

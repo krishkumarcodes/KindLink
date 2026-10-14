@@ -18,6 +18,31 @@ export function Providers({
   useEffect(() => {
     // Apply React DOM patch against external translation modifications
     applyReactGoogleTranslatePatch();
+
+    // 1. Initialize text size accessibility preference
+    try {
+      const savedTextSize = localStorage.getItem('kindlink_text_size');
+      if (savedTextSize === 'compact' || savedTextSize === 'large' || savedTextSize === 'normal') {
+        document.documentElement.setAttribute('data-text-size', savedTextSize);
+        document.documentElement.style.fontSize =
+          savedTextSize === 'compact' ? '14px' : savedTextSize === 'large' ? '18.5px' : '16px';
+      }
+    } catch {}
+
+    // 2. Initialize reduce motion preference
+    try {
+      const savedMotion = localStorage.getItem('kindlink_reduce_motion');
+      if (savedMotion === 'true') {
+        document.documentElement.setAttribute('data-reduce-motion', 'true');
+      }
+    } catch {}
+
+    // 3. Register PWA Service Worker safely
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .catch((err) => console.debug('[KindLink PWA] SW register skipped:', err));
+    }
   }, []);
 
   return (
@@ -30,7 +55,7 @@ export function Providers({
             richColors
             closeButton
             toastOptions={{
-              className: 'notranslate font-sans',
+              className: 'font-sans',
             }}
           />
         </LocationProvider>

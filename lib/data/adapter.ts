@@ -149,12 +149,15 @@ export interface DataAdapter {
   submitSos(
     lat: number,
     lng: number,
-    addressText?: string
-  ): Promise<{ success: boolean; token?: string; event?: SosEvent }>;
+    addressText?: string,
+    details?: { notes?: string; category?: HelpCategory }
+  ): Promise<{ success: boolean; token?: string; event?: SosEvent; requestId?: string }>;
 
   getSosByToken?(token: string): Promise<SosEvent | null>;
 
   resolveSos?(token: string): Promise<{ success: boolean }>;
+
+  updateSosDetails?(token: string, notes: string): Promise<{ success: boolean }>;
 
   updatePreferredLanguage?: (locale: string) => Promise<void>;
 }

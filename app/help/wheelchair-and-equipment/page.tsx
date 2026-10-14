@@ -45,7 +45,7 @@ export default function WheelchairAndEquipmentPage() {
     },
     {
       name: 'Adjustable Walkers & Underarm Crutches',
-      useCase: 'Orthopedic rehabilitation, post-fracture weight-bearing gait retraining.',
+      useCase: 'Orthopedic rehabilitation, post-fracture mobility gait retraining.',
       notes: 'Inspect rubber tip grip ferrules to prevent slipping on smooth tiled surfaces.',
     },
   ];
@@ -73,7 +73,7 @@ export default function WheelchairAndEquipmentPage() {
           <div className="flex items-center gap-2 mb-3">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500/10 px-3 py-1 text-xs font-bold text-cyan-600 dark:text-cyan-400">
               <Stethoscope className="h-3.5 w-3.5" />
-              Category Weight 5/10 &bull; Community Resource Pool
+              Standard Priority &bull; Community Resource Pool
             </span>
           </div>
 

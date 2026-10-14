@@ -74,7 +74,7 @@ export default function EmergencyTransportPage() {
           <div className="flex items-center gap-2 mb-3">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-600 dark:text-amber-400">
               <Car className="h-3.5 w-3.5" />
-              Category Weight 9/10 &bull; Critical Urgency
+              Usually High &bull; Rapid Transit Priority
             </span>
           </div>
 

@@ -19,28 +19,60 @@ Major Release v3.0.0 brings an end-to-end design, typography, live location, and
 - **Zero Serif Fallbacks**: Completely eliminated serif typography across all views; standard fallback stack uses `system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif`.
 - **Automated Typography QA**: Verified via Playwright and automated font verification suite (`npm run check:fonts`).
 
-#### 2. Redesigned Home Screen & Action Ergonomics
-- **Dynamic Personalized Greeting**: Greets users with their real first name, contextual time-of-day greeting ("Good morning", "Good afternoon", "Good evening"), and authenticated database role indicator (purged hard-coded personas).
-- **Synchronized Location Subtitle**: Hero subtitle shares the exact same live source of truth as the header location chip ("Kalyanpur · Verified community aid").
-- **Aligned Action Controls**: Equal-dimensioned 64px primary buttons for "Ask for Help" and "Emergency SOS", stacked on mobile (<640px) with 12px gap and side-by-side on tablet/desktop. Emergency SOS features an inset pulsing ring glow (zero layout shift) and hold-to-activate 2s timer.
-- **Realtime Community Pulse**: Streamlined header with single live pill and 44px refresh button; 4 non-truncated cards (2x2 on mobile, 4 across on desktop) with tabular numerals, interactive info sheets, and "— Not enough data yet" empty states.
-- **Overflow & Tab Spacing**: Applied `pb-36` bottom padding across all scrolling containers, eliminating tab bar and floating action button overlap.
+#### 2. Header & Location Redesign
+- **Icon-Only Location Button**: Replaced truncated "K..." chip with a 44px touch-target icon button (map-pin icon, pulsing green dot when live GPS is active, orange dot when off/denied, tooltip and accessible aria-label "Change location").
+- **Enhanced Header SOS Button**: Red button with siren icon, 48px height aligned with header controls, and subtle inner glow pulse complying with `prefers-reduced-motion`.
+- **Location Modal / Bottom Sheet**:
+  - Edge-to-edge bottom sheet on mobile (`<640px`) with drag handle, sticky header, sticky footer, and internal scroll; centered modal on desktop.
+  - Three single-line tabs: "Search", "Drop pin", "Saved".
+  - Prominent "Use my live location" with GPS accuracy display and browser permission instructions.
+  - Real Nominatim autocomplete with in-memory caching and OpenStreetMap attribution.
+  - Draggable Leaflet Pin Drop tab with reverse geocoding.
+  - Saved places backed strictly by authentic user-saved locations (add, rename, delete).
+  - Search radius slider (1 to 50 km) syncing with Home, Requests feed, and Map in real time.
 
-#### 3. Single-Source-of-Truth Location System & Road Routing
-- **Unified Location Provider**: `LocationProvider` tracks position with throttled high-accuracy `watchPosition` (pausing on hidden tabs), accuracy display, and localStorage persistence.
-- **Location Sheet**: "Use my live location", address autocomplete (Nominatim with caching & rate-limiting), and interactive draggable Pin Drop map.
-- **OSRM Road Distance & Travel Times**: Real road distances and multimodal travel durations (walking, cycling, driving) with fallback straight-line geodesic calculations and route mini-map.
-- **Overpass OSM Hospital Finder**: Real-time hospital, blood bank, and clinic directory with 1-tap "Call" and "Directions" actions, backed by 12 curated Asansol healthcare centers.
+#### 3. Emergency SOS System (End-to-End)
+- **Non-Truncating Sheet Layout**: Sticky header, area name subtitle, full safe-area bottom padding (`pb-36`).
+- **User Card**: Displays user's full name (wraps onto 2 lines if long), phone number (with "Add your phone number" prompt if missing), and verification badge on its own line.
+- **Hold-to-Activate Button**: 2-second hold with circular SVG progress ring, haptic vibration (`navigator.vibrate`), release-to-cancel, and accessible keyboard alternative.
+- **Real Activation Logic**:
+  - Queries high-accuracy location from `LocationProvider` / `navigator.geolocation`.
+  - Dispatches `sos_events` database record and creates a `CRITICAL` urgency request.
+  - Broadcasts live alert to nearby verified helpers over Supabase Realtime WebSocket channel.
+  - Displays "SOS is active" screen with running elapsed stopwatch, live count of helpers notified, number of accepted helpers with distance & ETA, and nearest helper route mini-map.
+  - "Share my live location" panel with one-tap WhatsApp, SMS, and Copy-link actions for saved emergency contacts (truthful tap-to-send wording).
+  - Public token-based tracking URL `/sos/[token]` (noindex, 2-hour expiry, stoppable via "I am safe").
+  - Emergency lines directory: 112 (National Emergency), 108/102 (Ambulance), 100 (Police), 101 (Fire) with fixed single-line Call buttons and nearest OpenStreetMap hospital list.
 
-#### 4. Internationalization & Google Translate Engine
-- **Single Translation Engine**: Clean integration of Google Translate via official client architecture (`#google_translate_element`), CSP whitelist in `next.config.mjs`, and cookie persistence (`googtrans=/en/${code}`).
-- **29 Verified Languages**: 17 Indian languages and 12 international languages with full RTL layout support for Urdu and Arabic.
-- **Zero Dictionary Bloat**: Deleted 33 legacy non-English JSON files, reducing bundle weight while enabling instant translation switching across the entire app.
+#### 4. Themed High-Contrast Live Map
+- **Dynamic Tile Provider**: Switches between CARTO Dark Matter in dark mode and CARTO Positron in light mode.
+- **Solid High-Contrast Floating Controls**: WCAG AA contrast on top bar, filter chips, right control stack (44px touch targets), and bottom preview card in separated safe zones.
+- **Honest Pin Counters**: Honest counts based on real database records and selected area (`${userAreaName}: ${requestsCount} requests • ${placesCount} places`).
+- **Pin Clustering & Routing**: Marker clustering for requests and facilities; tap preview card with distance, "Directions" (OSRM road routes for walk, bike, car), and "Call".
 
-#### 5. Complete Clean Architecture & Database Purge
-- **Zero Legacy Concepts**: Eradicated all legacy experimental scoring models, motion sensor triggers, and academic calculation engines across all components, styles, tests, docs, and metadata. Verified by automated gate (`npm run check:clean`).
+#### 5. Realtime Community Pulse & Category Grid
+- **Community Pulse**: Animated number counters, ticking relative timestamp ("updated 5s ago"), pulsing live dot, 24h inline SVG sparkline, and anonymized activity ticker. 4 cards with matching `h-[154px]` heights and identical baselines.
+- **Truthful Metrics**: "Trust match" displays `"—"` with "Not enough ratings yet" until at least 5 ratings exist in the database.
+- **Browse Aid by Category**: Clean 2-column mobile grid (3/5 columns on desktop) with 5 cards (Blood Donation, Medical Gear, Elderly Care, Books and Study, Emergency Transit) displaying live request counts, urgency dots, and opening filtered requests. Includes "See all categories" modal.
+- **Wizard Cleanliness**: Eradicated all leftover numeric score/weight ranking labels from category cards and UI strings; replaced with friendly urgency hints.
+
+#### 6. Profile, Notifications & Security
+- **Authentic Profile**: Purged all fake demo personas ("Dr. Ananya Roy", fake phone numbers, fake stats). Displays real display name, username, verification stepper, real joined date, and authentic stats.
+- **Edit Profile**: Avatar upload, username availability check, Indian phone validation (`+91...`), and spoken languages chip picker.
+- **Notification Center**: Bottom sheet on mobile / popover on desktop, unread count synced with header bell, "Mark all as read", filter chips, Today/Earlier groupings, and push notification prompt.
+- **Readability & Settings**: 3 Text Size Modes (Compact, Standard, Elderly Large with $\ge$52px touch targets via rem scaling), Light/Dark/System themes, reduce motion toggle, PWA install prompt, and server-verified password updates.
+
+#### 7. Language Engine Root Cause Resolution
+- **Static `<html lang="en">`**: Fixed bug where dynamic `html lang` caused Google Translate to believe the document was already in the target language.
+- **29 Verified Languages**: 17 Indian + 12 International languages with full RTL support for Urdu (`ur`) and Arabic (`ar`).
+- **Dynamic Content MutationObserver**: Automatically translates dynamic modals, sheets, toasts, and feed updates.
+- **Service Worker Bypass**: `public/sw.js` explicitly bypasses translation APIs and scripts from caching.
+
+#### 8. Complete Clean Architecture & Database Purge
+- **Zero Forbidden Concepts**: Eradicated all experimental scoring models and sensor triggers across all files (`npm run check:clean`).
 - **Urgency Dispatch Ranking**: Requests strictly prioritized by Urgency Level (Critical > High > Medium > Low), then nearest road/geodesic distance, then waiting time.
-- **Database Migration 12**: `supabase/sql/12_remove_physics_and_update_ranking.sql` drops legacy score columns and updates `nearby_requests` with 100% test pass on PostgreSQL.
+- **Pitch Day Scripts**: Added `npm run seed:demo` and `npm run seed:demo:remove`.
+- **Operations Guide**: Created `docs/UPDATE_GUIDE_3.md` covering architecture, SQL migrations, deployment, and tap-through QA checklist.
 
 ---
 
@@ -90,7 +122,7 @@ The initial official, production-hardened release of **KindLink** — an ultra-r
 - **Heartbeat & Responder Tracking**: Live coordinate broadcaster and volunteer transit location sharing over Supabase Realtime WebSocket channels.
 
 #### 2. Urgency Dispatch & Geodesic Routing Engines
-- **Urgency Dispatch Engine**: Multi-tiered prioritization scoring requests by urgency weight and distance.
+- **Urgency Dispatch Engine**: Multi-tiered prioritization scoring requests by urgency level and distance.
 - **Great-Circle Geodesic Distance Matrix**: Sub-second routing and transit ETA calculations.
 - **Interactive Community Simulator**: In-browser simulator demonstrating real-time aid matching and dispatch ranking.
 

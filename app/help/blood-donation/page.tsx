@@ -80,7 +80,7 @@ export default function BloodDonationPage() {
           <div className="flex items-center gap-2 mb-3">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-3 py-1 text-xs font-bold text-rose-600 dark:text-rose-400">
               <Droplet className="h-3.5 w-3.5 fill-rose-500" />
-              Category Weight 10/10 &bull; Critical Urgency
+              Usually Critical &bull; Life-Saving Urgency
             </span>
           </div>
 
@@ -161,7 +161,7 @@ export default function BloodDonationPage() {
                   <tr>
                     <td className="p-3 font-semibold text-foreground">O Negative (O-)</td>
                     <td className="p-3">O- only (Universal Donor for others, but can only receive O-)</td>
-                    <td className="p-3 text-rose-600 dark:text-rose-400 font-bold">Highest Priority (Weight 10 &bull; Critical)</td>
+                    <td className="p-3 text-rose-600 dark:text-rose-400 font-bold">Highest Priority &bull; Critical</td>
                   </tr>
                   <tr>
                     <td className="p-3 font-semibold text-foreground">O Positive (O+)</td>

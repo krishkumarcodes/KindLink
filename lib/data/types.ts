@@ -63,7 +63,11 @@ export interface HelpRequest {
   bookCondition?: string;
 
   pickupAddress?: string;
+  pickupLat?: number;
+  pickupLng?: number;
   dropAddress?: string;
+  dropLat?: number;
+  dropLng?: number;
   passengerCount?: number;
   hasLuggage?: boolean;
   wheelchairAccessible?: boolean;
@@ -120,6 +124,11 @@ export interface UserProfile {
   emailVerified?: boolean;
   phoneVerified?: boolean;
   preferred_language?: string;
+  bio?: string;
+  createdAt?: string;
+  created_at?: string;
+  textSize?: 'compact' | 'normal' | 'large';
+  reduceMotion?: boolean;
 }
 
 export interface NotificationItem {
@@ -132,6 +141,9 @@ export interface NotificationItem {
   urgency: UrgencyLevel;
   type?: string;
   requestId?: string;
+  category?: string;
+  offerId?: string;
+  sosToken?: string;
 }
 
 export interface UrgencyConfig {
@@ -196,5 +208,7 @@ export interface SosEvent {
   resolvedAt?: string | null;
   userName?: string;
   userPhone?: string;
+  notes?: string | null;
+  requestId?: string;
 }
 

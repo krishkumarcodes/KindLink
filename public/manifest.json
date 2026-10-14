@@ -1,11 +1,14 @@
 {
-  "name": "KindLink",
+  "name": "KindLink - Help is Just Next Door",
   "short_name": "KindLink",
-  "description": "Verified community help platform for urgent tasks - Help is just next door",
+  "description": "Verified community mutual aid platform for urgent tasks, emergency blood requests, and senior aid in Asansol and neighboring areas.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#070B14",
+  "orientation": "portrait-primary",
+  "background_color": "#0B1220",
   "theme_color": "#0D9488",
+  "categories": ["social", "health", "medical", "utilities"],
   "icons": [
     {
       "src": "/icon.svg",

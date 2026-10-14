@@ -10,6 +10,8 @@ import path from 'path';
  * - formula rankings
  * - calibration and accelerometer hooks
  * - DeviceMotion permissions and fall detect logic
+ * - leftover UI "weight" strings, category cards, and translations
+ *   (e.g., "Weight 10/10", "Weight 9/10", category weight hints)
  *
  * The only allowed mention in the entire repository is migration 12:
  * (supabase/sql/12_remove_physics_and_update_ranking.sql)
@@ -26,8 +28,36 @@ const FORBIDDEN_RULES = [
   { name: 'Calibration references', regex: new RegExp('\\b' + ['calib', 'ration'].join('') + 's?\\b', 'i') },
   { name: 'Accelerometer references', regex: new RegExp('\\b' + ['accelero', 'meter'].join('') + 's?\\b', 'i') },
   { name: 'DeviceMotion references', regex: new RegExp('\\b' + ['device', 'motion'].join('') + '\\b', 'i') },
-  { name: 'Fall detection references', regex: new RegExp('\\b' + ['fall', 'detect'].join('\\s*') + '(ion|or)?\\b', 'i') }
+  { name: 'Fall detection references', regex: new RegExp('\\b' + ['fall', 'detect'].join('\\s*') + '(ion|or)?\\b', 'i') },
+  {
+    name: 'Banned category weight / UI weight strings',
+    regex: new RegExp('(category\\s*weight|weight\\s*\\d+\\s*/\\s*\\d+|weight\\s*\\d+\\b|urgency\\s*weight|category_weight|weight\\s*hint)', 'i')
+  }
 ];
+
+// Special checker for UI strings, category cards, and translations
+function isUiWeightViolation(relPath, lineText) {
+  const isUiOrContentFile = /^(components|app|lib\/i18n|public)\//.test(relPath);
+  if (!isUiOrContentFile) return false;
+
+  // Check if line contains the standalone word "weight"
+  const weightRegex = /\bweight\b/i;
+  if (!weightRegex.test(lineText)) return false;
+
+  // Allowed CSS / SVG font weight
+  if (/font[-_]?weight|fontWeight/i.test(lineText)) return false;
+
+  // Allowed Leaflet map polyline/stroke thickness option (e.g. weight: 2, weight: 4)
+  if (/weight:\s*\d+/i.test(lineText)) return false;
+
+  // Allowed medical donor eligibility body weight or orthopedic weight-bearing
+  if (/(?:minimum|body|donor|patient)\s*weight|weight\s*(?:>|<|>=|<=|\d+\s*kg|limit|bearing)/i.test(lineText)) {
+    return false;
+  }
+
+  // Any other UI string, category card badge, or translation containing "weight" is forbidden!
+  return true;
+}
 
 const IGNORE_DIRS = new Set(['.git', 'node_modules', '.next', 'docs/screenshots']);
 const IGNORE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.ico', '.woff', '.woff2', '.ttf', '.eot']);
@@ -71,6 +101,7 @@ function scanDirectory(currentDir) {
 
       const lines = content.split('\n');
       lines.forEach((lineText, idx) => {
+        // 1. General forbidden rules
         for (const rule of FORBIDDEN_RULES) {
           if (rule.regex.test(lineText)) {
             totalHits++;
@@ -81,6 +112,17 @@ function scanDirectory(currentDir) {
               content: lineText.trim()
             });
           }
+        }
+
+        // 2. UI strings / category cards / translations weight check
+        if (isUiWeightViolation(relPath, lineText)) {
+          totalHits++;
+          violations.push({
+            file: relPath,
+            line: idx + 1,
+            rule: 'UI / Category card / Translation "weight" label (Use Urgency tier instead)',
+            content: lineText.trim()
+          });
         }
       });
     }
@@ -100,6 +142,7 @@ if (violations.length > 0) {
   process.exit(1);
 } else {
   console.log(`\n✅ PASS: Repository is 100% clean. Zero forbidden concepts detected.`);
-  console.log(`   Urgency hierarchy (Urgency > Proximity > Waiting Time) is strictly observed.\n`);
+  console.log(`   Urgency hierarchy (Urgency > Proximity > Waiting Time) is strictly observed.`);
+  console.log(`   All UI strings, category cards, and translations are free of "weight" labels.\n`);
   process.exit(0);
 }

@@ -78,7 +78,7 @@ export default function ElderlyAssistancePage() {
           <div className="flex items-center gap-2 mb-3">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-500/10 px-3 py-1 text-xs font-bold text-teal-600 dark:text-teal-400">
               <HeartHandshake className="h-3.5 w-3.5" />
-              Category Weight 6/10 &bull; Senior Community Care
+              Flexible Timing &bull; Senior Community Care
             </span>
           </div>
 

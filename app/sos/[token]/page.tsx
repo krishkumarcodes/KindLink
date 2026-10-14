@@ -53,7 +53,7 @@ export default async function SosTrackingPage({ params }: PageProps) {
       createdAt: now.toISOString(),
       expiresAt: expires.toISOString(),
       userName: 'KindLink Citizen',
-      userPhone: '+91 98320 00000',
+      userPhone: '',
     };
   }
 

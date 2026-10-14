@@ -318,22 +318,8 @@ CREATE INDEX IF NOT EXISTS reports_status_idx ON public.reports (status, created
 -- Safety: Completely idempotent (CREATE OR REPLACE FUNCTION).
 -- ============================================================================
 
--- 1. HELPER FUNCTION: Category weights in ONE single location
-CREATE OR REPLACE FUNCTION public.category_weight(cat public.help_category)
-RETURNS double precision
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE
-AS $$
-  SELECT CASE cat
-    WHEN 'blood' THEN 10.0
-    WHEN 'transport' THEN 9.0
-    WHEN 'elderly_help' THEN 6.0
-    WHEN 'equipment' THEN 5.0
-    WHEN 'books' THEN 2.0
-    ELSE 5.0
-  END;
-$$;
+-- 1. HELPER: Urgency Ranking strictly adheres to Urgency > Distance > Waiting Time.
+-- Legacy scoring and weights are completely deprecated.
 
 -- 2. NEARBY REQUESTS WITH URGENCY & DISTANCE RANKING
 -- Sorted by Urgency Level (Critical > High > Medium > Low), then nearest distance, then longest waiting time.

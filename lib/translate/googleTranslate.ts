@@ -335,6 +335,27 @@ export function applyReactGoogleTranslatePatch() {
       throw error;
     }
   };
+
+  // Wire up dynamic content translation observer
+  setupDynamicContentTranslateObserver();
+}
+
+/**
+ * Clears googtrans cookie across domains and root paths
+ */
+export function clearGoogleTransCookie() {
+  if (typeof document === 'undefined') return;
+  const host = window.location.hostname;
+  const expired = '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+  document.cookie = `googtrans${expired}`;
+  if (host && host !== 'localhost' && !/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+    const parts = host.split('.');
+    if (parts.length > 1) {
+      const rootDomain = '.' + parts.slice(-2).join('.');
+      document.cookie = `googtrans${expired} domain=${rootDomain};`;
+    }
+    document.cookie = `googtrans${expired} domain=.${host};`;
+  }
 }
 
 /**
@@ -342,9 +363,17 @@ export function applyReactGoogleTranslatePatch() {
  */
 export function setGoogleTransCookie(langCode: string) {
   if (typeof document === 'undefined') return;
-  const cookieVal = `/en/${langCode}`;
   const host = window.location.hostname;
   const maxAge = 60 * 60 * 24 * 365; // 1 year
+
+  if (langCode === 'en') {
+    clearGoogleTransCookie();
+    document.cookie = `googtrans=/en/en; path=/; max-age=${maxAge}; SameSite=Lax;`;
+    document.cookie = `${LOCALE_COOKIE_NAME}=en; path=/; max-age=${maxAge}; SameSite=Lax;`;
+    return;
+  }
+
+  const cookieVal = `/en/${langCode}`;
 
   // Set cookies for path /
   document.cookie = `googtrans=${cookieVal}; path=/; max-age=${maxAge}; SameSite=Lax;`;
@@ -364,6 +393,78 @@ export function setGoogleTransCookie(langCode: string) {
 }
 
 /**
+ * Observes DOM mutations so newly opened modals, bottom sheets, toasts,
+ * and dynamic lists are translated when translation is active.
+ */
+let dynamicObserverInitialized = false;
+
+export function setupDynamicContentTranslateObserver() {
+  if (typeof window === 'undefined' || dynamicObserverInitialized) return;
+  if (typeof MutationObserver === 'undefined' || !document.body) return;
+  dynamicObserverInitialized = true;
+
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const triggerDynamicTranslate = () => {
+    const currentCode = getCurrentLanguageCode();
+    if (currentCode === 'en') return;
+
+    const selectElem = document.querySelector('.goog-te-combo') as HTMLSelectElement | null;
+    if (selectElem) {
+      selectElem.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  };
+
+  const observer = new MutationObserver((mutations) => {
+    const currentCode = getCurrentLanguageCode();
+    if (currentCode === 'en') return;
+
+    let shouldTranslate = false;
+    for (const mutation of mutations) {
+      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+        for (let i = 0; i < mutation.addedNodes.length; i++) {
+          const node = mutation.addedNodes[i];
+          if (node.nodeType === 1) {
+            const el = node as HTMLElement;
+            // Ignore Google Translate internal wrappers and marked non-translate nodes
+            if (
+              el.tagName === 'FONT' ||
+              el.id === 'google_translate_element' ||
+              el.id?.startsWith('goog-') ||
+              el.classList?.contains('skiptranslate') ||
+              el.classList?.contains('goog-te-banner-frame') ||
+              el.classList?.contains('goog-te-menu-frame') ||
+              el.classList?.contains('notranslate') ||
+              el.getAttribute('translate') === 'no'
+            ) {
+              continue;
+            }
+            shouldTranslate = true;
+            break;
+          }
+        }
+      }
+      if (shouldTranslate) break;
+    }
+
+    if (shouldTranslate) {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(triggerDynamicTranslate, 350);
+    }
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+
+  window.addEventListener('kindlink:dom-updated', () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(triggerDynamicTranslate, 100);
+  });
+}
+
+/**
  * Triggers instant native and widget language change without reloading,
  * with a 3-second fallback to cookie persistence & single reload.
  */
@@ -374,8 +475,11 @@ export function changeLanguageInstantly(langCode: string) {
   const targetCode = validLang ? validLang.code : DEFAULT_LOCALE;
   const dir = isRTL(targetCode) ? 'rtl' : 'ltr';
 
-  // 1. Update HTML attributes
-  document.documentElement.setAttribute('lang', targetCode);
+  // 1. Update HTML attributes:
+  // The source document is English, so lang="en" must remain on <html> so Google Translate knows
+  // the source language. Target language is tracked in data-current-lang.
+  document.documentElement.setAttribute('lang', 'en');
+  document.documentElement.setAttribute('data-current-lang', targetCode);
   document.documentElement.setAttribute('dir', dir);
   if (dir === 'rtl') {
     document.documentElement.classList.add('rtl-layout');
@@ -396,7 +500,26 @@ export function changeLanguageInstantly(langCode: string) {
 
   // 4. Trigger hidden select element if legacy widget is mounted
   const triggerSelect = (select: HTMLSelectElement) => {
-    select.value = targetCode;
+    let matched = false;
+    for (let i = 0; i < select.options.length; i++) {
+      if (select.options[i].value === targetCode) {
+        select.selectedIndex = i;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched && targetCode === 'en') {
+      for (let i = 0; i < select.options.length; i++) {
+        if (select.options[i].value === '' || select.options[i].value === 'en') {
+          select.selectedIndex = i;
+          matched = true;
+          break;
+        }
+      }
+    }
+    if (!matched) {
+      select.value = targetCode;
+    }
     select.dispatchEvent(new Event('change', { bubbles: true }));
   };
 
@@ -405,28 +528,7 @@ export function changeLanguageInstantly(langCode: string) {
     triggerSelect(selectElem);
   }
 
-  // 5. Watch DOM changes or fallback after 3s
-  const initialText = document.body ? document.body.innerText.slice(0, 200) : '';
   const startTime = Date.now();
-  let textChanged = false;
-
-  let observer: MutationObserver | null = null;
-  if (typeof MutationObserver !== 'undefined' && document.body) {
-    observer = new MutationObserver(() => {
-      if (document.body && document.body.innerText.slice(0, 200) !== initialText) {
-        textChanged = true;
-        if (observer) {
-          observer.disconnect();
-          observer = null;
-        }
-      }
-    });
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
-  }
 
   // Retry finding .goog-te-combo if it wasn't ready yet
   if (!selectElem) {
@@ -442,29 +544,19 @@ export function changeLanguageInstantly(langCode: string) {
     }, 100);
   }
 
-  // 3-second fallback timer
+  // 5. 3-second fallback timer
   setTimeout(() => {
-    if (observer) {
-      observer.disconnect();
-      observer = null;
-    }
-
-    // If English requested and not currently translated by Google, no reload needed
-    if (
-      targetCode === 'en' &&
-      !document.documentElement.classList.contains('translated-ltr') &&
-      !document.documentElement.classList.contains('translated-rtl')
-    ) {
+    if (targetCode === 'en') {
+      document.documentElement.classList.remove('translated-ltr', 'translated-rtl');
+      clearGoogleTransCookie();
       return;
     }
 
-    const isTranslated =
-      textChanged ||
+    const hasTranslatedClass =
       document.documentElement.classList.contains('translated-ltr') ||
-      document.documentElement.classList.contains('translated-rtl') ||
-      (document.body && document.body.innerText.slice(0, 200) !== initialText);
+      document.documentElement.classList.contains('translated-rtl');
 
-    if (!isTranslated) {
+    if (!hasTranslatedClass) {
       // Reload once safely with guard in sessionStorage
       const fallbackKey = `kindlink_reload_${targetCode}`;
       try {
@@ -502,3 +594,4 @@ export function getCurrentLanguageCode(): string {
 
   return DEFAULT_LOCALE;
 }
+

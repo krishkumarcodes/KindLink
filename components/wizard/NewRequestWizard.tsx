@@ -605,7 +605,7 @@ export function NewRequestWizard() {
                   title: 'Blood Donation',
                   desc: 'Emergency blood units, platelets, or replacement donors',
                   icon: <Droplets className="h-6 w-6 text-rose-500 notranslate" />,
-                  weight: 'Weight 10/10 · Critical',
+                  urgencyHint: 'Usually Critical',
                   tagBg: 'bg-rose-500/10 text-rose-600 border-rose-500/20',
                 },
                 {
@@ -613,7 +613,7 @@ export function NewRequestWizard() {
                   title: 'Emergency Transit',
                   desc: 'Urgent hospital transit, clinic escort, wheelchair accessible transit',
                   icon: <Car className="h-6 w-6 text-amber-500 notranslate" />,
-                  weight: 'Weight 9/10 · High Priority',
+                  urgencyHint: 'Usually High',
                   tagBg: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
                 },
                 {
@@ -621,7 +621,7 @@ export function NewRequestWizard() {
                   title: 'Elderly Care',
                   desc: 'Prescription pickup, senior citizen companion, grocery delivery',
                   icon: <Users className="h-6 w-6 text-blue-500 notranslate" />,
-                  weight: 'Weight 6/10 · Medium',
+                  urgencyHint: 'Flexible timing',
                   tagBg: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
                 },
                 {
@@ -629,7 +629,7 @@ export function NewRequestWizard() {
                   title: 'Medical Equipment',
                   desc: 'Wheelchairs, oxygen concentrators, walkers, nebulizers, crutches',
                   icon: <Stethoscope className="h-6 w-6 text-teal-500 notranslate" />,
-                  weight: 'Weight 5/10 · Essential',
+                  urgencyHint: 'Standard priority',
                   tagBg: 'bg-teal-500/10 text-teal-600 border-teal-500/20',
                 },
                 {
@@ -637,7 +637,7 @@ export function NewRequestWizard() {
                   title: 'Books & Study',
                   desc: 'School textbooks, competitive exam notes, reference guides',
                   icon: <BookOpen className="h-6 w-6 text-emerald-500 notranslate" />,
-                  weight: 'Weight 2/10 · Community',
+                  urgencyHint: 'Community aid',
                   tagBg: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
                 },
               ].map((item) => (
@@ -658,7 +658,7 @@ export function NewRequestWizard() {
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${item.tagBg}`}
                     >
-                      {item.weight}
+                      {item.urgencyHint}
                     </span>
                   </div>
                   <div className="mt-3.5">

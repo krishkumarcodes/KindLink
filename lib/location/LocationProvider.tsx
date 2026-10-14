@@ -31,32 +31,8 @@ const DEFAULT_COORDINATES: UserCoordinates = {
 
 const DEFAULT_AREA_NAME = 'Kalyanpur, Asansol';
 
-const INITIAL_SAVED_PLACES: SavedPlace[] = [
-  {
-    id: 'sp-campus',
-    name: 'Asansol Engineering College',
-    label: 'College Campus Hub · Kalyanpur',
-    lat: ASANSOL_CENTER.lat,
-    lng: ASANSOL_CENTER.lng,
-    type: 'campus',
-  },
-  {
-    id: 'sp-hospital',
-    name: 'Asansol District Hospital / Court',
-    label: 'Medical & Civic Center · SB Gorai Rd',
-    lat: 23.6845,
-    lng: 86.9742,
-    type: 'work',
-  },
-  {
-    id: 'sp-ushagram',
-    name: 'Ushagram & GT Road',
-    label: 'South Asansol Residential Area',
-    lat: 23.6791,
-    lng: 86.9814,
-    type: 'home',
-  },
-];
+const INITIAL_SAVED_PLACES: SavedPlace[] = [];
+
 
 function geoDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Earth radius in km
@@ -126,13 +102,21 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Load saved places
+    // Load saved places (and purge any legacy fake hard-coded places)
     try {
       const rawPlaces = localStorage.getItem(SAVED_PLACES_STORAGE_KEY);
       if (rawPlaces) {
         const parsed = JSON.parse(rawPlaces);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setSavedPlaces(parsed);
+        if (Array.isArray(parsed)) {
+          const userOnly = parsed.filter(
+            (p: SavedPlace) =>
+              p &&
+              p.id &&
+              !['sp-campus', 'sp-hospital', 'sp-ushagram'].includes(p.id) &&
+              !p.id.startsWith('fake-')
+          );
+          setSavedPlaces(userOnly);
+          localStorage.setItem(SAVED_PLACES_STORAGE_KEY, JSON.stringify(userOnly));
         }
       }
     } catch {
@@ -501,6 +485,30 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     toast.success(`Saved "${place.name}" to your places!`);
   }, []);
 
+  // Update/rename saved place
+  const updateSavedPlace = useCallback(
+    (id: string, updates: { name: string; type?: SavedPlace['type'] }) => {
+      setSavedPlaces((prev) => {
+        const updated = prev.map((p) => {
+          if (p.id !== id) return p;
+          return {
+            ...p,
+            name: updates.name.trim() || p.name,
+            ...(updates.type ? { type: updates.type } : {}),
+          };
+        });
+        try {
+          localStorage.setItem(SAVED_PLACES_STORAGE_KEY, JSON.stringify(updated));
+        } catch {
+          // Ignore
+        }
+        return updated;
+      });
+      toast.success('Place updated successfully');
+    },
+    []
+  );
+
   // Remove saved place
   const removeSavedPlace = useCallback((id: string) => {
     setSavedPlaces((prev) => {
@@ -531,6 +539,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     setAreaNameOnly,
     resetToDefaultHub,
     savePlace,
+    updateSavedPlace,
     removeSavedPlace,
   };
 

@@ -119,9 +119,11 @@ export default function RootLayout({
   const initialLocale = rawLocale && isValidLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
   const dir = isRTL(initialLocale) ? 'rtl' : 'ltr';
 
+  // Source document is in English, so lang="en" must remain fixed on <html> for Google Translate.
+  // Dynamic text direction (RTL for Urdu/Arabic) and rtl-layout class are applied dynamically.
   return (
     <html
-      lang={initialLocale}
+      lang="en"
       dir={dir}
       suppressHydrationWarning
       className={`${inter.variable} ${plusJakartaSans.variable} font-sans ${dir === 'rtl' ? 'rtl-layout' : ''}`}
@@ -163,6 +165,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               window.googleTranslateElementInit = function() {
+                if (window.__googleTranslateInitialized) return;
                 function init() {
                   var el = document.getElementById('google_translate_element');
                   if (!el) {
@@ -177,6 +180,7 @@ export default function RootLayout({
                         autoDisplay: false,
                         layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE
                       }, 'google_translate_element');
+                      window.__googleTranslateInitialized = true;
                     }
                   } catch (e) {
                     console.error('[Google Translate Init Error]', e);

@@ -1,5 +1,5 @@
 import { DataAdapter, CreateRequestInput, TransitLocation } from './adapter';
-import { HelpRequest, UserProfile, NotificationItem, VolunteerOffer, RequestLifecycleStatus, CommunityLiveStats, SosEvent } from './types';
+import { HelpRequest, HelpCategory, UserProfile, NotificationItem, VolunteerOffer, RequestLifecycleStatus, CommunityLiveStats, SosEvent } from './types';
 import { INITIAL_REQUESTS, INITIAL_NOTIFICATIONS, MOCK_USER, ASANSOL_CENTER } from './mock-requests';
 import { calculateDistance } from './distance';
 
@@ -291,39 +291,58 @@ class MockDataAdapter implements DataAdapter {
   async submitSos(
     lat: number,
     lng: number,
-    addressText?: string
-  ): Promise<{ success: boolean; token?: string; event?: SosEvent }> {
+    addressText?: string,
+    details?: { notes?: string; category?: HelpCategory }
+  ): Promise<{ success: boolean; token?: string; event?: SosEvent; requestId?: string }> {
     const token = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `sos-token-${Date.now()}`;
     const now = new Date();
     const expires = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours
+
+    // Create a CRITICAL urgency emergency request in requests list
+    const reqRes = await this.createRequest({
+      category: details?.category || 'transport',
+      title: '🚨 CRITICAL EMERGENCY SOS BEACON',
+      description: details?.notes
+        ? `Emergency SOS Distress Alert: ${details.notes}`
+        : `High-priority SOS beacon triggered in ${addressText || 'Asansol Region'}. Immediate community assistance requested.`,
+      urgency: 'critical',
+      latitude: lat,
+      longitude: lng,
+      addressText: addressText || 'Asansol Region, West Bengal',
+      contactName: this.user.name || 'KindLink Citizen',
+      contactPhone: this.user.phone || '',
+    });
+
     const newEvent: SosEvent = {
       id: `sos-${Date.now()}`,
       userId: this.user.id,
       token,
       latitude: lat,
       longitude: lng,
-      addressText: addressText || 'Asansol Hub, West Bengal',
+      addressText: addressText || 'Asansol Region, West Bengal',
       status: 'active',
       createdAt: now.toISOString(),
       expiresAt: expires.toISOString(),
       userName: this.user.name,
       userPhone: this.user.phone,
+      notes: details?.notes,
+      requestId: reqRes.id,
     };
     this.sosEvents.set(token, newEvent);
 
     this.notifications.unshift({
       id: `notif-sos-${Date.now()}`,
       title: '🚨 CRITICAL: Emergency SOS Triggered',
-      message: `Emergency SOS beacon active near ${newEvent.addressText}. Helpers notified.`,
+      message: `Emergency SOS beacon active near ${newEvent.addressText}. Verified helpers notified.`,
       urgency: 'critical',
       timeAgo: 'Just now',
       type: 'urgency_alert',
       timestamp: Date.now(),
       unread: true,
-      requestId: undefined,
+      requestId: reqRes.id,
     });
 
-    return { success: true, token, event: newEvent };
+    return { success: true, token, event: newEvent, requestId: reqRes.id };
   }
 
   async getSosByToken(token: string): Promise<SosEvent | null> {
@@ -337,12 +356,12 @@ class MockDataAdapter implements DataAdapter {
       token,
       latitude: ASANSOL_CENTER.lat,
       longitude: ASANSOL_CENTER.lng,
-      addressText: 'Court More / GT Road, Asansol, West Bengal',
+      addressText: 'Asansol Hub, West Bengal',
       status: 'active',
       createdAt: now.toISOString(),
       expiresAt: expires.toISOString(),
-      userName: 'KindLink Citizen',
-      userPhone: '+91 98321 00000',
+      userName: this.user.name || 'KindLink Citizen',
+      userPhone: this.user.phone || '',
     };
   }
 
@@ -351,6 +370,17 @@ class MockDataAdapter implements DataAdapter {
     if (ev) {
       ev.status = 'resolved';
       ev.resolvedAt = new Date().toISOString();
+      if (ev.requestId) {
+        await this.updateRequestStatus(ev.requestId, 'completed');
+      }
+    }
+    return { success: true };
+  }
+
+  async updateSosDetails(token: string, notes: string): Promise<{ success: boolean }> {
+    const ev = this.sosEvents.get(token);
+    if (ev) {
+      ev.notes = notes;
     }
     return { success: true };
   }

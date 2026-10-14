@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
+import React, { useEffect, useRef } from 'react';
+import { MapContainer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { useTheme } from 'next-themes';
 import { UrgencyLevel } from '@/lib/data/types';
 
 interface RequestRouteMiniMapProps {
@@ -12,6 +13,39 @@ interface RequestRouteMiniMapProps {
   isStraightLine: boolean;
   urgency: UrgencyLevel;
   destinationLabel: string;
+}
+
+function MiniMapCartoTileLayer() {
+  const { resolvedTheme } = useTheme();
+  const map = useMap();
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+
+  const isDark = resolvedTheme === 'dark';
+  const url = isDark
+    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+  useEffect(() => {
+    if (!tileLayerRef.current) {
+      tileLayerRef.current = L.tileLayer(url, {
+        subdomains: 'abcd',
+        maxZoom: 20,
+      }).addTo(map);
+    } else {
+      tileLayerRef.current.setUrl(url);
+    }
+  }, [url, map]);
+
+  useEffect(() => {
+    return () => {
+      if (tileLayerRef.current) {
+        map.removeLayer(tileLayerRef.current);
+        tileLayerRef.current = null;
+      }
+    };
+  }, [map]);
+
+  return null;
 }
 
 function BoundsController({
@@ -82,10 +116,10 @@ export default function RequestRouteMiniMap({
   urgency,
   destinationLabel,
 }: RequestRouteMiniMapProps) {
-  let destColor = '#10B981';
-  if (urgency === 'critical') destColor = '#E5484D';
-  else if (urgency === 'high') destColor = '#F59E0B';
-  else if (urgency === 'medium') destColor = '#3B82F6';
+  let destColor = '#475569';
+  if (urgency === 'critical') destColor = '#DC2626';
+  else if (urgency === 'high') destColor = '#EA580C';
+  else if (urgency === 'medium') destColor = '#D97706';
 
   const userIcon = createMiniPin('#0D9488', 'user');
   const destIcon = createMiniPin(destColor, 'dest');
@@ -107,7 +141,7 @@ export default function RequestRouteMiniMap({
         className="h-full w-full"
         style={{ height: '100%', width: '100%' }}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <MiniMapCartoTileLayer />
         <BoundsController
           origin={origin}
           destination={destination}

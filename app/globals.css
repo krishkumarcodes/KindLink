@@ -145,6 +145,57 @@ body {
   min-width: 44px;
 }
 
+/* -------------------------------------------------------------
+   ACCESSIBILITY: SCALABLE TEXT SIZES & ELDERLY MODE
+   ------------------------------------------------------------- */
+html[data-text-size="compact"] {
+  font-size: 14px;
+}
+
+html[data-text-size="normal"],
+html:not([data-text-size]) {
+  font-size: 16px;
+}
+
+html[data-text-size="large"] {
+  font-size: 18.5px;
+  line-height: 1.6;
+}
+
+/* Elderly Large Mode requires >= 52px touch targets */
+html[data-text-size="large"] .touch-target {
+  min-height: 52px !important;
+  min-width: 52px !important;
+}
+
+html[data-text-size="large"] input:not([type="checkbox"]):not([type="radio"]),
+html[data-text-size="large"] select,
+html[data-text-size="large"] textarea {
+  min-height: 52px;
+  font-size: 1.05rem;
+}
+
+/* -------------------------------------------------------------
+   ACCESSIBILITY: REDUCE MOTION
+   ------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html[data-reduce-motion="true"] *,
+html[data-reduce-motion="true"] *::before,
+html[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
 /* Custom scrollbar hiding */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
@@ -180,4 +231,53 @@ body {
   height: 100%;
   border-radius: inherit;
   z-index: 10;
+  font-family: inherit;
 }
+
+/* Remove default Leaflet zoom control and stray white boxes at top-left */
+.leaflet-control-zoom {
+  display: none !important;
+}
+
+.leaflet-top.leaflet-left {
+  display: none !important;
+}
+
+/* Dark mode leaflet attribution */
+.dark .leaflet-control-attribution {
+  background: rgba(15, 23, 42, 0.85) !important;
+  color: #94a3b8 !important;
+  border-top-left-radius: 8px;
+}
+
+.dark .leaflet-control-attribution a {
+  color: #38bdf8 !important;
+}
+
+/* Custom Leaflet popup styling matching theme */
+.leaflet-popup-content-wrapper {
+  border-radius: 1rem !important;
+  padding: 0 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25) !important;
+  overflow: hidden;
+}
+
+.dark .leaflet-popup-content-wrapper {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155 !important;
+}
+
+.dark .leaflet-popup-tip {
+  background: #0f172a !important;
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px !important;
+  line-height: 1.4 !important;
+}
+
+.dark .leaflet-popup-close-button {
+  color: #94a3b8 !important;
+}
+

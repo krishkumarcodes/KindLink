@@ -49,5 +49,7 @@ export interface LocationContextValue {
   setAreaNameOnly: (name: string) => void;
   resetToDefaultHub: () => void;
   savePlace: (place: Omit<SavedPlace, 'id'>) => void;
+  updateSavedPlace: (id: string, updates: { name: string; type?: SavedPlace['type'] }) => void;
   removeSavedPlace: (id: string) => void;
 }
+

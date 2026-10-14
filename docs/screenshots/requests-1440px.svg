@@ -1,0 +1,132 @@
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" width="1440" height="900" dir="ltr" fill="none">
+      <defs>
+        <linearGradient id="headerGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#0F766E" />
+          <stop offset="100%" stop-color="#2563EB" />
+        </linearGradient>
+      </defs>
+
+      <!-- Canvas Background -->
+      <rect width="1440" height="900" fill="#070c17" />
+
+      <!-- Desktop Sidebar (>=1024px) -->
+      
+        <g transform="translate(0, 64)">
+          <rect width="240" height="836" fill="#0a101f" stroke="#1f2d48" stroke-width="1" />
+          <text x="24" y="32" fill="#94A3B8" font-size="11" font-weight="700" letter-spacing="1">MENU</text>
+          
+          <rect x="16" y="50" width="208" height="42" rx="12" fill="#0D9488" fill-opacity="0.18" />
+          <text x="48" y="76" fill="#2DD4BF" font-size="13" font-weight="700">Home</text>
+          
+          <text x="48" y="122" fill="#94A3B8" font-size="13" font-weight="600">Requests</text>
+          <text x="48" y="168" fill="#94A3B8" font-size="13" font-weight="600">Live Map</text>
+          <text x="48" y="214" fill="#94A3B8" font-size="13" font-weight="600">Profile</text>
+          <text x="48" y="260" fill="#94A3B8" font-size="13" font-weight="600">Settings</text>
+        </g>
+      
+
+      <!-- Top Header (Height 64px) -->
+      <rect width="1440" height="64" fill="#0a101f" stroke="#1e293b" stroke-width="1" />
+      <g transform="translate(24, 14)">
+        <rect width="36" height="36" rx="10" fill="url(#headerGrad)" />
+        <circle cx="18" cy="18" r="6" fill="#FFFFFF" />
+        
+        <text x="44" y="24" fill="#F8FAFC" font-size="18" font-weight="800" font-family="system-ui, sans-serif">
+          Kind<tspan fill="#0D9488">Link</tspan>
+        </text>
+
+        <!-- Location Chip -->
+        <g transform="translate(145, 4)">
+          <rect width="140" height="28" rx="14" fill="#111c30" stroke="#1f2d48" />
+          <circle cx="12" cy="14" r="3" fill="#10B981" />
+          <text x="22" y="18" fill="#F8FAFC" font-size="10" font-weight="600">Asansol, WB</text>
+        </g>
+      </g>
+
+      <!-- Right Header Actions (Fit tested at 360px) -->
+      <g transform="translate(1200, 14)">
+        <!-- SOS Circle -->
+        <circle cx="18" cy="18" r="18" fill="#DC2626" />
+        <circle cx="18" cy="18" r="22" stroke="#DC2626" stroke-opacity="0.3" stroke-width="2" />
+        <text x="9" y="22" fill="#FFFFFF" font-size="9" font-weight="900">SOS</text>
+
+        <!-- Language Button -->
+        <rect x="42" y="0" width="46" height="36" rx="10" fill="#111c30" stroke="#1f2d48" />
+        <text x="56" y="22" fill="#F8FAFC" font-size="11" font-weight="800">EN</text>
+
+        <!-- Notifications Bell -->
+        <rect x="96" y="0" width="36" height="36" rx="10" fill="#111c30" stroke="#1f2d48" />
+        <circle cx="114" cy="18" r="7" fill="#64748B" />
+        <circle cx="122" cy="10" r="4" fill="#EF4444" />
+
+        <!-- Avatar -->
+        <rect x="140" y="0" width="36" height="36" rx="10" fill="#0D9488" fill-opacity="0.2" stroke="#0D9488" stroke-opacity="0.4" />
+        <text x="150" y="23" fill="#2DD4BF" font-size="12" font-weight="800">KV</text>
+      </g>
+
+      <!-- Main Stage View Content -->
+      <g transform="translate(240, 0)">
+        
+      <g transform="translate(32, 80)">
+        <text x="0" y="24" fill="#F8FAFC" font-size="26" font-weight="800" font-family="system-ui, sans-serif">Community Aid Requests</text>
+        <text x="0" y="44" fill="#94A3B8" font-size="12">Ranked strictly by Urgency > Distance > Waiting Time</text>
+        
+        <!-- Search & Filter Row -->
+        <rect x="0" y="60" width="1144" height="42" rx="14" fill="#111c30" stroke="#1f2d48" />
+        <text x="16" y="86" fill="#94A3B8" font-size="12">🔍  Search blood, transit, wheelchair, elderly...</text>
+        
+        <!-- Tabs Row -->
+        <g transform="translate(0, 118)">
+          <rect x="0" y="0" width="94" height="32" rx="12" fill="#0D9488" />
+          <text x="14" y="21" fill="#FFFFFF" font-size="11" font-weight="700">Most Urgent</text>
+
+          <rect x="102" y="0" width="80" height="32" rx="12" fill="#111c30" stroke="#1f2d48" />
+          <text x="120" y="21" fill="#94A3B8" font-size="11" font-weight="600">Nearest</text>
+
+          <rect x="190" y="0" width="80" height="32" rx="12" fill="#111c30" stroke="#1f2d48" />
+          <text x="210" y="21" fill="#94A3B8" font-size="11" font-weight="600">Newest</text>
+        </g>
+
+        <!-- Request Cards Feed -->
+        <g transform="translate(0, 166)">
+          
+            <g transform="translate(0, 0)">
+              <rect width="1144" height="92" rx="20" fill="#111c30" stroke="#1f2d48" />
+              <rect x="16" y="16" width="60" height="20" rx="10" fill="#EF4444" fill-opacity="0.2" />
+              <text x="24" y="30" fill="#EF4444" font-size="10" font-weight="800">Critical</text>
+              <text x="86" y="30" fill="#F8FAFC" font-size="13" font-weight="700">Critical O- Blood Needed for Surgery</text>
+              <text x="16" y="58" fill="#94A3B8" font-size="11">📍 Burnpur Hospital · 0.8 km away · 15m waiting</text>
+              <rect x="1050" y="48" width="76" height="28" rx="10" fill="#0D9488" />
+              <text x="1066" y="66" fill="#FFFFFF" font-size="11" font-weight="700">Offer Help</text>
+            </g>
+          
+            <g transform="translate(0, 105)">
+              <rect width="1144" height="92" rx="20" fill="#111c30" stroke="#1f2d48" />
+              <rect x="16" y="16" width="60" height="20" rx="10" fill="#F97316" fill-opacity="0.2" />
+              <text x="24" y="30" fill="#F97316" font-size="10" font-weight="800">High</text>
+              <text x="86" y="30" fill="#F8FAFC" font-size="13" font-weight="700">Emergency Hospital Escort Transit</text>
+              <text x="16" y="58" fill="#94A3B8" font-size="11">📍 SB Gorai Road · 1.4 km away · 15m waiting</text>
+              <rect x="1050" y="48" width="76" height="28" rx="10" fill="#0D9488" />
+              <text x="1066" y="66" fill="#FFFFFF" font-size="11" font-weight="700">Offer Help</text>
+            </g>
+          
+            <g transform="translate(0, 210)">
+              <rect width="1144" height="92" rx="20" fill="#111c30" stroke="#1f2d48" />
+              <rect x="16" y="16" width="60" height="20" rx="10" fill="#3B82F6" fill-opacity="0.2" />
+              <text x="24" y="30" fill="#3B82F6" font-size="10" font-weight="800">Medium</text>
+              <text x="86" y="30" fill="#F8FAFC" font-size="13" font-weight="700">Foldable Walker for Senior Citizen</text>
+              <text x="16" y="58" fill="#94A3B8" font-size="11">📍 Kalyanpur Housing · 2.1 km away · 15m waiting</text>
+              <rect x="1050" y="48" width="76" height="28" rx="10" fill="#0D9488" />
+              <text x="1066" y="66" fill="#FFFFFF" font-size="11" font-weight="700">Offer Help</text>
+            </g>
+          
+        </g>
+      </g>
+    
+      </g>
+
+      <!-- Mobile Bottom Tab Bar (<768px) with pb-36 clearance buffer -->
+      
+    </svg>
+  

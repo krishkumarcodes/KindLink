@@ -44,7 +44,7 @@ All 14 public indexable pages are server-rendered with zero JavaScript dependenc
 | **Canonical URLs** | Built with `NEXT_PUBLIC_SITE_URL` (fallback `https://kindlink.onrender.com`), strictly formatted without trailing slashes. | ✅ PASS |
 | **Open Graph & Twitter Cards** | `og:image` (1200x630 branded card), `og:title`, `og:description`, `twitter:card="summary_large_image"` on all public pages. | ✅ PASS |
 | **Robots Policy (`app/robots.ts`)** | Allows public pages; disallows `/api/`, `/admin/`, `/app/`. Explicitly allows Googlebot, Bingbot, GPTBot, ClaudeBot, PerplexityBot, Applebot. | ✅ PASS |
-| **XML Sitemap (`app/sitemap.ts`)** | Automatically lists all 14 public indexable URLs with dynamic `lastModified`, change frequencies, and weighted priorities. | ✅ PASS |
+| **XML Sitemap (`app/sitemap.ts`)** | Automatically lists all 14 public indexable URLs with dynamic `lastModified`, change frequencies, and assigned priorities. | ✅ PASS |
 | **JSON-LD Structured Data** | `WebSite`, `Organization`, `WebApplication`, `BreadcrumbList`, `FAQPage`, `HowTo` schemas with validated Schema.org vocabulary. | ✅ PASS |
 | **Privacy Isolation (`middleware.ts`)** | Private routes (`/app`, `/admin`, `/api`) send `X-Robots-Tag: noindex, nofollow` and redirect guests to `/login`. Zero public PII. | ✅ PASS |
 | **AI Readability Endpoints** | `/public/llms.txt` and `/public/llms-full.txt` served with `<link rel="alternate" type="text/markdown">` in `<head>`. | ✅ PASS |

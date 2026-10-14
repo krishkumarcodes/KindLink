@@ -18,7 +18,7 @@ import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { useLocation } from '@/lib/location/LocationProvider';
 import { getCurrentLanguageCode, SUPPORTED_LANGUAGES } from '@/lib/translate/googleTranslate';
 import { LanguageModal } from './LanguageModal';
-import { NotificationsModal } from './NotificationsModal';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { EmergencySosModal } from './EmergencySosModal';
 import { LocationModal } from './LocationModal';
 
@@ -207,58 +207,46 @@ export function Header() {
               </span>
             </button>
 
-            {/* Dynamic Location Chip (Visible on ALL viewports) */}
+            {/* Clean Icon-Only Location Button (44px touch target, matching bell & language button style) */}
             <button
               type="button"
               onClick={() => setLocationOpen(true)}
-              className="inline-flex items-center gap-1 px-1.5 xs:px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-border/80 bg-background/80 hover:bg-muted text-[10px] sm:text-xs font-semibold text-foreground transition-all shadow-xs touch-target group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary max-w-[68px] xs:max-w-[95px] sm:max-w-[240px] shrink-0"
-              aria-label={`Current location: ${displayAreaName}. Tap to change or recenter.`}
-              title="Change area or recenter GPS"
+              className="relative inline-flex items-center justify-center h-9 w-9 min-[420px]:h-10 min-[420px]:w-10 rounded-xl border border-border bg-background hover:bg-muted text-foreground transition-colors touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0 group"
+              aria-label="Change location"
+              title={`Change location (Current: ${displayAreaName})`}
             >
-              <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
-                {userCoords.isLive ? (
-                  <>
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-emerald-500" />
-                  </>
-                ) : (
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-primary/80" />
-                )}
-              </span>
-              <MapPin className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 text-primary shrink-0 notranslate group-hover:scale-110 transition-transform" />
-              <span className="truncate">
-                <span className="sm:hidden">{shortArea}</span>
-                <span className="hidden sm:inline">{displayAreaName}</span>
-              </span>
-              {userCoords.isLive && accuracy && (
-                <span className="hidden md:inline text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                  ±{accuracy}m
+              <MapPin className="h-4 w-4 text-primary shrink-0 notranslate group-hover:scale-105 transition-transform" />
+              {/* Status dot: green when live GPS is active, orange when off or denied */}
+              {userCoords.isLive ? (
+                <span className="absolute top-1 right-1 flex h-2 w-2" aria-hidden="true">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 ring-1 ring-card" />
                 </span>
+              ) : (
+                <span
+                  className="absolute top-1 right-1 flex h-2 w-2 rounded-full bg-amber-500 ring-1 ring-card"
+                  aria-hidden="true"
+                />
               )}
-              <ChevronDown className="h-2 w-2 sm:h-3 sm:w-3 text-muted-foreground shrink-0 group-hover:translate-y-0.5 transition-transform" />
             </button>
           </div>
 
           {/* Right Action Icons & Controls */}
           <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2.5 shrink-0">
-            {/* Redesigned Emergency SOS Button - Circle on 360px mobile, pill on min-[420px] */}
+            {/* Improved Header SOS Button: 48px height, vertically aligned, red with siren icon and SOS text, subtle inner pulse */}
             <button
               type="button"
               onClick={() => setSosOpen(true)}
-              className="relative group inline-flex items-center justify-center gap-1.5 h-9 w-9 min-[420px]:h-10 min-[420px]:w-auto px-0 min-[420px]:px-3.5 rounded-full bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold text-xs shadow-md shadow-red-600/30 transition-all duration-150 touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background shrink-0"
-              aria-label="Emergency SOS trigger - Instant community alert"
-              title="Trigger Emergency SOS"
+              className="relative overflow-hidden inline-flex items-center justify-center gap-1.5 h-12 px-2.5 xs:px-3 sm:px-4 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold text-xs shadow-md shadow-red-600/25 transition-all duration-150 touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 shrink-0 group"
+              aria-label="Emergency SOS"
+              title="Emergency SOS"
             >
-              {/* Soft pulsing ring with reduced-motion alternative */}
               <span
-                className="absolute -inset-1 rounded-full bg-red-500/35 -z-10 animate-pulse motion-reduce:animate-none pointer-events-none"
+                className="absolute inset-0 rounded-xl bg-white/20 animate-pulse motion-reduce:animate-none pointer-events-none"
                 aria-hidden="true"
               />
-              <Siren className="h-4 w-4 shrink-0 notranslate animate-bounce motion-reduce:animate-none" />
-              <span className="hidden min-[420px]:inline tracking-wide font-black">SOS</span>
-              <span className="hidden lg:inline text-[11px] font-bold tracking-normal opacity-90">
-                EMERGENCY
-              </span>
+              <Siren className="h-4 w-4 shrink-0 notranslate group-hover:scale-110 transition-transform" />
+              <span className="tracking-wider font-black">SOS</span>
             </button>
 
             {/* Language Selector Button */}
@@ -273,21 +261,30 @@ export function Header() {
               <span className="notranslate text-[11px] sm:text-xs font-bold uppercase tracking-wider">{currentLangCode}</span>
             </button>
 
-            {/* Notifications Bell Button */}
-            <button
-              type="button"
-              onClick={() => setNotifOpen(true)}
-              className="relative inline-flex items-center justify-center h-9 w-9 min-[420px]:h-10 min-[420px]:w-10 rounded-xl border border-border bg-background hover:bg-muted text-foreground transition-colors touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
-              aria-label={`Notifications, ${unreadCount} unread`}
-              title="Notifications"
-            >
-              <Bell className="h-4 w-4 notranslate shrink-0" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-urgency-critical text-[9px] font-bold text-white shadow-xs ring-2 ring-card animate-in zoom-in-75">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
+            {/* Notifications Bell Button & Popover/Bottom-Sheet */}
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => (notifOpen ? setNotifOpen(false) : setNotifOpen(true))}
+                className="relative inline-flex items-center justify-center h-9 w-9 min-[420px]:h-10 min-[420px]:w-10 rounded-xl border border-border bg-background hover:bg-muted text-foreground transition-colors touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
+                aria-label={`Notifications, ${unreadCount} unread`}
+                title="Notifications"
+                aria-expanded={notifOpen}
+              >
+                <Bell className="h-4 w-4 notranslate shrink-0" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-urgency-critical text-[9px] font-bold text-white shadow-xs ring-2 ring-card animate-in zoom-in-75">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <NotificationCenter
+                open={notifOpen}
+                onClose={() => setNotifOpen(false)}
+                anchor="bell"
+              />
+            </div>
 
             {/* Profile Avatar / Initials Button & Quick Menu */}
             <div className="relative shrink-0" ref={menuRef}>
@@ -412,7 +409,6 @@ export function Header() {
 
       {/* Modals */}
       <LanguageModal open={langOpen} onClose={() => setLangOpen(false)} />
-      <NotificationsModal open={notifOpen} onClose={() => setNotifOpen(false)} />
       <EmergencySosModal open={sosOpen} onClose={() => setSosOpen(false)} />
       <LocationModal open={locationOpen} onClose={() => setLocationOpen(false)} />
     </>

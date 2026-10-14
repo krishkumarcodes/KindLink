@@ -1,14 +1,52 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import { useTheme } from 'next-themes';
 
 interface PinDropMapInnerProps {
   lat: number;
   lng: number;
   onPositionChange: (lat: number, lng: number) => void;
   className?: string;
+}
+
+function CartoTileLayer() {
+  const { resolvedTheme } = useTheme();
+  const map = useMap();
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+
+  const isDark = resolvedTheme === 'dark';
+  const url = isDark
+    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+  const attribution =
+    '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>';
+
+  useEffect(() => {
+    if (!tileLayerRef.current) {
+      tileLayerRef.current = L.tileLayer(url, {
+        attribution,
+        subdomains: 'abcd',
+        maxZoom: 20,
+      }).addTo(map);
+    } else {
+      tileLayerRef.current.setUrl(url);
+    }
+  }, [url, map, attribution]);
+
+  useEffect(() => {
+    return () => {
+      if (tileLayerRef.current) {
+        map.removeLayer(tileLayerRef.current);
+        tileLayerRef.current = null;
+      }
+    };
+  }, [map]);
+
+  return null;
 }
 
 // Controller to smoothly pan to center when modified externally
@@ -76,14 +114,11 @@ export default function PinDropMapInner({
         center={[lat, lng]}
         zoom={15}
         scrollWheelZoom={true}
-        className="h-full w-full z-0"
+        zoomControl={false}
+        className="h-full w-full z-0 notranslate"
         attributionControl={false}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maxZoom={19}
-        />
+        <CartoTileLayer />
         <MapRecenter lat={lat} lng={lng} />
         <MapClickHandler onPositionChange={onPositionChange} />
         <Marker

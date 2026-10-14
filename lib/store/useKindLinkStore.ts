@@ -25,6 +25,7 @@ export const DEFAULT_USER: UserProfile = {
   email: '',
   phone: '',
   college: '',
+  bio: '',
   avatarUrl: '',
   homeNeighborhood: '',
   languages: ['Bengali', 'Hindi', 'English'],
@@ -41,6 +42,7 @@ export const DEFAULT_USER: UserProfile = {
   badges: [],
   emailVerified: false,
   phoneVerified: false,
+  createdAt: '',
 };
 
 interface KindLinkState {
@@ -87,10 +89,12 @@ interface KindLinkState {
   updateRequestStatus: (requestId: string, status: RequestLifecycleStatus) => Promise<void>;
   updateUserProfile: (patch: Partial<UserProfile>) => void;
   addEmergencyContact: (contact: { name: string; phone: string; relationship: string }) => void;
+  updateEmergencyContact: (contact: { id: string; name: string; phone: string; relationship: string }) => void;
   removeEmergencyContact: (id: string) => void;
   updateVerificationState: (state: VerificationState, docName?: string, docType?: string) => void;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
+  dismissNotification: (id: string) => void;
   addNotification: (notif: NotificationItem) => void;
 }
 
@@ -335,6 +339,18 @@ export const useKindLinkStore = create<KindLinkState>()(
         });
       },
 
+      updateEmergencyContact: (contact) => {
+        const { userProfile } = get();
+        set({
+          userProfile: {
+            ...userProfile,
+            emergencyContacts: (userProfile.emergencyContacts || []).map((c) =>
+              c.id === contact.id ? { ...c, ...contact } : c
+            ),
+          },
+        });
+      },
+
       removeEmergencyContact: (id) => {
         const { userProfile } = get();
         set({
@@ -385,6 +401,15 @@ export const useKindLinkStore = create<KindLinkState>()(
         set({
           notifications: notifications.map((n) => ({ ...n, unread: false })),
           unreadNotificationCount: 0,
+        });
+      },
+
+      dismissNotification: (id) => {
+        const { notifications } = get();
+        const updated = notifications.filter((n) => n.id !== id);
+        set({
+          notifications: updated,
+          unreadNotificationCount: updated.filter((n) => n.unread).length,
         });
       },
 

@@ -73,7 +73,7 @@ export default function BooksAndStudyMaterialPage() {
           <div className="flex items-center gap-2 mb-3">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400">
               <BookOpen className="h-3.5 w-3.5" />
-              Category Weight 2/10 &bull; Peer Academic Lending
+              Community Aid &bull; Peer Academic Lending
             </span>
           </div>
 
