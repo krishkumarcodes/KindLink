@@ -48,12 +48,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/physics`,
-      lastModified: currentDate,
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
       url: `${SITE_URL}/safety-and-verification`,
       lastModified: currentDate,
       changeFrequency: 'weekly',

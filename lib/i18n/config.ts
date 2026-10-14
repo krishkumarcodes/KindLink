@@ -6,7 +6,7 @@ export const LOCALE_COOKIE_NAME = 'kindlink_locale';
 export const LOCALE_STORAGE_KEY = 'kindlink_selected_lang';
 
 export const SUPPORTED_LANGUAGES: LanguageMeta[] = [
-  // 1. Indian Languages
+  // 1. Indian Languages (17)
   {
     code: 'en',
     name: 'English',
@@ -47,7 +47,7 @@ export const SUPPORTED_LANGUAGES: LanguageMeta[] = [
     code: 'mai',
     name: 'Maithili',
     nativeName: 'मैथिली',
-    script: 'Devanagari / Mithilakshar',
+    script: 'Devanagari',
     dir: 'ltr',
     group: 'indian',
     region: 'Mithila / Bihar / Jharkhand',
@@ -77,7 +77,6 @@ export const SUPPORTED_LANGUAGES: LanguageMeta[] = [
     script: 'Ol Chiki',
     dir: 'ltr',
     group: 'indian',
-    isBeta: true,
     region: 'Jharkhand / Purulia / Asansol',
   },
   {
@@ -162,59 +161,7 @@ export const SUPPORTED_LANGUAGES: LanguageMeta[] = [
     region: 'Kerala',
   },
 
-  // Jharkhand Regional Beta Dialects
-  {
-    code: 'sck',
-    name: 'Nagpuri (Sadri)',
-    nativeName: 'नागपुरी',
-    script: 'Devanagari',
-    dir: 'ltr',
-    group: 'indian',
-    isBeta: true,
-    region: 'Jharkhand (Chota Nagpur)',
-  },
-  {
-    code: 'kht',
-    name: 'Khortha',
-    nativeName: 'खोरठा',
-    script: 'Devanagari',
-    dir: 'ltr',
-    group: 'indian',
-    isBeta: true,
-    region: 'Jharkhand (North Chota Nagpur / Santhal Parganas)',
-  },
-  {
-    code: 'kru',
-    name: 'Kurukh (Oraon)',
-    nativeName: 'कुड़ुख़',
-    script: 'Tolong Siki / Devanagari',
-    dir: 'ltr',
-    group: 'indian',
-    isBeta: true,
-    region: 'Jharkhand / Chota Nagpur',
-  },
-  {
-    code: 'unr',
-    name: 'Mundari',
-    nativeName: 'मुंडारी',
-    script: 'Mundari Bani / Devanagari',
-    dir: 'ltr',
-    group: 'indian',
-    isBeta: true,
-    region: 'Jharkhand / Ranchi / Khunti',
-  },
-  {
-    code: 'hoc',
-    name: 'Ho',
-    nativeName: 'हो',
-    script: 'Warang Citi / Devanagari',
-    dir: 'ltr',
-    group: 'indian',
-    isBeta: true,
-    region: 'Jharkhand (Kolhan division)',
-  },
-
-  // 2. International Languages
+  // 2. International Languages (12)
   {
     code: 'fr',
     name: 'French',
@@ -270,7 +217,7 @@ export const SUPPORTED_LANGUAGES: LanguageMeta[] = [
     region: 'International',
   },
   {
-    code: 'zh',
+    code: 'zh-CN',
     name: 'Chinese (Simplified)',
     nativeName: '简体中文',
     script: 'Simplified Han',
@@ -339,7 +286,7 @@ export function getLanguage(code: string): LanguageMeta {
 }
 
 export function isRTL(code: string): boolean {
-  return getLanguage(code).dir === 'rtl';
+  return code === 'ur' || code === 'ar';
 }
 
 export function isValidLocale(code: string): code is Locale {

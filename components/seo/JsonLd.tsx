@@ -28,7 +28,7 @@ export function buildOrganizationSchema() {
     logo: `${SITE_URL}/logo.svg`,
     image: `${SITE_URL}/og-image.png`,
     description:
-      'Verified community mutual aid platform for urgent tasks in Asansol and neighboring areas. Ranked by physics, driven by trust.',
+      'Verified community mutual aid platform for urgent tasks in Asansol and neighboring areas. Driven by urgency, distance, and community trust.',
     sameAs: [
       'https://github.com/krishkumarcodes/KindLink',
       'https://twitter.com/KindLinkHQ',
@@ -83,14 +83,14 @@ export function buildWebApplicationSchema() {
       priceCurrency: 'INR',
     },
     featureList: [
-      'Physics-based Help Gravity ranking algorithm',
+      'Three-key community urgency ranking algorithm',
       'Verified volunteer badge security',
       'SOS emergency broadcasting',
       'Hyperlocal radius filtering within 1-15 km',
-      'Multi-language interface (English, Hindi, Bengali)',
+      'Multi-language interface (29 Indian and International languages)',
     ],
     description:
-      'Progressive web application enabling instantaneous, physics-ranked community mutual aid across Asansol and neighboring districts.',
+      'Progressive web application enabling instantaneous, verified community mutual aid across Asansol and neighboring districts.',
   };
 }
 

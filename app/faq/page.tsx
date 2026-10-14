@@ -18,7 +18,7 @@ import { constructMetadata } from '@/lib/seo';
 export const metadata: Metadata = constructMetadata({
   title: 'Frequently Asked Questions (FAQ) | KindLink Mutual Aid Asansol',
   description:
-    'Got questions about KindLink? Read detailed answers on our physics ranking, privacy guarantees, volunteer verification, blood matching, and academic origins.',
+    'Got questions about KindLink? Read detailed answers on our urgency ranking, privacy guarantees, volunteer verification, blood matching, and community origins.',
   path: '/faq',
 });
 
@@ -26,15 +26,15 @@ export default function FAQPage() {
   const faqs = [
     {
       q: 'What is KindLink and who operates it?',
-      a: 'KindLink is an open community mutual aid platform created as a final-year B.Tech Capstone Project in the Department of Computer Science & Engineering at Asansol Engineering College (AEC), affiliated with MAKAUT, West Bengal. It connects neighbors in Asansol, Burnpur, and Durgapur for urgent mutual aid including blood donation, medical equipment sharing, senior citizen care, study materials, and emergency transport.',
+      a: 'KindLink is an open community mutual aid platform created as a collaborative initiative in the Department of Computer Science & Engineering at Asansol Engineering College (AEC), affiliated with MAKAUT, West Bengal. It connects neighbors in Asansol, Burnpur, and Durgapur for urgent mutual aid including blood donation, medical equipment sharing, senior citizen care, study materials, and emergency transport.',
     },
     {
       q: 'Is KindLink completely free? Are there any hidden charges or fees?',
       a: 'Yes, KindLink is 100% free of charge. There are no registration fees, platform commissions, subscription tiers, or advertisements. The platform is strictly non-commercial and governed as public civic technology.',
     },
     {
-      q: 'How does the Help Gravity formula determine which request appears first?',
-      a: 'Unlike social media platforms that rank posts by engagement or ad bids, KindLink uses a deterministic physics model: Help Gravity = [TypeWeight * (1 + 0.05 * waitMinutes)] / (1 + distanceKm)^2. Critical needs like blood transfusions (TypeWeight 10) carry high mass, wait time linearly amplifies urgency so older requests are not buried, and the inverse-square distance attenuation ensures closer neighbors see it first.',
+      q: 'How does KindLink prioritize which help request appears first?',
+      a: 'Unlike social media platforms that rank posts by engagement or ad bids, KindLink uses a transparent three-key sorting model: (1) Urgency Level (Critical > High > Medium > Low), where life-critical blood and emergency transit are prioritized first; (2) Nearest Distance, alerting closest neighbors first; and (3) Waiting Time, so that older unresolved requests steadily rise to the top of the feed.',
     },
     {
       q: 'Is KindLink a replacement for official emergency services (102 / 112)?',
@@ -57,8 +57,8 @@ export default function FAQPage() {
       a: 'Families with unused medical gear (wheelchairs, oxygen concentrators, nebulizers, walkers, crutches) list them in the app. Neighbors in need of temporary recovery equipment request to borrow them. Both parties agree on a loan window and follow strict 70% alcohol sanitization protocols before and after handoff.',
     },
     {
-      q: 'How does the hardware fall detection feature work?',
-      a: 'KindLink includes an experimental feature that samples the smartphone internal 3-axis accelerometer via the browser DeviceMotionEvent API. The signal is smoothed using a discrete low-pass filter (alpha = 0.3). If a deceleration shock exceeding 22 m/s² (approx. 2.24G) is detected, the app sounds an alarm and triggers a 10-second cancel countdown before alerting designated emergency contacts.',
+      q: 'How does the Emergency SOS button work?',
+      a: 'KindLink features an Emergency SOS trigger on the home screen and navigation bar. Holding the button for 2 seconds activates high-priority emergency broadcast mode, alerting nearby verified responders and community contacts with audio alerts and route guidance.',
     },
     {
       q: 'Can students from other colleges or residents outside Asansol join?',
@@ -165,10 +165,10 @@ export default function FAQPage() {
             </Link>
 
             <Link
-              href="/physics"
+              href="/how-it-works"
               className="text-xs font-semibold text-muted-foreground hover:text-foreground"
             >
-              Explore the mathematical formulation &rarr;
+              Learn more about community dispatch &rarr;
             </Link>
           </div>
         </div>

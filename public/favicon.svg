@@ -18,7 +18,7 @@
   <!-- Squircle Base -->
   <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#kl-grad)"/>
 
-  <!-- Orbital Antigravity Field Rings (Newtonian Aid Gravity) -->
+  <!-- Orbital Aid Network Field Rings (Hyperlocal Connection) -->
   <ellipse cx="32" cy="32" rx="22" ry="11" transform="rotate(-25 32 32)" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="2.5" stroke-dasharray="4 2"/>
   <ellipse cx="32" cy="32" rx="22" ry="11" transform="rotate(25 32 32)" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="2.5" stroke-dasharray="4 2"/>
 

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="trust-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#10B981"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+    <filter id="trust-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#10B981" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <rect x="12" y="12" width="96" height="96" rx="28" fill="url(#trust-bg)" filter="url(#trust-shadow)"/>
+  <rect x="16" y="16" width="88" height="88" rx="24" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="2"/>
+
+  <!-- Shield with House & Heart -->
+  <g transform="translate(60, 58)">
+    <path d="M0 -24 L24 -12 V10 C24 24 0 34 0 34 C0 34 -24 24 -24 10 V-12 Z" fill="#FFFFFF"/>
+    <!-- House roof & body inside shield -->
+    <path d="M0 -12 L12 0 H-12 Z" fill="#10B981"/>
+    <rect x="-8" y="0" width="16" height="12" rx="1" fill="#10B981"/>
+    <!-- Heart in door -->
+    <path d="M0 8 C-2 6 -4 4 -4 2.5 C-4 1.5 -3 0.5 -2 0.5 C-1 0.5 0 1 0 1.8 C0 1 1 0.5 2 0.5 C3 0.5 4 1.5 4 2.5 C4 4 2 6 0 8 Z" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Stars on top -->
+  <circle cx="36" cy="30" r="3" fill="#FDE047"/>
+  <circle cx="60" cy="22" r="3" fill="#FDE047"/>
+  <circle cx="84" cy="30" r="3" fill="#FDE047"/>
+</svg>

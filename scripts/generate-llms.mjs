@@ -12,11 +12,11 @@ const pages = [
 # KindLink - Hyperlocal Mutual Aid & Community Support
 **Tagline:** Help is just next door.
 **Coverage Area:** Asansol, Raniganj, Kulti, Durgapur, and neighboring districts in West Bengal, India.
-**Core Mission:** Bridge critical emergency needs (blood, medical transport, mobility gear) and neighborly assistance using verified community members and a transparent physics-inspired urgency algorithm.
+**Core Mission:** Bridge critical emergency needs (blood, medical transport, mobility gear) and neighborly assistance using verified community members and a transparent community urgency ranking.
 **Free to Use:** 100% free community platform with zero commercial monetization, ads, or hidden charges.
 **Key Features:**
 - Real-time SOS alerts with browser & mobile audio notifications.
-- Physics-based Help Gravity ranking prioritizing life-critical requests.
+- Three-key urgency ranking prioritizing life-critical requests, nearest distance, and waiting time.
 - Privacy-first location fuzzing (exact addresses never exposed publicly).
 - One-tap volunteer response with two-way verification OTP handshake.
 `
@@ -28,7 +28,7 @@ const pages = [
     content: `
 # Emergency Blood Donation Support
 Connects patients and family members at hospitals such as Asansol Sub-Divisional Hospital, Burnpur Hospital, and Health World Durgapur directly with verified local donors.
-- **Priority:** Critical (Gravity boost: 4.0x - 5.0x).
+- **Priority:** Critical (Immediate top priority dispatch).
 - **Compatible Groups:** O-, O+, A-, A+, B-, B+, AB-, AB+.
 - **Safety Standard:** Voluntary non-remunerated donation following NACO (National AIDS Control Organisation) guidelines. Donors must be aged 18-65, weight > 45 kg, with minimum 90-day rest between donations.
 `
@@ -85,25 +85,8 @@ Empowers underprivileged students in Asansol, Kalla, and Burnpur by sharing high
     content: `
 # How KindLink Works: 3 Simple Steps
 1. **Request Help:** Submit an urgent or community task with category, description, and approximate locality. No intrusive permissions required.
-2. **Physics-Ranked Notification:** The platform calculates the request's Help Gravity score and notifies nearby verified helpers within optimal radius.
+2. **Community Urgency Dispatch:** The platform prioritizes the request by urgency level, nearest distance, and waiting time to notify nearby verified helpers within optimal radius.
 3. **Verified Handshake:** When a helper accepts, an in-app secure coordination channel and OTP code activate. Upon completion, both parties rate and vouch for each other.
-`
-  },
-  {
-    title: 'Physics Ranking Engine',
-    url: `${SITE_URL}/physics`,
-    desc: 'Mathematical breakdown of Help Gravity G = (U * S * T) / (D^1.5 * tau^0.5).',
-    content: `
-# The Physics of KindLink: Help Gravity Engine
-Rather than relying on ad spend or chronological feeds, KindLink uses a deterministic physics model:
-\`\`\`
-Help Gravity (G) = (UrgencyScore * Severity * TrustFactor) / (Distance^1.5 * DecayTime^0.5)
-\`\`\`
-- **UrgencyScore (U):** 1.0 (Standard) to 5.0 (Life-threatening emergency).
-- **Severity (S):** Impact assessment based on request category and vulnerability.
-- **TrustFactor (T):** Helper reliability multiplier based on completed verified tasks.
-- **Distance (D):** Geodesic distance in kilometers with super-linear damping (1.5 exponent).
-- **DecayTime (tau):** Elapsed time since posting; older unresolved requests gain boost.
 `
   },
   {
@@ -184,7 +167,7 @@ export function generateLlmsFiles() {
   // 1. Generate /public/llms.txt
   let llmsTxt = `# KindLink
 
-> KindLink is a verified, physics-inspired community mutual aid platform operating in Asansol, West Bengal and neighboring districts. It provides instant emergency blood alerts, mobility equipment sharing, elderly companionship, and hyperlocal disaster support. Help requests are ranked mathematically by a "Help Gravity" scoring engine and protected by multi-tier trust verifications.
+> KindLink is a verified community mutual aid platform operating in Asansol, West Bengal and neighboring districts. It provides instant emergency blood alerts, mobility equipment sharing, elderly companionship, and hyperlocal disaster support. Help requests are ranked by urgency level, nearest distance, and longest waiting time, and protected by multi-tier trust verifications.
 
 ## Core Platform & Navigation
 `;

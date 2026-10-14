@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="pillar-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0284C7"/>
+      <stop offset="100%" stop-color="#0F766E"/>
+    </linearGradient>
+    <filter id="pillar-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0284C7" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <rect x="12" y="12" width="96" height="96" rx="28" fill="url(#pillar-bg)" filter="url(#pillar-shadow)"/>
+  <rect x="16" y="16" width="88" height="88" rx="24" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="2"/>
+
+  <!-- Architectural Pillar / Classical Monument column motif -->
+  <g transform="translate(60, 60)">
+    <!-- Base pedestal -->
+    <rect x="-24" y="22" width="48" height="6" rx="2" fill="#FFFFFF"/>
+    <rect x="-20" y="16" width="40" height="6" rx="1.5" fill="#E0F2FE"/>
+
+    <!-- 3 Pillars -->
+    <rect x="-18" y="-14" width="8" height="30" rx="2" fill="#FFFFFF"/>
+    <rect x="-4" y="-14" width="8" height="30" rx="2" fill="#FFFFFF"/>
+    <rect x="10" y="-14" width="8" height="30" rx="2" fill="#FFFFFF"/>
+
+    <!-- Capital / Header -->
+    <rect x="-20" y="-20" width="40" height="6" rx="1.5" fill="#E0F2FE"/>
+    <polygon points="0,-32 24,-20 -24,-20" fill="#FFFFFF"/>
+
+    <!-- Crown Laurel / Star in arch -->
+    <polygon points="0,-14 2,-9 7,-9 3,-6 4.5,-1 0,-4 -4.5,-1 -3,-6 -7,-9 -2,-9" fill="#FDE047"/>
+  </g>
+</svg>

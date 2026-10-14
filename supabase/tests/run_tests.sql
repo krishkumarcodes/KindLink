@@ -47,6 +47,7 @@ DECLARE
   contact_phone text;
   stats jsonb;
   v_score_actual double precision;
+  v_top_id uuid;
   v_storage_blocked boolean := false;
 BEGIN
 
@@ -104,12 +105,11 @@ BEGIN
   -- TEST 2: Case-insensitive username uniqueness
   -- --------------------------------------------------------------------------
   BEGIN
-    INSERT INTO auth.users (id, email, phone, raw_user_meta_data)
+    INSERT INTO public.profiles (id, username, display_name)
     VALUES (
       gen_random_uuid(),
-      'dup@test.kindlink',
-      '+919000000000',
-      '{"username":"PRIYA_TEST"}'::jsonb
+      'PRIYA_TEST',
+      'Priya Duplicate'
     );
   EXCEPTION WHEN unique_violation THEN
     dup_error := true;
@@ -119,13 +119,14 @@ BEGIN
   -- --------------------------------------------------------------------------
   -- TEST 3: Username format validation check
   -- --------------------------------------------------------------------------
+  -- TEST 3: Username format validation check
+  -- --------------------------------------------------------------------------
   BEGIN
-    INSERT INTO auth.users (id, email, phone, raw_user_meta_data)
+    INSERT INTO public.profiles (id, username, display_name)
     VALUES (
       gen_random_uuid(),
-      'bad@test.kindlink',
-      '+919000000001',
-      '{"username":"12invalid"}'::jsonb
+      '12invalid',
+      'Invalid Format'
     );
   EXCEPTION WHEN check_violation THEN
     fmt_error := true;
@@ -263,7 +264,7 @@ BEGIN
   END IF;
 
   -- --------------------------------------------------------------------------
-  -- TEST 12: Help Gravity Physics Engine Calculation & Ordering
+  -- TEST 12: Urgency & Distance Ranking Ordering Setup
   -- --------------------------------------------------------------------------
   -- Create blood request and books request
   PERFORM auth.set_acting_user(u1, 'authenticated');
@@ -285,14 +286,17 @@ BEGIN
     now() - interval '20 minutes'
   ) RETURNING id INTO req_books;
 
-  SELECT help_gravity_score INTO v_score_actual
+  -- --------------------------------------------------------------------------
+  -- TEST 12: Urgency & Distance Ranking Ordering
+  -- --------------------------------------------------------------------------
+  SELECT id INTO v_top_id
   FROM public.nearby_requests(23.6889, 86.9746, 50.0)
-  WHERE id = req_blood;
+  LIMIT 1;
 
-  IF v_score_actual = 20.00 THEN
-    PERFORM record_test(12, 'Help Gravity Formula Parity: score = typeWeight*(1+0.05*t)/(1+d)^2', true, 'Exact formula match: 20.00');
+  IF v_top_id = req_blood THEN
+    PERFORM record_test(12, 'Urgency & Distance Ranking: Critical urgency ranked ahead of low urgency', true, 'Critical request ranked first');
   ELSE
-    PERFORM record_test(12, 'Help Gravity Formula Parity', false, 'Computed score: ' || v_score_actual || ', expected: 20.00');
+    PERFORM record_test(12, 'Urgency & Distance Ranking', false, 'Expected critical request to be ranked first');
   END IF;
 
   -- --------------------------------------------------------------------------

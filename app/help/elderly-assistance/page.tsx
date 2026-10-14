@@ -188,23 +188,22 @@ export default function ElderlyAssistancePage() {
             </div>
           </section>
 
-          {/* FALL IMPACT INTEGRATION */}
+          {/* EMERGENCY SOS SAFEGUARD */}
           <section className="mt-12 rounded-2xl border border-teal-500/30 bg-teal-500/5 p-6">
             <h2 className="font-heading text-lg font-bold text-foreground">
-              Hardware Fall Detection Safeguard
+              Emergency SOS Community Safeguard
             </h2>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              KindLink integrates an experimental hardware-accelerated fall impact detector that utilizes the smartphone&apos;s
-              internal 3-axis accelerometer. In the event of a sudden acceleration spike (&gt; 22 m/s&sup2;) followed
-              by prolonged inactivity, the app triggers an audio alarm and 10-second countdown before notifying designated
-              family members and nearby community responders.
+              KindLink integrates a rapid Emergency SOS broadcast feature designed specifically for seniors and vulnerable residents.
+              Holding the SOS button for 2 seconds activates high-priority audio alerts and notifies designated
+              family members and nearby verified community responders within minutes.
             </p>
             <div className="mt-4">
               <Link
-                href="/physics"
+                href="/how-it-works"
                 className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-1"
               >
-                <span>Read how the accelerometer low-pass filter works &rarr;</span>
+                <span>Learn how the Emergency SOS response works &rarr;</span>
               </Link>
             </div>
           </section>

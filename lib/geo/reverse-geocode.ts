@@ -36,7 +36,7 @@ const LOCAL_FALLBACK_LANDMARKS = [
   { name: 'Asansol Hub, West Bengal', lat: 23.685, lng: 86.965, maxDistKm: 20 },
 ];
 
-function haversineDistKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+function geoDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Earth radius km
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -52,7 +52,7 @@ function haversineDistKm(lat1: number, lon1: number, lat2: number, lon2: number)
 
 function getFallbackLocation(lat: number, lng: number): GeocodedLocation {
   for (const mark of LOCAL_FALLBACK_LANDMARKS) {
-    const dist = haversineDistKm(lat, lng, mark.lat, mark.lng);
+    const dist = geoDistanceKm(lat, lng, mark.lat, mark.lng);
     if (dist <= mark.maxDistKm) {
       return {
         displayName: `${mark.name}, West Bengal, India`,

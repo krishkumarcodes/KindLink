@@ -11,22 +11,21 @@ import {
   Clock,
   ShieldCheck,
   AlertTriangle,
-  Atom,
   Navigation,
   HeartHandshake,
 } from 'lucide-react';
 import { HelpRequest, TravelMode } from '@/lib/data/types';
-import { calculateETA, formatETA } from '@/lib/data/physics';
+import { calculateETA, formatETA } from '@/lib/data/distance';
 
 interface RequestCardProps {
   request: HelpRequest;
   travelMode: TravelMode;
   onSelect: (request: HelpRequest) => void;
-  onWhyRank: (request: HelpRequest) => void;
+  onWhyRank?: (request: HelpRequest) => void;
   onHelp?: (request: HelpRequest) => void;
 }
 
-export function RequestCard({ request, travelMode, onSelect, onWhyRank, onHelp }: RequestCardProps) {
+export function RequestCard({ request, travelMode, onSelect, onHelp }: RequestCardProps) {
   const etaMinutes = calculateETA(request.distanceKm, travelMode);
 
   const getCategoryIcon = (category: string) => {
@@ -80,19 +79,6 @@ export function RequestCard({ request, travelMode, onSelect, onWhyRank, onHelp }
               <span>{request.urgency}</span>
             </span>
           </div>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onWhyRank(request);
-            }}
-            className="flex items-center gap-1 text-[11px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-full transition active:scale-95 touch-target border border-primary/20"
-            title="Click to see Help Gravity physics score breakdown"
-          >
-            <Atom className="h-3.5 w-3.5 notranslate" />
-            <span>Score: {request.helpGravityScore}</span>
-          </button>
         </div>
 
         {/* Title & Description */}

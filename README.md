@@ -3,19 +3,19 @@
 </p>
 
 <p align="center">
-  <strong>Hyperlocal Mutual Aid & Urgent Community Crisis Response Engine</strong><br />
-  <em>Powered by Classical Newtonian Help Gravity & Geospatial Kinematics</em>
+  <strong>Hyperlocal Mutual Aid & Urgent Community Crisis Response Platform</strong><br />
+  <em>Powered by Three-Key Urgency Dispatch, OpenStreetMap OSRM Routing & Verified Community Trust</em>
 </p>
 
 <p align="center">
-  <a href="https://github.com/krishkumarcodes/KindLink/releases/tag/v2.0.0"><img src="https://img.shields.io/badge/Release-v2.0.0-0D9488?style=for-the-badge&logo=github&logoColor=white" alt="Release v2.0.0" /></a>
+  <a href="https://github.com/krishkumarcodes/KindLink/releases/tag/v3.0.0"><img src="https://img.shields.io/badge/Release-v3.0.0-0D9488?style=for-the-badge&logo=github&logoColor=white" alt="Release v3.0.0" /></a>
   <a href="https://kindlink-gd8e.onrender.com"><img src="https://img.shields.io/badge/Live_Site-kindlink--gd8e.onrender.com-0D9488?style=for-the-badge&logo=render&logoColor=white" alt="Live Production Site" /></a>
   <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js-14.2%20App%20Router-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js 14" /></a>
   <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5.6-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
   <a href="https://supabase.com"><img src="https://img.shields.io/badge/Supabase-PostgreSQL%20%2B%20RLS-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" /></a>
   <a href="https://postgis.net"><img src="https://img.shields.io/badge/PostGIS-Spatial%20GIS-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostGIS" /></a>
   <a href="https://tailwindcss.com"><img src="https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" /></a>
-  <a href="#-physics-engine-breakdown"><img src="https://img.shields.io/badge/Physics_Engine-Antigravity%20Newtonian-FF6B6B?style=for-the-badge&logo=atom&logoColor=white" alt="Antigravity Physics Engine" /></a>
+  <a href="#-three-key-community-urgency-ranking"><img src="https://img.shields.io/badge/Dispatch_Engine-Three--Key%20Urgency-0D9488?style=for-the-badge&logo=shield&logoColor=white" alt="Three-Key Urgency Engine" /></a>
   <a href="https://docker.com"><img src="https://img.shields.io/badge/Docker-Node%2022%20Alpine-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="MIT License" /></a>
 </p>
@@ -25,20 +25,20 @@
 ## 📌 Table of Contents
 
 - [🌟 Project Overview](#-project-overview)
-- [⚡ Physics Engine Breakdown](#-physics-engine-breakdown)
-  - [1. Help Gravity Score (Newtonian Proximity Model)](#1-help-gravity-score-newtonian-proximity-model)
-  - [2. Kinematics & Haversine Geodesic Distance Engine](#2-kinematics--haversine-geodesic-distance-engine)
-  - [3. Inertial Sensor Calibration & Dynamic Fall Detector](#3-inertial-sensor-calibration--dynamic-fall-detector)
+- [⚡ Three-Key Community Urgency Ranking](#-three-key-community-urgency-ranking)
+  - [1. Urgency Level, Road Distance & Waiting Time](#1-urgency-level-road-distance--waiting-time)
+  - [2. OSRM Road Distance & Travel Mode Calculations](#2-osrm-road-distance--travel-mode-calculations)
+  - [3. Emergency SOS Broadcast & Healthcare Facilities](#3-emergency-sos-broadcast--healthcare-facilities)
 - [🔑 Showcase Demo Accounts & Credentials](#-showcase-demo-accounts--credentials)
-- [🛠️ How to Run the Showcase SQL](#️-how-to-run-the-showcase-sql)
+- [🛠️ Database Setup & Demo Accounts Provisioning](#️-database-setup--demo-accounts-provisioning)
 - [🏗️ Architecture & System Flow](#️-architecture--system-flow)
-- [🌐 Multilingual System (7 Regional Languages)](#-multilingual-system-7-regional-languages)
+- [🌐 Multilingual System (29 Verified Languages)](#-multilingual-system-29-verified-languages)
 - [🚀 Quickstart Guide](#-quickstart-guide)
   - [Local Development](#local-development)
   - [Cloud Deployment on Render (Docker)](#cloud-deployment-on-render-docker)
 - [📁 Project Structure](#-project-structure)
 - [📡 API Routes Reference](#-api-routes-reference)
-- [🎓 Capstone Details & Academic Attribution](#-capstone-details--academic-attribution)
+- [🎓 Project Origins & Academic Attribution](#-project-origins--academic-attribution)
 - [📄 License](#-license)
 
 ---
@@ -47,7 +47,7 @@
 
 **KindLink** is an open-source, hyperlocal peer-to-peer mutual aid and emergency coordination platform designed to bridge the critical first-response gap in local neighborhoods.
 
-Conceived and engineered for the industrial and mining belt spanning **Asansol, Burnpur, Durgapur, Dhanbad**, and surrounding regions (West Bengal & Jharkhand border), KindLink transforms abstract principles of classical mechanics into an equitable, real-time crisis dispatch mechanism.
+Conceived and engineered for the industrial and mining belt spanning **Asansol, Burnpur, Durgapur, Dhanbad**, and surrounding regions (West Bengal & Jharkhand border), KindLink transforms neighborhood goodwill into an equitable, real-time crisis dispatch mechanism.
 
 ### Key Community Missions:
 - 🩸 **Emergency Blood Donation & Platelets**: Rapid-response volunteer mobilization for critical transfusions.
@@ -58,153 +58,76 @@ Conceived and engineered for the industrial and mining belt spanning **Asansol, 
 
 ### Core Distinctions:
 - **Instant Access with Zero Bureaucracy**: Eliminates friction with streamlined onboarding, local fallback resilience, and non-blocking authentication.
-- **Physical Gravitational Prioritization**: Replaces arbitrary FIFO queues with a physics-based priority score that dynamically intensifies with waiting time and concentrates assistance near those closest to the incident.
-- **Interactive GPS Radar**: Full-screen, responsive OpenStreetMap & Leaflet geospatial radar with live distance indicators and velocity-based ETA calculations.
-- **Emergency Fall Detection & SOS Beacon**: Leverages HTML5 `DeviceMotion` inertial measurement units (IMU) to detect kinetic deceleration spikes and dispatch automated emergency distress signals.
+- **Three-Key Urgency Prioritization**: Replaces arbitrary chronological feeds with a transparent three-key sort: Urgency Level (`critical` > `high` > `medium` > `low`), Nearest Distance, and Longest Waiting Time.
+- **Interactive GPS Radar**: Full-screen, responsive OpenStreetMap & Leaflet geospatial radar with live distance indicators and turn-by-turn routing previews.
+- **Emergency SOS Beacon**: 2-second hold-to-activate emergency trigger with pulsing tactile feedback and instant multi-channel broadcast.
 
 ---
 
-## ⚡ Physics Engine Breakdown
+## ⚡ Three-Key Community Urgency Ranking
 
-KindLink was engineered as an applied physics capstone project, directly integrating three core physical formulations:
+KindLink prioritizes community help requests using an honest, deterministic three-key sorting model:
 
-### 1. Help Gravity Score (Newtonian Proximity Model)
+### 1. Urgency Level, Road Distance & Waiting Time
 
-In Sir Isaac Newton's Universal Law of Gravitation, the gravitational attraction $F$ between two bodies is directly proportional to the product of their masses and inversely proportional to the square of the separation distance:
+In crisis response, every minute matters. KindLink ranks all active requests in the database view and community feed through three successive keys:
 
-```math
-F = G \frac{m_1 \cdot m_2}{r^2}
-```
+1. **Primary Key: Urgency Level**
+   - **Critical** (Rank 1): Emergency blood donations, life-critical patient transit, acute medical distress.
+   - **High** (Rank 2): Oxygen refills, urgent prescription deliveries, specialized mobility needs.
+   - **Medium** (Rank 3): General medical equipment loans, senior check-ins, household mobility support.
+   - **Low** (Rank 4): Textbook exchanges, community study materials, non-urgent neighborhood lending.
 
-```text
-       G · m₁ · m₂
-  F = ─────────────
-           r²
-```
+2. **Secondary Key: Nearest Distance**
+   - Responders living closest to the help location receive the highest priority visibility. Calculated using real road distances via OpenStreetMap OSRM routing.
 
-KindLink models an urgent community need as an epicenter of gravitational attraction, pulling verified local volunteers toward the point of distress. The **Help Gravity Score** is formulated as:
+3. **Tertiary Key: Longest Waiting Time**
+   - Unresolved requests that have been waiting longer steadily rise to the top of their urgency tier, ensuring no critical request is buried or forgotten.
 
-```math
-\text{Help Gravity Score} = \frac{\text{TypeWeight} \times (1 + \lambda \times \text{waitingMinutes})}{(1 + \text{distanceKm})^2}
-```
+#### SQL Implementation (`nearby_requests`):
 
-```text
-                         TypeWeight × (1 + λ × waitingMinutes)
-  Help Gravity Score  =  ─────────────────────────────────────
-                                   (1 + distanceKm)²
-```
-
-#### Formula Breakdown & Variable Definitions:
-
-| Parameter | Symbol / Variable | Default Value / Unit | Physical Interpretation |
-| :--- | :--- | :--- | :--- |
-| **Category Type Weight** | `TypeWeight` (`W_type`) | `2` to `10` (Scalar) | Inherent physical urgency scalar (analogous to gravitational mass $m_1$) based on life-criticality. |
-| **Elapsed Waiting Time** | `waitingMinutes` (`Δt`) | Minutes ($\ge 0$) | Time elapsed since emergency broadcast initiation (`now() - t_created`). |
-| **Urgency Accretion Rate** | `λ` (`lambda`) | `0.05 min⁻¹` (+5%/min) | Linear accretion parameter compounding urgency for unfulfilled requests over time. |
-| **Geodesic Distance** | `distanceKm` (`d_km`) | Kilometers ($\ge 0$) | Great-circle Haversine distance between volunteer GPS and incident site. |
-| **Inverse-Square Buffer** | `(1 + distanceKm)²` | Damped $r^2$ ($d \ge 0$) | Newton's Inverse-Square Law with a `+1.0 km` soft buffer preventing infinite force singularities as $d \to 0$. |
-
-#### Category Urgency Weights (`W_type`):
-- 🩸 **Blood Donation**: `10 / 10` (Maximum criticality; perishable life window)
-- 🚑 **Emergency Transport**: `9 / 10` (Immediate transit requirement)
-- 👵 **Elderly Care**: `6 / 10` (Time-sensitive vulnerability)
-- 🩺 **Medical Equipment**: `5 / 10` (Essential mobility & respiratory relief)
-- 📚 **Books & Study Materials**: `2 / 10` (Community educational assistance)
-
-#### Exact SQL & TypeScript Implementations:
-
-In Supabase PostgreSQL (`supabase/sql/05_functions.sql`):
 ```sql
-ROUND(
-  (public.category_weight(c.category) * (1.0 + 0.05 * c.waiting_minutes) 
-   / power(1.0 + c.distance_km, 2)
-  )::numeric, 2
-)::double precision AS help_gravity_score
-```
-
-In TypeScript (`lib/data/physics.ts`):
-```typescript
-export function calculateHelpGravity(
-  category: HelpCategory,
-  waitingMinutes: number,
-  distanceKm: number
-): number {
-  const typeWeight = CATEGORY_WEIGHTS[category] || 5;
-  const timeFactor = 1 + 0.05 * Math.max(0, waitingMinutes);
-  const distanceFactor = Math.pow(1 + Math.max(0, distanceKm), 2);
-  const rawScore = (typeWeight * timeFactor) / distanceFactor;
-  return Math.round(rawScore * 100) / 100;
-}
+ORDER BY
+  CASE r.urgency
+    WHEN 'critical' THEN 1
+    WHEN 'high'     THEN 2
+    WHEN 'medium'   THEN 3
+    WHEN 'low'      THEN 4
+    ELSE 5
+  END ASC,
+  distance_km ASC,
+  r.created_at ASC;
 ```
 
 ---
 
-### 2. Kinematics & Haversine Geodesic Distance Engine
+### 2. OSRM Road Distance & Travel Mode Calculations
 
-To compute spatial separation across the curved surface of the Earth, KindLink employs the spherical Haversine trigonometric formulation with mean Earth radius $R = 6,371\text{ km}$:
+To compute actual street routes rather than misleading straight lines, KindLink integrates the Open Source Routing Machine (OSRM) with local caching:
 
-```math
-a = \sin^2\left(\frac{\Delta\phi}{2}\right) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\Delta\lambda}{2}\right)
-```
-
-```math
-c = 2 \cdot \operatorname{atan2}\left(\sqrt{a}, \sqrt{1 - a}\right)
-```
-
-```math
-d = R \cdot c
-```
+- 🚶 **Walking**: $5\text{ km/h}$ average urban speed
+- 🚲 **Bicycle**: $15\text{ km/h}$ cycling transit speed
+- 🚗 **Vehicle / Auto / Ambulance**: $30\text{ km/h}$ calibrated for municipal traffic corridors
 
 ```text
-  a = sin²(Δφ / 2) + cos(φ₁) · cos(φ₂) · sin²(Δλ / 2)
-  c = 2 · atan2(√a, √(1 - a))
-  d = R · c   (where R = 6,371 km)
+Estimated Time of Arrival (ETA) = (Road Distance in km / Mode Speed in km/h) * 60 minutes
 ```
 
-where $\phi_1, \phi_2$ represent latitudes in radians, and $\Delta\lambda$ represents longitude difference in radians.
-
-#### Dynamic Arrival Time (Kinematics: $v = d / t \implies t = d / v$):
-KindLink calculates responder Estimated Time of Arrival (ETA) with three travel modalities:
-- 🚶 **Walking**: $5\text{ km/h}$
-- 🚲 **Bicycle**: $15\text{ km/h}$
-- 🚗 **Vehicle / Auto / Ambulance**: $30\text{ km/h}$ (calibrated for congested municipal road corridors)
-
-```math
-\text{ETA (minutes)} = \max\left(1, \left\lceil \frac{d_{\text{km}}}{v_{\text{mode}}} \times 60 \right\rceil\right)
-```
-
-```text
-                     ⌈  d_km         ⌉
-  ETA (minutes) = max│1, ───── × 60  │
-                     ⌊   v_mode      ⌋
-```
+Helpers see realistic travel times and route polylines on a mini-map before committing to assist.
 
 ---
 
-### 3. Inertial Sensor Calibration & Dynamic Fall Detector
+### 3. Emergency SOS Broadcast & Healthcare Facilities
 
-To protect isolated seniors and lone volunteers, KindLink implements client-side motion telemetry using the HTML5 `DeviceMotion` API:
+To protect vulnerable citizens and lone volunteers, KindLink provides:
 
-1. **Stationary Bias Calibration**:
-   A 3-second stationary baseline phase records Earth's local gravitational vector ($\vec{g} \approx 9.81\text{ m/s}^2$) and calibrates sensor bias $(\Delta x, \Delta y, \Delta z)$ across the three spatial axes.
+1. **2-Second Hold-to-Activate SOS Button**:
+   - Integrated on the home screen and global header with tactile inset pulsing rings and safety countdown.
+   - Instantly notifies nearby verified responders with audio alerts and route guidance.
 
-2. **Discrete Low-Pass Signal Filtering**:
-   High-frequency motion jitter is smoothed using a discrete first-order low-pass filter ($\alpha = 0.3$):
-   ```math
-   \vec{a}_{\text{filtered}}[t] = \alpha \cdot \vec{a}_{\text{raw}}[t] + (1 - \alpha) \cdot \vec{a}_{\text{filtered}}[t-1]
-   ```
-   ```text
-   a_filtered[t] = α · a_raw[t] + (1 - α) · a_filtered[t-1]   (where α = 0.3)
-   ```
-
-3. **Net Acceleration Magnitude & Kinetic Spike Detection**:
-   ```math
-   \|\vec{a}_{\text{net}}\| = \sqrt{a_x^2 + a_y^2 + a_z^2}
-   ```
-   ```text
-   |a_net| = √(ax² + ay² + az²)
-   ```
-   When sudden deceleration exceeds the threshold ($|\vec{a}_{\text{net}}| > 22.0\text{ m/s}^2 \approx 2.24g$) followed by prolonged immobility, an automated 10-second safety countdown is triggered, dispatching an SOS beacon with live GPS coordinates to nearby verified volunteers.
+2. **Healthcare Facility Radar**:
+   - Queries OpenStreetMap Overpass API for nearest hospitals, clinics, pharmacies, and certified blood banks.
+   - Curated emergency contact directory for Asansol Sub-Divisional Hospital, Burnpur SAIL Hospital, and Durgapur Health World with one-tap calling and navigation directions.
 
 ---
 
@@ -214,7 +137,7 @@ For academic grading, portfolio evaluations, and live project presentations, Kin
 
 | Account Type | Username / Aliases | Primary Email | Passwords (Either Works) | Role & Showcase Permissions |
 | :--- | :--- | :--- | :--- | :--- |
-| 🤝 **Showcase Volunteer** | `kind_volunteer`<br />`kind_volunteer_alias` | `volunteer@kindlink.demo`<br />*(or `kind_volunteer@kindlink.demo`)* | `KindLink#Volunteer2026`<br />or `KindLink#2026` | **Verified Volunteer**<br />• Browses urgent requests on the live radar<br />• Submits help offers & calculates transit ETA<br />• Accesses Physics Lab and real-time simulator |
+| 🤝 **Showcase Volunteer** | `kind_volunteer`<br />`kind_volunteer_alias` | `volunteer@kindlink.demo`<br />*(or `kind_volunteer@kindlink.demo`)* | `KindLink#Volunteer2026`<br />or `KindLink#2026` | **Verified Volunteer**<br />• Browses urgent requests on the live radar<br />• Submits help offers & calculates transit ETA<br />• Accesses live map radar and real-time community pulse |
 | 🆘 **Showcase Requester** | `need_aid`<br />`need_aid_alias` | `requester@kindlink.demo`<br />*(or `need_aid@kindlink.demo`)* | `KindLink#Requester2026`<br />or `KindLink#2026` | **Verified Citizen**<br />• Broadcasts urgent blood/equipment requests<br />• Real-time incoming responder tracking<br />• Resolves tasks with feedback ratings |
 | 🛡️ **Platform Administrator** | `admin_kindlink`<br />`admin_kindlink_alias` | `admin@kindlink.demo`<br />*(or `admin_kindlink@kindlink.demo`)* | `KindLink#Admin2026`<br />or `KindLink#2026` | **Super Administrator**<br />• Full access to `/admin` Moderation Portal<br />• Reviews & verifies government identity docs<br />• Resolves flagged community reports & incidents |
 
@@ -223,7 +146,7 @@ For academic grading, portfolio evaluations, and live project presentations, Kin
 
 ---
 
-## 🛠️ Supabase Database Setup & Demo Accounts Provisioning
+## 🛠️ Database Setup & Demo Accounts Provisioning
 
 KindLink utilizes a clean, cloud-safe PostgreSQL schema (`supabase/sql/all_in_one.sql`) designed for modern Supabase Cloud instances, coupled with the official GoTrue Admin API seeder:
 
@@ -234,7 +157,7 @@ KindLink utilizes a clean, cloud-safe PostgreSQL schema (`supabase/sql/all_in_on
    - ✅ Activates `uuid-ossp`, `pgcrypto`, and native `postgis` spatial extensions.
    - ✅ Creates core normalized tables: `profiles`, `requests`, `offers`, `notifications`, `ratings`, `reports`, `sos_events`, and `verification_requests`.
    - ✅ Deploys PostGIS GiST spatial indexes for sub-second radar lookups and B-Tree indexes.
-   - ✅ Deploys the Help Gravity score function, notification triggers, and strict Row Level Security (RLS) policies.
+   - ✅ Deploys the three-key urgency ranking function, notification triggers, and strict Row Level Security (RLS) policies.
    - ✅ Deploys `get_email_by_username()` and `public_stats()` RPC resolvers.
    - ✅ Configures storage buckets (`verification-docs`) and Supabase Realtime publication.
    - ✅ **Zero generated column or token mismatches**: Pure DDL for `public` schema with zero direct manipulation of internal `auth.users` tables.
@@ -267,7 +190,7 @@ KindLink is built on a resilient, modular cloud-native architecture combining th
 flowchart TD
     subgraph Clients["Clients & Edge Devices"]
         U1["🆘 Citizen Requester\n(PWA / Mobile / Web)"]
-        U2["🤝 Volunteer Responder\n(GPS Tracking & Physics Lab)"]
+        U2["🤝 Volunteer Responder\n(GPS Tracking & Routing)"]
         U3["🛡️ Platform Moderator\n(Admin Dashboard /admin)"]
     end
 
@@ -275,7 +198,7 @@ flowchart TD
         MW["Middleware & Auth Guard\n(middleware.ts)"]
         API["Route Handlers\n(/api/auth, /api/admin, /api/health)"]
         RSC["React Server Components\n& Client Shell (Zustand + Leaflet)"]
-        PE["Applied Physics Engine\n(Help Gravity + Kinematics + Fall IMU)"]
+        PE["Community Dispatch Engine\n(Urgency Sort + OSRM + SOS)"]
     end
 
     subgraph SupabasePlatform["Supabase Cloud Platform"]
@@ -283,7 +206,7 @@ flowchart TD
         
         subgraph DB["PostgreSQL 15 Database"]
             PG_GIS["PostGIS Spatial Engine\n(ST_DWithin, ST_DistanceSphere)"]
-            PG_FUNC["Custom Functions & Triggers\n(calculate_help_gravity)"]
+            PG_FUNC["Custom Functions & Triggers\n(nearby_requests)"]
             PG_RLS["Row Level Security (RLS)\n(Role & Identity Based Isolation)"]
         end
         
@@ -321,19 +244,18 @@ flowchart TD
 
 ---
 
-## 🌐 Native Multilingual Engine (34 Languages & Dialects)
+## 🌐 Multilingual System (29 Verified Languages)
 
-KindLink features a high-performance native JSON dictionary internationalization engine (`lib/i18n/dictionaries/`) with zero external API dependencies for core UI elements, complete layout mirroring for Right-to-Left (**RTL**) scripts, and locale persistence in HTTP cookies.
+KindLink uses Google Translate as its sole, reliable translation engine, offering full interface coverage across 29 verified languages:
 
 ### Language Coverage Overview:
 - 🇮🇳 **17 Scheduled & Regional Indian Languages**: English, हिन्दी (Hindi), বাংলা (Bengali), भोजपुरी (Bhojpuri), मैथिली (Maithili), नेपाली (Nepali), اردو (Urdu - **RTL**), ᱥᱟᱱᱛᱟᱲᱤ (Santali Ol Chiki), ଓଡ଼ିଆ (Odia), অসমীয়া (Assamese), मराठी (Marathi), ગુજરાતી (Gujarati), ਪੰਜਾਬੀ (Punjabi), தமிழ் (Tamil), తెలుగు (Telugu), ಕನ್ನಡ (Kannada), മലയാളം (Malayalam).
-- ⛏️ **5 Jharkhand & Tribal Dialects (Beta)**: नागपुरी (Nagpuri), खोरठा (Khortha), कुड़ुख़ (Kurukh), मुंडारी (Mundari), हो (Ho).
 - 🌍 **12 International Languages**: French, Spanish, German, Portuguese, Italian, Russian, Chinese Simplified (简体中文), Japanese (日本語), Korean (한국어), Arabic (العربية - **RTL**), Indonesian, Turkish.
 
 ### Key Internationalization Features:
-- **Zero Translation Flicker**: Native pre-compiled JSON dictionaries load instantly on user selection.
+- **Google Translate Single Source of Truth**: Instant language switching without dictionary maintenance overhead.
 - **Bi-Directional Layouts**: Automatic `dir="rtl"` layout flipping for Urdu (`ur`) and Arabic (`ar`).
-- **Dynamic Content Safeguards**: Scoped UI containers with `translate="no"` attributes to prevent external browser translation widgets from corrupting sensitive buttons, emergency contact numbers, or blood donation groups.
+- **Dynamic Content Safeguards**: Scoped UI containers with `translate="no"` attributes to prevent external translation from corrupting brand logos, coordinates, or blood group labels.
 
 ---
 
@@ -436,38 +358,39 @@ KindLink/
 ├── components/                       # Modular React UI Components
 │   ├── auth/                         # Inline & Dedicated Auth Modals & Forms
 │   ├── home/                         # Realtime Stats Pulse & Feed Cards
+│   ├── location/                     # Pin Drop Map & Location Picker Modals
 │   ├── map/                          # Leaflet GIS Radar & Dynamic Markers
-│   ├── physics/                      # Interactive Physics Lab & Gravity Simulator
 │   ├── profile/                      # User Profile, Badges, Impact & Verification
 │   ├── requests/                     # Urgent Requests List & Filter Engine
 │   ├── shell/                        # Header (SOS Pill, Location Chip), Bottom Nav
 │   └── wizard/                       # Multi-step Urgent Request Creation Modal
 ├── lib/                              # Core Utility & Service Layer
-│   ├── data/                         # Data Adapters & Physics Mechanics
+│   ├── data/                         # Data Adapters & Geodesic Utilities
 │   │   ├── adapter.ts                # Abstract Data Adapter Interface
 │   │   ├── mock-adapter.ts           # In-Memory Offline Storage Engine
-│   │   ├── physics.ts                # Help Gravity & Haversine Implementations
+│   │   ├── distance.ts               # Great-Circle & Travel Time Calculation
 │   │   ├── supabase-adapter.ts       # Live Supabase Production Client Adapter
 │   │   └── types.ts                  # Domain TypeScript Types & Models
-│   ├── i18n/                         # Native 34-Language JSON Dictionary Engine
-│   ├── store/                        # Zustand Global State Management (v3)
+│   ├── geo/                          # OSRM Road Routing & Hospital Finder
+│   │   ├── osrm.ts                   # OSRM API Client & Route Polylines
+│   │   ├── hospitals.ts              # OSM Overpass Healthcare Facilities Finder
+│   │   └── reverse-geocode.ts        # Neighborhood Name Resolvers
+│   ├── location/                     # Unified LocationProvider & Geolocation Tracker
+│   ├── translate/                    # Google Translate Single Engine Client
+│   ├── store/                        # Zustand Global State Management
 │   └── supabase/                     # Supabase Client, Server, Admin & Realtime
 ├── supabase/                         # Supabase Database Migrations
-│   ├── sql/                          # Ordered Database Migrations (01 to 16)
+│   ├── sql/                          # Ordered Database Migrations (01 to 12)
 │   │   ├── 01_extensions.sql         # PostGIS Extension & Cast Overloads
 │   │   ├── 02_types.sql              # Enums (help_category, request_status)
 │   │   ├── 03_tables.sql             # Relational Schema Definition
 │   │   ├── 04_indexes.sql            # Spatial GiST & B-tree Indexes
-│   │   ├── 05_functions.sql          # Stored Procedures & Physics Scoring
+│   │   ├── 05_functions.sql          # Stored Procedures & Urgency Ranking
 │   │   ├── 06_triggers.sql           # PostGIS-Safe Dispatch Triggers
 │   │   ├── 07_rls_policies.sql       # Row Level Security Policies
-│   │   ├── 12_cleanup_demo_users.sql # Safe Demo User Purge Script
-│   │   ├── 13_create_showcase_accounts.sql # Showcase Credential Provisioning
-│   │   ├── 14_comprehensive_live_upgrade.sql # Realtime Platform Upgrade
-│   │   ├── 15_cleanup_test_data.sql  # Safe Purge of Legacy Test Data
-│   │   ├── 16_login_signup_helpers.sql # Username Authentication Helper RPC
-│   │   ├── all_in_one.sql            # Consolidated Single-Run Migration
-│   │   └── all_in_one_v2.sql         # Master Atomic Migration (BEGIN...COMMIT)
+│   │   ├── 08_storage.sql            # Storage Bucket Policies
+│   │   ├── 09_realtime.sql           # Realtime Publication
+│   │   └── all_in_one.sql            # Consolidated Single-Run Migration
 ├── Dockerfile                        # Multi-Stage Node 22 Alpine Build
 ├── package.json                      # Dependencies & Scripts
 ├── render.yaml                       # Render Infrastructure as Code Blueprint
@@ -498,9 +421,9 @@ KindLink/
 
 ---
 
-## 🎓 Capstone Details & Academic Attribution
+## 🎓 Project Origins & Academic Attribution
 
-KindLink was engineered as a B.Tech Computer Science & Engineering (CSE) Physics Capstone Project at:
+KindLink was conceptualized and developed as a collaborative community initiative in the Department of Computer Science & Engineering at:
 
 <p align="center">
   <strong>Asansol Engineering College (AEC)</strong><br />
@@ -508,12 +431,12 @@ KindLink was engineered as a B.Tech Computer Science & Engineering (CSE) Physics
 </p>
 
 - **Lead Engineer & Author**: [Krish Kumar](https://github.com/krishkumarcodes) (`krishkumarcodes@gmail.com`)
-- **Academic Focus**: Applied Classical Mechanics in Societal Computing & Crisis Dispatch
-- **Core Physics Translation**:
-  1. Translation of Newton's Universal Gravitation (`F = G · (m₁ · m₂) / r²`) into urgency scoring.
-  2. Spherical Trigonometry & Haversine Geodesic formulation (`d = 2R · arcsin(√a)`).
-  3. Dynamic Kinematics (`v = d / t` $\implies$ `ETA = d / v`).
-  4. Inertial Acceleration Vector Analysis (`|a_net| = √(ax² + ay² + az²)`) and Low-Pass Noise Suppression.
+- **Focus**: Hyperlocal Geospatial Systems, Transparent Urgency Dispatch, and Resilient Mutual Aid
+- **Key Technical Components**:
+  1. Three-key urgency ranking (Urgency Level, Nearest Distance, Longest Waiting Time).
+  2. OpenStreetMap OSRM road distance routing and multi-modal transit calculations.
+  3. Interactive Leaflet GIS maps with real-time community pulse.
+  4. Privacy-first spatial obfuscation with mutual identity reveal.
 
 ---
 
@@ -535,4 +458,4 @@ furnished to do so, subject to the following conditions:
 ...
 ```
 
-KindLink is fully open-source, non-profit, and dedicated to empowering communities with equitable, physics-driven mutual aid. Contributions, forks, and academic extensions are warmly welcomed.
+KindLink is fully open-source, non-profit, and dedicated to empowering communities with equitable, community-driven mutual aid. Contributions, forks, and community extensions are warmly welcomed.

@@ -21,18 +21,18 @@ import { JsonLd, buildBreadcrumbSchema } from '@/components/seo/JsonLd';
 import { constructMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = constructMetadata({
-  title: 'About KindLink | Applied Physics & Mutual Aid in Asansol',
+  title: 'About KindLink | Hyperlocal Mutual Aid in Asansol',
   description:
-    'KindLink is an open community mutual aid platform developed as a B.Tech CSE capstone at Asansol Engineering College. Learn our mission, engineering ethos, and community commitment.',
+    'KindLink is an open community mutual aid platform developed at Asansol Engineering College. Learn our mission, engineering ethos, and community commitment.',
   path: '/about',
 });
 
 export default function AboutPage() {
   const coreValues = [
     {
-      title: 'Deterministic Applied Physics Over Engagement Feeds',
+      title: 'Deterministic Urgency Ranking Over Engagement Feeds',
       description:
-        'Instead of opaque social algorithms engineered to monetize attention or generate ad clicks, KindLink prioritizes community requests using Newton-inspired gravitational models and kinematic arrival windows.',
+        'Instead of opaque social algorithms engineered to monetize attention or generate ad clicks, KindLink prioritizes community requests using transparent urgency levels, real road distances, and waiting time.',
     },
     {
       title: 'Zero Monetization, Zero Fees, Zero Data Brokerage',
@@ -73,7 +73,7 @@ export default function AboutPage() {
           </div>
 
           <h1 className="font-heading text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-            About KindLink: Grassroots Mutual Aid Powered by Applied Physics
+            About KindLink: Grassroots Mutual Aid Powered by Community Trust
           </h1>
 
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
@@ -81,29 +81,28 @@ export default function AboutPage() {
             networks fail the people who need help most. When a family member desperately requires a rare blood unit at
             Asansol District Hospital, frantic appeals posted to WhatsApp status updates or Facebook groups are either
             buried by algorithm feeds, forwarded to recipients hundreds of kilometers away, or exploited by fraudulent
-            middlemen. KindLink re-engineers local mutual aid from first physical principles.
+            middlemen. KindLink re-engineers local mutual aid from grassroots community principles.
           </p>
 
-          {/* ACADEMIC CAPSTONE SECTION */}
+          {/* COMMUNITY PLATFORM INITIATIVE */}
           <section className="mt-10 rounded-2xl border border-teal-500/30 bg-teal-500/5 p-6 sm:p-8">
             <div className="flex items-start gap-4">
               <div className="rounded-xl bg-teal-600 p-3 text-white shrink-0">
-                <Atom className="h-6 w-6" />
+                <ShieldCheck className="h-6 w-6" />
               </div>
               <div>
                 <h2 className="font-heading text-lg font-bold text-foreground">
-                  The B.Tech CSE Academic Capstone Context
+                  Community Platform Initiative
                 </h2>
                 <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                  KindLink was conceptualized, designed, and developed as a final-year B.Tech Capstone Project in the
+                  KindLink was conceptualized and developed as a collaborative initiative in the
                   Department of Computer Science &amp; Engineering at <strong>Asansol Engineering College (AEC)</strong>,
                   affiliated with the Maulana Abul Kalam Azad University of Technology (MAKAUT), West Bengal.
                 </p>
                 <p className="mt-3 text-xs sm:text-sm text-muted-foreground leading-relaxed">
                   Rather than building another generic corporate web application, our engineering team sought to apply
-                  classical physics formulations — including Newton&apos;s Law of Universal Gravitation, kinematic velocity
-                  vectors, and discrete inertial low-pass filtering — to solve pressing human challenges in our local college
-                  town and neighboring industrial townships.
+                  modern geospatial routing, cryptographic trust verification, and transparent urgency prioritization
+                  to solve pressing human challenges in our local college town and neighboring industrial townships.
                 </p>
               </div>
             </div>
@@ -180,10 +179,10 @@ export default function AboutPage() {
             </Link>
 
             <Link
-              href="/physics"
+              href="/how-it-works"
               className="text-xs font-semibold text-muted-foreground hover:text-foreground"
             >
-              Discover the physics equations behind KindLink &rarr;
+              Discover how community matching works &rarr;
             </Link>
           </div>
         </div>

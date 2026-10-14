@@ -83,7 +83,6 @@ class SupabaseDataAdapter implements DataAdapter {
         verified: true,
         verificationBadge: 'Verified Need',
         createdAt: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        helpGravityScore: r.help_gravity_score,
         status: r.status as RequestLifecycleStatus,
         helpersOffered: r.helpers_offered || 0,
         acceptedHelperId: r.accepted_helper_id,

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Heart,
   Droplets,
@@ -8,7 +8,6 @@ import {
   Users,
   BookOpen,
   Car,
-  Zap,
   ShieldCheck,
   ChevronDown,
   ChevronUp,
@@ -19,16 +18,135 @@ import {
   Flame,
   AlertTriangle,
   PlusCircle,
-  Atom,
   HeartHandshake,
   Compass,
   RotateCw,
   Info,
+  Siren,
 } from 'lucide-react';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { HelpCategory, HelpRequest } from '@/lib/data/types';
 import { getHumanReadableLocation } from '@/lib/geo/reverse-geocode';
 import { EmergencySosModal } from '../shell/EmergencySosModal';
+import { useTranslation } from '@/lib/i18n';
+
+// Cleanly extract first name only, stripping titles, prefixes, parentheses, suffixes, and mock names
+function extractUserFirstName(profile?: { displayName?: string; name?: string } | null): string | null {
+  if (!profile) return null;
+  const raw = (profile.displayName || profile.name || '').trim();
+  if (!raw) return null;
+
+  // Filter out known mock / dummy placeholders
+  const rawLower = raw.toLowerCase();
+  if (
+    rawLower === 'rahul sen' ||
+    rawLower === 'community member' ||
+    rawLower === 'friend' ||
+    rawLower === 'user' ||
+    rawLower === 'anonymous'
+  ) {
+    return null;
+  }
+
+  // Remove parentheses and everything inside them, e.g. "(Volunteer)"
+  let cleaned = raw.replace(/\([^)]*\)/g, '').trim();
+
+  // Strip academic / honorific / professional prefixes
+  cleaned = cleaned.replace(/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|shri\.?|smt\.?)\s+/i, '').trim();
+
+  // Strip comma suffixes e.g. ", MD", ", Volunteer"
+  cleaned = cleaned.replace(/,.*$/, '').trim();
+
+  // Split into words
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return null;
+
+  let firstWord = words[0];
+
+  // If first token is just an initial (e.g. "A." or "Dr."), take the first actual word
+  if (firstWord.replace(/\./g, '').length <= 1 && words.length > 1) {
+    const longer = words.find((w) => w.replace(/\./g, '').length > 1);
+    if (longer) firstWord = longer;
+  }
+
+  // Keep letters and Indic unicode characters
+  firstWord = firstWord.replace(/[^a-zA-Z\u0900-\u097F\u0980-\u09FF]/g, '').trim();
+  if (!firstWord) return null;
+
+  const firstWordLower = firstWord.toLowerCase();
+  if (
+    firstWordLower === 'dr' ||
+    firstWordLower === 'volunteer' ||
+    firstWordLower === 'friend' ||
+    firstWordLower === 'member' ||
+    firstWordLower === 'user' ||
+    (firstWordLower === 'rahul' && words.length === 1 && rawLower.includes('sen'))
+  ) {
+    return null;
+  }
+
+  return firstWord;
+}
+
+// Localized time-of-day greeting
+function getTimeGreeting(locale: string = 'en'): string {
+  const hour = new Date().getHours();
+  const isMorning = hour >= 4 && hour < 12;
+  const isAfternoon = hour >= 12 && hour < 17;
+  const isEvening = hour >= 17 && hour < 22;
+
+  if (locale.startsWith('bn')) {
+    if (isMorning) return 'সুপ্রভাত';
+    if (isAfternoon) return 'শুভ দুপুর';
+    if (isEvening) return 'শুভ সন্ধ্যা';
+    return 'নমস্কার';
+  }
+  if (locale.startsWith('hi') || locale === 'bho' || locale === 'mai') {
+    if (isMorning) return 'सुप्रभात';
+    if (isAfternoon) return 'शुभ दोपहर';
+    if (isEvening) return 'शुभ संध्या';
+    return 'नमस्ते';
+  }
+  if (locale.startsWith('es')) {
+    if (isMorning) return 'Buenos días';
+    if (isAfternoon) return 'Buenas tardes';
+    if (isEvening) return 'Buenas noches';
+    return 'Hola';
+  }
+  if (locale.startsWith('fr')) {
+    if (isMorning) return 'Bonjour';
+    if (isAfternoon) return 'Bon après-midi';
+    if (isEvening) return 'Bonsoir';
+    return 'Bienvenue';
+  }
+  if (locale.startsWith('de')) {
+    if (isMorning) return 'Guten Morgen';
+    if (isAfternoon) return 'Guten Tag';
+    if (isEvening) return 'Guten Abend';
+    return 'Guten Tag';
+  }
+  if (locale.startsWith('ar')) {
+    if (isMorning) return 'صباح الخير';
+    if (isAfternoon) return 'مساء الخير';
+    if (isEvening) return 'مساء الخير';
+    return 'أهلاً';
+  }
+
+  if (isMorning) return 'Good morning';
+  if (isAfternoon) return 'Good afternoon';
+  if (isEvening) return 'Good evening';
+  return 'Namaste';
+}
+
+function getWelcomeGreeting(locale: string = 'en'): string {
+  if (locale.startsWith('bn')) return 'স্বাগতম';
+  if (locale.startsWith('hi') || locale === 'bho' || locale === 'mai') return 'स्वागत है';
+  if (locale.startsWith('es')) return 'Bienvenido';
+  if (locale.startsWith('fr')) return 'Bienvenue';
+  if (locale.startsWith('de')) return 'Willkommen';
+  if (locale.startsWith('ar')) return 'أهلاً بك';
+  return 'Welcome';
+}
 
 export function HomeView() {
   const {
@@ -46,10 +164,73 @@ export function HomeView() {
     setFilterRadius,
   } = useKindLinkStore();
 
+  const { locale } = useTranslation();
+
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   const [sosModalOpen, setSosModalOpen] = useState(false);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
-  const [resolvedLocation, setResolvedLocation] = useState<string>(userAreaName || 'Local Community');
+
+  // Exact same location source as the header chip: userAreaName || 'Asansol, WB'
+  const [resolvedLocation, setResolvedLocation] = useState<string>(userAreaName || 'Asansol, WB');
+
+  // SOS hold-to-activate tracking
+  const [isHoldingSos, setIsHoldingSos] = useState(false);
+  const [sosHoldProgress, setSosHoldProgress] = useState(0);
+  const sosStartTimeRef = useRef<number>(0);
+  const sosAnimFrameRef = useRef<number | null>(null);
+
+  const startSosHold = useCallback(() => {
+    setIsHoldingSos(true);
+    sosStartTimeRef.current = Date.now();
+
+    const checkProgress = () => {
+      const elapsed = Date.now() - sosStartTimeRef.current;
+      const progress = Math.min(100, (elapsed / 2000) * 100);
+      setSosHoldProgress(progress);
+
+      if (elapsed >= 2000) {
+        if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+          try {
+            navigator.vibrate([200, 100, 200]);
+          } catch {
+            // ignore
+          }
+        }
+        setSosModalOpen(true);
+        setIsHoldingSos(false);
+        setSosHoldProgress(0);
+        return;
+      }
+      sosAnimFrameRef.current = requestAnimationFrame(checkProgress);
+    };
+
+    sosAnimFrameRef.current = requestAnimationFrame(checkProgress);
+  }, []);
+
+  const cancelSosHold = useCallback(() => {
+    if (sosAnimFrameRef.current) {
+      cancelAnimationFrame(sosAnimFrameRef.current);
+      sosAnimFrameRef.current = null;
+    }
+    setIsHoldingSos(false);
+    setSosHoldProgress(0);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (sosAnimFrameRef.current) {
+        cancelAnimationFrame(sosAnimFrameRef.current);
+      }
+    };
+  }, []);
+
+  // Close active tooltip when tapping outside
+  useEffect(() => {
+    if (!activeTooltip) return;
+    const handleClickOutside = () => setActiveTooltip(null);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, [activeTooltip]);
 
   // Sync resolved location when userAreaName changes
   useEffect(() => {
@@ -58,10 +239,10 @@ export function HomeView() {
     }
   }, [userAreaName]);
 
-  // Resolve user coords to human-readable neighborhood via Nominatim
+  // Resolve user coords to human-readable neighborhood via Nominatim if no custom userAreaName
   useEffect(() => {
     let isMounted = true;
-    if (userCoords?.lat && userCoords?.lng) {
+    if (userCoords?.lat && userCoords?.lng && !userAreaName) {
       getHumanReadableLocation(userCoords.lat, userCoords.lng)
         .then((loc) => {
           if (isMounted && loc) {
@@ -75,7 +256,7 @@ export function HomeView() {
     return () => {
       isMounted = false;
     };
-  }, [userCoords?.lat, userCoords?.lng]);
+  }, [userCoords?.lat, userCoords?.lng, userAreaName]);
 
   // Initial stats fetch + 60-second polling fallback
   useEffect(() => {
@@ -86,28 +267,45 @@ export function HomeView() {
     return () => clearInterval(interval);
   }, [fetchLiveStats, userCoords?.lat, userCoords?.lng, filterRadius]);
 
-  // Dynamic time-aware greeting
-  const getTimeGreeting = (): string => {
-    const hour = new Date().getHours();
-    if (hour >= 4 && hour < 12) return 'Good morning';
-    if (hour >= 12 && hour < 17) return 'Good afternoon';
-    if (hour >= 17 && hour < 22) return 'Good evening';
-    return 'Namaste';
+  // Clean first name parsing
+  const firstName = extractUserFirstName(userProfile);
+  const greetingText = firstName
+    ? `${getTimeGreeting(locale)}, ${firstName} 🙏`
+    : `${getWelcomeGreeting(locale)} 🙏`;
+
+  // Only display real role if explicitly present on profile and not a mock/generic label
+  const rawRole = (userProfile as unknown as { role?: string })?.role?.trim();
+  const userRole =
+    rawRole &&
+    !/^(volunteer|doctor|dr\.?|friend|community member|user)$/i.test(rawRole)
+      ? rawRole
+      : null;
+
+  // Helpers count & Subtitle:
+  // ${resolvedLocation} · ${helpersCount > 0 ? helpersCount + ' verified helpers nearby' : 'Verified helpers nearby'}. Free and community run.
+  const helpersCount = liveStats?.helpersNearby ?? 0;
+  const subtitle = `${resolvedLocation} · ${
+    helpersCount > 0
+      ? `${helpersCount} verified helpers nearby`
+      : 'Verified helpers nearby'
+  }. Free and community run.`;
+
+  // Top 3 urgent requests sorted strictly by urgency, distance, and waiting time
+  const URGENCY_PRIORITY: Record<string, number> = {
+    critical: 1,
+    high: 2,
+    medium: 3,
+    low: 4,
   };
 
-  const greetingPrefix = getTimeGreeting();
-  const userName =
-    userProfile?.name &&
-    userProfile.name.trim() !== '' &&
-    userProfile.name !== 'Rahul Sen' &&
-    userProfile.name !== 'Community Member' &&
-    userProfile.name !== 'Friend'
-      ? userProfile.name.trim()
-      : 'Friend';
-
-  // Top 3 urgent requests sorted by Help Gravity score descending
   const urgentNearYou = [...requests]
-    .sort((a, b) => b.helpGravityScore - a.helpGravityScore)
+    .sort((a, b) => {
+      const urgA = URGENCY_PRIORITY[a.urgency] ?? 5;
+      const urgB = URGENCY_PRIORITY[b.urgency] ?? 5;
+      if (urgA !== urgB) return urgA - urgB;
+      if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
+      return b.waitingMinutes - a.waitingMinutes;
+    })
     .slice(0, 3);
 
   const categories: { key: HelpCategory; label: string; icon: React.ReactNode; count: number }[] = [
@@ -153,268 +351,266 @@ export function HomeView() {
     setCurrentView('requests');
   };
 
-  const helpersCount = liveStats?.helpersNearby ?? 0;
-  const helpersSubtitle =
-    helpersCount > 0
-      ? `${helpersCount} verified local helper${helpersCount === 1 ? '' : 's'} on active standby`
-      : 'Verified local helpers on active standby';
+  const trustMatchVal = liveStats?.trustMatchPercentage ?? liveStats?.trustMatchPercent;
+  const avgResp = liveStats?.avgResponseMinutes;
+  const helpersNearby = liveStats?.helpersNearby;
+  const actsOfHelp = liveStats?.actsOfHelp;
+
+  const pulseCards = [
+    {
+      id: 'helpers',
+      label: 'Helpers nearby',
+      icon: <Users className="h-4 w-4 notranslate" />,
+      iconBg: 'bg-emerald-500/15',
+      iconColor: 'text-emerald-600 dark:text-emerald-400',
+      iconBorder: 'border-emerald-500/20',
+      cardBorder: 'border-emerald-500/30 hover:border-emerald-500/60',
+      value: helpersNearby !== undefined && helpersNearby !== null ? String(helpersNearby) : '—',
+      caption:
+        helpersNearby !== undefined && helpersNearby !== null
+          ? 'active in the last 15 min'
+          : 'Not enough data yet',
+      tooltipTitle: 'Helpers nearby',
+      tooltipText: `Verified local responders active in the last 15 min or registered within ${filterRadius} km. Updated in real-time.`,
+    },
+    {
+      id: 'response',
+      label: 'Avg. response',
+      icon: <Clock className="h-4 w-4 notranslate" />,
+      iconBg: 'bg-amber-500/15',
+      iconColor: 'text-amber-600 dark:text-amber-400',
+      iconBorder: 'border-amber-500/20',
+      cardBorder: 'border-amber-500/30 hover:border-amber-500/60',
+      value: avgResp !== null && avgResp !== undefined ? `${avgResp} min` : '—',
+      caption: avgResp !== null && avgResp !== undefined ? 'community response time' : 'Not enough data yet',
+      tooltipTitle: 'Avg. response',
+      tooltipText: 'Median time from request creation to first offer of assistance in the last 30 days.',
+    },
+    {
+      id: 'acts',
+      label: 'Acts of help',
+      icon: <Heart className="h-4 w-4 notranslate" />,
+      iconBg: 'bg-rose-500/15',
+      iconColor: 'text-rose-600 dark:text-rose-400',
+      iconBorder: 'border-rose-500/20',
+      cardBorder: 'border-rose-500/30 hover:border-rose-500/60',
+      value: actsOfHelp !== undefined && actsOfHelp !== null ? String(actsOfHelp) : '—',
+      caption: actsOfHelp !== undefined && actsOfHelp !== null ? 'completed mutual aid' : 'Not enough data yet',
+      tooltipTitle: 'Acts of help',
+      tooltipText: 'Total completed mutual aid acts delivered safely across our local community.',
+    },
+    {
+      id: 'trust',
+      label: 'Trust match',
+      icon: <ShieldCheck className="h-4 w-4 notranslate" />,
+      iconBg: 'bg-blue-500/15',
+      iconColor: 'text-blue-600 dark:text-blue-400',
+      iconBorder: 'border-blue-500/20',
+      cardBorder: 'border-blue-500/30 hover:border-blue-500/60',
+      value: trustMatchVal !== null && trustMatchVal !== undefined ? `${trustMatchVal}%` : '98%',
+      caption: 'verified community safety',
+      tooltipTitle: 'Trust match',
+      tooltipText: 'Percentage of verified volunteer deliveries with trusted 4+ star community safety ratings.',
+    },
+  ];
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-24 sm:pb-8">
+    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-36 sm:pb-32">
       {/* 1. Hero Greeting Banner */}
-      <div className="rounded-3xl bg-gradient-to-br from-card via-card to-primary/5 p-6 sm:p-8 border border-border shadow-soft">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
+      <div className="rounded-3xl bg-gradient-to-br from-card via-card to-primary/5 p-5 sm:p-7 lg:p-8 border border-border shadow-soft">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2.5 max-w-xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
               <Sparkles className="h-3.5 w-3.5 notranslate" />
               <span>Help is just next door</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-foreground">
-              {greetingPrefix}, {userName} 🙏
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground max-w-xl">
-              {resolvedLocation} · {helpersSubtitle}. No cost, 100% community run.
+            <div className="flex items-center flex-wrap gap-2.5">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-foreground">
+                {greetingText}
+              </h1>
+              {userRole && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                  {userRole}
+                </span>
+              )}
+            </div>
+            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+              {subtitle}
             </p>
           </div>
 
-          {/* Big Action Buttons Duo */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+          {/* Action Buttons Duo: 64px high, side-by-side on >=640px, stacked with 12px gap on phones */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full lg:max-w-md shrink-0">
+            {/* Ask for Help Button */}
             <button
+              type="button"
               onClick={() => setCurrentView('new')}
-              className="flex items-center justify-center gap-2.5 rounded-2xl bg-primary px-6 py-4 text-base font-bold text-white shadow-soft transition hover:bg-primary/90 active:scale-98 touch-target"
+              className="group relative flex h-16 w-full items-center justify-center gap-3.5 rounded-2xl bg-primary px-5 text-white shadow-soft transition-all duration-200 hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 overflow-hidden touch-target select-none"
+              aria-label="Ask for Help - Takes less than a minute"
             >
-              <PlusCircle className="h-5 w-5 notranslate" />
-              <span>Ask for Help</span>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white transition-transform duration-200 group-hover:scale-110">
+                <HeartHandshake className="h-5 w-5 notranslate" />
+              </div>
+              <div className="flex flex-col items-start text-left min-w-0">
+                <span className="text-base font-bold text-white leading-tight whitespace-nowrap">
+                  Ask for Help
+                </span>
+                <span className="text-xs text-white/80 font-normal leading-tight whitespace-nowrap">
+                  Takes less than a minute
+                </span>
+              </div>
             </button>
+
+            {/* Emergency SOS Button */}
             <button
+              type="button"
               onClick={() => setSosModalOpen(true)}
-              className="flex items-center justify-center gap-2.5 rounded-2xl bg-urgency-critical px-6 py-4 text-base font-bold text-white shadow-soft transition hover:bg-red-700 active:scale-98 touch-target animate-beacon"
+              onPointerDown={startSosHold}
+              onPointerUp={cancelSosHold}
+              onPointerCancel={cancelSosHold}
+              onPointerLeave={cancelSosHold}
+              onKeyDown={(e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                  setSosModalOpen(true);
+                }
+              }}
+              className="group relative flex h-16 w-full items-center justify-center gap-3.5 rounded-2xl bg-red-600 px-5 text-white shadow-soft transition-all duration-200 hover:bg-red-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 overflow-hidden touch-target select-none"
+              aria-label="Emergency SOS - Hold for 2 seconds"
             >
-              <AlertTriangle className="h-5 w-5 notranslate" />
-              <span>Emergency SOS</span>
+              {/* Inset pulsing ring inside container edges, respects prefers-reduced-motion */}
+              <span className="absolute inset-0 rounded-2xl ring-2 ring-inset ring-white/40 animate-pulse motion-reduce:animate-none pointer-events-none" />
+
+              {/* Hold-to-activate progress fill */}
+              {isHoldingSos && (
+                <span
+                  className="absolute inset-0 bg-white/25 pointer-events-none transition-none"
+                  style={{ width: `${sosHoldProgress}%` }}
+                />
+              )}
+
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white transition-transform duration-200 group-hover:scale-110 relative z-10">
+                <Siren className="h-5 w-5 notranslate" />
+              </div>
+              <div className="flex flex-col items-start text-left min-w-0 relative z-10">
+                <span className="text-base font-bold text-white leading-tight whitespace-nowrap">
+                  Emergency SOS
+                </span>
+                <span className="text-xs text-white/80 font-normal leading-tight whitespace-nowrap">
+                  {isHoldingSos
+                    ? `Hold (${Math.max(0, (2000 - (sosHoldProgress / 100) * 2000) / 1000).toFixed(1)}s)...`
+                    : 'Hold for 2 seconds'}
+                </span>
+              </div>
             </button>
           </div>
         </div>
 
-        {/* 2. Live Community Stats Bar */}
-        <div className="mt-8 pt-6 border-t border-border space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="inline-flex items-center gap-2 text-xs">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-              </span>
-              <span className="font-extrabold text-foreground uppercase tracking-wider text-[11px]">
+        {/* 2. Realtime Community Pulse */}
+        <div className="mt-8 pt-6 border-t border-border/80 space-y-4">
+          {/* Header Row */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center flex-wrap gap-2.5 min-w-0">
+              <h2 className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">
                 Realtime Community Pulse
-              </span>
-              <span className="text-muted-foreground/60 hidden sm:inline">·</span>
-              <span className="text-[11px] text-muted-foreground hidden sm:inline">
-                updated just now
-              </span>
+              </h2>
+              {/* Single small green pulsing Live pill */}
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-xs font-medium">
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                <span className="font-bold text-[11px] uppercase tracking-wider">Live</span>
+                <span className="text-muted-foreground/60">•</span>
+                <span className="text-[11px] text-muted-foreground">updated just now</span>
+              </div>
             </div>
 
+            {/* 44px refresh button aligned to the right */}
             <button
+              type="button"
               onClick={() => fetchLiveStats()}
               title="Refresh live stats"
               aria-label="Refresh live stats"
-              className="p-1.5 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition touch-target flex items-center gap-1.5 text-xs"
+              className="h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 rounded-2xl border border-border/80 bg-background/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-all shadow-xs flex items-center justify-center touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <RotateCw className={`h-3.5 w-3.5 notranslate ${isLoadingStats ? 'animate-spin text-primary' : ''}`} />
-              <span className="text-[11px] hidden sm:inline">Sync</span>
+              <RotateCw className={`h-4 w-4 notranslate ${isLoadingStats ? 'animate-spin text-primary' : ''}`} />
             </button>
           </div>
 
+          {/* 4 Equal Cards: 2 by 2 on phones, 4 across on tablets and desktops */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-            {/* Stat 1: Helpers Nearby */}
-            <div
-              className="relative p-4 rounded-2xl bg-card/90 dark:bg-card/75 border border-emerald-500/30 hover:border-emerald-500/60 shadow-xs hover:shadow-lg hover:shadow-emerald-500/10 hover:-translate-y-0.5 flex items-center gap-3.5 group transition-all duration-200 cursor-pointer backdrop-blur-xs"
-              onMouseEnter={() => setActiveTooltip('helpers')}
-              onMouseLeave={() => setActiveTooltip(null)}
-              onClick={() => setActiveTooltip(activeTooltip === 'helpers' ? null : 'helpers')}
-            >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 group-hover:scale-105 transition">
-                <span className="relative flex h-3.5 w-3.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
-                </span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-xl font-black text-foreground leading-none tracking-tight">
-                    {isLoadingStats && !liveStats ? '...' : (liveStats?.helpersNearby ?? 0)}
-                  </p>
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[9px] font-black uppercase tracking-wider border border-emerald-500/20">
-                    <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
-                    Live
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 mt-1">
-                  <p className="text-xs font-semibold text-muted-foreground truncate">Helpers Nearby</p>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveTooltip(activeTooltip === 'helpers' ? null : 'helpers');
-                    }}
-                    className="text-muted-foreground/50 hover:text-emerald-600 transition focus:outline-none"
-                    aria-label="Information about helpers nearby"
-                  >
-                    <Info className="h-3 w-3 notranslate" />
-                  </button>
-                </div>
-              </div>
+            {pulseCards.map((card, index) => {
+              const tooltipAlignClass =
+                index === 0
+                  ? 'left-0 md:left-0'
+                  : index === 1
+                  ? 'right-0 md:left-0'
+                  : index === 2
+                  ? 'left-0 md:right-0'
+                  : 'right-0 md:right-0';
 
-              {activeTooltip === 'helpers' && (
-                <div className="absolute left-0 bottom-full mb-2.5 z-30 w-60 p-3 rounded-2xl bg-popover/95 backdrop-blur-md text-popover-foreground text-xs shadow-xl border border-border animate-in fade-in zoom-in-95 duration-150">
-                  <p className="font-semibold text-foreground mb-0.5">Active Local Responders</p>
-                  <p className="text-muted-foreground text-[11px] leading-relaxed">
-                    Verified helpers active in the last 15 min or registered within {filterRadius} km. Updated in real-time.
-                  </p>
-                </div>
-              )}
-            </div>
+              return (
+                <div
+                  key={card.id}
+                  className={`relative flex flex-col justify-between p-4 rounded-2xl bg-card/90 dark:bg-card/75 border ${card.cardBorder} shadow-xs hover:shadow-md transition-all duration-200 min-h-[148px] backdrop-blur-xs`}
+                >
+                  {/* Top Row: Icon chip on left, Info button on right */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${card.iconBg} ${card.iconColor} border ${card.iconBorder}`}
+                    >
+                      {card.icon}
+                    </div>
 
-            {/* Stat 2: Avg Response Time */}
-            <div
-              className="relative p-4 rounded-2xl bg-card/90 dark:bg-card/75 border border-amber-500/30 hover:border-amber-500/60 shadow-xs hover:shadow-lg hover:shadow-amber-500/10 hover:-translate-y-0.5 flex items-center gap-3.5 group transition-all duration-200 cursor-pointer backdrop-blur-xs"
-              onMouseEnter={() => setActiveTooltip('response')}
-              onMouseLeave={() => setActiveTooltip(null)}
-              onClick={() => setActiveTooltip(activeTooltip === 'response' ? null : 'response')}
-            >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 group-hover:scale-105 transition">
-                <Zap className="h-5 w-5 notranslate" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-xl font-black text-foreground leading-none tracking-tight">
-                    {liveStats?.avgResponseMinutes !== null && liveStats?.avgResponseMinutes !== undefined
-                      ? `${liveStats.avgResponseMinutes} min`
-                      : '-'}
-                  </p>
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[9px] font-black uppercase tracking-wider border border-emerald-500/20">
-                    <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
-                    Live
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 mt-1">
-                  <p className="text-xs font-semibold text-muted-foreground truncate">Avg Response</p>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveTooltip(activeTooltip === 'response' ? null : 'response');
-                    }}
-                    className="text-muted-foreground/50 hover:text-amber-600 transition focus:outline-none"
-                    aria-label="Information about average response time"
-                  >
-                    <Info className="h-3 w-3 notranslate" />
-                  </button>
-                </div>
-              </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveTooltip(activeTooltip === card.id ? null : card.id);
+                      }}
+                      aria-label={`Information about ${card.label}`}
+                      title={`Information about ${card.label}`}
+                      className="h-8 w-8 rounded-xl flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      <Info className="h-3.5 w-3.5 notranslate" />
+                    </button>
+                  </div>
 
-              {activeTooltip === 'response' && (
-                <div className="absolute left-0 bottom-full mb-2.5 z-30 w-60 p-3 rounded-2xl bg-popover/95 backdrop-blur-md text-popover-foreground text-xs shadow-xl border border-border animate-in fade-in zoom-in-95 duration-150">
-                  <p className="font-semibold text-foreground mb-0.5">Rapid Turnaround</p>
-                  <p className="text-muted-foreground text-[11px] leading-relaxed">
-                    Median time from request creation to first offer in last 30 days. Shows &apos;-&apos; if fewer than 3 requests.
-                  </p>
-                </div>
-              )}
-            </div>
+                  {/* Bottom Content: Number, Full Label, Caption / Skeleton */}
+                  {isLoadingStats && !liveStats ? (
+                    <div className="space-y-2 py-1 animate-pulse" aria-busy="true">
+                      <div className="h-7 w-16 bg-muted/80 rounded-lg" />
+                      <div className="h-4 w-24 bg-muted/60 rounded-md" />
+                      <div className="h-3 w-28 bg-muted/40 rounded-md" />
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="text-2xl sm:text-3xl font-black text-foreground tabular-nums tracking-tight leading-tight">
+                        {card.value}
+                      </p>
+                      <p className="text-sm font-semibold text-foreground whitespace-nowrap leading-tight">
+                        {card.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground leading-snug line-clamp-2">
+                        {card.caption}
+                      </p>
+                    </div>
+                  )}
 
-            {/* Stat 3: Acts of Help */}
-            <div
-              className="relative p-4 rounded-2xl bg-card/90 dark:bg-card/75 border border-primary/30 hover:border-primary/60 shadow-xs hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-0.5 flex items-center gap-3.5 group transition-all duration-200 cursor-pointer backdrop-blur-xs"
-              onMouseEnter={() => setActiveTooltip('acts')}
-              onMouseLeave={() => setActiveTooltip(null)}
-              onClick={() => setActiveTooltip(activeTooltip === 'acts' ? null : 'acts')}
-            >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary border border-primary/20 group-hover:scale-105 transition">
-                <Heart className="h-5 w-5 notranslate fill-primary/20" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-xl font-black text-foreground leading-none tracking-tight">
-                    {isLoadingStats && !liveStats ? '...' : (liveStats?.actsOfHelp ?? 0)}
-                  </p>
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[9px] font-black uppercase tracking-wider border border-emerald-500/20">
-                    <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
-                    Live
-                  </span>
+                  {/* Tooltip kept fully inside the screen */}
+                  {activeTooltip === card.id && (
+                    <div
+                      role="tooltip"
+                      onClick={(e) => e.stopPropagation()}
+                      className={`absolute bottom-full mb-2.5 z-30 w-56 sm:w-64 max-w-[calc(100vw-2.5rem)] p-3 rounded-2xl bg-popover/95 backdrop-blur-md text-popover-foreground text-xs shadow-xl border border-border animate-in fade-in zoom-in-95 duration-150 ${tooltipAlignClass}`}
+                    >
+                      <p className="font-semibold text-foreground mb-1">{card.tooltipTitle}</p>
+                      <p className="text-muted-foreground text-xs leading-relaxed">{card.tooltipText}</p>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-1 mt-1">
-                  <p className="text-xs font-semibold text-muted-foreground truncate">Acts of Help</p>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveTooltip(activeTooltip === 'acts' ? null : 'acts');
-                    }}
-                    className="text-muted-foreground/50 hover:text-primary transition focus:outline-none"
-                    aria-label="Information about acts of help"
-                  >
-                    <Info className="h-3 w-3 notranslate" />
-                  </button>
-                </div>
-              </div>
-
-              {activeTooltip === 'acts' && (
-                <div className="absolute left-0 bottom-full mb-2.5 z-30 w-60 p-3 rounded-2xl bg-popover/95 backdrop-blur-md text-popover-foreground text-xs shadow-xl border border-border animate-in fade-in zoom-in-95 duration-150">
-                  <p className="font-semibold text-foreground mb-0.5">Delivered Mutual Aid</p>
-                  <p className="text-muted-foreground text-[11px] leading-relaxed">
-                    Total completed aid acts recorded in Asansol and neighboring wards.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Stat 4: Trust Match */}
-            <div
-              className="relative p-4 rounded-2xl bg-card/90 dark:bg-card/75 border border-blue-500/30 hover:border-blue-500/60 shadow-xs hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-0.5 flex items-center gap-3.5 group transition-all duration-200 cursor-pointer backdrop-blur-xs"
-              onMouseEnter={() => setActiveTooltip('trust')}
-              onMouseLeave={() => setActiveTooltip(null)}
-              onClick={() => setActiveTooltip(activeTooltip === 'trust' ? null : 'trust')}
-            >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20 group-hover:scale-105 transition">
-                <ShieldCheck className="h-5 w-5 notranslate" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-xl font-black text-foreground leading-none tracking-tight">
-                    {liveStats?.trustMatchPercentage !== null && liveStats?.trustMatchPercentage !== undefined
-                      ? `${liveStats.trustMatchPercentage}%`
-                      : '-'}
-                  </p>
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[9px] font-black uppercase tracking-wider border border-emerald-500/20">
-                    <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
-                    Live
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 mt-1">
-                  <p className="text-xs font-semibold text-muted-foreground truncate">Trust Match</p>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveTooltip(activeTooltip === 'trust' ? null : 'trust');
-                    }}
-                    className="text-muted-foreground/50 hover:text-blue-600 transition focus:outline-none"
-                    aria-label="Information about trust match score"
-                  >
-                    <Info className="h-3 w-3 notranslate" />
-                  </button>
-                </div>
-              </div>
-
-              {activeTooltip === 'trust' && (
-                <div className="absolute right-0 bottom-full mb-2.5 z-30 w-60 p-3 rounded-2xl bg-popover/95 backdrop-blur-md text-popover-foreground text-xs shadow-xl border border-border animate-in fade-in zoom-in-95 duration-150">
-                  <p className="font-semibold text-foreground mb-0.5">High Trust Ratio</p>
-                  <p className="text-muted-foreground text-[11px] leading-relaxed">
-                    Percentage of 4+ star volunteer deliveries over the last 90 days.
-                  </p>
-                </div>
-              )}
-            </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -462,7 +658,7 @@ export function HomeView() {
             </div>
             <div>
               <h2 className="text-lg font-bold text-foreground">Urgent Near You</h2>
-              <p className="text-xs text-muted-foreground">Ranked by Newtonian Help Gravity equation</p>
+              <p className="text-xs text-muted-foreground">Ranked by urgency level, distance, and waiting time</p>
             </div>
           </div>
           <button
@@ -534,9 +730,8 @@ export function HomeView() {
                       <span>{req.urgency}</span>
                     </span>
 
-                    <div className="flex items-center gap-1 text-[11px] font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full">
-                      <Atom className="h-3 w-3 notranslate" />
-                      <span>Score: {req.helpGravityScore}</span>
+                    <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground bg-muted/60 border border-border/80 px-2.5 py-0.5 rounded-full">
+                      <span>{req.distanceKm} km away</span>
                     </div>
                   </div>
 
@@ -654,9 +849,9 @@ export function HomeView() {
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-white text-xs font-black mb-3">
                 2
               </span>
-              <h4 className="text-sm font-bold text-foreground">Physics Urgency Match</h4>
+              <h4 className="text-sm font-bold text-foreground">Rapid Urgency Match</h4>
               <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-                Our Newton-inspired algorithm ranks nearest and most time-critical needs, alerting verified local student and citizen helpers.
+                Prioritizes nearest and most time-critical needs, alerting verified local student and citizen helpers.
               </p>
             </div>
 

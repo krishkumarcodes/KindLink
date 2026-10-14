@@ -214,7 +214,7 @@ export default function BloodDonationPage() {
                 <div>
                   <h3 className="text-sm font-bold text-foreground">KindLink Urgent Broadcast &amp; Proximity Match</h3>
                   <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                    The patient&apos;s attendant posts a request. KindLink&apos;s Help Gravity formula highlights the need to
+                    The patient&apos;s attendant posts a request. KindLink&apos;s urgency dispatch algorithm highlights the critical need to
                     verified donors within 5 km of the hospital. When a volunteer accepts, both parties confirm to reveal
                     phone contact and arrival time.
                   </p>
@@ -297,10 +297,10 @@ export default function BloodDonationPage() {
             </Link>
 
             <Link
-              href="/physics"
+              href="/how-it-works"
               className="text-xs font-semibold text-muted-foreground hover:text-foreground"
             >
-              Learn how Help Gravity prioritizes blood requests &rarr;
+              Learn how community dispatch prioritizes blood requests &rarr;
             </Link>
           </div>
         </div>

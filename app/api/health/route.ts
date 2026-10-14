@@ -30,7 +30,7 @@ export async function GET() {
     {
       status: isHealthy ? 'healthy' : 'degraded',
       service: 'KindLink',
-      project: 'KindLink - A Physics Project (Asansol Engineering College)',
+      project: 'KindLink - Community Mutual Aid Platform',
       uptime: Math.round(process.uptime()),
       database: {
         status: dbStatus,

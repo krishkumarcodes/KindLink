@@ -33,34 +33,27 @@ All 18 comprehensive automated tests passed on both independent runs.
 | **09** | Requester-only Offer Acceptance | `accept_offer(offer_id)` stored procedure | **PASS** | Non-requesters blocked from accepting offers |
 | **10** | Unrelated Contact Confidentiality | `get_contact(req_id)` stored procedure | **PASS** | Third parties forbidden from viewing contact details |
 | **11** | Safe Contact Reveal to Matched Pair | `get_contact(req_id)` stored procedure | **PASS** | Phone number visible only between requester and accepted helper |
-| **12** | Help Gravity Physics Engine Parity | `nearby_requests(...)` function | **PASS** | Exact mathematical parity with frontend ($Score = 20.00$) |
+| **12** | Urgency & Distance Ranking Ordering | `nearby_requests(...)` function | **PASS** | Critical urgency ranked strictly ahead of low urgency with nearest distance ordering |
 | **13** | Expired Requests Filter | `expires_at > now()` filter in `nearby_requests` | **PASS** | Expired aid requests immediately excluded from live radar |
 | **14** | Rating Trigger Recalculation | `handle_rating_update()` trigger | **PASS** | Automatically updated volunteer average rating to $5.00$ on 1 review |
 | **15** | Anonymous Platform Statistics | `public_stats()` stored procedure | **PASS** | Anonymous users can query aggregate count of open requests & volunteers |
 | **16** | Admin Verification Security | RLS policy on `public.verification_requests` | **PASS** | Regular users blocked from approving verification requests |
 | **17** | Admin Approval Workflow | Role-based verification workflow | **PASS** | Platform Admin successfully verified submitted identity document |
-| **18** | Storage RLS Folder Isolation | Storage RLS on `verification-docs` bucket | **PASS** | User confined to `{user_id}/` folder; folder traversal blocked |
+| **18** | Storage Security: Users strictly restricted to their own folder | Storage RLS on `verification-docs` bucket | **PASS** | User confined to `{user_id}/` folder; folder traversal blocked |
 
 ---
 
-## 3. Help Gravity Mathematical Parity Proof
+## 3. Urgency & Distance Ranking Verification Proof
 
-The Newtonian Help Gravity formula implemented in SQL:
-$$\text{Score} = \frac{\text{TypeWeight} \times (1 + 0.05 \times \text{waitingMinutes})}{(1 + \text{distanceKm})^2}$$
-
-Category weights verified in `category_weight()`:
-- `blood`: $10.0$
-- `transport`: $9.0$
-- `elderly_help`: $6.0$
-- `equipment`: $5.0$
-- `books`: $2.0$
+All legacy scoring equations have been completely removed from the database and frontend. The ranking engine operates on pure priority hierarchy:
+1. **Urgency Level**: Critical ($1$) $\to$ High ($2$) $\to$ Medium ($3$) $\to$ Low ($4$)
+2. **Road / Geodesic Proximity**: Nearest distance in kilometers ascending
+3. **Waiting Time**: Oldest created request first
 
 **Test Scenario**:
-- Request: `blood` ($\text{TypeWeight} = 10.0$)
-- Waiting Time: $20\text{ minutes}$ ($\text{Multiplier} = 1 + 0.05 \times 20 = 2.0$)
-- Distance: $0.0\text{ km}$ ($\text{Denominator} = (1 + 0)^2 = 1.0$)
-- Expected Score: $10.0 \times 2.0 / 1.0 = 20.00$
-- PostgreSQL Computed Score: **$20.00$** (Exact Match)
+- Request 1: `blood` (`critical` urgency, 20 min ago)
+- Request 2: `books` (`low` urgency, 20 min ago)
+- Verified: `blood` returned strictly as the top result (`v_top_id = req_blood`). Both independent execution passes verified 100% test success.
 
 ---
 

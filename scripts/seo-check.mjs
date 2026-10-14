@@ -10,7 +10,6 @@ const publicRoutes = [
   '/',
   '/about',
   '/how-it-works',
-  '/physics',
   '/safety-and-verification',
   '/faq',
   '/privacy',
@@ -314,7 +313,7 @@ async function runSeoSuite() {
     const fullTxt = await fullRes.text();
     test('/llms-full.txt returns 200 OK', fullRes.status === 200, `Got HTTP ${fullRes.status}`);
     test('/llms-full.txt contains complete documentation',
-      fullTxt.length > 5000 && fullTxt.includes('Help Gravity'),
+      fullTxt.length > 5000 && fullTxt.includes('Hyperlocal Mutual Aid'),
       `Got length: ${fullTxt.length} bytes`
     );
   } catch (err) {

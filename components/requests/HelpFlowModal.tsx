@@ -19,7 +19,7 @@ import {
 import { toast } from 'sonner';
 import { HelpRequest, TravelMode } from '@/lib/data/types';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
-import { calculateETA, formatETA } from '@/lib/data/physics';
+import { calculateETA, formatETA } from '@/lib/data/distance';
 
 interface HelpFlowModalProps {
   request: HelpRequest | null;

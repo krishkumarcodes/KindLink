@@ -72,7 +72,6 @@ export interface HelpRequest {
   verified: boolean;
   verificationBadge: string;
   createdAt: string;
-  helpGravityScore: number;
   status: RequestLifecycleStatus;
   helpersOffered?: number;
 

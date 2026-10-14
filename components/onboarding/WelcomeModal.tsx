@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import {
   Globe,
   HeartHandshake,
-  Atom,
   ShieldCheck,
   ChevronRight,
   Check,
@@ -73,7 +72,8 @@ export function WelcomeModal() {
                   <button
                     key={lang.code}
                     onClick={() => handleLangChoose(lang.code)}
-                    className={`flex items-center justify-between p-3 rounded-2xl border text-left transition touch-target ${
+                    translate="no"
+                    className={`notranslate flex items-center justify-between p-3 rounded-2xl border text-left transition touch-target ${
                       isSelected
                         ? 'border-primary bg-primary text-white font-bold shadow-soft'
                         : 'border-border bg-background hover:bg-muted text-foreground'
@@ -157,20 +157,20 @@ export function WelcomeModal() {
           </div>
         )}
 
-        {/* SLIDE 2: INTRO 2 - RANKED BY PHYSICS */}
+        {/* SLIDE 2: INTRO 2 - RANKED BY URGENCY */}
         {slide === 2 && (
           <div className="text-center space-y-5 animate-in slide-in-from-right duration-200">
             <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10 text-primary mx-auto">
-              <Atom className="h-10 w-10 notranslate" />
+              <Sparkles className="h-10 w-10 notranslate" />
             </div>
 
             <div className="space-y-2">
               <span className="text-xs font-bold uppercase tracking-wider text-primary">
-                Asansol Engineering College Capstone
+                Asansol Engineering College Student Project
               </span>
-              <h2 className="text-2xl font-black text-foreground">Ranked by Physics, Driven by Trust</h2>
+              <h2 className="text-2xl font-black text-foreground">Ranked by Urgency, Driven by Trust</h2>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
-                Using Newtonian inverse-square gravitation models, our Help Gravity engine ranks the nearest and most critical needs first to maximize lives saved.
+                Prioritizing the most critical emergency needs and closest neighbors first to maximize community impact when every minute counts.
               </p>
             </div>
 

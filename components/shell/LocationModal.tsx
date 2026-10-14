@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   MapPin,
   Crosshair,
@@ -10,9 +10,24 @@ import {
   X,
   Building2,
   Navigation,
+  Compass,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Bookmark,
+  Plus,
+  Trash2,
+  Home,
+  Briefcase,
+  GraduationCap,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
+import { useLocation } from '@/lib/location/LocationProvider';
+import { LocationSearchResult } from '@/lib/location/types';
+import { searchAddressNominatim } from '@/lib/location/search';
+import { reverseGeocode } from '@/lib/geo/reverse-geocode';
+import { PinDropMap } from '@/components/location/PinDropMap';
 import { ASANSOL_CENTER } from '@/lib/data/mock-requests';
 
 interface LocationModalProps {
@@ -20,186 +35,165 @@ interface LocationModalProps {
   onClose: () => void;
 }
 
-interface LocalityPreset {
-  name: string;
-  subtext: string;
-  lat: number;
-  lng: number;
-}
-
-const ASANSOL_LOCALITIES: LocalityPreset[] = [
-  {
-    name: 'Asansol Engineering College, Kalyanpur',
-    subtext: 'Primary Hub · AEC Campus',
-    lat: ASANSOL_CENTER.lat,
-    lng: ASANSOL_CENTER.lng,
-  },
-  {
-    name: 'Asansol District Hospital / Court',
-    subtext: 'SB Gorai Road · Central Medical Hub',
-    lat: 23.6845,
-    lng: 86.9742,
-  },
-  {
-    name: 'Ushagram & GT Road',
-    subtext: 'HLG Hospital Area · South Asansol',
-    lat: 23.6791,
-    lng: 86.983,
-  },
-  {
-    name: 'Burnpur & IISCO Steel Town',
-    subtext: 'Riverside · West Asansol',
-    lat: 23.6667,
-    lng: 86.9333,
-  },
-  {
-    name: 'Raniganj Bazar & Coalfield Belt',
-    subtext: 'East Highway Corridor · 18km',
-    lat: 23.6238,
-    lng: 87.1128,
-  },
-  {
-    name: 'Kulti, Neamatpur & Barakar',
-    subtext: 'Border Zone · West Corridor',
-    lat: 23.7314,
-    lng: 86.8488,
-  },
-  {
-    name: 'Durgapur City Center',
-    subtext: 'Neighboring Industrial Metro',
-    lat: 23.5204,
-    lng: 87.3119,
-  },
-];
+type ModalTab = 'search' | 'map' | 'saved';
 
 export function LocationModal({ open, onClose }: LocationModalProps) {
-  const { userCoords, userAreaName, setUserCoords, setUserAreaName } = useKindLinkStore();
+  const {
+    userCoords,
+    userAreaName,
+    accuracy,
+    permissionStatus,
+    isLocating,
+    isWatching,
+    savedPlaces,
+    requestLiveLocation,
+    setLocation,
+    resetToDefaultHub,
+    savePlace,
+    removeSavedPlace,
+  } = useLocation();
+
+  const [activeTab, setActiveTab] = useState<ModalTab>('search');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLocating, setIsLocating] = useState(false);
+  const [searchResults, setSearchResults] = useState<LocationSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showPermissionGuide, setShowPermissionGuide] = useState(false);
 
-  if (!open) return null;
+  // Pin drop state
+  const [pinLat, setPinLat] = useState<number>(userCoords.lat || ASANSOL_CENTER.lat);
+  const [pinLng, setPinLng] = useState<number>(userCoords.lng || ASANSOL_CENTER.lng);
+  const [pinAreaName, setPinAreaName] = useState<string>(userAreaName || 'Asansol Region');
+  const [isGeocodingPin, setIsGeocodingPin] = useState(false);
 
-  // GPS Locate Me handler with reverse geocoding
-  const handleGpsLocate = () => {
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate(20);
+  // Add saved place state
+  const [showAddSavedPlace, setShowAddSavedPlace] = useState(false);
+  const [newPlaceName, setNewPlaceName] = useState('');
+  const [newPlaceType, setNewPlaceType] = useState<'home' | 'work' | 'campus' | 'custom'>('home');
+
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const pinGeocodeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Keep pin coordinates in sync with current location when opening modal
+  useEffect(() => {
+    if (open) {
+      setPinLat(userCoords.lat || ASANSOL_CENTER.lat);
+      setPinLng(userCoords.lng || ASANSOL_CENTER.lng);
+      setPinAreaName(userAreaName || 'Asansol Region');
     }
+  }, [open, userCoords.lat, userCoords.lng, userAreaName]);
 
-    if (!navigator.geolocation) {
-      toast.error('Geolocation not supported by this browser', {
-        description: 'Defaulting to Asansol Engineering College hub.',
-      });
+  // Debounced Nominatim address search
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed || trimmed.length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
       return;
     }
 
-    setIsLocating(true);
-    toast.info('Acquiring live GPS location...');
+    if (searchAbortRef.current) {
+      searchAbortRef.current.abort();
+    }
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        let detectedArea = 'Live GPS Location';
+    const abortController = new AbortController();
+    searchAbortRef.current = abortController;
+    setIsSearching(true);
 
-        // Attempt lightweight reverse geocoding
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3500);
-
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=14`,
-            { signal: controller.signal }
-          );
-          clearTimeout(timeoutId);
-
-          if (res.ok) {
-            const data = await res.json();
-            const addr = data.address || {};
-            const locality =
-              addr.suburb ||
-              addr.neighbourhood ||
-              addr.residential ||
-              addr.city_district ||
-              addr.city ||
-              addr.town ||
-              addr.village ||
-              addr.county ||
-              '';
-            const state = addr.state_code || addr.state || '';
-            if (locality) {
-              detectedArea = state ? `${locality}, ${state}` : locality;
-            } else if (data.display_name) {
-              const parts = data.display_name.split(',');
-              detectedArea = parts.slice(0, 2).join(',').trim();
-            }
-          }
-        } catch {
-          // If reverse geocoding network fails, fall back to localized string
-          detectedArea = `GPS (${latitude.toFixed(3)}°N, ${longitude.toFixed(3)}°E)`;
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchAddressNominatim(trimmed, abortController.signal);
+        setSearchResults(results);
+      } catch (err: unknown) {
+        if ((err as Error)?.name !== 'AbortError') {
+          setSearchResults([]);
         }
+      } finally {
+        setIsSearching(false);
+      }
+    }, 320);
 
-        setUserCoords({ lat: latitude, lng: longitude, isLive: true }, detectedArea);
-        setIsLocating(false);
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-          navigator.vibrate([30, 50, 30]);
-        }
-        toast.success(`Location updated to ${detectedArea}!`, {
-          description: 'Recalculated nearest mutual aid requests in real time.',
-        });
-        onClose();
-      },
-      () => {
-        setIsLocating(false);
-        toast.warning('GPS permission denied or unavailable', {
-          description: 'Staying at current locality.',
-        });
-      },
-      { timeout: 10000, enableHighAccuracy: true }
-    );
+    return () => {
+      clearTimeout(timer);
+      abortController.abort();
+    };
+  }, [searchQuery]);
+
+  // Reverse geocode when pin moves
+  const handlePinPositionChange = (lat: number, lng: number) => {
+    const fixedLat = Number(lat.toFixed(5));
+    const fixedLng = Number(lng.toFixed(5));
+    setPinLat(fixedLat);
+    setPinLng(fixedLng);
+
+    if (pinGeocodeTimerRef.current) {
+      clearTimeout(pinGeocodeTimerRef.current);
+    }
+
+    setIsGeocodingPin(true);
+    pinGeocodeTimerRef.current = setTimeout(async () => {
+      try {
+        const geocoded = await reverseGeocode(fixedLat, fixedLng);
+        setPinAreaName(geocoded.shortLabel);
+      } catch {
+        setPinAreaName(`${fixedLat.toFixed(3)}°N, ${fixedLng.toFixed(3)}°E`);
+      } finally {
+        setIsGeocodingPin(false);
+      }
+    }, 400);
   };
 
-  // Recenter to Default AEC Hub
-  const handleRecenterDefault = () => {
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate(15);
-    }
-    setUserCoords(
-      { lat: ASANSOL_CENTER.lat, lng: ASANSOL_CENTER.lng, isLive: false },
-      'Asansol Engineering College, Kalyanpur'
-    );
-    toast.success('Recentered to Asansol Engineering College Hub');
+  // Confirm pin location
+  const handleConfirmPinLocation = async () => {
+    await setLocation({ lat: pinLat, lng: pinLng, isLive: false }, pinAreaName);
+    toast.success(`Location set to ${pinAreaName}!`, {
+      description: 'Mutual aid requests and distances updated.',
+    });
     onClose();
   };
 
-  // Select Preset Locality
-  const handleSelectPreset = (preset: LocalityPreset) => {
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate(15);
-    }
-    setUserCoords({ lat: preset.lat, lng: preset.lng, isLive: false }, preset.name);
-    toast.success(`Location set to ${preset.name}`);
-    onClose();
-  };
-
-  // Custom Search Query Submit
-  const handleCustomSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const query = searchQuery.trim();
-    if (!query) return;
-
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate(15);
-    }
-    setUserAreaName(query);
-    toast.success(`Location updated to "${query}"`);
+  // Select a search result
+  const handleSelectSearchResult = async (result: LocationSearchResult) => {
+    await setLocation({ lat: result.lat, lng: result.lng, isLive: false }, result.shortLabel);
+    toast.success(`Location set to ${result.shortLabel}!`);
     setSearchQuery('');
+    setSearchResults([]);
     onClose();
   };
 
-  const filteredLocalities = ASANSOL_LOCALITIES.filter(
-    (loc) =>
-      loc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      loc.subtext.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Select a saved place
+  const handleSelectSavedPlace = async (place: { lat: number; lng: number; name: string }) => {
+    await setLocation({ lat: place.lat, lng: place.lng, isLive: false }, place.name);
+    toast.success(`Location set to ${place.name}!`);
+    onClose();
+  };
+
+  // Save current location as a place
+  const handleSaveCurrentPlace = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newPlaceName.trim() || userAreaName;
+    savePlace({
+      name,
+      label: userAreaName,
+      lat: userCoords.lat,
+      lng: userCoords.lng,
+      type: newPlaceType,
+    });
+    setNewPlaceName('');
+    setShowAddSavedPlace(false);
+  };
+
+  // Live GPS locate action
+  const handleGpsLocate = async () => {
+    const result = await requestLiveLocation();
+    if (result) {
+      toast.success(`Locked to live GPS: ${result.areaName}`, {
+        description: 'Now tracking your location in real time.',
+      });
+      onClose();
+    }
+  };
+
+  if (!open) return null;
 
   return (
     <div
@@ -211,156 +205,493 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-lg rounded-3xl bg-card/95 dark:bg-slate-950/95 border border-border/80 dark:border-slate-800/80 p-5 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)] text-card-foreground max-h-[92vh] flex flex-col overflow-hidden">
+      <div className="w-full max-w-lg rounded-3xl bg-card/95 dark:bg-slate-950/95 border border-border/80 dark:border-slate-800/80 p-4 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)] text-card-foreground max-h-[92vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-border/80 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 shadow-xs">
+        <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-border/80 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 shadow-xs">
               <MapPin className="h-5 w-5 notranslate" />
             </div>
-            <div>
-              <h2 id="location-dialog-title" className="text-base sm:text-lg font-bold text-foreground">
-                Change Area or Recenter
+            <div className="min-w-0">
+              <h2
+                id="location-dialog-title"
+                className="text-base sm:text-lg font-bold text-foreground truncate"
+              >
+                Change Area &amp; Location
               </h2>
-              <p className="text-xs text-muted-foreground">
-                Current:{' '}
-                <span className="font-semibold text-primary">
-                  {userAreaName || 'Asansol, WB'}
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
+                <span className="truncate">
+                  Current: <strong className="text-primary font-semibold">{userAreaName}</strong>
                 </span>
                 {userCoords.isLive && (
-                  <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 px-2 py-0.2 rounded-full">
+                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 px-2 py-0.5 rounded-full shrink-0">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Live GPS
+                    GPS {accuracy ? `±${accuracy}m` : 'Live'}
                   </span>
                 )}
-              </p>
+              </div>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted touch-target transition-colors"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted touch-target transition-colors"
             aria-label="Close location selector"
           >
             <X className="h-5 w-5 notranslate" />
           </button>
         </div>
 
-        {/* GPS Quick Action Row */}
-        <div className="py-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5 shrink-0 border-b border-border/60">
+        {/* Tab Navigation */}
+        <div className="grid grid-cols-3 gap-1 p-1 my-3 bg-muted/60 rounded-2xl shrink-0">
           <button
             type="button"
-            onClick={handleGpsLocate}
-            disabled={isLocating}
-            className="flex items-center justify-center gap-2 px-3.5 py-3 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-teal-600/25 hover:shadow-teal-600/35 active:scale-[0.98] transition-all min-h-[46px] touch-target disabled:opacity-60"
+            onClick={() => setActiveTab('search')}
+            className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'search'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
-            {isLocating ? (
-              <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Crosshair className="h-4 w-4 shrink-0 notranslate" />
-            )}
-            <span>{isLocating ? 'Acquiring GPS...' : 'Use My GPS Location'}</span>
+            <Search className="h-3.5 w-3.5 notranslate" />
+            <span>Search &amp; GPS</span>
           </button>
-
           <button
             type="button"
-            onClick={handleRecenterDefault}
-            className="flex items-center justify-center gap-2 px-3.5 py-3 rounded-2xl border border-border/80 bg-background/80 hover:bg-muted/80 hover:border-primary/40 text-foreground font-semibold text-xs sm:text-sm transition-all min-h-[46px] touch-target active:scale-[0.98]"
+            onClick={() => setActiveTab('map')}
+            className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'map'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
-            <RotateCcw className="h-4 w-4 text-primary shrink-0 notranslate" />
-            <span>Reset to AEC Hub</span>
+            <Compass className="h-3.5 w-3.5 notranslate" />
+            <span>Drop Pin</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('saved')}
+            className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'saved'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Bookmark className="h-3.5 w-3.5 notranslate" />
+            <span>Saved ({savedPlaces.length})</span>
           </button>
         </div>
 
-        {/* Search Input for filtering or custom locality */}
-        <form onSubmit={handleCustomSubmit} className="pt-3 pb-2 shrink-0">
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground notranslate pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search or enter area name (e.g. Ushagram, Burnpur)..."
-              className="w-full pl-10 pr-20 py-2.5 rounded-2xl border border-border/80 bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary min-h-[44px] transition-all"
-            />
-            {searchQuery.trim().length > 0 && (
+        {/* TAB 1: Search & GPS */}
+        {activeTab === 'search' && (
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            {/* GPS Quick Action Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pb-3 shrink-0">
               <button
-                type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white text-xs font-bold hover:from-teal-500 hover:to-emerald-500 transition-all touch-target shadow-xs"
-              >
-                Set
-              </button>
-            )}
-          </div>
-        </form>
-
-        {/* Localities Preset List */}
-        <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-2">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-1 pb-1">
-            Asansol &amp; Nearby Neighborhoods
-          </div>
-
-          {filteredLocalities.map((preset) => {
-            const isSelected =
-              userAreaName === preset.name ||
-              (Math.abs(userCoords.lat - preset.lat) < 0.002 &&
-                Math.abs(userCoords.lng - preset.lng) < 0.002);
-
-            return (
-              <button
-                key={preset.name}
                 type="button"
-                onClick={() => handleSelectPreset(preset)}
-                className={`flex w-full items-center justify-between p-3.5 rounded-2xl border text-left transition-all duration-150 touch-target ${
-                  isSelected
-                    ? 'border-primary bg-primary/10 dark:bg-teal-500/15 text-foreground font-semibold ring-2 ring-primary/25 shadow-xs'
-                    : 'border-border/80 bg-card/70 dark:bg-slate-900/40 hover:bg-muted/70 hover:border-primary/40 text-foreground'
-                }`}
+                onClick={handleGpsLocate}
+                disabled={isLocating}
+                className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-teal-600/25 active:scale-[0.98] transition-all min-h-[44px] touch-target disabled:opacity-60"
               >
-                <div className="flex items-center gap-3 min-w-0 pr-2">
-                  <div
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all ${
-                      isSelected
-                        ? 'bg-gradient-to-tr from-teal-600 to-emerald-500 text-white shadow-[0_0_8px_rgba(13,148,136,0.3)]'
-                        : 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    <Building2 className="h-4 w-4 notranslate" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs sm:text-sm font-bold truncate text-foreground">
-                      {preset.name}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground truncate">
-                      {preset.subtext}
-                    </div>
-                  </div>
-                </div>
-                {isSelected && (
-                  <Check className="h-4 w-4 text-primary shrink-0 notranslate stroke-[2.5]" />
+                {isLocating ? (
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin notranslate" />
+                ) : (
+                  <Crosshair className="h-4 w-4 shrink-0 notranslate" />
                 )}
+                <span>
+                  {isLocating
+                    ? 'Acquiring GPS...'
+                    : userCoords.isLive
+                    ? `Update GPS (${accuracy ? `±${accuracy}m` : 'Active'})`
+                    : 'Use My Live GPS'}
+                </span>
               </button>
-            );
-          })}
 
-          {filteredLocalities.length === 0 && searchQuery.trim() && (
-            <div className="text-center py-6 px-4 rounded-2xl bg-muted/40 border border-border/80">
-              <p className="text-xs text-muted-foreground mb-3">
-                No preset matching &ldquo;{searchQuery}&rdquo;. Set this as your custom location name?
-              </p>
               <button
                 type="button"
                 onClick={() => {
-                  setUserAreaName(searchQuery.trim());
-                  toast.success(`Location set to "${searchQuery.trim()}"`);
+                  resetToDefaultHub();
+                  toast.success('Reset to Asansol Engineering College Hub');
                   onClose();
                 }}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white text-xs font-bold hover:from-teal-500 hover:to-emerald-500 transition-all shadow-sm"
+                className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl border border-border/80 bg-background/80 hover:bg-muted/80 text-foreground font-semibold text-xs sm:text-sm transition-all min-h-[44px] touch-target active:scale-[0.98]"
               >
-                Use &ldquo;{searchQuery.trim()}&rdquo;
+                <RotateCcw className="h-4 w-4 text-primary shrink-0 notranslate" />
+                <span>Reset to AEC Hub</span>
               </button>
             </div>
-          )}
-        </div>
+
+            {/* Permission Denied Assistance Banner */}
+            {permissionStatus === 'denied' && (
+              <div className="mb-3 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-200 shrink-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 notranslate" />
+                    <span className="text-xs font-bold">Browser Location is Blocked</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPermissionGuide(!showPermissionGuide)}
+                    className="text-[11px] font-semibold text-primary underline hover:text-primary/80 inline-flex items-center gap-0.5"
+                  >
+                    <span>{showPermissionGuide ? 'Hide steps' : 'How to unblock'}</span>
+                    {showPermissionGuide ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
+                  </button>
+                </div>
+                {showPermissionGuide && (
+                  <div className="mt-2.5 pt-2 border-t border-amber-500/20 text-[11px] space-y-1.5 leading-relaxed text-muted-foreground">
+                    <p>
+                      <strong>Chrome / Edge:</strong> Tap the lock or tune icon in the address
+                      bar &rarr; Permissions &rarr; Location &rarr; Allow, then refresh.
+                    </p>
+                    <p>
+                      <strong>Safari (iOS):</strong> Tap &lsquo;aA&rsquo; in the address bar &rarr;
+                      Website Settings &rarr; Location &rarr; Allow.
+                    </p>
+                    <p>
+                      <strong>Android:</strong> Tap browser settings &rarr; Site Settings &rarr;
+                      Location &rarr; Allow KindLink.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Address Search Form */}
+            <div className="relative pb-2 shrink-0">
+              <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground notranslate pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search address, neighborhood or landmark..."
+                className="w-full pl-10 pr-10 py-2.5 rounded-2xl border border-border/80 bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary min-h-[44px] transition-all"
+              />
+              {isSearching ? (
+                <div className="absolute right-3.5 top-3.5 h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin notranslate" />
+              ) : searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3.5 top-3.5 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4 notranslate" />
+                </button>
+              ) : null}
+            </div>
+
+            {/* Results or Neighborhood Presets List */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-1">
+              {searchQuery.trim().length >= 2 ? (
+                <>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-1 pb-1">
+                    Search Results ({searchResults.length})
+                  </div>
+                  {searchResults.map((res) => (
+                    <button
+                      key={res.id}
+                      type="button"
+                      onClick={() => handleSelectSearchResult(res)}
+                      className="flex w-full items-center justify-between p-3 rounded-2xl border border-border/80 bg-card/70 dark:bg-slate-900/40 hover:bg-muted/70 hover:border-primary/40 text-left transition-all touch-target"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 pr-2">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <MapPin className="h-4 w-4 notranslate" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs sm:text-sm font-bold truncate text-foreground">
+                            {res.shortLabel}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground truncate">
+                            {res.displayName}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-semibold text-primary shrink-0">
+                        Select
+                      </span>
+                    </button>
+                  ))}
+
+                  {searchResults.length === 0 && !isSearching && (
+                    <div className="text-center py-6 px-4 rounded-2xl bg-muted/40 border border-border/80">
+                      <p className="text-xs text-muted-foreground mb-3">
+                        No matches found online for &ldquo;{searchQuery}&rdquo;.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLocation(userCoords, searchQuery.trim());
+                          toast.success(`Location label set to "${searchQuery.trim()}"`);
+                          onClose();
+                        }}
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white text-xs font-bold shadow-sm"
+                      >
+                        Use &ldquo;{searchQuery.trim()}&rdquo; as area name
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-1 pb-1">
+                    Popular Asansol Neighborhoods &amp; Hubs
+                  </div>
+                  {savedPlaces.map((place) => {
+                    const isSelected =
+                      userAreaName === place.name ||
+                      (Math.abs(userCoords.lat - place.lat) < 0.002 &&
+                        Math.abs(userCoords.lng - place.lng) < 0.002);
+
+                    return (
+                      <button
+                        key={place.id}
+                        type="button"
+                        onClick={() => handleSelectSavedPlace(place)}
+                        className={`flex w-full items-center justify-between p-3 rounded-2xl border text-left transition-all duration-150 touch-target ${
+                          isSelected
+                            ? 'border-primary bg-primary/10 dark:bg-teal-500/15 text-foreground font-semibold ring-2 ring-primary/25 shadow-xs'
+                            : 'border-border/80 bg-card/70 dark:bg-slate-900/40 hover:bg-muted/70 hover:border-primary/40 text-foreground'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 pr-2">
+                          <div
+                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all ${
+                              isSelected
+                                ? 'bg-gradient-to-tr from-teal-600 to-emerald-500 text-white shadow-sm'
+                                : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            <Building2 className="h-4 w-4 notranslate" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs sm:text-sm font-bold truncate text-foreground">
+                              {place.name}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground truncate">
+                              {place.label}
+                            </div>
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <Check className="h-4 w-4 text-primary shrink-0 notranslate stroke-[2.5]" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: Drop Pin on Map */}
+        {activeTab === 'map' && (
+          <div className="flex-1 flex flex-col min-h-0 space-y-3">
+            <div className="shrink-0 flex items-center justify-between px-1">
+              <div>
+                <span className="text-xs font-bold text-foreground block">
+                  Interactive Pin Placement
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  Tap anywhere on the map or drag the marker to your precise spot
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  handlePinPositionChange(ASANSOL_CENTER.lat, ASANSOL_CENTER.lng);
+                }}
+                className="text-[11px] text-primary font-semibold hover:underline"
+              >
+                Center Asansol
+              </button>
+            </div>
+
+            {/* Embedded interactive pin map */}
+            <div className="flex-1 min-h-[220px]">
+              <PinDropMap
+                lat={pinLat}
+                lng={pinLng}
+                onPositionChange={handlePinPositionChange}
+                className="h-full w-full min-h-[220px]"
+              />
+            </div>
+
+            {/* Selected Location Card */}
+            <div className="p-3.5 rounded-2xl bg-muted/50 border border-border/80 flex items-center justify-between gap-3 shrink-0">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-foreground truncate">
+                  <MapPin className="h-3.5 w-3.5 text-primary shrink-0 notranslate" />
+                  <span className="truncate">{pinAreaName}</span>
+                  {isGeocodingPin && (
+                    <span className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin notranslate inline-block shrink-0" />
+                  )}
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  Lat: {pinLat.toFixed(4)}, Lng: {pinLng.toFixed(4)}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleConfirmPinLocation}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 active:scale-95 transition-all shrink-0 touch-target"
+              >
+                Confirm Location
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: Saved Places */}
+        {activeTab === 'saved' && (
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden space-y-3">
+            <div className="flex items-center justify-between shrink-0 px-1">
+              <div>
+                <span className="text-xs font-bold text-foreground block">Preset &amp; Saved Places</span>
+                <span className="text-[11px] text-muted-foreground">
+                  Quick one-tap shortcuts to your frequent communities
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddSavedPlace(!showAddSavedPlace)}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition-colors touch-target"
+              >
+                <Plus className="h-3.5 w-3.5 notranslate" />
+                <span>Save Current</span>
+              </button>
+            </div>
+
+            {/* Add Current Location Form */}
+            {showAddSavedPlace && (
+              <form
+                onSubmit={handleSaveCurrentPlace}
+                className="p-3.5 rounded-2xl bg-muted/60 border border-border/80 space-y-3 shrink-0"
+              >
+                <div className="text-xs font-bold text-foreground">
+                  Save &ldquo;{userAreaName}&rdquo; to your places
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={newPlaceName}
+                    onChange={(e) => setNewPlaceName(e.target.value)}
+                    placeholder="Custom place name (e.g. My Hostel)"
+                    className="px-3 py-2 rounded-xl border border-border/80 bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <select
+                    value={newPlaceType}
+                    onChange={(e) =>
+                      setNewPlaceType(e.target.value as 'home' | 'work' | 'campus' | 'custom')
+                    }
+                    className="px-3 py-2 rounded-xl border border-border/80 bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="home">Home</option>
+                    <option value="work">Work / Office</option>
+                    <option value="campus">Campus / College</option>
+                    <option value="custom">Other Custom</option>
+                  </select>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddSavedPlace(false)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90"
+                  >
+                    Save Place
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Saved Places List */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              {savedPlaces.map((place) => {
+                const isSelected =
+                  userAreaName === place.name ||
+                  (Math.abs(userCoords.lat - place.lat) < 0.002 &&
+                    Math.abs(userCoords.lng - place.lng) < 0.002);
+
+                const getIcon = () => {
+                  switch (place.type) {
+                    case 'home':
+                      return <Home className="h-4 w-4 notranslate" />;
+                    case 'work':
+                      return <Briefcase className="h-4 w-4 notranslate" />;
+                    case 'campus':
+                      return <GraduationCap className="h-4 w-4 notranslate" />;
+                    default:
+                      return <Building2 className="h-4 w-4 notranslate" />;
+                  }
+                };
+
+                return (
+                  <div
+                    key={place.id}
+                    className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                      isSelected
+                        ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                        : 'border-border/80 bg-card/70 hover:bg-muted/70 hover:border-primary/40'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSelectSavedPlace(place)}
+                      className="flex items-center gap-3 min-w-0 flex-1 text-left"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        {getIcon()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs sm:text-sm font-bold truncate text-foreground">
+                          {place.name}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground truncate">
+                          {place.label}
+                        </div>
+                      </div>
+                    </button>
+
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      {isSelected ? (
+                        <Check className="h-4 w-4 text-primary notranslate stroke-[2.5]" />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSelectSavedPlace(place)}
+                          className="px-2.5 py-1 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold"
+                        >
+                          Use
+                        </button>
+                      )}
+                      {place.id.startsWith('sp-') &&
+                        !['sp-campus', 'sp-hospital', 'sp-ushagram'].includes(place.id) && (
+                          <button
+                            type="button"
+                            onClick={() => removeSavedPlace(place.id)}
+                            className="p-1 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                            aria-label={`Delete ${place.name}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 notranslate" />
+                          </button>
+                        )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Footer info note */}
         <div className="pt-3 border-t border-border/80 shrink-0 flex items-center justify-between text-xs text-muted-foreground">

@@ -1,11 +1,10 @@
 # KindLink
 
-> KindLink is a verified, physics-inspired community mutual aid platform operating in Asansol, West Bengal and neighboring districts. It provides instant emergency blood alerts, mobility equipment sharing, elderly companionship, and hyperlocal disaster support. Help requests are ranked mathematically by a "Help Gravity" scoring engine and protected by multi-tier trust verifications.
+> KindLink is a verified community mutual aid platform operating in Asansol, West Bengal and neighboring districts. It provides instant emergency blood alerts, mobility equipment sharing, elderly companionship, and hyperlocal disaster support. Help requests are ranked by urgency level, nearest distance, and longest waiting time, and protected by multi-tier trust verifications.
 
 ## Core Platform & Navigation
 - [Home](https://kindlink.onrender.com/): Public landing page with live urgency ticker, impact metrics, categories, and direct aid access.
 - [How KindLink Works](https://kindlink.onrender.com/how-it-works): 3-step guide to requesting help, matching volunteers, and completing verified tasks safely.
-- [Physics Ranking Engine](https://kindlink.onrender.com/physics): Mathematical breakdown of Help Gravity G = (U * S * T) / (D^1.5 * tau^0.5).
 - [Safety & Verification](https://kindlink.onrender.com/safety-and-verification): 4-tier trust framework, government ID badges, OTP handshakes, and SOS reporting.
 - [About KindLink](https://kindlink.onrender.com/about): Mission, ethos, community-first values, and why hyperlocal aid saves lives.
 - [Frequently Asked Questions](https://kindlink.onrender.com/faq): Answers to common questions regarding privacy, response time, volunteer screening, and costs.

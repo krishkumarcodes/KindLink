@@ -1,9 +1,24 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
 import Script from 'next/script';
 import { Providers } from './providers';
 import './globals.css';
 
 import { SITE_URL } from '@/lib/seo';
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-sans',
+  fallback: ['system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-heading',
+  fallback: ['system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -12,7 +27,7 @@ export const metadata: Metadata = {
     template: '%s | KindLink',
   },
   description:
-    'Verified community mutual aid platform for urgent tasks in Asansol and neighboring areas. Ranked by physics, driven by trust.',
+    'Verified community mutual aid platform for urgent tasks in Asansol and neighboring areas. Driven by urgency, distance, and community trust.',
   applicationName: 'KindLink',
   authors: [{ name: 'KindLink Community Network' }],
   generator: 'Next.js',
@@ -23,7 +38,7 @@ export const metadata: Metadata = {
     'emergency help',
     'community aid',
     'hyperlocal volunteer',
-    'Help Gravity',
+    'Hyperlocal Dispatch',
     'West Bengal aid network',
   ],
   manifest: '/manifest.json',
@@ -45,7 +60,7 @@ export const metadata: Metadata = {
     siteName: 'KindLink',
     title: 'KindLink - Help is just next door',
     description:
-      'Verified community mutual aid platform for urgent tasks in Asansol and neighboring areas. Ranked by physics, driven by trust.',
+      'Verified community mutual aid platform for urgent tasks in Asansol and neighboring areas. Driven by urgency, distance, and community trust.',
     images: [
       {
         url: `${SITE_URL}/og-image.png`,
@@ -59,7 +74,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'KindLink - Help is just next door',
     description:
-      'Verified community mutual aid platform for urgent tasks in Asansol and neighboring areas. Ranked by physics, driven by trust.',
+      'Verified community mutual aid platform for urgent tasks in Asansol and neighboring areas. Driven by urgency, distance, and community trust.',
     images: [`${SITE_URL}/og-image.png`],
   },
   verification: {
@@ -109,15 +124,9 @@ export default function RootLayout({
       lang={initialLocale}
       dir={dir}
       suppressHydrationWarning
-      className={`font-sans ${dir === 'rtl' ? 'rtl-layout' : ''}`}
+      className={`${inter.variable} ${plusJakartaSans.variable} font-sans ${dir === 'rtl' ? 'rtl-layout' : ''}`}
     >
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Noto+Sans+Devanagari:wght@400;500;700&family=Noto+Sans+Bengali:wght@400;500;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap"
-          rel="stylesheet"
-        />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="alternate icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/icon.svg" />
@@ -139,30 +148,48 @@ export default function RootLayout({
           {children}
         </Providers>
 
-        {/* Hidden Google Translate Mount Element */}
-        <div id="google_translate_element" className="hidden" aria-hidden="true" />
+        {/* Hidden Google Translate Mount Element (visually hidden, not display:none) */}
+        <div
+          id="google_translate_element"
+          className="fixed bottom-0 left-0 opacity-0 pointer-events-none w-0 h-0 overflow-hidden -z-50"
+          aria-hidden="true"
+          tabIndex={-1}
+        />
 
         {/* Google Translate Integration Script */}
         <Script
           id="google-translate-init"
-          strategy="afterInteractive"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
-              function googleTranslateElementInit() {
-                if (window.google && window.google.translate) {
-                  new window.google.translate.TranslateElement({
-                    pageLanguage: 'en',
-                    includedLanguages: 'en,hi,bn,bho,mai,ne,ur',
-                    autoDisplay: false,
-                    layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE
-                  }, 'google_translate_element');
+              window.googleTranslateElementInit = function() {
+                function init() {
+                  var el = document.getElementById('google_translate_element');
+                  if (!el) {
+                    setTimeout(init, 50);
+                    return;
+                  }
+                  try {
+                    if (window.google && window.google.translate && window.google.translate.TranslateElement) {
+                      new window.google.translate.TranslateElement({
+                        pageLanguage: 'en',
+                        includedLanguages: 'en,hi,bn,bho,mai,ne,ur,sat,or,as,mr,gu,pa,ta,te,kn,ml,fr,es,de,pt,it,ru,zh-CN,ja,ko,ar,id,tr',
+                        autoDisplay: false,
+                        layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE
+                      }, 'google_translate_element');
+                    }
+                  } catch (e) {
+                    console.error('[Google Translate Init Error]', e);
+                  }
                 }
-              }
+                init();
+              };
             `,
           }}
         />
         <Script
-          src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"
+          id="google-translate-script"
+          src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"
           strategy="afterInteractive"
         />
       </body>

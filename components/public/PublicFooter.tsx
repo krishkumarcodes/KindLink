@@ -75,7 +75,7 @@ export function PublicFooter() {
             </Link>
 
             <p className="mt-3 text-xs leading-relaxed text-muted-foreground max-w-sm">
-              KindLink is a verified, physics-ranked community mutual aid network for Asansol, Durgapur, and nearby
+              KindLink is a verified community mutual aid network for Asansol, Durgapur, and nearby
               neighborhoods. Designed to eliminate social noise and connect real neighbors when urgent help is needed.
             </p>
 
@@ -150,10 +150,10 @@ export function PublicFooter() {
             </ul>
           </div>
 
-          {/* Platform & Physics */}
+          {/* Platform */}
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-              Platform &amp; Science
+              Platform &amp; Trust
             </h3>
             <ul className="mt-3 space-y-2 text-xs">
               <li>
@@ -162,14 +162,6 @@ export function PublicFooter() {
                   className="text-muted-foreground transition-colors hover:text-teal-600 dark:hover:text-teal-400"
                 >
                   How it Works
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/physics"
-                  className="text-muted-foreground transition-colors hover:text-teal-600 dark:hover:text-teal-400"
-                >
-                  Physics &amp; Urgency Model
                 </Link>
               </li>
               <li>

@@ -1,0 +1,148 @@
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 780" width="360" height="780" fill="none">
+      <defs>
+        <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#070c17" />
+          <stop offset="100%" stop-color="#0b1324" />
+        </linearGradient>
+        <linearGradient id="headerGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#0F766E" />
+          <stop offset="100%" stop-color="#2563EB" />
+        </linearGradient>
+      </defs>
+
+      <!-- Background Canvas -->
+      <rect width="360" height="780" fill="url(#bgGrad)" />
+
+      <!-- Desktop Sidebar (>=1024px) -->
+      
+
+      <!-- Top Header (Height 64px) -->
+      <rect width="360" height="64" fill="#0a101f" stroke="#1e293b" stroke-width="1" />
+      <g transform="translate(12, 14)">
+        <!-- Logo Squircle -->
+        <rect width="36" height="36" rx="10" fill="url(#headerGrad)" />
+        <circle cx="18" cy="18" r="6" fill="#FFFFFF" />
+        
+        <!-- Brand Name -->
+        <text x="44" y="24" fill="#F8FAFC" font-size="16" font-weight="800" font-family="system-ui, sans-serif">
+          Kind<tspan fill="#0D9488">Link</tspan>
+        </text>
+
+        <!-- Location Chip -->
+        <g transform="translate(122, 4)">
+          <rect width="68" height="28" rx="14" fill="#131d31" stroke="#1f2d48" />
+          <circle cx="12" cy="14" r="3" fill="#10B981" />
+          <text x="22" y="18" fill="#E2E8F0" font-size="10" font-weight="600">Asansol</text>
+        </g>
+      </g>
+
+      <!-- Right Header Actions (Fit tested at 360px) -->
+      <g transform="translate(208, 14)">
+        <!-- SOS Circle / Button -->
+        <circle cx="18" cy="18" r="18" fill="#DC2626" />
+        <circle cx="18" cy="18" r="22" stroke="#DC2626" stroke-opacity="0.3" stroke-width="2" />
+        <text x="9" y="22" fill="#FFFFFF" font-size="9" font-weight="900">SOS</text>
+
+        <!-- Language Button -->
+        <rect x="42" y="0" width="32" height="36" rx="10" fill="#131d31" stroke="#1f2d48" />
+        <text x="49" y="22" fill="#E2E8F0" font-size="11" font-weight="800">EN</text>
+
+        <!-- Bell -->
+        <rect x="78" y="0" width="36" height="36" rx="10" fill="#131d31" stroke="#1f2d48" />
+        <circle cx="96" cy="18" r="7" fill="#64748B" />
+        <circle cx="104" cy="10" r="4" fill="#EF4444" />
+
+        <!-- Avatar -->
+        <rect x="118" y="0" width="36" height="36" rx="10" fill="#0D9488" fill-opacity="0.2" stroke="#0D9488" stroke-opacity="0.4" />
+        <text x="128" y="23" fill="#2DD4BF" font-size="12" font-weight="800">U</text>
+      </g>
+
+      <!-- Main Stage View Content -->
+      <g transform="translate(0, 0)">
+        
+      <g transform="translate(16, 80)">
+        <!-- Profile Header Card -->
+        <rect width="328" height="130" rx="24" fill="#131d31" stroke="#1f2d48" />
+        <circle cx="56" cy="65" r="32" fill="#0D9488" />
+        <text x="46" y="73" fill="#FFFFFF" font-size="22" font-weight="800">KV</text>
+        
+        <text x="104" y="50" fill="#F8FAFC" font-size="18" font-weight="800">Kind Volunteer</text>
+        <rect x="104" y="60" width="112" height="20" rx="10" fill="#10B981" fill-opacity="0.2" />
+        <text x="114" y="74" fill="#34D399" font-size="10" font-weight="700">✓ Verified Volunteer</text>
+        <text x="104" y="98" fill="#94A3B8" font-size="11">Asansol Engineering College · ⭐ 5.0 (18 aids)</text>
+
+        <!-- Profile Tabs -->
+        <g transform="translate(0, 150)">
+          <rect x="0" y="0" width="80" height="32" rx="12" fill="#0D9488" />
+          <text x="18" y="20" fill="#FFFFFF" font-size="11" font-weight="700">Overview</text>
+
+          <rect x="88" y="0" width="74" height="32" rx="12" fill="#131d31" stroke="#1f2d48" />
+          <text x="104" y="20" fill="#94A3B8" font-size="11" font-weight="600">Activity</text>
+
+          <rect x="170" y="0" width="74" height="32" rx="12" fill="#131d31" stroke="#1f2d48" />
+          <text x="188" y="20" fill="#94A3B8" font-size="11" font-weight="600">Badges</text>
+
+          <rect x="252" y="0" width="74" height="32" rx="12" fill="#131d31" stroke="#1f2d48" />
+          <text x="272" y="20" fill="#94A3B8" font-size="11" font-weight="600">Impact</text>
+        </g>
+
+        <!-- Earned Badges Showcase -->
+        <g transform="translate(0, 202)">
+          <text x="0" y="16" fill="#E2E8F0" font-size="13" font-weight="800">EARNED COMMUNITY BADGES</text>
+          <g transform="translate(0, 32)">
+            
+              <g transform="translate(0, 0)">
+                <rect width="328" height="70" rx="18" fill="#111c30" stroke="#1f2d48" />
+                <circle cx="36" cy="35" r="18" fill="#EF4444" fill-opacity="0.2" />
+                <circle cx="36" cy="35" r="10" fill="#EF4444" />
+                <text x="68" y="32" fill="#F8FAFC" font-size="13" font-weight="700">Lifesaver Donor</text>
+                <text x="68" y="52" fill="#94A3B8" font-size="11">5+ blood units delivered</text>
+              </g>
+            
+              <g transform="translate(0, 82)">
+                <rect width="328" height="70" rx="18" fill="#111c30" stroke="#1f2d48" />
+                <circle cx="36" cy="35" r="18" fill="#F59E0B" fill-opacity="0.2" />
+                <circle cx="36" cy="35" r="10" fill="#F59E0B" />
+                <text x="68" y="32" fill="#F8FAFC" font-size="13" font-weight="700">First Responder</text>
+                <text x="68" y="52" fill="#94A3B8" font-size="11">Response under 10 min</text>
+              </g>
+            
+              <g transform="translate(0, 164)">
+                <rect width="328" height="70" rx="18" fill="#111c30" stroke="#1f2d48" />
+                <circle cx="36" cy="35" r="18" fill="#10B981" fill-opacity="0.2" />
+                <circle cx="36" cy="35" r="10" fill="#10B981" />
+                <text x="68" y="32" fill="#F8FAFC" font-size="13" font-weight="700">Student Verified</text>
+                <text x="68" y="52" fill="#94A3B8" font-size="11">College ID authenticated</text>
+              </g>
+            
+          </g>
+        </g>
+      </g>
+    
+      </g>
+
+      <!-- Mobile Bottom Tab Bar (<768px) -->
+      
+        <g transform="translate(0, 712)">
+          <rect width="360" height="68" fill="#070d18" stroke="#1e293b" stroke-width="1" />
+          
+          <!-- Home Tab -->
+          <text x="36" y="42" fill="#64748B" font-size="10" font-weight="700">Home</text>
+          
+          <!-- Map Tab -->
+          <text x="100.80000000000001" y="42" fill="#64748B" font-size="10" font-weight="600">Map</text>
+          
+          <!-- Center Floating + Button -->
+          <circle cx="180" cy="12" r="24" fill="#0D9488" stroke="#070d18" stroke-width="4" />
+          <text x="174" y="19" fill="#FFFFFF" font-size="22" font-weight="400">+</text>
+          
+          <!-- Requests Tab -->
+          <text x="244.8" y="42" fill="#64748B" font-size="10" font-weight="600">Requests</text>
+          
+          <!-- Profile Tab -->
+          <text x="309.6" y="42" fill="#2DD4BF" font-size="10" font-weight="700">Profile</text>
+        </g>
+      
+    </svg>
+  

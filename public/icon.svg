@@ -30,7 +30,7 @@
   <!-- Squircle Base with Deep Elevation -->
   <rect x="24" y="24" width="464" height="464" rx="128" fill="url(#pwa-bg)" filter="url(#pwa-shadow)"/>
 
-  <!-- Antigravity Gravitational Field Lines (Physics Help Gravity Orbitals) -->
+  <!-- Community Radial Field Lines (Hyperlocal Aid Orbitals) -->
   <ellipse cx="256" cy="256" rx="190" ry="95" transform="rotate(-30 256 256)" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="16" stroke-dasharray="32 16" stroke-linecap="round"/>
   <ellipse cx="256" cy="256" rx="190" ry="95" transform="rotate(30 256 256)" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="16" stroke-dasharray="32 16" stroke-linecap="round"/>
   <circle cx="256" cy="256" r="160" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="8"/>
@@ -41,7 +41,7 @@
   <!-- Secondary Inner Link Arch -->
   <path d="M190 236 C210 262, 232 276, 256 276 C280 276, 302 262, 322 236" stroke="#0D9488" stroke-width="14" stroke-linecap="round"/>
 
-  <!-- Quantum Hyperlocal Aid Core (Gravitational Center of Mass) -->
+  <!-- Hyperlocal Aid Core (Community Center Beacon) -->
   <circle cx="256" cy="256" r="44" fill="url(#pwa-beacon)" filter="url(#pwa-glow)"/>
   <circle cx="256" cy="256" r="18" fill="#FFFFFF"/>
 </svg>

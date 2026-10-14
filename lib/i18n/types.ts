@@ -1,5 +1,5 @@
 export type Locale =
-  // Indian Languages
+  // Indian Languages (17)
   | 'en'
   | 'hi'
   | 'bn'
@@ -17,20 +17,14 @@ export type Locale =
   | 'te'
   | 'kn'
   | 'ml'
-  // Jharkhand Beta Languages
-  | 'sck'
-  | 'kht'
-  | 'kru'
-  | 'unr'
-  | 'hoc'
-  // International Languages
+  // International Languages (12)
   | 'fr'
   | 'es'
   | 'de'
   | 'pt'
   | 'it'
   | 'ru'
-  | 'zh'
+  | 'zh-CN'
   | 'ja'
   | 'ko'
   | 'ar'
@@ -46,8 +40,8 @@ export interface LanguageMeta {
   script: string;
   dir: TextDirection;
   group: 'indian' | 'international';
-  isBeta?: boolean;
   region?: string;
+  isBeta?: boolean;
 }
 
 export interface CommonDictionary {
@@ -83,7 +77,6 @@ export interface NavDictionary {
   requests: string;
   map: string;
   newRequest: string;
-  physics: string;
   profile: string;
   settings: string;
   help: string;

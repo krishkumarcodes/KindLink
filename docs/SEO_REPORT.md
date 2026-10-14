@@ -19,15 +19,14 @@ All 14 public indexable pages are server-rendered with zero JavaScript dependenc
 | # | Route | Page Title | Primary `<h1>` | Words | Schema.org Type |
 | :-: | :--- | :--- | :--- | :-: | :--- |
 | 1 | `/` | Help is Just Next Door \| Verified Community Aid in Asansol | Help is Just Next Door: Real-Time Verified Mutual Aid in Asansol | ~650 | `WebSite`, `Organization`, `WebApplication` |
-| 2 | `/about` | About KindLink \| Applied Physics & Mutual Aid in Asansol | About KindLink: Grassroots Mutual Aid Powered by Classical Mechanics | ~550 | `BreadcrumbList`, `Article` |
+| 2 | `/about` | About KindLink \| Hyperlocal Mutual Aid in Asansol | About KindLink: Grassroots Mutual Aid Powered by Community Trust | ~550 | `BreadcrumbList`, `Article` |
 | 3 | `/how-it-works` | How KindLink Works \| 5-Step Community Aid Lifecycle | How KindLink Works: Fast, Verified Community Assistance in 5 Steps | ~620 | `HowTo`, `BreadcrumbList` |
 | 4 | `/help/blood-donation` | Emergency Blood Donation in Asansol & Durgapur \| KindLink | Urgent Blood & Platelet Donor Matching Across Asansol & Durgapur | ~580 | `BreadcrumbList`, `Service` |
 | 5 | `/help/emergency-transport` | Community Emergency Patient Transport \| KindLink | Volunteer Emergency Patient Transport & Hospital Transit in Asansol | ~510 | `BreadcrumbList`, `Service` |
 | 6 | `/help/wheelchair-and-equipment` | Free Wheelchair & Medical Equipment Sharing \| KindLink | Free Community Wheelchair & Medical Equipment Sharing in Asansol | ~490 | `BreadcrumbList`, `Service` |
 | 7 | `/help/elderly-assistance` | Compassionate Elderly Assistance & Medicine Delivery \| KindLink | Verified Elderly Assistance & Life-Saving Medicine Delivery in Asansol | ~530 | `BreadcrumbList`, `Service` |
 | 8 | `/help/books-and-study-material` | Free Textbook & Study Material Exchange \| KindLink | Peer Textbook & Engineering Study Material Sharing in Asansol | ~480 | `BreadcrumbList`, `Service` |
-| 9 | `/physics` | Applied Physics Engine in KindLink \| Help Gravity & Kinematics | The Physics of KindLink: Help Gravity, Kinematics & Inertial Sensors | ~680 | `BreadcrumbList`, `TechArticle` |
-| 10 | `/safety-and-verification` | Safety, Trust & Verification \| Multi-Tier Protection - KindLink | Safety, Trust & Verification Architecture at KindLink | ~520 | `BreadcrumbList` |
+| 9 | `/safety-and-verification` | Safety, Trust & Verification \| Multi-Tier Protection - KindLink | Safety, Trust & Verification Architecture at KindLink | ~520 | `BreadcrumbList` |
 | 11 | `/faq` | Frequently Asked Questions \| Community Mutual Aid FAQ - KindLink | Frequently Asked Questions About KindLink | ~700 | `FAQPage` (12 Q&As), `BreadcrumbList` |
 | 12 | `/privacy` | Privacy Policy \| Transparent Data Practices - KindLink | KindLink Privacy Policy & Data Protection Guarantees | ~600 | `BreadcrumbList` |
 | 13 | `/terms` | Terms of Service \| Community Guidelines - KindLink | KindLink Terms of Service & Community Covenant | ~580 | `BreadcrumbList` |
@@ -63,7 +62,7 @@ Tested across multiple simulated user agents:
 | :--- | :--- | :---: | :---: | :---: |
 | **Googlebot 2.1** | `https://kindlink.onrender.com/` | `200 OK` | `content-type: text/html` | ✅ YES |
 | **Bingbot 2.0** | `https://kindlink.onrender.com/how-it-works` | `200 OK` | `content-type: text/html` | ✅ YES |
-| **GPTBot 1.2** (OpenAI) | `https://kindlink.onrender.com/physics` | `200 OK` | `content-type: text/html` | ✅ YES |
+| **GPTBot 1.2** (OpenAI) | `https://kindlink.onrender.com/safety-and-verification` | `200 OK` | `content-type: text/html` | ✅ YES |
 | **ClaudeBot 1.0** (Anthropic) | `https://kindlink.onrender.com/help/blood-donation` | `200 OK` | `content-type: text/html` | ✅ YES |
 | **PerplexityBot 1.0** | `https://kindlink.onrender.com/faq` | `200 OK` | `content-type: text/html` | ✅ YES |
 | **curl/8.0.0** (Plain CLI) | `https://kindlink.onrender.com/about` | `200 OK` | `content-type: text/html` | ✅ YES |
@@ -91,6 +90,6 @@ Because public pages are statically generated server components without client-h
 
 - **Responsive Layout**: Tested across mobile (375px), tablet (768px), and desktop (1280px+). Clean typography, no horizontal scrolling, no text clipping.
 - **Brand Identity**: Strictly verified spelling as `KindLink` across titles, logos, manifests, and documentation.
-- **Interactive App Shell**: Located at `/app` with full preservation of live requests, MapView, Help Gravity sliders, fall sensor simulations, profile verification, and admin portal.
+- **Interactive App Shell**: Located at `/app` with full preservation of live requests, MapView, profile verification, and admin portal.
 - **Authentication Flow**: Login and registration redirect authenticated users to `/app`.
 - **TypeScript Compilation**: `npm run type-check` succeeded with **0 errors**.

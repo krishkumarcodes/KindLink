@@ -32,7 +32,6 @@ export function PublicHeader() {
   const navLinks = [
     { label: 'Home', href: '/' },
     { label: 'How it Works', href: '/how-it-works' },
-    { label: 'Physics', href: '/physics' },
     { label: 'Safety', href: '/safety-and-verification' },
     { label: 'FAQ', href: '/faq' },
     { label: 'About', href: '/about' },
@@ -215,17 +214,6 @@ export function PublicHeader() {
               </div>
             )}
           </div>
-
-          <Link
-            href="/physics"
-            className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-              pathname === '/physics'
-                ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            }`}
-          >
-            Physics
-          </Link>
 
           <Link
             href="/safety-and-verification"

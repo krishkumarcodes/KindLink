@@ -142,7 +142,7 @@ Tap through these items on the live site (`https://kindlink-gd8e.onrender.com`):
   - [ ] Open the wizard. Step 1 (5 category cards).
   - [ ] Pick **Blood Donation** ➔ see blood group, hospital name, and units needed.
   - [ ] Pick **Transport** ➔ see pickup, destination, passenger count, and wheelchair toggle.
-  - [ ] Review step shows predicted Help Gravity score and privacy disclaimer.
+  - [ ] Review step shows urgency level priority and privacy disclaimer.
 - [ ] **Help Flow**:
   - [ ] Log in as `kind_volunteer` (`KindLink#Volunteer2026`).
   - [ ] Open the sample critical blood request and tap **I can help**.

@@ -11,13 +11,11 @@ import {
   X,
   SlidersHorizontal,
   Inbox,
-  Atom,
 } from 'lucide-react';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { HelpCategory, HelpRequest, UrgencyLevel } from '@/lib/data/types';
 import { RequestCard } from './RequestCard';
 import { RequestDetailModal } from './RequestDetailModal';
-import { WhyThisRankModal } from './WhyThisRankModal';
 import { HelpFlowModal } from './HelpFlowModal';
 
 export function RequestsView() {
@@ -40,7 +38,6 @@ export function RequestsView() {
   } = useKindLinkStore();
 
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
-  const [whyRankModalReq, setWhyRankModalReq] = useState<HelpRequest | null>(null);
   const [helpFlowReq, setHelpFlowReq] = useState<HelpRequest | null>(null);
 
   // Selected request for details modal
@@ -74,13 +71,28 @@ export function RequestsView() {
     return true;
   });
 
+  const URGENCY_PRIORITY: Record<string, number> = {
+    critical: 1,
+    high: 2,
+    medium: 3,
+    low: 4,
+  };
+
   // Sorting logic based on tab
   const sortedRequests = [...filteredRequests].sort((a, b) => {
     if (activeFeedTab === 'urgent') {
-      return b.helpGravityScore - a.helpGravityScore;
+      const urgA = URGENCY_PRIORITY[a.urgency] ?? 5;
+      const urgB = URGENCY_PRIORITY[b.urgency] ?? 5;
+      if (urgA !== urgB) return urgA - urgB;
+      if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
+      return b.waitingMinutes - a.waitingMinutes;
     }
     if (activeFeedTab === 'nearest') {
-      return a.distanceKm - b.distanceKm;
+      if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
+      const urgA = URGENCY_PRIORITY[a.urgency] ?? 5;
+      const urgB = URGENCY_PRIORITY[b.urgency] ?? 5;
+      if (urgA !== urgB) return urgA - urgB;
+      return b.waitingMinutes - a.waitingMinutes;
     }
     // newest
     return a.waitingMinutes - b.waitingMinutes;
@@ -104,7 +116,7 @@ export function RequestsView() {
   ];
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-24 sm:pb-8">
+    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-36 lg:pb-16">
       {/* Top Header & Search Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -320,7 +332,6 @@ export function RequestsView() {
               request={req}
               travelMode={travelMode}
               onSelect={(r) => setSelectedRequestId(r.id)}
-              onWhyRank={(r) => setWhyRankModalReq(r)}
               onHelp={(r) => setHelpFlowReq(r)}
             />
           ))}
@@ -332,12 +343,6 @@ export function RequestsView() {
         request={activeDetailRequest}
         open={Boolean(activeDetailRequest)}
         onClose={() => setSelectedRequestId(null)}
-      />
-
-      <WhyThisRankModal
-        request={whyRankModalReq}
-        open={Boolean(whyRankModalReq)}
-        onClose={() => setWhyRankModalReq(null)}
       />
 
       <HelpFlowModal

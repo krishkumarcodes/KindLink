@@ -25,17 +25,30 @@ import {
   Navigation,
   Accessibility,
   Luggage,
+  Crosshair,
+  Compass,
+  Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
+import { useLocation } from '@/lib/location/LocationProvider';
+import { searchAddressNominatim } from '@/lib/location/search';
+import { LocationSearchResult } from '@/lib/location/types';
+import { reverseGeocode } from '@/lib/geo/reverse-geocode';
+import { PinDropMap } from '@/components/location/PinDropMap';
 import { HelpCategory, UrgencyLevel, DraftRequest } from '@/lib/data/types';
-import { calculateHelpGravity } from '@/lib/data/physics';
 import { dataAdapter } from '@/lib/data';
 
 const DRAFT_STORAGE_KEY = 'kindlink_new_request_draft_v2';
 
 export function NewRequestWizard() {
-  const { addRequest, setCurrentView, userProfile, userCoords } = useKindLinkStore();
+  const { addRequest, setCurrentView, userProfile } = useKindLinkStore();
+  const {
+    userCoords: providerCoords,
+    userAreaName: providerAreaName,
+    accuracy: providerAccuracy,
+    requestLiveLocation,
+  } = useLocation();
 
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -79,10 +92,17 @@ export function NewRequestWizard() {
   const [neededByTime, setNeededByTime] = useState('Immediate (0-2 hours)');
 
   // Location & Contact (Step 4)
+  const [locationMode, setLocationMode] = useState<'current' | 'custom'>('current');
   const [locationName, setLocationName] = useState('Asansol District Hospital, SB Gorai Road');
-  const [latitude, setLatitude] = useState(userCoords?.lat || 23.6845);
-  const [longitude, setLongitude] = useState(userCoords?.lng || 86.9742);
+  const [latitude, setLatitude] = useState(providerCoords?.lat || 23.6845);
+  const [longitude, setLongitude] = useState(providerCoords?.lng || 86.9742);
   const [isLocating, setIsLocating] = useState(false);
+  const [locationDetails, setLocationDetails] = useState('');
+  const [showPinDropMap, setShowPinDropMap] = useState(false);
+  const [wizardSearchQuery, setWizardSearchQuery] = useState('');
+  const [wizardSearchResults, setWizardSearchResults] = useState<LocationSearchResult[]>([]);
+  const [isSearchingWizardAddress, setIsSearchingWizardAddress] = useState(false);
+  const [isGeocodingPin, setIsGeocodingPin] = useState(false);
 
   const [contactName, setContactName] = useState(userProfile?.name || '');
   const [contactRole, setContactRole] = useState('Volunteer Requester');
@@ -237,9 +257,6 @@ export function NewRequestWizard() {
     } catch {}
   };
 
-  // Live estimated Help Gravity score (using 1.5 km estimated radius)
-  const estimatedGravityScore = calculateHelpGravity(category, 5, 1.5);
-
   // Category switch with smart default urgency
   const handleSelectCategory = (cat: HelpCategory) => {
     setCategory(cat);
@@ -321,34 +338,104 @@ export function NewRequestWizard() {
     setStep(5);
   };
 
-  // Current GPS Geolocation
-  const handleUseCurrentGPS = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
+  // Sync provider location when choosing current location
+  useEffect(() => {
+    if (!isDraftRestored && locationMode === 'current') {
+      setLatitude(providerCoords.lat);
+      setLongitude(providerCoords.lng);
+      const name = locationDetails.trim()
+        ? `${providerAreaName} (${locationDetails.trim()})`
+        : providerAreaName;
+      setLocationName(name);
+      if (category === 'transport') {
+        setPickupAddress(name);
+      }
+    }
+  }, [providerCoords.lat, providerCoords.lng, providerAreaName, locationMode, locationDetails, isDraftRestored, category]);
+
+  // Debounced address search in wizard
+  useEffect(() => {
+    const trimmed = wizardSearchQuery.trim();
+    if (!trimmed || trimmed.length < 2) {
+      setWizardSearchResults([]);
+      setIsSearchingWizardAddress(false);
       return;
     }
-    setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setIsLocating(false);
-        const lat = Number(pos.coords.latitude.toFixed(4));
-        const lng = Number(pos.coords.longitude.toFixed(4));
-        setLatitude(lat);
-        setLongitude(lng);
-        setLocationName(`Current GPS (${lat}, ${lng}) - Near Asansol`);
-        if (category === 'transport') {
-          setPickupAddress(`Current GPS Location (${lat}, ${lng})`);
+
+    const abortController = new AbortController();
+    setIsSearchingWizardAddress(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchAddressNominatim(trimmed, abortController.signal);
+        setWizardSearchResults(results);
+      } catch (err: unknown) {
+        if ((err as Error)?.name !== 'AbortError') {
+          setWizardSearchResults([]);
         }
-        toast.success('Accurate GPS location locked!');
-      },
-      (err) => {
-        setIsLocating(false);
-        toast.error('Unable to fetch live GPS. You can select a landmark below.', {
-          description: err.message,
-        });
-      },
-      { timeout: 10000, enableHighAccuracy: true }
-    );
+      } finally {
+        setIsSearchingWizardAddress(false);
+      }
+    }, 320);
+
+    return () => {
+      clearTimeout(timer);
+      abortController.abort();
+    };
+  }, [wizardSearchQuery]);
+
+  // Current GPS Geolocation with LocationProvider
+  const handleUseCurrentGPS = async () => {
+    setIsLocating(true);
+    const res = await requestLiveLocation();
+    setIsLocating(false);
+    if (res) {
+      const lat = Number(res.lat.toFixed(4));
+      const lng = Number(res.lng.toFixed(4));
+      setLatitude(lat);
+      setLongitude(lng);
+      const name = locationDetails.trim()
+        ? `${res.areaName} (${locationDetails.trim()})`
+        : res.areaName;
+      setLocationName(name);
+      if (category === 'transport') {
+        setPickupAddress(name);
+      }
+      toast.success('Live GPS coordinates locked for this request!');
+    }
+  };
+
+  // Pin movement on interactive map
+  const handleWizardPinChange = async (lat: number, lng: number) => {
+    const fixedLat = Number(lat.toFixed(4));
+    const fixedLng = Number(lng.toFixed(4));
+    setLatitude(fixedLat);
+    setLongitude(fixedLng);
+    setIsGeocodingPin(true);
+    try {
+      const geocoded = await reverseGeocode(fixedLat, fixedLng);
+      setLocationName(geocoded.shortLabel);
+      if (category === 'transport') {
+        setDropAddress(geocoded.shortLabel);
+      }
+    } catch {
+      setLocationName(`Pin (${fixedLat.toFixed(3)}°N, ${fixedLng.toFixed(3)}°E)`);
+    } finally {
+      setIsGeocodingPin(false);
+    }
+  };
+
+  // Search result selection
+  const handleSelectWizardSearchResult = (res: LocationSearchResult) => {
+    setLatitude(res.lat);
+    setLongitude(res.lng);
+    setLocationName(res.shortLabel);
+    if (category === 'transport') {
+      setDropAddress(res.shortLabel);
+    }
+    setWizardSearchQuery('');
+    setWizardSearchResults([]);
+    toast.success(`Location set to ${res.shortLabel}`);
   };
 
   // Submit to Supabase / Adapter
@@ -395,7 +482,7 @@ export function NewRequestWizard() {
 
       setIsSuccess(true);
       toast.success('Help Request Broadcasted Successfully!', {
-        description: 'Nearby volunteers in Asansol and Burnpur are being alerted by Help Gravity.',
+        description: 'Nearby verified volunteers in the area are being notified immediately.',
       });
 
       setTimeout(() => {
@@ -423,8 +510,8 @@ export function NewRequestWizard() {
           Your request is now live in the community feed. Verified volunteers within 10 km are being notified.
         </p>
         <div className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-primary/10 text-primary text-xs font-bold border border-primary/20">
-          <Atom className="h-4 w-4 notranslate animate-spin" />
-          <span>Help Gravity Urgency Score: {estimatedGravityScore}</span>
+          <ShieldCheck className="h-4 w-4 notranslate text-emerald-500" />
+          <span>Priority Level: {urgency.toUpperCase()}</span>
         </div>
         <p className="text-[11px] text-muted-foreground mt-4">
           Redirecting to Live Requests feed...
@@ -434,7 +521,7 @@ export function NewRequestWizard() {
   }
 
   return (
-    <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto w-full pb-24 sm:pb-12">
+    <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto w-full pb-36 lg:pb-16">
       {/* Draft Restored Banner */}
       {isDraftRestored && (
         <div className="mb-4 flex items-center justify-between p-3 rounded-2xl bg-primary/10 border border-primary/20 text-xs">
@@ -507,7 +594,7 @@ export function NewRequestWizard() {
                 What kind of help is needed?
               </h2>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                Select a category. The Newtonian Help Gravity algorithm prioritizes requests based on task criticality and distance.
+                Select a category. Requests are ranked by urgency level, nearest distance, and waiting time.
               </p>
             </div>
 
@@ -985,7 +1072,7 @@ export function NewRequestWizard() {
                 Select urgency & response window
               </h2>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                Help Gravity prioritizes immediate critical aid at the top of responders&apos; map feeds.
+                Immediate critical requests are prioritized first for nearby responders.
               </p>
             </div>
 
@@ -1135,28 +1222,288 @@ export function NewRequestWizard() {
               </div>
             )}
 
-            {/* GPS Lock Button */}
-            <div className="flex items-center gap-3 p-4 rounded-2xl bg-primary/10 border border-primary/20">
+            {/* Location Selection Mode: "At my current location" vs "Somewhere else" */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={handleUseCurrentGPS}
-                disabled={isLocating}
-                className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90 transition-all active:scale-95 shadow-xs touch-target disabled:opacity-50"
+                onClick={() => {
+                  setLocationMode('current');
+                  setLatitude(providerCoords.lat);
+                  setLongitude(providerCoords.lng);
+                  const name = locationDetails.trim()
+                    ? `${providerAreaName} (${locationDetails.trim()})`
+                    : providerAreaName;
+                  setLocationName(name);
+                  if (category === 'transport') {
+                    setPickupAddress(name);
+                  }
+                }}
+                className={`p-4 rounded-2xl border text-left transition-all touch-target ${
+                  locationMode === 'current'
+                    ? 'border-primary bg-primary/10 ring-2 ring-primary/25 shadow-xs'
+                    : 'border-border/80 bg-card hover:bg-muted/70'
+                }`}
               >
-                {isLocating ? (
-                  <Loader2 className="h-4 w-4 animate-spin notranslate" />
-                ) : (
-                  <LocateFixed className="h-4 w-4 notranslate" />
-                )}
-                <span>{isLocating ? 'Locking GPS...' : 'Use Current Live GPS'}</span>
+                <div className="flex items-center gap-2.5 mb-1.5">
+                  <div
+                    className={`p-2 rounded-xl ${
+                      locationMode === 'current'
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    <LocateFixed className="h-4 w-4 notranslate" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-sm font-bold text-foreground block">
+                      At my current location
+                    </span>
+                    <span className="text-[11px] text-muted-foreground truncate block">
+                      Instant GPS or saved neighborhood
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center justify-between text-xs">
+                  <span className="font-semibold text-primary truncate max-w-[160px]">
+                    {providerAreaName}
+                  </span>
+                  {providerCoords.isLive && (
+                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full shrink-0">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Live {providerAccuracy ? `±${providerAccuracy}m` : ''}
+                    </span>
+                  )}
+                </div>
               </button>
-              <span className="text-xs text-muted-foreground font-medium">
-                Lat: {latitude.toFixed(4)}, Lng: {longitude.toFixed(4)}
-              </span>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setLocationMode('custom');
+                }}
+                className={`p-4 rounded-2xl border text-left transition-all touch-target ${
+                  locationMode === 'custom'
+                    ? 'border-primary bg-primary/10 ring-2 ring-primary/25 shadow-xs'
+                    : 'border-border/80 bg-card hover:bg-muted/70'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 mb-1.5">
+                  <div
+                    className={`p-2 rounded-xl ${
+                      locationMode === 'custom'
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    <MapPin className="h-4 w-4 notranslate" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-sm font-bold text-foreground block">
+                      Somewhere else
+                    </span>
+                    <span className="text-[11px] text-muted-foreground truncate block">
+                      Search address or drop pin
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-2.5 pt-2 border-t border-border/60 text-xs text-muted-foreground">
+                  Hospital, clinic, campus, transit spot
+                </div>
+              </button>
             </div>
 
-            {/* Transport has both pickup and destination */}
-            {category === 'transport' ? (
+            {/* Current Location Section */}
+            {locationMode === 'current' && (
+              <div className="p-4 rounded-2xl bg-muted/30 border border-border/80 space-y-3.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-border/60">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                      <MapPin className="h-3.5 w-3.5 text-primary shrink-0 notranslate" />
+                      <span className="truncate">{providerAreaName}</span>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground mt-0.5 block">
+                      Coordinates: Lat {latitude.toFixed(4)}, Lng {longitude.toFixed(4)}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleUseCurrentGPS}
+                    disabled={isLocating}
+                    className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all active:scale-95 touch-target disabled:opacity-50 shadow-xs shrink-0"
+                  >
+                    {isLocating ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin notranslate" />
+                    ) : (
+                      <Crosshair className="h-3.5 w-3.5 notranslate" />
+                    )}
+                    <span>{isLocating ? 'Locking GPS...' : 'Refresh GPS Lock'}</span>
+                  </button>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-foreground block mb-1">
+                    Specific Room, Ward, or Floor Details (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={locationDetails}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setLocationDetails(val);
+                      const name = val.trim() ? `${providerAreaName} (${val.trim()})` : providerAreaName;
+                      setLocationName(name);
+                      if (category === 'transport') {
+                        setPickupAddress(name);
+                      }
+                    }}
+                    placeholder="e.g. Female Surgical Ward, Bed 12, 2nd Floor"
+                    className="w-full rounded-xl border border-border/80 bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-xs"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Custom Location Section */}
+            {locationMode === 'custom' && (
+              <div className="space-y-4">
+                {/* Search Address or Locality */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground block">
+                    Search Address or Locality
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground notranslate pointer-events-none" />
+                    <input
+                      type="text"
+                      value={wizardSearchQuery}
+                      onChange={(e) => setWizardSearchQuery(e.target.value)}
+                      placeholder="Type address or locality (e.g. GT Road, Burnpur, Sen Raleigh)..."
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-border/80 bg-background text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
+                    />
+                    {isSearchingWizardAddress && (
+                      <div className="absolute right-3.5 top-3.5 h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin notranslate" />
+                    )}
+                  </div>
+
+                  {wizardSearchResults.length > 0 && (
+                    <div className="p-1 rounded-2xl border border-border/80 bg-card shadow-lg space-y-1 max-h-48 overflow-y-auto">
+                      {wizardSearchResults.map((res) => (
+                        <button
+                          key={res.id}
+                          type="button"
+                          onClick={() => handleSelectWizardSearchResult(res)}
+                          className="w-full text-left p-2.5 rounded-xl hover:bg-muted/80 flex items-center justify-between text-xs transition-colors"
+                        >
+                          <div className="min-w-0 pr-2">
+                            <span className="font-bold text-foreground block truncate">
+                              {res.shortLabel}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground block truncate">
+                              {res.displayName}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-primary font-semibold shrink-0">
+                            Select
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Drop Pin on Map Interactive Toggle */}
+                <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Compass className="h-4 w-4 text-primary notranslate" />
+                      <span className="text-xs font-bold text-foreground">
+                        {showPinDropMap ? 'Drop Pin on Map (Active)' : 'Pinpoint on Map'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPinDropMap(!showPinDropMap)}
+                      className="px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition-colors touch-target"
+                    >
+                      {showPinDropMap ? 'Close Map' : 'Drop a Pin on Map'}
+                    </button>
+                  </div>
+
+                  {showPinDropMap && (
+                    <div className="pt-1 space-y-2">
+                      <PinDropMap
+                        lat={latitude}
+                        lng={longitude}
+                        onPositionChange={handleWizardPinChange}
+                        className="h-56 sm:h-64 w-full"
+                      />
+                      <div className="p-2.5 rounded-xl bg-card border border-border/80 flex items-center justify-between text-xs">
+                        <div className="min-w-0 pr-2">
+                          <span className="text-muted-foreground text-[11px] block">Pinned Location:</span>
+                          <span className="font-bold text-foreground truncate block">
+                            {locationName}
+                            {isGeocodingPin && ' (resolving...)'}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-muted-foreground shrink-0 font-mono">
+                          {latitude.toFixed(4)}, {longitude.toFixed(4)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Landmark Quick Selection */}
+                <div>
+                  <label className="text-xs font-bold text-foreground block mb-2">
+                    Quick Landmark Selection (Asansol &amp; Nearby)
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {landmarks.map((lm) => (
+                      <button
+                        key={lm.name}
+                        type="button"
+                        onClick={() => {
+                          setLocationName(lm.name);
+                          setLatitude(lm.lat);
+                          setLongitude(lm.lng);
+                          if (category === 'transport') {
+                            setDropAddress(lm.name);
+                          }
+                        }}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all active:scale-95 ${
+                          locationName === lm.name
+                            ? 'border-primary bg-primary text-white font-bold shadow-xs'
+                            : 'border-border/80 bg-card hover:bg-muted text-foreground hover:border-border'
+                        }`}
+                      >
+                        <MapPin className="h-3 w-3 notranslate" />
+                        <span className="truncate max-w-[200px]">{lm.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Exact Address / Hospital Ward input field */}
+                {category !== 'transport' && (
+                  <div>
+                    <label className="text-xs font-bold text-foreground block mb-1.5">
+                      Exact Address / Hospital Ward *
+                    </label>
+                    <input
+                      type="text"
+                      value={locationName}
+                      onChange={(e) => setLocationName(e.target.value)}
+                      placeholder="Hospital ward, bed number, street name, landmark..."
+                      className="w-full rounded-2xl border border-border/80 bg-background/80 focus:bg-background px-4 py-3 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-xs hover:border-border"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Transport Transit Route (Pickup & Drop) */}
+            {category === 'transport' && (
               <div className="space-y-3.5 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20">
                 <div className="flex items-center gap-2 text-xs font-bold text-amber-700 dark:text-amber-300">
                   <Navigation className="h-4 w-4 notranslate" />
@@ -1189,51 +1536,7 @@ export function NewRequestWizard() {
                   />
                 </div>
               </div>
-            ) : (
-              <div>
-                <label className="text-xs font-bold text-foreground block mb-1.5">
-                  Exact Address / Hospital Ward *
-                </label>
-                <input
-                  type="text"
-                  value={locationName}
-                  onChange={(e) => setLocationName(e.target.value)}
-                  placeholder="Hospital ward, bed number, street name, landmark..."
-                  className="w-full rounded-2xl border border-border/80 bg-background/80 focus:bg-background px-4 py-3 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-xs hover:border-border"
-                />
-              </div>
             )}
-
-            {/* Landmark Quick Selection */}
-            <div>
-              <label className="text-xs font-bold text-foreground block mb-2">
-                Quick Landmark Selection (Asansol & Nearby)
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {landmarks.map((lm) => (
-                  <button
-                    key={lm.name}
-                    type="button"
-                    onClick={() => {
-                      setLocationName(lm.name);
-                      setLatitude(lm.lat);
-                      setLongitude(lm.lng);
-                      if (category === 'transport') {
-                        setDropAddress(lm.name);
-                      }
-                    }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all active:scale-95 ${
-                      locationName === lm.name
-                        ? 'border-primary bg-primary text-white font-bold shadow-xs'
-                        : 'border-border/80 bg-card hover:bg-muted text-foreground hover:border-border'
-                    }`}
-                  >
-                    <MapPin className="h-3 w-3 notranslate" />
-                    <span className="truncate max-w-[200px]">{lm.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
 
             {/* Contact Person Details */}
             <div className="pt-2 border-t border-border/80 space-y-3">
@@ -1290,7 +1593,7 @@ export function NewRequestWizard() {
         )}
 
         {/* =========================================================================
-            STEP 5: REVIEW, HELP GRAVITY ESTIMATE & SUBMIT
+            STEP 5: REVIEW & SUBMIT
            ========================================================================= */}
         {step === 5 && (
           <div className="space-y-6">
@@ -1303,21 +1606,21 @@ export function NewRequestWizard() {
               </p>
             </div>
 
-            {/* Help Gravity Score Preview Banner */}
+            {/* Community Response Priority Preview Banner */}
             <div className="p-4 sm:p-5 rounded-3xl bg-primary/10 border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-2xl bg-primary text-white shadow-soft">
-                  <Atom className="h-6 w-6 notranslate animate-pulse" />
+                  <ShieldCheck className="h-6 w-6 notranslate" />
                 </div>
                 <div>
                   <span className="text-xs font-extrabold uppercase text-primary tracking-wide block">
-                    Help Gravity Rank Estimate
+                    Community Response Priority
                   </span>
                   <span className="text-sm font-bold text-foreground">
-                    Rank Score: {estimatedGravityScore}
+                    Level: {urgency.charAt(0).toUpperCase() + urgency.slice(1)} Priority
                   </span>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    Calibrated by Newtonian formula: Weight × Waiting Acceleration ÷ Distance²
+                    Ranked by urgency level, nearest distance, then longest waiting time
                   </p>
                 </div>
               </div>

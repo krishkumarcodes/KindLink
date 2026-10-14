@@ -232,7 +232,7 @@ CREATE TABLE IF NOT EXISTS public.reports (
   created_at timestamptz DEFAULT now() NOT NULL
 );
 
--- 8. SOS EVENTS TABLE (Kinetic accelerometer fall detection triggers & Emergency SOS)
+-- 8. SOS EVENTS TABLE (Safety emergency triggers & Emergency SOS)
 CREATE TABLE IF NOT EXISTS public.sos_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
@@ -311,9 +311,9 @@ CREATE INDEX IF NOT EXISTS reports_status_idx ON public.reports (status, created
 -- ----------------------------------------------------------------------------
 
 -- ============================================================================
--- KindLink - Database Migration 05: Core Stored Procedures & Physics Engines
+-- KindLink - Database Migration 05: Core Stored Procedures & Ranking Engines
 -- Author: KindLink Engineering (krishkumarcodes@gmail.com)
--- Purpose: Implement the Newtonian Help Gravity algorithm in SQL, safe contact
+-- Purpose: Implement the Urgency and Distance ranking algorithm in SQL, safe contact
 --          disclosure, public statistics, and offer/request workflow operations.
 -- Safety: Completely idempotent (CREATE OR REPLACE FUNCTION).
 -- ============================================================================
@@ -335,8 +335,8 @@ AS $$
   END;
 $$;
 
--- 2. NEARBY REQUESTS WITH NEWTONIAN HELP GRAVITY ENGINE
--- Formula: score = typeWeight * (1 + 0.05 * waitingMinutes) / (1 + distanceKm)^2
+-- 2. NEARBY REQUESTS WITH URGENCY & DISTANCE RANKING
+-- Sorted by Urgency Level (Critical > High > Medium > Low), then nearest distance, then longest waiting time.
 CREATE OR REPLACE FUNCTION public.nearby_requests(
   lat double precision,
   lng double precision,
@@ -359,7 +359,6 @@ RETURNS TABLE (
   address_text text,
   distance_km double precision,
   waiting_minutes integer,
-  help_gravity_score double precision,
   accepted_helper_id uuid,
   created_at timestamptz
 )
@@ -409,11 +408,20 @@ AS $$
     c.address_text,
     c.distance_km,
     c.waiting_minutes,
-    ROUND((public.category_weight(c.category) * (1.0 + 0.05 * c.waiting_minutes) / power(1.0 + c.distance_km, 2))::numeric, 2)::double precision AS help_gravity_score,
     c.accepted_helper_id,
     c.created_at
   FROM computed c
-  ORDER BY help_gravity_score DESC, c.created_at DESC
+  ORDER BY
+    CASE c.urgency
+      WHEN 'critical' THEN 1
+      WHEN 'high' THEN 2
+      WHEN 'medium' THEN 3
+      WHEN 'low' THEN 4
+      ELSE 5
+    END ASC,
+    c.distance_km ASC,
+    c.waiting_minutes DESC,
+    c.created_at ASC
   LIMIT page_limit
   OFFSET page_offset;
 $$;

@@ -1,7 +1,7 @@
 import { DataAdapter, CreateRequestInput, TransitLocation } from './adapter';
 import { HelpRequest, UserProfile, NotificationItem, VolunteerOffer, RequestLifecycleStatus, CommunityLiveStats, SosEvent } from './types';
 import { INITIAL_REQUESTS, INITIAL_NOTIFICATIONS, MOCK_USER, ASANSOL_CENTER } from './mock-requests';
-import { calculateHaversineDistance, calculateHelpGravity } from './physics';
+import { calculateDistance } from './distance';
 
 class MockDataAdapter implements DataAdapter {
   private requests: HelpRequest[] = [...INITIAL_REQUESTS];
@@ -50,18 +50,30 @@ class MockDataAdapter implements DataAdapter {
     const lng = options?.lng ?? ASANSOL_CENTER.lng;
     const radius = options?.radiusKm ?? 30;
 
+    const URGENCY_PRIORITY: Record<string, number> = {
+      critical: 1,
+      high: 2,
+      medium: 3,
+      low: 4,
+    };
+
     return this.requests
       .map((r) => {
-        const dist = calculateHaversineDistance(lat, lng, r.latitude, r.longitude);
-        const score = calculateHelpGravity(r.category, r.waitingMinutes, dist);
-        return { ...r, distanceKm: dist, helpGravityScore: score };
+        const dist = calculateDistance(lat, lng, r.latitude, r.longitude);
+        return { ...r, distanceKm: dist };
       })
       .filter((r) => {
         if (options?.category && options.category !== 'all' && r.category !== options.category) return false;
         if (options?.urgency && options.urgency !== 'all' && r.urgency !== options.urgency) return false;
         return r.distanceKm <= radius;
       })
-      .sort((a, b) => b.helpGravityScore - a.helpGravityScore);
+      .sort((a, b) => {
+        const urgA = URGENCY_PRIORITY[a.urgency] ?? 5;
+        const urgB = URGENCY_PRIORITY[b.urgency] ?? 5;
+        if (urgA !== urgB) return urgA - urgB;
+        if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
+        return b.waitingMinutes - a.waitingMinutes;
+      });
   }
 
   async createRequest(req: CreateRequestInput): Promise<{ success: boolean; id: string }> {
@@ -101,7 +113,6 @@ class MockDataAdapter implements DataAdapter {
       verified: true,
       verificationBadge: 'College ID Verified',
       createdAt: 'Just now',
-      helpGravityScore: 10,
       status: 'open',
       helpersOffered: 0,
     };

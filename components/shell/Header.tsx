@@ -10,12 +10,12 @@ import {
   User,
   Settings,
   ShieldCheck,
-  Atom,
   AlertTriangle,
   LogOut,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
+import { useLocation } from '@/lib/location/LocationProvider';
 import { getCurrentLanguageCode, SUPPORTED_LANGUAGES } from '@/lib/translate/googleTranslate';
 import { LanguageModal } from './LanguageModal';
 import { NotificationsModal } from './NotificationsModal';
@@ -25,11 +25,10 @@ import { LocationModal } from './LocationModal';
 export function Header() {
   const {
     unreadNotificationCount,
-    userCoords,
-    userAreaName,
     userProfile,
     setCurrentView,
   } = useKindLinkStore();
+  const { userCoords, userAreaName, accuracy } = useLocation();
 
   const [langOpen, setLangOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -43,6 +42,16 @@ export function Header() {
   // Sync current language code for display badge
   useEffect(() => {
     setCurrentLangCode(getCurrentLanguageCode());
+    const handleLocaleChange = (e: Event) => {
+      const custom = e as CustomEvent<{ locale?: string }>;
+      if (custom.detail?.locale) {
+        setCurrentLangCode(custom.detail.locale);
+      }
+    };
+    window.addEventListener('kindlink:locale-change', handleLocaleChange);
+    return () => {
+      window.removeEventListener('kindlink:locale-change', handleLocaleChange);
+    };
   }, [langOpen]);
 
   // Close quick profile menu on outside click or Escape key
@@ -88,21 +97,21 @@ export function Header() {
   return (
     <>
       <header className="sticky top-0 z-30 w-full border-b border-border/80 bg-card/90 backdrop-blur-md pt-[env(safe-area-inset-top,0px)] transition-colors shadow-xs">
-        <div className="flex h-16 w-full max-w-[1920px] mx-auto items-center justify-between px-2.5 sm:px-6 gap-2">
+        <div className="flex h-16 w-full max-w-[1920px] mx-auto items-center justify-between px-2 sm:px-6 gap-1 xs:gap-2">
           {/* Brand Logo & Dynamic Location */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-3 min-w-0">
             {/* KindLink Brand Home Link */}
             <button
               type="button"
               onClick={() => setCurrentView('home')}
-              className="group flex items-center gap-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl p-1 transition-all active:scale-[0.98] shrink-0"
+              className="group flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl p-0.5 sm:p-1 transition-all active:scale-[0.98] shrink-0"
               aria-label="KindLink - Help is just next door"
             >
               {/* KindLink Vector Brand Emblem */}
-              <div className="relative flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center transition-transform duration-200 group-hover:scale-105">
+              <div className="relative flex h-8 w-8 xs:h-9 xs:w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center transition-transform duration-200 group-hover:scale-105">
                 <svg
                   viewBox="0 0 64 64"
-                  className="h-9 w-9 sm:h-10 sm:w-10 drop-shadow-sm select-none"
+                  className="h-8 w-8 xs:h-9 xs:w-9 sm:h-10 sm:w-10 drop-shadow-sm select-none"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                   aria-hidden="true"
@@ -145,7 +154,7 @@ export function Header() {
                     strokeWidth="1"
                   />
 
-                  {/* Orbital Antigravity Field Rings (Newtonian Aid Gravity) */}
+                  {/* Community Connection Field Rings */}
                   <ellipse
                     cx="32"
                     cy="32"
@@ -192,53 +201,51 @@ export function Header() {
               </div>
 
               {/* Brand Typography */}
-              <div className="flex flex-col">
-                <span className="notranslate text-lg sm:text-xl font-extrabold tracking-tight block leading-tight font-heading">
-                  <span className="text-foreground transition-colors">Kind</span>
-                  <span className="text-primary transition-colors">Link</span>
-                </span>
-                {/* Mobile-only location subtitle chip (<640px) */}
-                <span className="sm:hidden flex items-center gap-1 text-[10px] text-muted-foreground font-medium mt-0.5">
-                  <MapPin className="h-2.5 w-2.5 text-primary shrink-0 notranslate" />
-                  <span className="truncate max-w-[70px] xs:max-w-[105px]">{shortArea}</span>
-                  <ChevronDown className="h-2 w-2 opacity-60 shrink-0" />
-                </span>
-              </div>
+              <span className="notranslate text-sm xs:text-base sm:text-xl font-extrabold tracking-tight block leading-tight font-heading">
+                <span className="text-foreground transition-colors">Kind</span>
+                <span className="text-primary transition-colors">Link</span>
+              </span>
             </button>
 
-            {/* Dynamic Location Chip (Visible on screens >= 640px) */}
+            {/* Dynamic Location Chip (Visible on ALL viewports) */}
             <button
               type="button"
               onClick={() => setLocationOpen(true)}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/80 bg-background/80 hover:bg-muted text-xs font-semibold text-foreground transition-all shadow-xs touch-target group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="inline-flex items-center gap-1 px-1.5 xs:px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-border/80 bg-background/80 hover:bg-muted text-[10px] sm:text-xs font-semibold text-foreground transition-all shadow-xs touch-target group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary max-w-[68px] xs:max-w-[95px] sm:max-w-[240px] shrink-0"
               aria-label={`Current location: ${displayAreaName}. Tap to change or recenter.`}
               title="Change area or recenter GPS"
             >
-              <span className="relative flex h-2 w-2 shrink-0">
+              <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
                 {userCoords.isLive ? (
                   <>
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-emerald-500" />
                   </>
                 ) : (
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary/80" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-primary/80" />
                 )}
               </span>
-              <MapPin className="h-3.5 w-3.5 text-primary shrink-0 notranslate group-hover:scale-110 transition-transform" />
-              <span className="max-w-[120px] md:max-w-[190px] lg:max-w-[260px] truncate">
-                {displayAreaName}
+              <MapPin className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 text-primary shrink-0 notranslate group-hover:scale-110 transition-transform" />
+              <span className="truncate">
+                <span className="sm:hidden">{shortArea}</span>
+                <span className="hidden sm:inline">{displayAreaName}</span>
               </span>
-              <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 group-hover:translate-y-0.5 transition-transform" />
+              {userCoords.isLive && accuracy && (
+                <span className="hidden md:inline text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                  ±{accuracy}m
+                </span>
+              )}
+              <ChevronDown className="h-2 w-2 sm:h-3 sm:w-3 text-muted-foreground shrink-0 group-hover:translate-y-0.5 transition-transform" />
             </button>
           </div>
 
           {/* Right Action Icons & Controls */}
-          <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3 shrink-0">
-            {/* Redesigned Emergency SOS Button */}
+          <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2.5 shrink-0">
+            {/* Redesigned Emergency SOS Button - Circle on 360px mobile, pill on min-[420px] */}
             <button
               type="button"
               onClick={() => setSosOpen(true)}
-              className="relative group inline-flex items-center justify-center gap-1.5 px-2.5 min-[400px]:px-3.5 py-2 rounded-full bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold text-xs shadow-md shadow-red-600/30 transition-all duration-150 min-h-[44px] min-w-[44px] touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="relative group inline-flex items-center justify-center gap-1.5 h-9 w-9 min-[420px]:h-10 min-[420px]:w-auto px-0 min-[420px]:px-3.5 rounded-full bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold text-xs shadow-md shadow-red-600/30 transition-all duration-150 touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background shrink-0"
               aria-label="Emergency SOS trigger - Instant community alert"
               title="Trigger Emergency SOS"
             >
@@ -248,7 +255,7 @@ export function Header() {
                 aria-hidden="true"
               />
               <Siren className="h-4 w-4 shrink-0 notranslate animate-bounce motion-reduce:animate-none" />
-              <span className="hidden min-[400px]:inline tracking-wide font-black">SOS</span>
+              <span className="hidden min-[420px]:inline tracking-wide font-black">SOS</span>
               <span className="hidden lg:inline text-[11px] font-bold tracking-normal opacity-90">
                 EMERGENCY
               </span>
@@ -258,36 +265,36 @@ export function Header() {
             <button
               type="button"
               onClick={() => setLangOpen(true)}
-              className="inline-flex items-center justify-center gap-1.5 h-10 min-w-[40px] px-2 sm:px-2.5 rounded-xl border border-border bg-background hover:bg-muted text-foreground transition-colors min-h-[44px] touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="inline-flex items-center justify-center gap-1 h-9 min-[420px]:h-10 px-1.5 sm:px-2.5 rounded-xl border border-border bg-background hover:bg-muted text-foreground transition-colors touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
               aria-label={`Switch language. Current: ${currentLangCode.toUpperCase()}`}
               title="Change Language"
             >
               <Globe className="h-4 w-4 text-primary shrink-0 notranslate" />
-              <span className="text-xs font-bold uppercase tracking-wider">{currentLangCode}</span>
+              <span className="notranslate text-[11px] sm:text-xs font-bold uppercase tracking-wider">{currentLangCode}</span>
             </button>
 
             {/* Notifications Bell Button */}
             <button
               type="button"
               onClick={() => setNotifOpen(true)}
-              className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl border border-border bg-background hover:bg-muted text-foreground transition-colors min-h-[44px] min-w-[44px] touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="relative inline-flex items-center justify-center h-9 w-9 min-[420px]:h-10 min-[420px]:w-10 rounded-xl border border-border bg-background hover:bg-muted text-foreground transition-colors touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
               aria-label={`Notifications, ${unreadCount} unread`}
               title="Notifications"
             >
               <Bell className="h-4 w-4 notranslate shrink-0" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-urgency-critical text-[10px] font-bold text-white shadow-xs ring-2 ring-card animate-in zoom-in-75">
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-urgency-critical text-[9px] font-bold text-white shadow-xs ring-2 ring-card animate-in zoom-in-75">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </button>
 
             {/* Profile Avatar / Initials Button & Quick Menu */}
-            <div className="relative" ref={menuRef}>
+            <div className="relative shrink-0" ref={menuRef}>
               <button
                 type="button"
                 onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl border border-border bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-all min-h-[44px] min-w-[44px] touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
+                className="relative inline-flex items-center justify-center h-9 w-9 min-[420px]:h-10 min-[420px]:w-10 rounded-xl border border-border bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-all touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
                 aria-label="Open profile and user menu"
                 aria-expanded={profileMenuOpen}
                 title="User Profile Menu"
@@ -361,19 +368,6 @@ export function Header() {
                           Theme, Text Size, Language
                         </span>
                       </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setCurrentView('physics');
-                        setProfileMenuOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-2xl text-xs font-semibold hover:bg-muted text-foreground transition-colors min-h-[40px] text-left"
-                    >
-                      <Atom className="h-4 w-4 text-primary shrink-0 notranslate" />
-                      <span>Physics Lab Engine</span>
                     </button>
                     <button
                       type="button"

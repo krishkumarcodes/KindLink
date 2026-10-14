@@ -8,7 +8,7 @@ export const SITE_NAME = 'KindLink';
 export const SITE_TAGLINE = 'Help is just next door';
 export const SITE_TITLE = 'KindLink - Help is just next door';
 export const SITE_DESCRIPTION =
-  'Verified community mutual aid platform for urgent tasks in Asansol and neighboring areas. Ranked by physics, driven by trust.';
+  'Verified community mutual aid platform for urgent tasks in Asansol and neighboring areas. Ranked by urgency, driven by trust.';
 
 export interface MetadataOptions {
   title?: string;

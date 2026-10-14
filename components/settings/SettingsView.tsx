@@ -7,7 +7,6 @@ import {
   Sun,
   Type,
   Info,
-  Atom,
   ShieldCheck,
   HeartHandshake,
   Github,
@@ -24,7 +23,21 @@ export function SettingsView() {
   const [textSize, setTextSize] = useState<'normal' | 'compact' | 'large'>('normal');
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
 
-  const currentLang = SUPPORTED_LANGUAGES.find((l) => l.code === getCurrentLanguageCode());
+  const [langCode, setLangCode] = useState(() => getCurrentLanguageCode());
+
+  React.useEffect(() => {
+    setLangCode(getCurrentLanguageCode());
+    const onLocaleChange = (e: Event) => {
+      const custom = e as CustomEvent<{ locale?: string }>;
+      if (custom.detail?.locale) {
+        setLangCode(custom.detail.locale);
+      }
+    };
+    window.addEventListener('kindlink:locale-change', onLocaleChange);
+    return () => window.removeEventListener('kindlink:locale-change', onLocaleChange);
+  }, [langModalOpen]);
+
+  const currentLang = SUPPORTED_LANGUAGES.find((l) => l.code === langCode);
 
   const handleTextSizeChange = (size: 'normal' | 'compact' | 'large') => {
     setTextSize(size);
@@ -40,7 +53,7 @@ export function SettingsView() {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full pb-24 sm:pb-8">
+    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full pb-36 lg:pb-16">
       <div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
           Settings & Preferences
@@ -59,8 +72,8 @@ export function SettingsView() {
             </div>
             <div>
               <h3 className="text-sm font-bold text-foreground">Language / भाषा / ভাষা</h3>
-              <p className="text-xs text-muted-foreground">
-                Current: {currentLang?.nativeName} ({currentLang?.name})
+              <p className="text-xs text-muted-foreground notranslate">
+                Current: <span className="font-semibold">{currentLang?.nativeName}</span> ({currentLang?.name})
               </p>
             </div>
           </div>
@@ -170,24 +183,24 @@ export function SettingsView() {
           </button>
         </div>
 
-        {/* 6. About KindLink Physics Project Card */}
+        {/* 6. About KindLink Project Card */}
         <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-4">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-2xl bg-primary/10 text-primary">
-                <Atom className="h-6 w-6 notranslate" />
+                <HeartHandshake className="h-6 w-6 notranslate" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-foreground">About KindLink</h3>
                 <p className="text-xs text-muted-foreground">
-                  A Physics Project for B.Tech CSE · Asansol Engineering College
+                  A student-built community project for B.Tech CSE · Asansol Engineering College
                 </p>
               </div>
             </div>
           </div>
 
           <p className="text-xs text-muted-foreground leading-relaxed">
-            KindLink was conceptualized and developed as an engineering capstone exploring how principles of classical physics—spherical kinematics, Newtonian inverse-square gravitation, and accelerometer inertial sensors—can solve high-urgency community mutual aid challenges in Tier-2 Indian cities with high efficiency and dignity.
+            KindLink was conceptualized and developed as an engineering capstone exploring how modern verified mutual aid, transparent coordination, and rapid neighbor-to-neighbor dispatch can solve high-urgency community mutual aid challenges in Tier-2 Indian cities with high efficiency and dignity.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
@@ -200,8 +213,8 @@ export function SettingsView() {
               <strong className="text-foreground">Computer Science & Engineering</strong>
             </div>
             <div className="p-3 rounded-2xl bg-background border border-border">
-              <span className="text-muted-foreground block text-[11px]">Key Physics Principles:</span>
-              <strong className="text-foreground">Inverse-Square Gravitation & Kinematics</strong>
+              <span className="text-muted-foreground block text-[11px]">Key Platform Principles:</span>
+              <strong className="text-foreground">Deterministic Urgency & Verified Trust</strong>
             </div>
             <div className="p-3 rounded-2xl bg-background border border-border">
               <span className="text-muted-foreground block text-[11px]">Developer Contact:</span>

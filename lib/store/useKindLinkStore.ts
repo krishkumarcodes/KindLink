@@ -12,10 +12,10 @@ import {
   CommunityLiveStats,
 } from '../data/types';
 import { ASANSOL_CENTER } from '../data/mock-requests';
-import { calculateHaversineDistance, calculateHelpGravity } from '../data/physics';
+import { calculateDistance } from '../data/distance';
 import { dataAdapter } from '../data';
 
-export type AppView = 'home' | 'requests' | 'map' | 'new' | 'physics' | 'profile' | 'settings';
+export type AppView = 'home' | 'requests' | 'map' | 'new' | 'profile' | 'settings';
 
 export const DEFAULT_USER: UserProfile = {
   id: 'usr-1',
@@ -60,7 +60,6 @@ interface KindLinkState {
   userCoords: { lat: number; lng: number; isLive: boolean };
   userAreaName: string;
   hasSimulatedUrgentAlert: boolean;
-  sensorCalibration: { x: number; y: number; z: number; calibrated: boolean };
   isLoadingRequests: boolean;
   liveStats: CommunityLiveStats | null;
   isLoadingStats: boolean;
@@ -77,14 +76,13 @@ interface KindLinkState {
   setWelcomeSeen: (seen: boolean) => void;
   setUserCoords: (coords: { lat: number; lng: number; isLive: boolean }, areaName?: string) => void;
   setUserAreaName: (name: string) => void;
-  setSensorCalibration: (cal: { x: number; y: number; z: number; calibrated: boolean }) => void;
 
   fetchLiveRequests: () => Promise<void>;
   fetchLiveStats: () => Promise<void>;
   fetchLiveProfile: () => Promise<void>;
   fetchLiveNotifications: () => Promise<void>;
 
-  addRequest: (newReq: Omit<HelpRequest, 'id' | 'createdAt' | 'helpGravityScore' | 'status' | 'helpersOffered' | 'distanceKm'>) => Promise<void>;
+  addRequest: (newReq: Omit<HelpRequest, 'id' | 'createdAt' | 'status' | 'helpersOffered' | 'distanceKm'>) => Promise<void>;
   offerHelp: (requestId: string, message?: string) => Promise<void>;
   updateRequestStatus: (requestId: string, status: RequestLifecycleStatus) => Promise<void>;
   updateUserProfile: (patch: Partial<UserProfile>) => void;
@@ -116,7 +114,6 @@ export const useKindLinkStore = create<KindLinkState>()(
       userCoords: { lat: ASANSOL_CENTER.lat, lng: ASANSOL_CENTER.lng, isLive: false },
       userAreaName: 'Kalyanpur, Asansol',
       hasSimulatedUrgentAlert: false,
-      sensorCalibration: { x: 0, y: 0, z: 0, calibrated: false },
       isLoadingRequests: false,
       liveStats: null,
       isLoadingStats: false,
@@ -134,7 +131,6 @@ export const useKindLinkStore = create<KindLinkState>()(
       setSearchQuery: (query) => set({ searchQuery: query }),
       setTravelMode: (mode) => set({ travelMode: mode }),
       setWelcomeSeen: (seen) => set({ welcomeSeen: seen }),
-      setSensorCalibration: (cal) => set({ sensorCalibration: cal }),
 
       setUserCoords: (coords, areaName) => {
         set({
@@ -247,16 +243,11 @@ export const useKindLinkStore = create<KindLinkState>()(
           }
         } catch {
           // Fallback optimistic local addition
-          const dist = calculateHaversineDistance(
+          const dist = calculateDistance(
             userCoords.lat,
             userCoords.lng,
             newReqData.latitude,
             newReqData.longitude
-          );
-          const gravityScore = calculateHelpGravity(
-            newReqData.category,
-            newReqData.waitingMinutes || 1,
-            dist
           );
 
           const newRequest: HelpRequest = {
@@ -264,7 +255,6 @@ export const useKindLinkStore = create<KindLinkState>()(
             id: `req-${Date.now()}`,
             distanceKm: dist,
             createdAt: 'Just now',
-            helpGravityScore: gravityScore,
             status: 'open',
             helpersOffered: 0,
           };

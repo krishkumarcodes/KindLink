@@ -9,5 +9,5 @@ const isMock =
 export const dataAdapter: DataAdapter = isMock ? mockAdapter : supabaseAdapter;
 
 export * from './types';
-export * from './physics';
+export * from './distance';
 export * from './adapter';

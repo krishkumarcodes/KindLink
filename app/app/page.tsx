@@ -12,7 +12,6 @@ import { HomeView } from '@/components/home/HomeView';
 import { RequestsView } from '@/components/requests/RequestsView';
 import { MapView } from '@/components/map/MapView';
 import { NewRequestWizard } from '@/components/wizard/NewRequestWizard';
-import { PhysicsLabView } from '@/components/physics/PhysicsLabView';
 import { ProfileView } from '@/components/profile/ProfileView';
 import { SettingsView } from '@/components/settings/SettingsView';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
@@ -161,7 +160,6 @@ export default function KindLinkApp() {
           {currentView === 'requests' && <RequestsView />}
           {currentView === 'map' && <MapView />}
           {currentView === 'new' && <NewRequestWizard />}
-          {currentView === 'physics' && <PhysicsLabView />}
           {currentView === 'profile' && <ProfileView />}
           {currentView === 'settings' && <SettingsView />}
         </main>

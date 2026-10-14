@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import {
   X,
   MapPin,
@@ -8,7 +9,6 @@ import {
   ShieldCheck,
   ShieldAlert,
   AlertTriangle,
-  Atom,
   Phone,
   Share2,
   Flag,
@@ -25,15 +25,29 @@ import {
   Check,
   Loader2,
   Lock,
+  Hospital,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { HelpRequest, TravelMode, VolunteerOffer, RequestLifecycleStatus } from '@/lib/data/types';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
-import { calculateETA, formatETA } from '@/lib/data/physics';
-import { WhyThisRankModal } from './WhyThisRankModal';
+import { calculateETA, formatETA } from '@/lib/data/distance';
+import { getRoadRoute, RoadRouteResult } from '@/lib/geo/osrm';
+import { getNearestMedicalFacilities, MedicalFacility } from '@/lib/geo/hospitals';
 import { HelpFlowModal } from './HelpFlowModal';
 import { dataAdapter } from '@/lib/data';
 import { createClient } from '@/lib/supabase/client';
+
+const RequestRouteMiniMap = dynamic(
+  () => import('@/components/map/RequestRouteMiniMap'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-44 rounded-2xl bg-muted/50 animate-pulse flex items-center justify-center text-xs text-muted-foreground border border-border">
+        Loading route navigation preview...
+      </div>
+    ),
+  }
+);
 
 interface RequestDetailModalProps {
   request: HelpRequest | null;
@@ -46,12 +60,12 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     travelMode,
     setTravelMode,
     userProfile,
+    userCoords,
     updateRequestStatus,
     fetchLiveRequests,
   } = useKindLinkStore();
 
   const [helpFlowOpen, setHelpFlowOpen] = useState(false);
-  const [whyRankOpen, setWhyRankOpen] = useState(false);
   const [contactInfo, setContactInfo] = useState<{
     name: string;
     phone: string;
@@ -81,6 +95,14 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
   const [stars, setStars] = useState(5);
   const [ratingComment, setRatingComment] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  // Road Routing & Mini-map state
+  const [routeResult, setRouteResult] = useState<RoadRouteResult | null>(null);
+  const [loadingRoute, setLoadingRoute] = useState(false);
+
+  // Nearby Hospitals & Medical Facilities state
+  const [nearbyHospitals, setNearbyHospitals] = useState<MedicalFacility[]>([]);
+  const [loadingHospitals, setLoadingHospitals] = useState(false);
 
   // Check if current user is the requester or the accepted helper
   const isRequester =
@@ -181,6 +203,49 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
       }
     }
   }, [open, request, loadContact, loadOffers, checkTransitLocation]);
+
+  // Load real road routing and nearest emergency medical facilities
+  useEffect(() => {
+    if (!open || !request) return;
+
+    let isMounted = true;
+    setLoadingRoute(true);
+    getRoadRoute(
+      { lat: userCoords.lat, lng: userCoords.lng },
+      { lat: request.latitude, lng: request.longitude },
+      travelMode
+    )
+      .then((res) => {
+        if (isMounted) setRouteResult(res);
+      })
+      .catch(() => {
+        if (isMounted) setRouteResult(null);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingRoute(false);
+      });
+
+    setLoadingHospitals(true);
+    getNearestMedicalFacilities({
+      lat: request.latitude,
+      lng: request.longitude,
+      radiusMeters: 6000,
+      limit: 3,
+    })
+      .then((facilities) => {
+        if (isMounted) setNearbyHospitals(facilities);
+      })
+      .catch(() => {
+        if (isMounted) setNearbyHospitals([]);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingHospitals(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [open, request, travelMode, userCoords.lat, userCoords.lng]);
 
   // Modal keyboard focus handling & body scroll locking
   useEffect(() => {
@@ -412,15 +477,6 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                 <span className="text-xs font-bold text-muted-foreground uppercase px-2 py-0.5 rounded-full bg-muted border border-border">
                   {request.category}
                 </span>
-
-                <button
-                  type="button"
-                  onClick={() => setWhyRankOpen(true)}
-                  className="flex items-center gap-1 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-0.5 rounded-full transition-all active:scale-95 touch-target border border-primary/20"
-                >
-                  <Atom className="h-3.5 w-3.5 notranslate" />
-                  <span>Help Gravity: {request.helpGravityScore}</span>
-                </button>
               </div>
 
               <h2 id="request-detail-title" className="text-xl sm:text-2xl font-bold text-foreground mt-1">
@@ -551,16 +607,54 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
               </div>
             </div>
 
-            {/* Proximity & Travel Mode Selector */}
-            <div className="p-4 rounded-2xl bg-card border border-border space-y-2">
+            {/* =====================================================================
+                PROXIMITY, OSRM ROUTE PREVIEW & TRAVEL MODE
+               ===================================================================== */}
+            <div className="p-4 rounded-2xl bg-card border border-border space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-foreground flex items-center gap-1.5">
                   <Navigation className="h-4 w-4 text-primary notranslate" />
-                  <span>Distance: {request.distanceKm} km away</span>
+                  <span>
+                    You to this request:{' '}
+                    <strong className="text-foreground">
+                      {routeResult
+                        ? routeResult.formattedText
+                        : `${request.distanceKm} km, about ${formatETA(etaMinutes)} by ${travelMode}`}
+                    </strong>
+                  </span>
                 </span>
-                <span className="font-black text-primary text-sm">{formatETA(etaMinutes)}</span>
+                {loadingRoute ? (
+                  <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin notranslate" />
+                    <span>Routing...</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                    {routeResult?.source === 'osrm' ? 'OSRM Road Route' : 'Direct Line'}
+                  </span>
+                )}
               </div>
 
+              {/* Road Route Mini-Map */}
+              <div className="pt-0.5">
+                <RequestRouteMiniMap
+                  origin={[userCoords.lat, userCoords.lng]}
+                  destination={[request.latitude, request.longitude]}
+                  routeCoordinates={
+                    routeResult?.coordinates && routeResult.coordinates.length > 0
+                      ? routeResult.coordinates
+                      : [
+                          [userCoords.lat, userCoords.lng],
+                          [request.latitude, request.longitude],
+                        ]
+                  }
+                  isStraightLine={routeResult?.source === 'straight-line'}
+                  urgency={request.urgency}
+                  destinationLabel={request.title}
+                />
+              </div>
+
+              {/* Travel Mode Selector */}
               <div className="flex gap-2 pt-1">
                 {(['bike', 'walking', 'car'] as TravelMode[]).map((mode) => (
                   <button
@@ -579,6 +673,91 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* =====================================================================
+                NEAREST HOSPITALS, CLINICS, PHARMACIES & BLOOD BANKS
+               ===================================================================== */}
+            <div className="p-4 rounded-2xl bg-card border border-border space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <Hospital className="h-4 w-4 text-rose-500 notranslate" />
+                  <span>Nearest Medical Hubs &amp; Emergency</span>
+                </h4>
+                <span className="text-[10px] text-muted-foreground">Around request</span>
+              </div>
+
+              {loadingHospitals ? (
+                <div className="p-3 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin notranslate" />
+                  <span>Locating nearest emergency hospitals &amp; pharmacies...</span>
+                </div>
+              ) : nearbyHospitals.length > 0 ? (
+                <div className="space-y-2">
+                  {nearbyHospitals.map((facility) => {
+                    const mapDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${facility.latitude},${facility.longitude}`;
+                    return (
+                      <div
+                        key={facility.id}
+                        className="p-3 rounded-xl bg-muted/40 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-bold text-foreground">{facility.name}</span>
+                            <span
+                              className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                facility.type === 'hospital'
+                                  ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
+                                  : facility.type === 'blood_bank'
+                                  ? 'bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/20'
+                                  : facility.type === 'pharmacy'
+                                  ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                                  : 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
+                              }`}
+                            >
+                              {facility.type.replace('_', ' ')}
+                            </span>
+                            {facility.emergency && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
+                                24/7
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground line-clamp-1">
+                            📍 {facility.distanceKm.toFixed(1)} km away
+                            {facility.address ? ` · ${facility.address}` : ''}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {facility.phone && (
+                            <a
+                              href={`tel:${facility.phone.replace(/[^0-9+]/g, '')}`}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition shadow-xs touch-target"
+                              title="Call Facility"
+                            >
+                              <Phone className="h-3 w-3 notranslate" />
+                              <span>Call</span>
+                            </a>
+                          )}
+                          <a
+                            href={mapDirectionsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-[11px] font-bold transition shadow-xs touch-target"
+                            title="Get Directions"
+                          >
+                            <ExternalLink className="h-3 w-3 notranslate" />
+                            <span>Directions</span>
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">No medical facilities found nearby.</p>
+              )}
             </div>
 
             {/* =====================================================================
@@ -1040,13 +1219,6 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
           loadOffers();
           fetchLiveRequests();
         }}
-      />
-
-      {/* Why This Rank Modal */}
-      <WhyThisRankModal
-        request={request}
-        open={whyRankOpen}
-        onClose={() => setWhyRankOpen(false)}
       />
     </>
   );

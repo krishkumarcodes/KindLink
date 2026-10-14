@@ -1,5 +1,4 @@
 import { HelpRequest, UserProfile, NotificationItem } from './types';
-import { calculateHelpGravity } from './physics';
 
 // Base coordinates for Asansol Engineering College / Asansol Center: 23.6889° N, 86.9661° E
 export const ASANSOL_CENTER = {
@@ -29,7 +28,6 @@ export const INITIAL_REQUESTS: HelpRequest[] = [
     verified: true,
     verificationBadge: 'Hospital Desk Verified',
     createdAt: '14 min ago',
-    helpGravityScore: calculateHelpGravity('blood', 14, 1.2), // 10 * (1 + 0.05*14) / (1 + 1.2)^2 = 17 / 4.84 = 3.51
     status: 'open',
     helpersOffered: 2,
   },
@@ -51,7 +49,6 @@ export const INITIAL_REQUESTS: HelpRequest[] = [
     verified: true,
     verificationBadge: 'Aadhaar Verified',
     createdAt: '22 min ago',
-    helpGravityScore: calculateHelpGravity('transport', 22, 2.1), // 9 * (1 + 1.1) / (1 + 2.1)^2 = 18.9 / 9.61 = 1.97
     status: 'open',
     helpersOffered: 1,
   },
@@ -75,7 +72,6 @@ export const INITIAL_REQUESTS: HelpRequest[] = [
     verified: true,
     verificationBadge: 'Community Verified',
     createdAt: '38 min ago',
-    helpGravityScore: calculateHelpGravity('equipment', 38, 2.8),
     status: 'open',
     helpersOffered: 3,
   },
@@ -97,7 +93,6 @@ export const INITIAL_REQUESTS: HelpRequest[] = [
     verified: true,
     verificationBadge: 'Phone OTP Verified',
     createdAt: '45 min ago',
-    helpGravityScore: calculateHelpGravity('elderly', 45, 1.5),
     status: 'open',
     helpersOffered: 2,
   },
@@ -119,7 +114,6 @@ export const INITIAL_REQUESTS: HelpRequest[] = [
     verified: true,
     verificationBadge: 'Teacher Verified',
     createdAt: '2 hrs ago',
-    helpGravityScore: calculateHelpGravity('books', 120, 3.4),
     status: 'open',
     helpersOffered: 4,
   },
@@ -143,7 +137,6 @@ export const INITIAL_REQUESTS: HelpRequest[] = [
     verified: true,
     verificationBadge: 'Doctor Verified',
     createdAt: '1 hr ago',
-    helpGravityScore: calculateHelpGravity('equipment', 65, 4.8),
     status: 'open',
     helpersOffered: 1,
   },
@@ -167,7 +160,6 @@ export const INITIAL_REQUESTS: HelpRequest[] = [
     verified: true,
     verificationBadge: 'Blood Bank Verified',
     createdAt: '30 min ago',
-    helpGravityScore: calculateHelpGravity('blood', 30, 8.5),
     status: 'open',
     helpersOffered: 0,
   },
@@ -189,7 +181,6 @@ export const INITIAL_REQUESTS: HelpRequest[] = [
     verified: true,
     verificationBadge: 'Citizen Verified',
     createdAt: '1.5 hrs ago',
-    helpGravityScore: calculateHelpGravity('elderly', 90, 2.4),
     status: 'open',
     helpersOffered: 5,
   },
@@ -225,7 +216,7 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   {
     id: 'notif-1',
     title: 'O+ Blood Request Nearby',
-    message: 'Urgent blood need at Asansol District Hospital (1.2 km away). Help Gravity score: 3.51.',
+    message: 'Urgent blood need at Asansol District Hospital (1.2 km away). Waiting 14 min.',
     timeAgo: '14 min ago',
     timestamp: Date.now() - 14 * 60 * 1000,
     unread: true,

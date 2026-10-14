@@ -12,7 +12,6 @@ const urlList = [
   `${SITE_URL}/help/elderly-assistance`,
   `${SITE_URL}/help/books-and-study-material`,
   `${SITE_URL}/how-it-works`,
-  `${SITE_URL}/physics`,
   `${SITE_URL}/safety-and-verification`,
   `${SITE_URL}/about`,
   `${SITE_URL}/faq`,

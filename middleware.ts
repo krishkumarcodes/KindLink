@@ -39,7 +39,6 @@ export async function middleware(request: NextRequest) {
     path === '/' ||
     path === '/about' ||
     path === '/how-it-works' ||
-    path === '/physics' ||
     path === '/safety-and-verification' ||
     path === '/faq' ||
     path === '/privacy' ||

@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS public.reports (
   created_at timestamptz DEFAULT now() NOT NULL
 );
 
--- 8. SOS EVENTS TABLE (Kinetic accelerometer fall detection triggers & Emergency SOS)
+-- 8. SOS EVENTS TABLE (Safety emergency triggers & Emergency SOS)
 CREATE TABLE IF NOT EXISTS public.sos_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,

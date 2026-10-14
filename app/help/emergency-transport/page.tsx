@@ -156,18 +156,18 @@ export default function EmergencyTransportPage() {
             </div>
           </section>
 
-          {/* KINEMATICS & PHYSICS INTEGRATION */}
+          {/* OSRM ROAD ROUTING INTEGRATION */}
           <section className="mt-12 rounded-2xl border border-teal-500/30 bg-card p-6 shadow-sm">
             <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400 font-bold text-sm">
               <Zap className="h-4 w-4" />
-              <span>Applied Kinematics in KindLink Dispatch</span>
+              <span>Real Road Routing in KindLink Dispatch</span>
             </div>
             <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              When you post an Emergency Transport request, KindLink immediately evaluates great-circle distance
-              using the Haversine equation and computes estimated transit time via kinematic velocity:
+              When you post an Emergency Transport request, KindLink immediately evaluates real road distance
+              using OpenStreetMap OSRM routing and computes realistic transit times across travel modes:
             </p>
             <div className="mt-3 rounded-xl bg-muted/60 p-3 font-mono text-xs text-foreground">
-              t = d / v &emsp; &bull; &emsp; Walking: 5 km/h &emsp; &bull; &emsp; Two-Wheeler: 15 km/h &emsp; &bull; &emsp; Car: 30 km/h
+              Walking: 5 km/h &emsp; &bull; &emsp; Two-Wheeler / Bike: 15 km/h &emsp; &bull; &emsp; Car: 30 km/h
             </div>
             <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
               In congested neighborhood alleys around Railpar or Burnpur Bazar, a two-wheeler volunteer 1.5 km away often
@@ -186,10 +186,10 @@ export default function EmergencyTransportPage() {
             </Link>
 
             <Link
-              href="/physics"
+              href="/how-it-works"
               className="text-xs font-semibold text-muted-foreground hover:text-foreground"
             >
-              See the full kinematics &amp; distance formulas &rarr;
+              Learn how community dispatch works &rarr;
             </Link>
           </div>
         </div>

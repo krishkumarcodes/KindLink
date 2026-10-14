@@ -1,0 +1,171 @@
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 780" width="360" height="780" fill="none">
+      <defs>
+        <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#070c17" />
+          <stop offset="100%" stop-color="#0b1324" />
+        </linearGradient>
+        <linearGradient id="headerGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#0F766E" />
+          <stop offset="100%" stop-color="#2563EB" />
+        </linearGradient>
+      </defs>
+
+      <!-- Background Canvas -->
+      <rect width="360" height="780" fill="url(#bgGrad)" />
+
+      <!-- Desktop Sidebar (>=1024px) -->
+      
+
+      <!-- Top Header (Height 64px) -->
+      <rect width="360" height="64" fill="#0a101f" stroke="#1e293b" stroke-width="1" />
+      <g transform="translate(12, 14)">
+        <!-- Logo Squircle -->
+        <rect width="36" height="36" rx="10" fill="url(#headerGrad)" />
+        <circle cx="18" cy="18" r="6" fill="#FFFFFF" />
+        
+        <!-- Brand Name -->
+        <text x="44" y="24" fill="#F8FAFC" font-size="16" font-weight="800" font-family="system-ui, sans-serif">
+          Kind<tspan fill="#0D9488">Link</tspan>
+        </text>
+
+        <!-- Location Chip -->
+        <g transform="translate(122, 4)">
+          <rect width="68" height="28" rx="14" fill="#131d31" stroke="#1f2d48" />
+          <circle cx="12" cy="14" r="3" fill="#10B981" />
+          <text x="22" y="18" fill="#E2E8F0" font-size="10" font-weight="600">Asansol</text>
+        </g>
+      </g>
+
+      <!-- Right Header Actions (Fit tested at 360px) -->
+      <g transform="translate(208, 14)">
+        <!-- SOS Circle / Button -->
+        <circle cx="18" cy="18" r="18" fill="#DC2626" />
+        <circle cx="18" cy="18" r="22" stroke="#DC2626" stroke-opacity="0.3" stroke-width="2" />
+        <text x="9" y="22" fill="#FFFFFF" font-size="9" font-weight="900">SOS</text>
+
+        <!-- Language Button -->
+        <rect x="42" y="0" width="32" height="36" rx="10" fill="#131d31" stroke="#1f2d48" />
+        <text x="49" y="22" fill="#E2E8F0" font-size="11" font-weight="800">EN</text>
+
+        <!-- Bell -->
+        <rect x="78" y="0" width="36" height="36" rx="10" fill="#131d31" stroke="#1f2d48" />
+        <circle cx="96" cy="18" r="7" fill="#64748B" />
+        <circle cx="104" cy="10" r="4" fill="#EF4444" />
+
+        <!-- Avatar -->
+        <rect x="118" y="0" width="36" height="36" rx="10" fill="#0D9488" fill-opacity="0.2" stroke="#0D9488" stroke-opacity="0.4" />
+        <text x="128" y="23" fill="#2DD4BF" font-size="12" font-weight="800">U</text>
+      </g>
+
+      <!-- Main Stage View Content -->
+      <g transform="translate(0, 0)">
+        
+      <!-- Greeting Banner -->
+      <g transform="translate(16, 80)">
+        <rect width="328" height="210" rx="24" fill="#131d31" stroke="#1f2d48" stroke-width="1.5" />
+        <rect x="16" y="16" width="140" height="24" rx="12" fill="#0D9488" fill-opacity="0.15" />
+        <text x="24" y="32" fill="#2DD4BF" font-size="11" font-weight="700" font-family="system-ui, sans-serif">Help is just next door</text>
+        
+        <text x="16" y="68" fill="#F8FAFC" font-size="20" font-weight="800" font-family="system-ui, sans-serif">Namaste, Friend 🙏</text>
+        <text x="16" y="94" fill="#94A3B8" font-size="12" font-family="system-ui, sans-serif">Asansol, West Bengal · 48 verified local helpers nearby</text>
+        
+        <!-- Big Action Buttons Duo -->
+        <g transform="translate(16, 120)">
+          <rect width="142" height="48" rx="16" fill="#0D9488" />
+          <text x="34" y="29" fill="#FFFFFF" font-size="13" font-weight="700" font-family="system-ui, sans-serif">Ask for Help</text>
+          
+          <rect x="154" width="142" height="48" rx="16" fill="#DC2626" />
+          <text x="178" y="29" fill="#FFFFFF" font-size="13" font-weight="700" font-family="system-ui, sans-serif">Emergency SOS</text>
+        </g>
+      </g>
+
+      <!-- Realtime Community Pulse (4 Cards Grid) -->
+      <g transform="translate(16, 310)">
+        <text x="0" y="0" fill="#E2E8F0" font-size="12" font-weight="800" letter-spacing="1">REALTIME COMMUNITY PULSE</text>
+        <rect x="180" y="-10" width="46" height="18" rx="9" fill="#10B981" fill-opacity="0.2" />
+        <circle cx="190" cy="-1" r="3" fill="#10B981" />
+        <text x="198" y="3" fill="#34D399" font-size="9" font-weight="800">LIVE</text>
+
+        <!-- 4 Grid Cards -->
+        <g transform="translate(0, 16)">
+          
+              <g transform="translate(0, 0)">
+                <rect width="158" height="76" rx="18" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
+                <circle cx="24" cy="28" r="14" fill="#10B981" fill-opacity="0.15" />
+                <text x="46" y="33" fill="#F8FAFC" font-size="18" font-weight="800" font-family="system-ui, sans-serif">48</text>
+                <text x="16" y="58" fill="#94A3B8" font-size="11" font-weight="600" font-family="system-ui, sans-serif">Helpers Nearby</text>
+              </g>
+            
+              <g transform="translate(170, 0)">
+                <rect width="158" height="76" rx="18" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
+                <circle cx="24" cy="28" r="14" fill="#F59E0B" fill-opacity="0.15" />
+                <text x="46" y="33" fill="#F8FAFC" font-size="18" font-weight="800" font-family="system-ui, sans-serif">8 min</text>
+                <text x="16" y="58" fill="#94A3B8" font-size="11" font-weight="600" font-family="system-ui, sans-serif">Avg. Response</text>
+              </g>
+            
+              <g transform="translate(0, 88)">
+                <rect width="158" height="76" rx="18" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
+                <circle cx="24" cy="28" r="14" fill="#06B6D4" fill-opacity="0.15" />
+                <text x="46" y="33" fill="#F8FAFC" font-size="18" font-weight="800" font-family="system-ui, sans-serif">1,240</text>
+                <text x="16" y="58" fill="#94A3B8" font-size="11" font-weight="600" font-family="system-ui, sans-serif">Acts of Help</text>
+              </g>
+            
+              <g transform="translate(170, 88)">
+                <rect width="158" height="76" rx="18" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
+                <circle cx="24" cy="28" r="14" fill="#6366F1" fill-opacity="0.15" />
+                <text x="46" y="33" fill="#F8FAFC" font-size="18" font-weight="800" font-family="system-ui, sans-serif">99.4%</text>
+                <text x="16" y="58" fill="#94A3B8" font-size="11" font-weight="600" font-family="system-ui, sans-serif">Trust Match</text>
+              </g>
+            
+        </g>
+      </g>
+
+      <!-- Recent Urgent Needs Section -->
+      <g transform="translate(16, 520)">
+        <text x="0" y="0" fill="#E2E8F0" font-size="13" font-weight="800">URGENT NEEDS NEARBY</text>
+        
+          <g transform="translate(0, 20)">
+            <rect width="328" height="70" rx="18" fill="#0f172a" stroke="#1e293b" stroke-width="1.2" />
+            <rect x="14" y="14" width="70" height="20" rx="10" fill="#EF4444" fill-opacity="0.2" />
+            <text x="22" y="28" fill="#EF4444" font-size="10" font-weight="700">Blood Donation</text>
+            <text x="96" y="28" fill="#F8FAFC" font-size="12" font-weight="700">Emergency O- Blood for surgery</text>
+            <text x="14" y="52" fill="#64748B" font-size="11">📍 Asansol District Hospital · 1.2 km</text>
+          </g>
+        
+          <g transform="translate(0, 102)">
+            <rect width="328" height="70" rx="18" fill="#0f172a" stroke="#1e293b" stroke-width="1.2" />
+            <rect x="14" y="14" width="70" height="20" rx="10" fill="#0D9488" fill-opacity="0.2" />
+            <text x="22" y="28" fill="#0D9488" font-size="10" font-weight="700">Medical Gear</text>
+            <text x="96" y="28" fill="#F8FAFC" font-size="12" font-weight="700">Wheelchair required for senior</text>
+            <text x="14" y="52" fill="#64748B" font-size="11">📍 Asansol District Hospital · 2.5 km</text>
+          </g>
+        
+      </g>
+    
+      </g>
+
+      <!-- Mobile Bottom Tab Bar (<768px) -->
+      
+        <g transform="translate(0, 712)">
+          <rect width="360" height="68" fill="#070d18" stroke="#1e293b" stroke-width="1" />
+          
+          <!-- Home Tab -->
+          <text x="36" y="42" fill="#2DD4BF" font-size="10" font-weight="700">Home</text>
+          
+          <!-- Map Tab -->
+          <text x="100.80000000000001" y="42" fill="#64748B" font-size="10" font-weight="600">Map</text>
+          
+          <!-- Center Floating + Button -->
+          <circle cx="180" cy="12" r="24" fill="#0D9488" stroke="#070d18" stroke-width="4" />
+          <text x="174" y="19" fill="#FFFFFF" font-size="22" font-weight="400">+</text>
+          
+          <!-- Requests Tab -->
+          <text x="244.8" y="42" fill="#64748B" font-size="10" font-weight="600">Requests</text>
+          
+          <!-- Profile Tab -->
+          <text x="309.6" y="42" fill="#64748B" font-size="10" font-weight="600">Profile</text>
+        </g>
+      
+    </svg>
+  

@@ -57,8 +57,8 @@ const config: Config = {
         '3xl': '1.5rem',
       },
       fontFamily: {
-        heading: ['var(--font-heading)', 'sans-serif'],
-        sans: ['var(--font-sans)', 'sans-serif'],
+        sans: ['var(--font-sans)', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        heading: ['var(--font-heading)', 'var(--font-sans)', 'system-ui', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
       boxShadow: {
         soft: '0 2px 10px -2px rgba(15, 23, 42, 0.05), 0 10px 25px -5px rgba(15, 23, 42, 0.04)',

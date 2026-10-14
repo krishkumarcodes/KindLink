@@ -7,7 +7,7 @@ import {
   HeartHandshake,
   BookOpen,
   Car,
-  Atom,
+  Navigation,
   ShieldCheck,
   Clock,
   MapPin,
@@ -32,7 +32,7 @@ import { constructMetadata } from '@/lib/seo';
 export const metadata: Metadata = constructMetadata({
   title: 'Help is Just Next Door | Verified Community Aid in Asansol',
   description:
-    'Verified, physics-ranked mutual aid platform for Asansol, Durgapur, and neighboring districts. Rapid blood matching, medical equipment sharing, and elderly support.',
+    'Verified community mutual aid platform for Asansol, Durgapur, and neighboring districts. Rapid blood matching, medical equipment sharing, and elderly support.',
   path: '/',
 });
 
@@ -114,9 +114,9 @@ export default function PublicHomePage() {
     },
     {
       number: '02',
-      title: 'Help Gravity Physics Matching',
+      title: 'Community Urgency Dispatch',
       summary:
-        'Our Newtonian-inspired formula calculates proximity, urgency weight, and elapsed wait time. Closer neighbors receive higher priority notifications, ensuring rapid response.',
+        'Requests are prioritized by urgency level, nearest distance, and waiting time. Closer neighbors receive higher priority notifications, ensuring rapid response.',
     },
     {
       number: '03',
@@ -144,8 +144,8 @@ export default function PublicHomePage() {
             <div className="mx-auto max-w-3xl text-center">
               {/* Badge */}
               <div className="inline-flex items-center gap-2 rounded-full border border-teal-500/30 bg-teal-500/10 px-3.5 py-1.5 text-xs font-semibold text-teal-700 dark:text-teal-300">
-                <Atom className="h-3.5 w-3.5 animate-spin-slow" />
-                <span>Ranked by Physics &bull; Powered by Community Trust</span>
+                <Sparkles className="h-3.5 w-3.5 text-teal-500" />
+                <span>Urgency Ranked &bull; Powered by Community Trust</span>
               </div>
 
               {/* Main H1 */}
@@ -158,7 +158,7 @@ export default function PublicHomePage() {
                 When an emergency hits — whether your family member needs rare O-negative blood, an elderly parent
                 requires immediate prescription medicines, or an injured student needs a wheelchair — broadcast messages
                 on WhatsApp get lost in noise. KindLink connects you directly with verified neighbors living within
-                walking or cycling distance, using deterministic physics algorithms instead of commercial ad models.
+                walking or cycling distance, using transparent community urgency ranking instead of commercial ad models.
               </p>
 
               {/* Call to Actions */}
@@ -269,22 +269,22 @@ export default function PublicHomePage() {
               <div className="group flex flex-col justify-between rounded-3xl border border-dashed border-teal-500/40 bg-gradient-to-br from-teal-500/10 via-card/90 to-emerald-500/10 backdrop-blur-md p-6 shadow-sm hover:shadow-xl hover:shadow-teal-500/10 hover:border-teal-500/60 hover:-translate-y-1 transition-all duration-300">
                 <div>
                   <div className="relative rounded-2xl border border-teal-500/40 bg-gradient-to-br from-teal-500/20 to-emerald-500/10 p-3 text-teal-600 dark:text-teal-300 w-fit shadow-md group-hover:scale-110 transition-transform duration-300 ring-1 ring-white/10">
-                    <Atom className="h-5 w-5 animate-spin-slow" />
+                    <Navigation className="h-5 w-5 text-teal-500" />
                   </div>
                   <h3 className="mt-5 font-heading text-lg font-bold text-foreground group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
-                    Real-Time Kinematics &amp; IMU Sensor
+                    Hyperlocal Road Routing &amp; Hospitals
                   </h3>
                   <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                    KindLink features an in-app Physics Laboratory that evaluates great-circle Haversine distances,
-                    arrival velocity kinematics, and hardware-accelerated fall impact detection.
+                    KindLink features real road distance calculation, bike and walking ETAs via OSRM,
+                    and instant directories of nearby hospitals, blood banks, and clinics.
                   </p>
                 </div>
                 <div className="mt-6 pt-4 border-t border-teal-500/20">
                   <Link
-                    href="/physics"
+                    href="/login"
                     className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 dark:text-teal-300 hover:underline group-hover:translate-x-0.5 transition-all"
                   >
-                    <span>Read Applied Physics Breakdown</span>
+                    <span>Explore Live Interactive Map</span>
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>
@@ -377,21 +377,20 @@ export default function PublicHomePage() {
           </div>
         </section>
 
-        {/* PHYSICS PREVIEW SECTION */}
+        {/* COMMUNITY DISPATCH & URGENCY RANKING SECTION */}
         <section className="py-16 sm:py-20 border-b border-border/60 bg-gradient-to-b from-background to-teal-500/5">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
               <div>
                 <div className="inline-flex items-center gap-1.5 rounded-full bg-teal-500/10 px-3 py-1 text-xs font-bold text-teal-700 dark:text-teal-300">
-                  <Zap className="h-3.5 w-3.5" />
-                  Applied Newtonian Mechanics
+                  <ShieldCheck className="h-3.5 w-3.5 text-teal-500" />
+                  Three-Key Community Priority
                 </div>
                 <h2 className="mt-4 font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                  Help Gravity: Urgency Modeled Like Gravitational Attraction
+                  Fair, Transparent Dispatch: Urgency, Proximity &amp; Waiting Time
                 </h2>
                 <p className="mt-3 text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                  Just as Newton discovered that gravitational force increases with mass and falls off with the
-                  square of the distance, KindLink treats urgent needs like celestial masses:
+                  Unlike commercial platforms that hide posts behind paywalls or engagement bait, KindLink prioritizes community requests using an honest, deterministic three-key ranking:
                 </p>
 
                 <div className="mt-6 rounded-3xl border border-teal-500/30 bg-slate-950/90 dark:bg-slate-950/95 text-slate-100 p-6 sm:p-7 shadow-2xl shadow-teal-950/30 backdrop-blur-xl relative overflow-hidden group hover:border-teal-400/50 transition-all duration-300">
@@ -399,48 +398,48 @@ export default function PublicHomePage() {
                   <div className="flex items-center justify-between mb-3">
                     <div className="text-teal-400 font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 font-sans">
                       <Zap className="h-3.5 w-3.5 text-teal-400" />
-                      Help Gravity Formulation
+                      Priority Ordering Criteria
                     </div>
                     <span className="text-[10px] text-teal-300/80 border border-teal-500/30 px-2.5 py-0.5 rounded-full bg-teal-500/10 font-sans">
-                      Inverse-Square Decay
+                      Deterministic Sort
                     </span>
                   </div>
                   <div className="text-teal-200 bg-slate-900/95 border border-teal-500/25 p-4 rounded-2xl overflow-x-auto font-mono text-xs sm:text-sm font-bold shadow-inner tracking-wide">
-                    Score = [TypeWeight &times; (1 + 0.05 &times; &Delta;t)] / (1 + Distance)&sup2;
+                    Urgency Level &rarr; Nearest Distance &rarr; Longest Waiting Time
                   </div>
                   <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] font-sans text-slate-300">
                     <div className="p-2.5 rounded-xl bg-slate-900/70 border border-teal-500/15">
-                      <strong className="text-rose-400 block mb-0.5">TypeWeight</strong>
-                      Blood: 10, Transit: 9, Books: 2
+                      <strong className="text-rose-400 block mb-0.5">1. Urgency Level</strong>
+                      Critical &gt; High &gt; Medium &gt; Low
                     </div>
                     <div className="p-2.5 rounded-xl bg-slate-900/70 border border-teal-500/15">
-                      <strong className="text-teal-400 block mb-0.5">&Delta;t (Waiting min)</strong>
-                      Priority amplifies as minutes pass
+                      <strong className="text-amber-400 block mb-0.5">2. Distance</strong>
+                      Nearest neighbors alerted first
                     </div>
                     <div className="p-2.5 rounded-xl bg-slate-900/70 border border-teal-500/15">
-                      <strong className="text-amber-400 block mb-0.5">1 / (1 + Distance)&sup2;</strong>
-                      Immediate neighbors prioritized
+                      <strong className="text-teal-400 block mb-0.5">3. Waiting Time</strong>
+                      Unanswered requests rise in queue
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-6">
                   <Link
-                    href="/physics"
+                    href="/how-it-works"
                     className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 px-5 py-3 text-xs font-bold text-white shadow-lg shadow-teal-900/30 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200"
                   >
-                    <span>Explore Physics Formulations &amp; Simulator</span>
+                    <span>Learn How Community Aid Works</span>
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>
               </div>
 
-              {/* Visual Formula Card */}
+              {/* Visual Benefits Card */}
               <div className="rounded-3xl border border-teal-500/30 bg-slate-950/80 dark:bg-slate-950/90 text-slate-100 p-6 sm:p-8 shadow-2xl shadow-teal-950/20 backdrop-blur-xl relative overflow-hidden group hover:border-teal-400/50 transition-all duration-300">
                 <div className="absolute -bottom-20 -left-20 w-44 h-44 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/20 transition-all duration-500" />
                 <h3 className="font-heading text-base font-bold text-slate-100 mb-5 flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-teal-400" />
-                  Why Deterministic Physics Outperforms Social Feeds
+                  Why Community Mutual Aid Saves Lives
                 </h3>
                 <div className="space-y-4 text-xs text-slate-300">
                   <div className="flex gap-3 items-start">
@@ -450,7 +449,7 @@ export default function PublicHomePage() {
                     <div>
                       <strong className="text-slate-100 block font-semibold mb-0.5">Zero Algorithm Bias</strong>
                       Commercial social platforms rank content to maximize rage and dwell time. KindLink ranks solely
-                      by medical urgency, waiting time, and real physical proximity.
+                      by emergency need, physical proximity, and waiting time.
                     </div>
                   </div>
 
@@ -459,9 +458,9 @@ export default function PublicHomePage() {
                       <CheckCircle2 className="h-4 w-4" />
                     </div>
                     <div>
-                      <strong className="text-slate-100 block font-semibold mb-0.5">Kinematic ETA Calculation</strong>
-                      Helpers see realistic travel times (t = d / v) computed for walking (5 km/h), bicycle (15 km/h),
-                      and motor vehicles (30 km/h) before committing.
+                      <strong className="text-slate-100 block font-semibold mb-0.5">Real Road Route &amp; Travel Times</strong>
+                      Helpers see actual road travel distances and accurate transit times for walking, bicycle,
+                      and vehicles powered by OpenStreetMap OSRM routing.
                     </div>
                   </div>
 
@@ -470,9 +469,9 @@ export default function PublicHomePage() {
                       <CheckCircle2 className="h-4 w-4" />
                     </div>
                     <div>
-                      <strong className="text-slate-100 block font-semibold mb-0.5">Autonomous Fall Impact Alert</strong>
-                      A hardware low-pass filtered accelerometer detects sudden deceleration (&gt; 22 m/s&sup2;)
-                      and activates a 10-second safety countdown for vulnerable seniors.
+                      <strong className="text-slate-100 block font-semibold mb-0.5">Nearby Healthcare Facility Integration</strong>
+                      Instant access to nearest verified hospitals, clinics, blood banks, and 24x7 emergency contacts
+                      with one-tap calling and directions.
                     </div>
                   </div>
                 </div>

@@ -25,7 +25,7 @@ import { constructMetadata } from '@/lib/seo';
 export const metadata: Metadata = constructMetadata({
   title: 'How KindLink Works | Step-by-Step Mutual Aid Dispatch & Privacy',
   description:
-    'Learn how KindLink connects neighbors in Asansol during urgent situations. Discover our 5-step dispatch lifecycle, Help Gravity ranking, and mutual privacy reveal.',
+    'Learn how KindLink connects neighbors in Asansol during urgent situations. Discover our 5-step dispatch lifecycle, three-key urgency ranking, and mutual privacy reveal.',
   path: '/how-it-works',
 });
 
@@ -40,17 +40,17 @@ export default function HowItWorksPage() {
     },
     {
       num: '02',
-      title: 'Help Gravity Physics Computes True Priority',
-      icon: Atom,
+      title: 'Three-Key Urgency Ranking Computes True Priority',
+      icon: ShieldCheck,
       detail:
-        'Traditional feeds sort chronologically or by engagement metrics. KindLink passes each request through our deterministic Help Gravity formula. A life-critical blood request carries a TypeWeight of 10, amplified linearly for every minute the patient has been waiting, and attenuated with distance squared. Nearby helpers see the most urgent cases first.',
+        'Traditional feeds sort chronologically or by engagement metrics. KindLink sorts requests by three transparent keys: urgency level (Critical > High > Medium > Low), nearest road distance via OSRM, and waiting time. Critical needs like blood or emergency transport are prioritized first, and older unanswered requests rise in the queue.',
     },
     {
       num: '03',
-      title: 'Real-Time Notification & Kinematic ETA Preview',
+      title: 'Real-Time Notification & Accurate Road ETA Preview',
       icon: Clock,
       detail:
-        'Verified community volunteers within the immediate catchment area receive instant alerts. Helpers can inspect the exact clinical category, estimated distance in kilometers, and kinematic arrival time calculated for walking (5 km/h), cycling (15 km/h), or driving (30 km/h).',
+        'Verified community volunteers within the immediate area receive instant alerts. Helpers can inspect the clinical category, road distance in kilometers, and accurate travel time calculated for walking (5 km/h), cycling (15 km/h), or driving (30 km/h).',
     },
     {
       num: '04',
@@ -71,7 +71,7 @@ export default function HowItWorksPage() {
   const howToSchema = buildHowToSchema({
     name: 'How KindLink Works: 5-Step Community Aid Lifecycle',
     description:
-      'Step-by-step lifecycle of posting, physics-ranked dispatching, verified matching, and mutual privacy reveal on KindLink.',
+      'Step-by-step lifecycle of posting, urgency-ranked dispatching, verified matching, and mutual privacy reveal on KindLink.',
     steps: steps.map((s) => ({
       name: s.title,
       text: s.detail,
@@ -105,7 +105,7 @@ export default function HowItWorksPage() {
 
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
             KindLink transforms fragmented, high-friction neighborhood appeals into a fast, privacy-preserving, and
-            deterministic mutual aid system. By combining applied physics ranking with a strict two-way mutual consent
+            deterministic mutual aid system. By combining three-key urgency ranking with a strict two-way mutual consent
             protocol, we ensure aid arrives swiftly while keeping personal contact details and residential addresses
             secure from public scrapers and commercial data brokers.
           </p>
@@ -115,7 +115,7 @@ export default function HowItWorksPage() {
             <div>
               <h2 className="text-base font-bold text-foreground">Ready to see the platform in action?</h2>
               <p className="text-xs text-muted-foreground mt-1">
-                Explore the live map, request simulator, and physics lab right inside the app.
+                Explore the live map, request feed, and community pulse right inside the app.
               </p>
             </div>
             <Link
@@ -187,7 +187,7 @@ export default function HowItWorksPage() {
                   <tr>
                     <td className="p-3.5 font-semibold text-foreground">Urgency Ranking</td>
                     <td className="p-3.5">Chronological or algorithm feed buried by memes</td>
-                    <td className="p-3.5 text-foreground font-medium">Help Gravity (Newtonian inverse-square formula)</td>
+                    <td className="p-3.5 text-foreground font-medium">Three-key sort: Urgency Level &gt; Nearest Distance &gt; Waiting Time</td>
                   </tr>
                   <tr>
                     <td className="p-3.5 font-semibold text-foreground">Personal Privacy</td>

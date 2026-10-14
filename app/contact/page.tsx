@@ -54,7 +54,7 @@ export default function ContactPage() {
 
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
             Whether you want to suggest new mutual aid features, partner with us for college blood donation drives in
-            Asansol, report a platform bug, or inquire about our applied physics research, we welcome your communication.
+            Asansol, report a platform bug, or inquire about community partnerships, we welcome your communication.
           </p>
 
           {/* EMERGENCY DISCLAIMER */}
@@ -176,7 +176,7 @@ export default function ContactPage() {
                     <option value="general">General Inquiry</option>
                     <option value="blood-drive">College Blood Donation Drive</option>
                     <option value="bug">Bug Report / Platform Issue</option>
-                    <option value="research">Academic / Physics Research Inquiry</option>
+                    <option value="research">Academic / Community Partnership Inquiry</option>
                   </select>
                 </div>
 

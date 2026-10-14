@@ -5,12 +5,12 @@ import {
   Home,
   FileText,
   Map as MapIcon,
-  Atom,
   User,
   Settings,
   PlusCircle,
   ShieldCheck,
   HeartHandshake,
+  Atom,
 } from 'lucide-react';
 import { useKindLinkStore, AppView } from '@/lib/store/useKindLinkStore';
 
@@ -26,7 +26,6 @@ export function Sidebar() {
       badge: requests.length,
     },
     { view: 'map', label: 'Live Map', icon: <MapIcon className="h-5 w-5 notranslate shrink-0" /> },
-    { view: 'physics', label: 'Physics Lab', icon: <Atom className="h-5 w-5 notranslate shrink-0" /> },
     { view: 'profile', label: 'Profile', icon: <User className="h-5 w-5 notranslate shrink-0" /> },
     { view: 'settings', label: 'Settings', icon: <Settings className="h-5 w-5 notranslate shrink-0" /> },
   ];
@@ -100,8 +99,8 @@ export function Sidebar() {
       <div className="p-3 lg:p-4 border-t border-border/80 mt-auto">
         <div className="rounded-2xl bg-gradient-to-br from-muted/80 to-muted/40 p-3.5 hidden lg:block border border-border/80 shadow-xs backdrop-blur-xs">
           <div className="flex items-center gap-2 text-primary font-bold text-xs mb-1">
-            <Atom className="h-3.5 w-3.5 notranslate text-primary" />
-            <span className="tracking-wide uppercase text-[11px] font-black">Physics Capstone</span>
+            <HeartHandshake className="h-3.5 w-3.5 notranslate text-primary" />
+            <span className="tracking-wide uppercase text-[11px] font-black">Community Aid</span>
           </div>
           <p className="text-[11px] text-muted-foreground leading-tight">
             B.Tech CSE Project<br />
@@ -114,7 +113,7 @@ export function Sidebar() {
         </div>
         <div
           className="lg:hidden flex justify-center text-primary hover:text-primary/80 transition-colors p-2"
-          title="Asansol Engineering College Physics Project"
+          title="Asansol Engineering College Student Project"
         >
           <HeartHandshake className="h-5 w-5 notranslate transition-transform hover:scale-110" />
         </div>

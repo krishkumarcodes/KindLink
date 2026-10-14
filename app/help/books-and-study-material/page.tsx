@@ -45,7 +45,7 @@ export default function BooksAndStudyMaterialPage() {
     },
     {
       discipline: 'Higher Secondary & High School (WB / CBSE / ICSE)',
-      subjects: 'NCERT Physics, Chemistry, Mathematics (Class 11 & 12), Chhaya Prakashani Bengali / English references.',
+      subjects: 'NCERT Science, Chemistry, Mathematics (Class 11 & 12), Chhaya Prakashani Bengali / English references.',
       target: 'School students in Asansol preparing for Board exams and WBJEE.',
     },
   ];

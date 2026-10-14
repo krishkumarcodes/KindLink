@@ -120,7 +120,7 @@ export default async function Image() {
               margin: 0,
             }}
           >
-            Ranked by physics, driven by trust. Instant emergency blood alerts,
+            Ranked by urgency and distance, driven by trust. Instant emergency blood alerts,
             mobility aid, and neighborly assistance.
           </p>
         </div>

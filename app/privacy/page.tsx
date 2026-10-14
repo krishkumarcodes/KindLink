@@ -73,7 +73,7 @@ export default function PrivacyPage() {
                 </li>
                 <li>
                   <strong>Approximate Location:</strong> Generalized neighborhood coordinates (e.g., Kalla, Burnpur,
-                  Ushagram) used to calculate Haversine distances and Help Gravity scores.
+                  Ushagram) used to calculate road distances and community urgency sorting.
                 </li>
                 <li>
                   <strong>Verification Documents:</strong> Uploaded student or government photo IDs submitted by volunteers

@@ -82,7 +82,7 @@ Supabase provides the PostgreSQL database, real-time sync, file storage, and aut
 
 ## Step 3: Enable the PostGIS Geospatial Extension
 
-KindLink relies on the PostgreSQL **PostGIS** extension to calculate real-world physical distances, calculate Help Gravity scores ($G = M \cdot (1 + \lambda t) / (1 + d)^2$), and power the interactive GPS Radar map.
+KindLink relies on the PostgreSQL **PostGIS** extension to calculate real-world physical distances, order requests by proximity, and power the interactive GPS Radar map.
 
 ### Numbered Action Steps:
 1. In the left-hand navigation sidebar, click on **Database** (database cylinder icon).
@@ -144,7 +144,7 @@ If you prefer running modular migrations, create a **+ New query** in the SQL Ed
    - `notifications` — Real-time in-app alerts and notifications.
    - `ratings` — 1-to-5 star post-completion peer trust reviews.
    - `reports` — Community safety moderation reports.
-   - `sos_events` — Accelerometer kinetic fall detection SOS alerts.
+   - `sos_events` — Emergency SOS alerts and broadcast events.
 4. Click on `profiles` and verify the columns: `id`, `username`, `display_name`, `phone`, `role`, `verification_status`, `home_location`, `rating_average`.
 
 > ⚠️ **What to do if it fails:**
