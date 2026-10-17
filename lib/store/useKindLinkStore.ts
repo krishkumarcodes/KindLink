@@ -30,6 +30,12 @@ export const DEFAULT_USER: UserProfile = {
   homeNeighborhood: '',
   languages: ['Bengali', 'Hindi', 'English'],
   emergencyContacts: [],
+  visibility: {
+    phone: 'helpers',
+    email: 'private',
+    organisation: 'public',
+    area: 'public',
+  },
   rating: 5.0,
   ratingCount: 0,
   helpsCount: 0,

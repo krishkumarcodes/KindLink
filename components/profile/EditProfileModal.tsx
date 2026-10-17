@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   X,
   Camera,
@@ -9,42 +9,125 @@ import {
   Loader2,
   User,
   MapPin,
-  GraduationCap,
+  Building2,
   Phone,
+  Mail,
   Globe,
   Trash2,
+  Eye,
+  EyeOff,
+  Quote,
+  Navigation,
+  Compass,
+  Search,
+  Lock,
+  Users,
+  ShieldCheck,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
+import { FieldVisibility, ProfileVisibilitySettings } from '@/lib/data/types';
+import { PhoneInput } from './PhoneInput';
 
 interface EditProfileModalProps {
   open: boolean;
   onClose: () => void;
 }
 
-const POPULAR_LANGUAGES = [
-  'Bengali',
+// Indian and International Languages
+const ALL_AVAILABLE_LANGUAGES = [
+  // Major Indian Languages
   'Hindi',
+  'Bengali',
   'English',
-  'Santhali',
   'Urdu',
+  'Santali',
   'Bhojpuri',
   'Maithili',
+  'Nepali',
+  'Odia',
+  'Assamese',
+  'Marathi',
+  'Gujarati',
+  'Punjabi',
+  'Tamil',
+  'Telugu',
+  'Kannada',
+  'Malayalam',
+  'Sindhi',
+  'Konkani',
+  'Dogri',
+  'Manipuri',
+  'Bodo',
+  'Kashmiri',
+  'Sanskrit',
+  'Marwari',
+  'Chhattisgarhi',
+  'Magahi',
+  'Haryanvi',
+  // Major International Languages
+  'Arabic',
+  'French',
+  'Spanish',
+  'German',
+  'Portuguese',
+  'Italian',
+  'Russian',
+  'Chinese',
+  'Japanese',
+  'Korean',
+  'Indonesian',
+  'Turkish',
+  'Persian',
+  'Vietnamese',
+  'Thai',
+  'Dutch',
+  'Polish',
+  'Swahili',
+  'Tagalog',
+  'Malay',
 ];
 
+interface GeocodeItem {
+  id: string;
+  name: string;
+  displayName: string;
+  suburb?: string;
+  city?: string;
+  state?: string;
+}
+
 export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
-  const { userProfile, updateUserProfile } = useKindLinkStore();
+  const { userProfile, updateUserProfile, setUserCoords } = useKindLinkStore();
 
   // Form states
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
-  const [college, setCollege] = useState('');
+  const [organization, setOrganization] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
   const [phone, setPhone] = useState('');
+  const [isPhoneValid, setIsPhoneValid] = useState(true);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [languageSearch, setLanguageSearch] = useState('');
   const [customLanguage, setCustomLanguage] = useState('');
+
+  // Visibility settings
+  const [visibility, setVisibility] = useState<ProfileVisibilitySettings>({
+    phone: 'helpers',
+    email: 'private',
+    organisation: 'public',
+    area: 'public',
+  });
+
+  // UI state toggles
+  const [showBioPreview, setShowBioPreview] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [addressSuggestions, setAddressSuggestions] = useState<GeocodeItem[]>([]);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
 
   // Username validation state
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
@@ -54,6 +137,7 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const addressContainerRef = useRef<HTMLDivElement>(null);
 
   // Synchronize initial data when modal opens
   useEffect(() => {
@@ -61,7 +145,7 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
       setDisplayName(userProfile.displayName || userProfile.name || '');
       setUsername(userProfile.username || '');
       setBio(userProfile.bio || '');
-      setCollege(userProfile.college || '');
+      setOrganization(userProfile.college || '');
       setNeighborhood(userProfile.homeNeighborhood || '');
       setPhone(userProfile.phone || '');
       setAvatarPreview(userProfile.avatarUrl || null);
@@ -70,8 +154,17 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
           ? [...userProfile.languages]
           : ['Bengali', 'Hindi', 'English']
       );
+      setVisibility({
+        phone: userProfile.visibility?.phone || 'helpers',
+        email: userProfile.visibility?.email || 'private',
+        organisation: userProfile.visibility?.organisation || 'public',
+        area: userProfile.visibility?.area || 'public',
+      });
       setUsernameAvailable(true);
       setUsernameReason(null);
+      setShowBioPreview(false);
+      setShowAddressDropdown(false);
+      setAddressSuggestions([]);
     }
   }, [open, userProfile]);
 
@@ -85,6 +178,20 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, onClose]);
+
+  // Click outside address suggestions dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        addressContainerRef.current &&
+        !addressContainerRef.current.contains(e.target as Node)
+      ) {
+        setShowAddressDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Debounced username availability check
   useEffect(() => {
@@ -107,7 +214,7 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
     // Format regex check: lowercase letter start, 3-20 chars alphanumeric + underscore
     if (!/^[a-z][a-z0-9_]{2,19}$/.test(cleanUser)) {
       setUsernameAvailable(false);
-      setUsernameReason('3-20 chars: must start with letter, lowercase letters, numbers, underscores');
+      setUsernameReason('3-20 chars: start with letter, lowercase letters, numbers, underscores');
       setIsCheckingUsername(false);
       return;
     }
@@ -115,30 +222,110 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
     setIsCheckingUsername(true);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/auth/check-username?username=${encodeURIComponent(cleanUser)}`);
+        const res = await fetch(
+          `/api/auth/check-username?username=${encodeURIComponent(cleanUser)}`
+        );
         const data = await res.json();
         setUsernameAvailable(data.available);
-        setUsernameReason(data.available ? 'Username is available' : data.reason || 'Username is taken');
+        setUsernameReason(
+          data.available ? 'Username is available' : data.reason || 'Username is taken'
+        );
       } catch {
         setUsernameAvailable(true);
         setUsernameReason('Available');
       } finally {
         setIsCheckingUsername(false);
       }
-    }, 400);
+    }, 350);
 
     return () => clearTimeout(timer);
   }, [username, userProfile.username]);
 
-  // Indian phone number validation
-  const validateIndianPhone = (num: string): boolean => {
-    if (!num) return true; // Optional field or checked on submit
-    const cleaned = num.replace(/[\s\-\(\)]/g, '');
-    // Standard Indian phone: +91XXXXXXXXXX or 10 digits starting with 6-9
-    return /^(?:\+91)?[6-9]\d{9}$/.test(cleaned);
+  // Address search autocomplete debounced
+  const handleNeighborhoodChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setNeighborhood(val);
+
+    if (!val.trim() || val.trim().length < 2) {
+      setAddressSuggestions([]);
+      setShowAddressDropdown(false);
+      return;
+    }
+
+    setShowAddressDropdown(true);
   };
 
-  const isPhoneValid = !phone || validateIndianPhone(phone);
+  useEffect(() => {
+    if (!showAddressDropdown || !neighborhood.trim() || neighborhood.trim().length < 2) {
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingAddress(true);
+      try {
+        const res = await fetch(
+          `/api/maps/geocode?query=${encodeURIComponent(neighborhood.trim())}&type=autocomplete&limit=5`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setAddressSuggestions(data.results || []);
+        }
+      } catch {
+        // geocode search fallback
+      } finally {
+        setIsSearchingAddress(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [neighborhood, showAddressDropdown]);
+
+  // Live GPS geolocation handler
+  const handleUseLiveLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(`/api/maps/reverse?lat=${latitude}&lng=${longitude}`);
+          if (res.ok) {
+            const data = await res.json();
+            const place = data.result || (data.results && data.results[0]);
+            if (place) {
+              const locName = place.suburb
+                ? `${place.suburb}, ${place.city || place.state || ''}`
+                : place.displayName || place.name;
+              const cleanLoc = locName.replace(/,\s*$/, '').trim();
+              setNeighborhood(cleanLoc);
+              setUserCoords({ lat: latitude, lng: longitude, isLive: true }, cleanLoc);
+              toast.success('Live location updated successfully');
+            } else {
+              toast.success('GPS coordinates retrieved');
+              setUserCoords({ lat: latitude, lng: longitude, isLive: true });
+            }
+          }
+        } catch {
+          toast.error('Could not reverse-geocode your GPS position');
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (err) => {
+        setIsLocating(false);
+        toast.error(
+          err.code === 1
+            ? 'Location permission denied. Please allow location access.'
+            : 'Could not fetch current GPS location.'
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   // Avatar file handling
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -189,12 +376,25 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
     }
   };
 
+  // Filter languages for chip browser
+  const filteredAvailableLanguages = useMemo(() => {
+    const q = languageSearch.trim().toLowerCase();
+    if (!q) return ALL_AVAILABLE_LANGUAGES;
+    return ALL_AVAILABLE_LANGUAGES.filter((l) => l.toLowerCase().includes(q));
+  }, [languageSearch]);
+
   // Save profile changes
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!displayName.trim()) {
-      toast.error('Please enter your display name');
+    const cleanName = displayName.trim();
+    if (!cleanName || cleanName.length < 2) {
+      toast.error('Display name must be at least 2 characters');
+      return;
+    }
+
+    if (cleanName.length > 60) {
+      toast.error('Display name cannot exceed 60 characters');
       return;
     }
 
@@ -203,38 +403,35 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
       return;
     }
 
-    if (phone.trim() && !validateIndianPhone(phone)) {
-      toast.error('Please enter a valid 10-digit Indian phone number (starting with 6, 7, 8, or 9)');
+    if (phone.trim() && !isPhoneValid) {
+      toast.error('Please enter a valid complete phone number or leave it blank');
       return;
     }
 
-    // Normalize phone number to +91 XXXXX XXXXX if 10 digits
-    let formattedPhone = phone.trim();
-    const cleanDigits = formattedPhone.replace(/\D/g, '');
-    if (cleanDigits.length === 10) {
-      formattedPhone = `+91 ${cleanDigits.slice(0, 5)} ${cleanDigits.slice(5)}`;
-    } else if (cleanDigits.length === 12 && cleanDigits.startsWith('91')) {
-      formattedPhone = `+91 ${cleanDigits.slice(2, 7)} ${cleanDigits.slice(7)}`;
+    if (bio.length > 500) {
+      toast.error('Bio cannot exceed 500 characters');
+      return;
     }
 
     setIsSubmitting(true);
 
     const patch = {
-      name: displayName.trim(),
-      displayName: displayName.trim(),
+      name: cleanName,
+      displayName: cleanName,
       username: username.trim().toLowerCase(),
       bio: bio.trim(),
-      college: college.trim(),
+      college: organization.trim(),
       homeNeighborhood: neighborhood.trim(),
-      phone: formattedPhone,
+      phone: phone.trim(),
       avatarUrl: avatarPreview || '',
       languages: selectedLanguages,
+      visibility,
     };
 
-    // 1. Update live Zustand store immediately
+    // 1. Optimistic local store update
     updateUserProfile(patch);
 
-    // 2. Persist to server in background if authenticated
+    // 2. Persist to server API
     try {
       await fetch('/api/auth/profile', {
         method: 'PATCH',
@@ -242,7 +439,7 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
         body: JSON.stringify(patch),
       });
     } catch {
-      // Optimistic local store already updated
+      // Local optimistic store already updated
     }
 
     setIsSubmitting(false);
@@ -252,6 +449,13 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
     onClose();
   };
 
+  const isFormValid =
+    displayName.trim().length >= 2 &&
+    displayName.trim().length <= 60 &&
+    (username.trim() === '' || usernameAvailable !== false) &&
+    (!phone.trim() || isPhoneValid) &&
+    bio.length <= 500;
+
   if (!open) return null;
 
   return (
@@ -259,25 +463,29 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="edit-profile-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
     >
-      <div className="relative w-full max-w-lg rounded-3xl bg-card border border-border p-5 sm:p-7 shadow-2xl text-left my-auto max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-border shrink-0">
+      <div className="relative w-full sm:max-w-2xl bg-card border-t sm:border border-border rounded-t-3xl sm:rounded-3xl shadow-2xl text-left max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden">
+        {/* Mobile drag pill indicator */}
+        <div className="sm:hidden mx-auto my-2 w-12 h-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
+
+        {/* STICKY HEADER */}
+        <div className="shrink-0 px-5 sm:px-6 py-4 border-b border-border bg-card/95 backdrop-blur-md flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary shrink-0">
               <User className="h-5 w-5 notranslate" />
             </div>
             <div>
-              <h2 id="edit-profile-title" className="text-lg font-bold text-foreground">
+              <h2 id="edit-profile-title" className="text-base sm:text-lg font-bold text-foreground">
                 Edit Profile
               </h2>
               <p className="text-xs text-muted-foreground">
-                Update your verified identity and community presence
+                Update your verified identity, bio, and community presence
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition touch-target"
             aria-label="Close modal"
@@ -286,267 +494,549 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
           </button>
         </div>
 
-        {/* Scrollable Form Body */}
-        <form onSubmit={handleSubmit} className="overflow-y-auto space-y-4 py-4 pr-1 flex-1">
-          {/* Avatar Upload Card */}
-          <div className="p-4 rounded-2xl bg-muted/40 border border-border flex flex-col sm:flex-row items-center gap-4">
-            <div className="relative shrink-0">
-              {avatarPreview ? (
-                <img
-                  src={avatarPreview}
-                  alt="Profile Avatar Preview"
-                  className="h-20 w-20 rounded-2xl object-cover border-2 border-primary/30 shadow-xs"
-                />
-              ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-600 text-white text-2xl font-black shadow-xs">
-                  {displayName.charAt(0).toUpperCase() || 'K'}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute -bottom-1.5 -right-1.5 p-2 rounded-xl bg-primary text-white shadow-md hover:bg-primary-hover transition"
-                title="Upload Photo"
-                aria-label="Upload profile photo"
-              >
-                <Camera className="h-3.5 w-3.5 notranslate" />
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                className="hidden"
-                onChange={handleAvatarChange}
-              />
-            </div>
-
-            <div className="space-y-1.5 text-center sm:text-left flex-1">
-              <h4 className="text-xs font-bold text-foreground">Profile Avatar</h4>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Upload a real photo (JPG, PNG, WebP up to 5 MB) so neighbors can recognize you during in-person handoffs.
-              </p>
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+        {/* INNER SCROLLING FORM CONTENT */}
+        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-5 sm:px-6 py-5 space-y-6">
+          {/* =========================================================================
+              SECTION 1: PHOTO
+             ========================================================================= */}
+          <div className="space-y-2">
+            <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
+              Profile Photo
+            </h3>
+            <div className="p-4 rounded-2xl bg-muted/30 border border-border flex flex-col sm:flex-row items-center gap-4">
+              {/* Square Preview */}
+              <div className="relative shrink-0">
+                {avatarPreview ? (
+                  <img
+                    src={avatarPreview}
+                    alt="Profile Avatar Preview"
+                    className="w-24 h-24 rounded-2xl object-cover border-2 border-primary/30 shadow-md"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-600 text-white text-3xl font-black shadow-md flex items-center justify-center select-none">
+                    {displayName.charAt(0).toUpperCase() || 'K'}
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-3 py-1 rounded-lg border border-border bg-background text-[11px] font-bold text-foreground hover:bg-muted transition"
+                  className="absolute -bottom-1 -right-1 p-2 rounded-xl bg-primary text-white shadow-md hover:bg-primary-hover transition touch-target"
+                  title="Upload Photo"
+                  aria-label="Upload profile photo"
                 >
-                  Choose Photo
+                  <Camera className="h-3.5 w-3.5 notranslate" />
                 </button>
-                {avatarPreview && (
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+              </div>
+
+              <div className="space-y-1.5 text-center sm:text-left flex-1">
+                <h4 className="text-xs font-bold text-foreground">Square Photo Preview</h4>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Upload a clear photo (JPG, PNG, WebP under 5 MB) so community members can
+                  recognize you during handoffs and volunteer matches.
+                </p>
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={handleRemoveAvatar}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-rose-600 hover:bg-rose-500/10 transition"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-1.5 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition touch-target"
                   >
-                    <Trash2 className="h-3 w-3 notranslate" />
-                    <span>Remove</span>
+                    Choose Photo
                   </button>
-                )}
+                  {avatarPreview && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveAvatar}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition touch-target"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 notranslate" />
+                      <span>Remove Photo</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Full Display Name */}
-          <div>
-            <label className="block text-xs font-bold text-foreground mb-1">
-              Full Display Name <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="e.g. Rahul Sen"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
-            />
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Your real name shown on mutual aid requests and to matched responders.
-            </p>
-          </div>
+          {/* =========================================================================
+              SECTION 2: BASICS
+             ========================================================================= */}
+          <div className="space-y-4">
+            <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
+              Basics
+            </h3>
 
-          {/* Username (@handle) with Live Availability Check */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-foreground">
-                Username (@handle) <span className="text-rose-500">*</span>
-              </label>
-              {isCheckingUsername && (
-                <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold">
-                  <Loader2 className="h-3 w-3 animate-spin notranslate" />
-                  <span>Checking availability...</span>
+            {/* Full Display Name */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label htmlFor="profile-display-name" className="text-xs font-bold text-foreground">
+                  Full Display Name <span className="text-rose-500">*</span>
+                </label>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {displayName.length} / 60
                 </span>
-              )}
-              {!isCheckingUsername && username && usernameAvailable === true && (
-                <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                  <CheckCircle2 className="h-3 w-3 notranslate" />
-                  <span>{usernameReason || 'Available'}</span>
-                </span>
-              )}
-              {!isCheckingUsername && username && usernameAvailable === false && (
-                <span className="flex items-center gap-1 text-[10px] text-rose-600 dark:text-rose-400 font-semibold">
-                  <AlertCircle className="h-3 w-3 notranslate" />
-                  <span>{usernameReason || 'Unavailable'}</span>
-                </span>
-              )}
-            </div>
-
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold notranslate">
-                @
-              </span>
+              </div>
               <input
+                id="profile-display-name"
                 type="text"
                 required
-                value={username}
-                onChange={(e) =>
-                  setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))
-                }
-                placeholder="username"
-                className={`w-full pl-8 pr-3.5 py-2.5 rounded-xl border bg-background text-foreground text-xs focus:outline-none focus:ring-2 touch-target ${
-                  usernameAvailable === false
+                maxLength={60}
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="e.g. Rahul Sen"
+                className={`w-full px-3.5 py-2.5 rounded-xl border bg-background text-foreground text-xs focus:outline-none focus:ring-2 touch-target ${
+                  displayName.trim().length > 0 && displayName.trim().length < 2
                     ? 'border-rose-400 focus:ring-rose-500/20'
-                    : usernameAvailable === true
-                    ? 'border-emerald-500/50 focus:ring-emerald-500/20'
                     : 'border-border focus:ring-primary/20'
                 }`}
               />
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              3-20 characters: lowercase letters, numbers, and underscores. Unique identity on KindLink.
-            </p>
-          </div>
-
-          {/* Bio */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-foreground">Community Bio</label>
-              <span className="text-[10px] text-muted-foreground font-mono">
-                {bio.length} / 280
-              </span>
-            </div>
-            <textarea
-              rows={3}
-              maxLength={280}
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell neighbors how you can help (e.g. available for blood donation, wheelchair loan, student tutoring)..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none leading-relaxed"
-            />
-          </div>
-
-          {/* College / Organization (Optional) */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <GraduationCap className="h-3.5 w-3.5 text-primary notranslate" />
-                <span>College / Organization</span>
-                <span className="text-[10px] font-normal text-muted-foreground">(Optional)</span>
-              </label>
-              <span className="text-[10px] text-muted-foreground font-semibold px-2 py-0.5 rounded-md bg-muted">
-                Self-reported
-              </span>
-            </div>
-            <input
-              type="text"
-              value={college}
-              onChange={(e) => setCollege(e.target.value)}
-              placeholder="e.g. Asansol Engineering College, MAKAUT"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
-            />
-          </div>
-
-          {/* City / Area / Neighborhood */}
-          <div>
-            <label className="block text-xs font-bold text-foreground mb-1 flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5 text-rose-500 notranslate" />
-              <span>City / Home Neighborhood</span>
-            </label>
-            <input
-              type="text"
-              value={neighborhood}
-              onChange={(e) => setNeighborhood(e.target.value)}
-              placeholder="e.g. Kalyanpur, Asansol"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
-            />
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Helps match requests within 2 to 5 km of your primary location.
-            </p>
-          </div>
-
-          {/* Phone Number with Indian Format Validation */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <Phone className="h-3.5 w-3.5 text-emerald-500 notranslate" />
-                <span>Phone Number</span>
-              </label>
-              {phone && (
-                <span
-                  className={`text-[10px] font-semibold ${
-                    isPhoneValid ? 'text-emerald-600' : 'text-rose-600'
-                  }`}
-                >
-                  {isPhoneValid ? '✓ Valid Indian format' : '✗ Invalid number'}
-                </span>
+              {displayName.trim().length > 0 && displayName.trim().length < 2 && (
+                <p className="text-[10px] text-rose-500 font-semibold mt-1">
+                  Display name must be between 2 and 60 characters.
+                </p>
               )}
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Your real name displayed to neighbors and matched emergency responders.
+              </p>
             </div>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+91 98320 12345"
-              className={`w-full px-3.5 py-2.5 rounded-xl border bg-background text-foreground text-xs font-mono focus:outline-none focus:ring-2 touch-target ${
-                phone && !isPhoneValid
-                  ? 'border-rose-400 focus:ring-rose-500/20'
-                  : 'border-border focus:ring-primary/20'
-              }`}
-            />
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Indian format (+91 XXXXX XXXXX). Required for OTP verification and emergency calls.
-            </p>
+
+            {/* Username (@handle) with perfectly centered '@' input addon */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label htmlFor="profile-username" className="text-xs font-bold text-foreground">
+                  Username (@handle) <span className="text-rose-500">*</span>
+                </label>
+                {isCheckingUsername && (
+                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold">
+                    <Loader2 className="h-3 w-3 animate-spin notranslate" />
+                    <span>Checking availability...</span>
+                  </span>
+                )}
+                {!isCheckingUsername && username && usernameAvailable === true && (
+                  <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <CheckCircle2 className="h-3 w-3 notranslate" />
+                    <span>{usernameReason || 'Available'}</span>
+                  </span>
+                )}
+                {!isCheckingUsername && username && usernameAvailable === false && (
+                  <span className="flex items-center gap-1 text-[10px] text-rose-600 dark:text-rose-400 font-semibold">
+                    <AlertCircle className="h-3 w-3 notranslate" />
+                    <span>{usernameReason || 'Unavailable'}</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Flex input addon with 0px baseline misalignment */}
+              <div
+                className={`flex items-center w-full rounded-xl border bg-background overflow-hidden transition ${
+                  usernameAvailable === false
+                    ? 'border-rose-400 focus-within:ring-2 focus-within:ring-rose-500/20'
+                    : usernameAvailable === true
+                    ? 'border-emerald-500/50 focus-within:ring-2 focus-within:ring-emerald-500/20'
+                    : 'border-border focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20'
+                }`}
+              >
+                <span className="flex items-center justify-center pl-3.5 pr-2 py-2.5 text-muted-foreground font-bold text-xs select-none shrink-0 leading-none">
+                  @
+                </span>
+                <input
+                  id="profile-username"
+                  type="text"
+                  required
+                  maxLength={20}
+                  value={username}
+                  onChange={(e) =>
+                    setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))
+                  }
+                  placeholder="username"
+                  className="w-full py-2.5 pr-3.5 bg-transparent text-foreground text-xs font-mono focus:outline-none leading-none touch-target"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                3-20 characters: lowercase letters, numbers, and underscores. Your unique handle on
+                KindLink.
+              </p>
+            </div>
           </div>
 
-          {/* Spoken Languages */}
-          <div>
-            <label className="block text-xs font-bold text-foreground mb-1.5 flex items-center gap-1.5">
+          {/* =========================================================================
+              SECTION 3: ABOUT
+             ========================================================================= */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                About
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowBioPreview(!showBioPreview)}
+                className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline touch-target"
+              >
+                {showBioPreview ? (
+                  <>
+                    <EyeOff className="h-3.5 w-3.5 notranslate" />
+                    <span>Edit Bio</span>
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-3.5 w-3.5 notranslate" />
+                    <span>Preview Bio</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {showBioPreview ? (
+              <div className="p-4 rounded-2xl bg-muted/40 border border-border space-y-2 animate-fade-in">
+                <div className="flex items-center justify-between text-xs font-bold text-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <Quote className="h-4 w-4 text-primary notranslate" />
+                    <span>Profile Bio Preview</span>
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-normal">
+                    How neighbors see you
+                  </span>
+                </div>
+                <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
+                  {bio.trim() || (
+                    <span className="italic text-muted-foreground">
+                      No bio written yet. Share what mutual aid skills, equipment loans, or assistance
+                      you can offer!
+                    </span>
+                  )}
+                </p>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor="profile-bio" className="text-xs font-bold text-foreground">
+                    Community Bio
+                  </label>
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    {bio.length} / 500
+                  </span>
+                </div>
+                <textarea
+                  id="profile-bio"
+                  rows={3}
+                  maxLength={500}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Tell neighbors how you can help (e.g. available for blood donation, wheelchair loan, student tutoring, emergency rides)..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none leading-relaxed touch-target"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Max 500 characters. Toggle Preview anytime to check how it looks on your public card.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* =========================================================================
+              SECTION 4: CONTACT & VISIBILITY
+             ========================================================================= */}
+          <div className="space-y-4">
+            <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
+              Contact &amp; Privacy
+            </h3>
+
+            {/* Phone with international PhoneInput component */}
+            <div className="space-y-2">
+              <PhoneInput
+                id="profile-phone"
+                label="Phone Number"
+                value={phone}
+                onChange={(val, valid) => {
+                  setPhone(val);
+                  setIsPhoneValid(valid);
+                }}
+                helperText="International format with country code picker. Used for OTP verification, emergency SOS, and responder calls."
+              />
+
+              {/* Visibility Selector for Phone */}
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                  <Lock className="h-3 w-3 notranslate" />
+                  <span>Phone Visibility:</span>
+                </span>
+                <select
+                  aria-label="Phone number visibility"
+                  value={visibility.phone || 'helpers'}
+                  onChange={(e) =>
+                    setVisibility({ ...visibility, phone: e.target.value as FieldVisibility })
+                  }
+                  className="px-2.5 py-1 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="public">Public (Everyone)</option>
+                  <option value="helpers">Helpers &amp; Matches only</option>
+                  <option value="private">Private (Only Me &amp; SOS)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Email (Read-Only) */}
+            <div className="space-y-2">
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1 flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5 text-primary notranslate" />
+                  <span>Email Address</span>
+                </label>
+                <input
+                  type="email"
+                  readOnly
+                  disabled
+                  value={userProfile.email || 'user@example.com'}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-muted/40 text-muted-foreground text-xs cursor-not-allowed select-none"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Email address is linked to your authentication provider and cannot be edited
+                  directly.
+                </p>
+              </div>
+
+              {/* Visibility Selector for Email */}
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                  <Lock className="h-3 w-3 notranslate" />
+                  <span>Email Visibility:</span>
+                </span>
+                <select
+                  aria-label="Email address visibility"
+                  value={visibility.email || 'private'}
+                  onChange={(e) =>
+                    setVisibility({ ...visibility, email: e.target.value as FieldVisibility })
+                  }
+                  className="px-2.5 py-1 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="public">Public (Everyone)</option>
+                  <option value="helpers">Helpers &amp; Matches only</option>
+                  <option value="private">Private (Only Me)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Organisation (Optional) */}
+            <div className="space-y-2">
+              <div>
+                <label
+                  htmlFor="profile-organization"
+                  className="block text-xs font-bold text-foreground mb-1 flex items-center gap-1.5"
+                >
+                  <Building2 className="h-3.5 w-3.5 text-primary notranslate" />
+                  <span>Organisation / Affiliation</span>
+                  <span className="text-[10px] font-normal text-muted-foreground">(Optional)</span>
+                </label>
+                <input
+                  id="profile-organization"
+                  type="text"
+                  maxLength={100}
+                  value={organization}
+                  onChange={(e) => setOrganization(e.target.value)}
+                  placeholder="e.g. Asansol Engineering College, MAKAUT, Rotary Club, District Hospital"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
+                />
+              </div>
+
+              {/* Visibility Selector for Organisation */}
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                  <Lock className="h-3 w-3 notranslate" />
+                  <span>Organisation Visibility:</span>
+                </span>
+                <select
+                  aria-label="Organisation visibility"
+                  value={visibility.organisation || 'public'}
+                  onChange={(e) =>
+                    setVisibility({
+                      ...visibility,
+                      organisation: e.target.value as FieldVisibility,
+                    })
+                  }
+                  className="px-2.5 py-1 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="public">Public (Everyone)</option>
+                  <option value="helpers">Helpers only</option>
+                  <option value="private">Private (Only Me)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Area / Neighbourhood with Live Location & Geocoding Autocomplete */}
+            <div className="space-y-2" ref={addressContainerRef}>
+              <div className="flex items-center justify-between mb-1">
+                <label
+                  htmlFor="profile-neighborhood"
+                  className="text-xs font-bold text-foreground flex items-center gap-1.5"
+                >
+                  <MapPin className="h-3.5 w-3.5 text-rose-500 notranslate" />
+                  <span>Area / Home Neighbourhood</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleUseLiveLocation}
+                  disabled={isLocating}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-[11px] font-bold hover:bg-primary/20 transition touch-target disabled:opacity-50"
+                >
+                  {isLocating ? (
+                    <Loader2 className="h-3 w-3 animate-spin notranslate" />
+                  ) : (
+                    <Compass className="h-3 w-3 notranslate" />
+                  )}
+                  <span>{isLocating ? 'Locating...' : 'Use my live location'}</span>
+                </button>
+              </div>
+
+              <div className="relative">
+                <input
+                  id="profile-neighborhood"
+                  type="text"
+                  maxLength={120}
+                  value={neighborhood}
+                  onChange={handleNeighborhoodChange}
+                  onFocus={() => {
+                    if (addressSuggestions.length > 0) setShowAddressDropdown(true);
+                  }}
+                  placeholder="e.g. Kalyanpur, Asansol or search neighborhood..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
+                />
+
+                {isSearchingAddress && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground notranslate" />
+                  </div>
+                )}
+
+                {/* Suggestions dropdown from /api/maps/geocode */}
+                {showAddressDropdown && addressSuggestions.length > 0 && (
+                  <div className="absolute z-20 top-full left-0 right-0 mt-1 rounded-2xl bg-card border border-border shadow-xl overflow-hidden py-1 divide-y divide-border/40">
+                    {addressSuggestions.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setNeighborhood(item.displayName || item.name);
+                          setShowAddressDropdown(false);
+                        }}
+                        className="w-full text-left px-3.5 py-2 hover:bg-muted text-xs text-foreground flex items-center gap-2 transition"
+                      >
+                        <MapPin className="h-3.5 w-3.5 text-primary shrink-0 notranslate" />
+                        <span className="truncate">{item.displayName || item.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Matches mutual aid requests within 2 to 5 km of your primary neighborhood.
+              </p>
+
+              {/* Visibility Selector for Area */}
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                  <Lock className="h-3 w-3 notranslate" />
+                  <span>Area Visibility:</span>
+                </span>
+                <select
+                  aria-label="Area visibility"
+                  value={visibility.area || 'public'}
+                  onChange={(e) =>
+                    setVisibility({ ...visibility, area: e.target.value as FieldVisibility })
+                  }
+                  className="px-2.5 py-1 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="public">Public (Everyone)</option>
+                  <option value="helpers">Helpers &amp; Matches only</option>
+                  <option value="private">Private (Only Me)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* =========================================================================
+              SECTION 5: LANGUAGES SPOKEN
+             ========================================================================= */}
+          <div className="space-y-3">
+            <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <Globe className="h-3.5 w-3.5 text-primary notranslate" />
-              <span>Spoken Languages</span>
-            </label>
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {POPULAR_LANGUAGES.map((lang) => {
-                const selected = selectedLanguages.includes(lang);
+              <span>Languages Spoken ({selectedLanguages.length})</span>
+            </h3>
+
+            {/* Active selected languages chips */}
+            {selectedLanguages.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 p-2.5 rounded-2xl bg-muted/30 border border-border">
+                {selectedLanguages.map((lang) => (
+                  <span
+                    key={`sel-${lang}`}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary text-white text-xs font-bold shadow-2xs"
+                  >
+                    <span>{lang}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleLanguage(lang)}
+                      className="hover:opacity-75 transition"
+                      aria-label={`Remove ${lang}`}
+                    >
+                      <X className="h-3 w-3 notranslate" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Quick search filter for language browser */}
+            <div className="relative flex items-center">
+              <Search className="absolute left-3 h-3.5 w-3.5 text-muted-foreground notranslate" />
+              <input
+                type="text"
+                value={languageSearch}
+                onChange={(e) => setLanguageSearch(e.target.value)}
+                placeholder="Search languages (Hindi, Santali, Spanish, Arabic, etc.)..."
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            {/* Language Chips */}
+            <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1">
+              {filteredAvailableLanguages.map((lang) => {
+                const isSelected = selectedLanguages.includes(lang);
                 return (
                   <button
                     key={lang}
                     type="button"
                     onClick={() => toggleLanguage(lang)}
-                    className={`px-3 py-1 rounded-xl text-xs font-bold transition touch-target ${
-                      selected
-                        ? 'bg-primary text-white shadow-xs'
-                        : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 border border-border/80'
+                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition touch-target ${
+                      isSelected
+                        ? 'bg-primary text-white shadow-2xs'
+                        : 'bg-muted/70 text-muted-foreground hover:text-foreground hover:bg-muted border border-border/80'
                     }`}
                   >
-                    {selected ? `✓ ${lang}` : `+ ${lang}`}
+                    {isSelected ? `✓ ${lang}` : `+ ${lang}`}
                   </button>
                 );
               })}
             </div>
 
-            {/* Add custom language input */}
-            <div className="flex gap-2">
+            {/* Add custom / other language free-text input */}
+            <div className="flex gap-2 pt-1">
               <input
                 type="text"
                 value={customLanguage}
                 onChange={(e) => setCustomLanguage(e.target.value)}
                 onKeyDown={handleAddCustomLanguage}
-                placeholder="Add other language (e.g. Nepali)..."
-                className="flex-1 px-3 py-1.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="Add other dialect / language..."
+                className="flex-1 px-3 py-2 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
               <button
                 type="button"
                 onClick={handleAddCustomLanguage}
-                className="px-3 py-1.5 rounded-xl bg-background border border-border hover:bg-muted text-xs font-bold text-primary transition"
+                disabled={!customLanguage.trim()}
+                className="px-4 py-2 rounded-xl bg-background border border-border hover:bg-muted text-xs font-bold text-primary transition disabled:opacity-40"
               >
                 Add
               </button>
@@ -554,8 +1044,8 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
           </div>
         </form>
 
-        {/* Modal Actions Footer */}
-        <div className="pt-4 border-t border-border flex items-center justify-end gap-3 shrink-0">
+        {/* STICKY FOOTER */}
+        <div className="shrink-0 px-5 sm:px-6 py-4 border-t border-border bg-card/95 backdrop-blur-md flex items-center justify-end gap-3 z-10">
           <button
             type="button"
             onClick={onClose}
@@ -567,14 +1057,16 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={isSubmitting || (username.trim() !== '' && usernameAvailable === false) || !isPhoneValid}
+            disabled={isSubmitting || !isFormValid}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-soft transition touch-target disabled:opacity-50"
           >
             {isSubmitting && <Loader2 className="h-4 w-4 animate-spin notranslate" />}
-            <span>{isSubmitting ? 'Saving Changes...' : 'Save Profile'}</span>
+            <span>{isSubmitting ? 'Saving Profile...' : 'Save Profile'}</span>
           </button>
         </div>
       </div>
     </div>
   );
 }
+
+export default EditProfileModal;

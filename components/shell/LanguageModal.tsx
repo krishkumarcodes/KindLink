@@ -74,6 +74,13 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
 
     changeLanguageInstantly(lang.code);
 
+    // Persist to database profile via /api/auth/profile
+    fetch('/api/auth/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preferredLanguage: lang.code }),
+    }).catch(() => {});
+
     setTimeout(() => {
       toast.success(`Switched to ${lang.name} (${lang.nativeName})`);
       setTranslatingCode(null);

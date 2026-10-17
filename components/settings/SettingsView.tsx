@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Globe,
   Moon,
@@ -21,29 +21,40 @@ import {
   Loader2,
   Check,
   ShieldCheck,
-  HeartHandshake,
-  Zap,
-  Info,
-  X,
-  MapPin,
-  ExternalLink,
+  HeartPulse,
+  AlertOctagon,
+  MessageSquare,
+  Clock,
+  Shield,
   Layers,
+  ExternalLink,
+  MapPin,
+  X,
+  Radio,
+  Sliders,
+  HelpCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { LanguageModal } from '../shell/LanguageModal';
-import { getCurrentLanguageCode, SUPPORTED_LANGUAGES } from '@/lib/translate/googleTranslate';
+import {
+  getCurrentLanguageCode,
+  SUPPORTED_LANGUAGES,
+  changeLanguageInstantly,
+} from '@/lib/translate/googleTranslate';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
+import { Switch, SwitchRow } from '@/components/ui/Switch';
 
 export function SettingsView() {
   const { theme, setTheme } = useTheme();
   const { userProfile, updateUserProfile } = useKindLinkStore();
 
-  // Modal states
+  // Modals
   const [langModalOpen, setLangModalOpen] = useState(false);
   const [iosPwaModalOpen, setIosPwaModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [showUnblockGuide, setShowUnblockGuide] = useState(false);
 
   // Text size state ('compact' | 'normal' | 'large')
   const [textSize, setTextSize] = useState<'compact' | 'normal' | 'large'>(() => {
@@ -66,17 +77,89 @@ export function SettingsView() {
   // Language state
   const [langCode, setLangCode] = useState(() => getCurrentLanguageCode());
 
-  // Notification toggles
-  const [bloodAlerts, setBloodAlerts] = useState(true);
-  const [sosAlerts, setSosAlerts] = useState(true);
-  const [nearbyRequests, setNearbyRequests] = useState(true);
-  const [statusUpdates, setStatusUpdates] = useState(true);
-  const [soundSirens, setSoundSirens] = useState(true);
+  // Notification toggles & preferences
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+  const [bloodAlerts, setBloodAlerts] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('kindlink_notif_blood');
+      if (saved !== null) return saved === 'true';
+    }
+    return true;
+  });
+  const [sosAlerts, setSosAlerts] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('kindlink_notif_sos');
+      if (saved !== null) return saved === 'true';
+    }
+    return true;
+  });
+  const [nearbyRequests, setNearbyRequests] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('kindlink_notif_nearby');
+      if (saved !== null) return saved === 'true';
+    }
+    return true;
+  });
+  const [nearbyDistanceKm, setNearbyDistanceKm] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('kindlink_notif_radius');
+      if (saved) return Number(saved);
+    }
+    return 5;
+  });
+  const [repliesAlerts, setRepliesAlerts] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('kindlink_notif_replies');
+      if (saved !== null) return saved === 'true';
+    }
+    return true;
+  });
+  const [soundSirens, setSoundSirens] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('kindlink_notif_sound');
+      if (saved !== null) return saved === 'true';
+    }
+    return true;
+  });
+
+  // Quiet hours
+  const [quietHoursEnabled, setQuietHoursEnabled] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('kindlink_quiet_hours_enabled');
+      if (saved !== null) return saved === 'true';
+    }
+    return false;
+  });
+  const [quietHoursStart, setQuietHoursStart] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('kindlink_quiet_hours_start') || '22:00';
+    }
+    return '22:00';
+  });
+  const [quietHoursEnd, setQuietHoursEnd] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('kindlink_quiet_hours_end') || '07:00';
+    }
+    return '07:00';
+  });
 
   // PWA states
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
+
+  // Sign out other devices loading
+  const [revokingOthers, setRevokingOthers] = useState(false);
+
+  // Deletion request status
+  const [deletionStatus, setDeletionStatus] = useState<{
+    id?: string;
+    status: 'pending' | 'approved' | 'denied' | 'none';
+    reason?: string;
+    adminNote?: string;
+    createdAt?: string;
+  }>({ status: 'none' });
+  const [isLastAdmin, setIsLastAdmin] = useState(false);
+  const [cancellingDeletion, setCancellingDeletion] = useState(false);
 
   // Sync language listener
   useEffect(() => {
@@ -91,7 +174,7 @@ export function SettingsView() {
     return () => window.removeEventListener('kindlink:locale-change', onLocaleChange);
   }, [langModalOpen]);
 
-  // Sync PWA & Notification permission
+  // Sync PWA & Notification permission & Deletion status
   useEffect(() => {
     if (typeof window !== 'undefined') {
       if (window.matchMedia('(display-mode: standalone)').matches) {
@@ -112,6 +195,26 @@ export function SettingsView() {
     }
   }, []);
 
+  // Fetch deletion status & admin role
+  const fetchDeletionStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/auth/delete-account');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.request) {
+          setDeletionStatus(data.request);
+        } else {
+          setDeletionStatus({ status: 'none' });
+        }
+        setIsLastAdmin(Boolean(data.isLastAdmin));
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchDeletionStatus();
+  }, [fetchDeletionStatus]);
+
   // Text size change handler
   const handleTextSizeChange = (size: 'compact' | 'normal' | 'large') => {
     setTextSize(size);
@@ -129,7 +232,11 @@ export function SettingsView() {
       } catch {}
     }
     updateUserProfile({ textSize: size });
-    toast.success(`Text size set to ${size === 'large' ? 'Elderly Large' : size === 'compact' ? 'Compact' : 'Standard'}`);
+    toast.success(
+      `Text size set to ${
+        size === 'large' ? 'Elderly Large' : size === 'compact' ? 'Compact' : 'Standard'
+      }`
+    );
   };
 
   // Reduce motion change handler
@@ -145,6 +252,13 @@ export function SettingsView() {
     toast.success(`Reduced motion ${enabled ? 'enabled' : 'disabled'}`);
   };
 
+  // Notification preference savers
+  const saveNotifPref = (key: string, val: any) => {
+    try {
+      localStorage.setItem(key, String(val));
+    } catch {}
+  };
+
   // Request browser push notification permission
   const handleRequestPushPermission = async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
@@ -157,11 +271,88 @@ export function SettingsView() {
       setNotificationPermission(permission);
       if (permission === 'granted') {
         toast.success('Notification permission granted!');
+        setShowUnblockGuide(false);
       } else if (permission === 'denied') {
         toast.error('Notification permission was blocked in browser settings.');
+        setShowUnblockGuide(true);
       }
-    } catch (err: any) {
+    } catch {
       toast.error('Could not request notification permission.');
+    }
+  };
+
+  // Send test notification
+  const handleSendTestNotification = () => {
+    // 1. Play sound if audio alerts enabled
+    if (soundSirens && typeof window !== 'undefined') {
+      try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+        osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      } catch {}
+    }
+
+    // 2. Trigger native Notification if granted
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification('KindLink Test Alert', {
+          body: 'This is a test notification. Emergency blood and mutual aid alerts will appear here.',
+          icon: '/icon.svg',
+          tag: 'kindlink-test',
+        });
+      } catch {}
+    }
+
+    // 3. Always show in-app toast preview
+    toast.success('Test notification dispatched! Alerts will appear on your device when volunteers respond.', {
+      duration: 4000,
+      icon: <Bell className="h-4 w-4 text-primary notranslate" />,
+    });
+  };
+
+  // Sign out of all other devices
+  const handleSignOutOtherDevices = async () => {
+    setRevokingOthers(true);
+    try {
+      const res = await fetch('/api/auth/sign-out-others', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to sign out other devices.');
+      } else {
+        toast.success('Signed out of all other devices! Your current session remains active.');
+      }
+    } catch {
+      toast.error('Network error revoking other sessions.');
+    } finally {
+      setRevokingOthers(false);
+    }
+  };
+
+  // Cancel deletion request
+  const handleCancelDeletion = async () => {
+    setCancellingDeletion(true);
+    try {
+      const res = await fetch('/api/auth/delete-account', { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to cancel deletion request.');
+      } else {
+        toast.success('Account deletion request has been cancelled.');
+        fetchDeletionStatus();
+      }
+    } catch {
+      toast.error('Network error cancelling deletion request.');
+    } finally {
+      setCancellingDeletion(false);
     }
   };
 
@@ -176,7 +367,6 @@ export function SettingsView() {
       }
       setDeferredPrompt(null);
     } else {
-      // Show iOS / manual guidance modal
       setIosPwaModalOpen(true);
     }
   };
@@ -188,16 +378,16 @@ export function SettingsView() {
       {/* Page Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
-          Settings & Security
+          Settings &amp; Security
         </h1>
         <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-          Manage appearance, accessibility, real-time push alerts, password security, and account sessions.
+          Customise appearance, typography accessibility, real-time push dispatch, password credentials, and privacy controls.
         </p>
       </div>
 
       <div className="space-y-5">
         {/* =========================================================================
-            1. APPEARANCE THEME (Light, Dark, System with instant switching & WCAG AA)
+            1. APPEARANCE THEME (Light, Dark, System)
            ========================================================================= */}
         <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-4">
           <div className="flex items-center gap-3">
@@ -207,7 +397,7 @@ export function SettingsView() {
             <div>
               <h2 className="text-sm sm:text-base font-bold text-foreground">Appearance Theme</h2>
               <p className="text-xs text-muted-foreground">
-                High-contrast WCAG AA compliant palette optimized for outdoor daylight and dark rooms
+                High-contrast WCAG AA compliant palette optimized for outdoor daylight and low-light night shifts
               </p>
             </div>
           </div>
@@ -240,7 +430,7 @@ export function SettingsView() {
         </div>
 
         {/* =========================================================================
-            2. TEXT SIZE & READABILITY (Compact, Standard, Elderly Large >=52px touch)
+            2. TEXT SIZE & READABILITY (Compact, Standard, Elderly Large)
            ========================================================================= */}
         <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-4">
           <div className="flex items-center gap-3">
@@ -249,18 +439,18 @@ export function SettingsView() {
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-bold text-foreground">
-                Text Size & Readability
+                Text Size &amp; Readability
               </h2>
               <p className="text-xs text-muted-foreground">
-                Scales root font size via rem. Elderly Large expands touch targets to ≥52px with larger spacing.
+                Scales root font size dynamically. Elderly Large expands touch targets to ≥52px with generous button padding.
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
             {[
-              { id: 'compact' as const, label: 'Compact (14px)', desc: 'Higher density' },
-              { id: 'normal' as const, label: 'Standard (16px)', desc: 'Balanced default' },
+              { id: 'compact' as const, label: 'Compact (14px)', desc: 'High density information view' },
+              { id: 'normal' as const, label: 'Standard (16px)', desc: 'Balanced community default' },
               { id: 'large' as const, label: 'Elderly Large (18.5px)', desc: 'High visibility & ≥52px touch' },
             ].map((s) => {
               const isSelected = textSize === s.id;
@@ -268,16 +458,16 @@ export function SettingsView() {
                 <button
                   key={s.id}
                   onClick={() => handleTextSizeChange(s.id)}
-                  className={`p-3 rounded-2xl border text-left transition touch-target flex flex-col justify-between ${
+                  className={`p-3.5 rounded-2xl border text-left transition touch-target flex flex-col justify-between ${
                     isSelected
-                      ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary/20'
+                      ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary/20 font-bold'
                       : 'border-border bg-background text-foreground hover:bg-muted'
                   }`}
                   aria-pressed={isSelected}
                 >
                   <div className="flex items-center justify-between w-full">
                     <span className="text-xs font-bold">{s.label}</span>
-                    {isSelected && <Check className="h-3.5 w-3.5 text-primary notranslate shrink-0" />}
+                    {isSelected && <Check className="h-4 w-4 text-primary notranslate shrink-0" />}
                   </div>
                   <span className="text-[11px] text-muted-foreground mt-1">{s.desc}</span>
                 </button>
@@ -296,37 +486,28 @@ export function SettingsView() {
               </p>
               <button
                 type="button"
-                className="px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs shadow-xs touch-target shrink-0 self-start sm:self-center"
+                className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs shadow-xs touch-target shrink-0 self-start sm:self-center"
               >
                 Sample Button
               </button>
             </div>
           </div>
 
-          {/* Reduce Motion Toggle */}
-          <div className="pt-3 border-t border-border flex items-center justify-between">
-            <div>
-              <span className="text-xs sm:text-sm font-bold text-foreground block">
-                Reduce Animations & Motion
-              </span>
-              <p className="text-[11px] text-muted-foreground">
-                Disables animated banners, decorative pulses, and transitions for accessibility
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer touch-target">
-              <input
-                type="checkbox"
-                checked={reduceMotion}
-                onChange={(e) => handleReduceMotionToggle(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
-            </label>
+          {/* Reduce Motion Switch Row */}
+          <div className="pt-2">
+            <SwitchRow
+              id="reduce-motion-switch"
+              checked={reduceMotion}
+              onCheckedChange={handleReduceMotionToggle}
+              label="Reduce Animations & Motion"
+              description="Disables animated banners, decorative map pulses, and transitions for users sensitive to motion."
+              icon={<Sliders className="h-4 w-4" />}
+            />
           </div>
         </div>
 
         {/* =========================================================================
-            3. LANGUAGE SELECTOR
+            3. LANGUAGE SELECTOR & PERSISTENCE
            ========================================================================= */}
         <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -338,152 +519,304 @@ export function SettingsView() {
               <p className="text-xs text-muted-foreground notranslate">
                 Active: <span className="font-bold text-foreground">{currentLang?.nativeName || 'English'}</span> ({currentLang?.name || 'English'})
               </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Saved to cookie, localStorage, and persisted to database profile to prevent flash of English.
+              </p>
             </div>
           </div>
           <button
             onClick={() => setLangModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-background border border-border text-xs font-bold text-primary hover:bg-muted transition shadow-xs touch-target self-start sm:self-auto"
+            className="px-4 py-2.5 rounded-xl bg-background border border-border text-xs font-bold text-primary hover:bg-muted transition shadow-xs touch-target self-start sm:self-auto shrink-0"
           >
             Change Language
           </button>
         </div>
 
         {/* =========================================================================
-            4. PUSH NOTIFICATIONS & REAL-TIME ALERTS
+            4. PUSH NOTIFICATIONS & REAL-TIME ALERTS (REDESIGNED)
            ========================================================================= */}
         <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Header & Status Row */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-600">
                 <Bell className="h-5 w-5 notranslate" />
               </div>
               <div>
-                <h2 className="text-sm sm:text-base font-bold text-foreground">Push Notifications & Alerts</h2>
+                <h2 className="text-sm sm:text-base font-bold text-foreground">Push Notifications &amp; Alerts</h2>
                 <p className="text-xs text-muted-foreground">
-                  Browser push alerts and audible siren dispatch for urgent neighbor needs
+                  Real-time push dispatches for life-safety emergency blood and neighbourhood mutual aid
                 </p>
               </div>
             </div>
 
-            {/* Permission Action Button */}
-            <div className="flex items-center gap-2 self-start sm:self-auto">
+            {/* Permission Status Pill & Action */}
+            <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
               <span
-                className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
+                className={`text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 ${
                   notificationPermission === 'granted'
-                    ? 'bg-emerald-500/10 text-emerald-600'
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                     : notificationPermission === 'denied'
-                    ? 'bg-rose-500/10 text-rose-600'
-                    : 'bg-amber-500/10 text-amber-600'
+                    ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                    : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
                 }`}
               >
-                {notificationPermission === 'granted'
-                  ? '✓ Permission Enabled'
-                  : notificationPermission === 'denied'
-                  ? '✗ Permission Blocked'
-                  : 'Permission Not Granted'}
+                <span className="w-2 h-2 rounded-full bg-current shrink-0" />
+                <span>
+                  {notificationPermission === 'granted'
+                    ? 'Allowed'
+                    : notificationPermission === 'denied'
+                    ? 'Blocked'
+                    : 'Not asked yet'}
+                </span>
               </span>
+
               {notificationPermission !== 'granted' && (
                 <button
                   type="button"
                   onClick={handleRequestPushPermission}
                   className="px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition touch-target"
                 >
-                  Enable Push
+                  Enable Notifications
                 </button>
               )}
             </div>
           </div>
 
-          <div className="space-y-3 pt-1 text-xs">
-            {/* Toggle 1: Emergency Blood & Critical Medical */}
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-background border border-border">
-              <div className="space-y-0.5 pr-3">
-                <strong className="text-foreground text-xs font-bold block">
-                  Critical Emergency Blood & Hospital Alerts
-                </strong>
-                <span className="text-muted-foreground text-[11px] leading-tight block">
-                  High-priority alerts for life-threatening blood and transport requirements
-                </span>
+          {/* If Blocked: Step-by-step unblock instructions for Chrome and Safari */}
+          {(notificationPermission === 'denied' || showUnblockGuide) && (
+            <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 space-y-3 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-rose-500 notranslate shrink-0" />
+                  <strong className="text-xs font-bold text-rose-700 dark:text-rose-300">
+                    Notifications are currently blocked by your browser
+                  </strong>
+                </div>
+                <button
+                  onClick={() => setShowUnblockGuide(false)}
+                  className="text-muted-foreground hover:text-foreground p-1"
+                  aria-label="Dismiss guide"
+                >
+                  <X className="h-4 w-4 notranslate" />
+                </button>
               </div>
-              <input
-                type="checkbox"
-                checked={bloodAlerts}
-                onChange={(e) => {
-                  setBloodAlerts(e.target.checked);
-                  toast.success(`Blood & Medical alerts ${e.target.checked ? 'enabled' : 'disabled'}`);
-                }}
-                className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer touch-target"
-              />
-            </div>
 
-            {/* Toggle 2: SOS Distress Beacons */}
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-background border border-border">
-              <div className="space-y-0.5 pr-3">
-                <strong className="text-foreground text-xs font-bold block">
-                  Nearby SOS Community Distress Beacons
-                </strong>
-                <span className="text-muted-foreground text-[11px] leading-tight block">
-                  Instant notification when a registered neighbor triggers an emergency SOS
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={sosAlerts}
-                onChange={(e) => {
-                  setSosAlerts(e.target.checked);
-                  toast.success(`SOS alerts ${e.target.checked ? 'enabled' : 'disabled'}`);
-                }}
-                className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer touch-target"
-              />
-            </div>
+              <p className="text-[11px] text-muted-foreground">
+                To receive life-saving blood alerts and SOS beacons, unblock notifications using these steps:
+              </p>
 
-            {/* Toggle 3: Open Requests in City Radius */}
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-background border border-border">
-              <div className="space-y-0.5 pr-3">
-                <strong className="text-foreground text-xs font-bold block">
-                  Neighbor Mutual Aid Requests in Radius (&lt; 5 km)
-                </strong>
-                <span className="text-muted-foreground text-[11px] leading-tight block">
-                  Receive notifications when medical equipment or study books are requested nearby
-                </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-xs">
+                {/* Android Chrome */}
+                <div className="p-3 rounded-xl bg-background border border-border space-y-1.5">
+                  <span className="font-bold text-foreground block flex items-center gap-1.5">
+                    <span>🤖</span> Android / Chrome:
+                  </span>
+                  <ol className="list-decimal list-inside text-[11px] text-muted-foreground space-y-1">
+                    <li>Tap the <strong>tune/lock icon</strong> (🔒) on the left side of the address bar.</li>
+                    <li>Tap <strong>Permissions</strong> &rarr; <strong>Notifications</strong>.</li>
+                    <li>Toggle switch to <strong>Allow</strong>.</li>
+                  </ol>
+                </div>
+
+                {/* iPhone / Safari */}
+                <div className="p-3 rounded-xl bg-background border border-border space-y-1.5">
+                  <span className="font-bold text-foreground block flex items-center gap-1.5">
+                    <span>🍏</span> iPhone / Safari:
+                  </span>
+                  <ol className="list-decimal list-inside text-[11px] text-muted-foreground space-y-1">
+                    <li>Open your device <strong>Settings</strong> app.</li>
+                    <li>Scroll down and tap <strong>Safari</strong> (or <strong>KindLink</strong> if installed as PWA).</li>
+                    <li>Tap <strong>Notifications</strong> &rarr; switch to <strong>Allow Notifications</strong>.</li>
+                  </ol>
+                </div>
               </div>
-              <input
-                type="checkbox"
+            </div>
+          )}
+
+          {/* Switch rows */}
+          <div className="space-y-3 pt-1">
+            {/* 1. Emergency blood & urgent medical */}
+            <SwitchRow
+              id="notif-blood-switch"
+              checked={bloodAlerts}
+              onCheckedChange={(checked) => {
+                setBloodAlerts(checked);
+                saveNotifPref('kindlink_notif_blood', checked);
+                toast.success(`Emergency blood alerts ${checked ? 'enabled' : 'disabled'}`);
+              }}
+              label="Emergency alerts near you"
+              description="High-priority dispatches for life-threatening blood requests, platelet transfusions, and critical hospital transport."
+              icon={<HeartPulse className="h-4 w-4 text-rose-500" />}
+              badge={
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                  Critical
+                </span>
+              }
+            />
+
+            {/* 2. SOS from neighbours */}
+            <SwitchRow
+              id="notif-sos-switch"
+              checked={sosAlerts}
+              onCheckedChange={(checked) => {
+                setSosAlerts(checked);
+                saveNotifPref('kindlink_notif_sos', checked);
+                toast.success(`SOS distress alerts ${checked ? 'enabled' : 'disabled'}`);
+              }}
+              label="SOS from neighbours"
+              description="Instant distress beacon whenever a verified neighbour triggers an emergency safety beacon."
+              icon={<AlertOctagon className="h-4 w-4 text-amber-500" />}
+              badge={
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                  Urgent
+                </span>
+              }
+            />
+
+            {/* 3. New requests near you with Distance Picker */}
+            <div className="p-3.5 rounded-2xl border border-border bg-background space-y-3">
+              <SwitchRow
+                id="notif-nearby-switch"
                 checked={nearbyRequests}
-                onChange={(e) => {
-                  setNearbyRequests(e.target.checked);
-                  toast.success(`Neighbor requests ${e.target.checked ? 'enabled' : 'disabled'}`);
+                onCheckedChange={(checked) => {
+                  setNearbyRequests(checked);
+                  saveNotifPref('kindlink_notif_nearby', checked);
+                  toast.success(`Nearby request alerts ${checked ? 'enabled' : 'disabled'}`);
                 }}
-                className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer touch-target"
+                label="New requests near you"
+                description="Mutual aid requests within your preferred distance radius (study materials, elderly assistance, mobility gear)."
+                icon={<MapPin className="h-4 w-4 text-teal-600" />}
+                className="p-0 border-0 bg-transparent hover:bg-transparent"
               />
+
+              {nearbyRequests && (
+                <div className="pt-2 border-t border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <span className="text-[11px] font-bold text-muted-foreground">
+                    Alert Radius Distance:
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[1, 2, 5, 10].map((km) => {
+                      const isSelected = nearbyDistanceKm === km;
+                      return (
+                        <button
+                          key={km}
+                          type="button"
+                          onClick={() => {
+                            setNearbyDistanceKm(km);
+                            saveNotifPref('kindlink_notif_radius', km);
+                            toast.success(`Alert radius set to ${km} km`);
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition touch-target ${
+                            isSelected
+                              ? 'bg-primary text-white shadow-soft ring-1 ring-primary/30'
+                              : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                          }`}
+                        >
+                          {km} km
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Toggle 4: Audio Alarm Sirens */}
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-background border border-border">
-              <div className="space-y-0.5 pr-3">
-                <strong className="text-foreground text-xs font-bold block flex items-center gap-1.5">
-                  <Volume2 className="h-3.5 w-3.5 text-primary notranslate" />
-                  <span>Audible Beacon Siren for Critical Emergencies</span>
-                </strong>
-                <span className="text-muted-foreground text-[11px] leading-tight block">
-                  Plays auditory resonant ping when critical blood or life-safety alerts match
-                </span>
+            {/* 4. Replies to my requests and offers */}
+            <SwitchRow
+              id="notif-replies-switch"
+              checked={repliesAlerts}
+              onCheckedChange={(checked) => {
+                setRepliesAlerts(checked);
+                saveNotifPref('kindlink_notif_replies', checked);
+                toast.success(`Task reply alerts ${checked ? 'enabled' : 'disabled'}`);
+              }}
+              label="Replies to my requests and offers"
+              description="Notifications when community volunteers offer help or respond to tasks you submitted."
+              icon={<MessageSquare className="h-4 w-4 text-blue-500" />}
+            />
+
+            {/* 5. Alert sound when KindLink is open */}
+            <SwitchRow
+              id="notif-sound-switch"
+              checked={soundSirens}
+              onCheckedChange={(checked) => {
+                setSoundSirens(checked);
+                saveNotifPref('kindlink_notif_sound', checked);
+                toast.success(`In-app alert sound ${checked ? 'enabled' : 'muted'}`);
+              }}
+              label="Alert sound when KindLink is open"
+              description="Plays an audible resonant chime when urgent tasks appear on your screen. (Note: Mobile operating systems control sound and vibration when the browser is closed or backgrounded)."
+              icon={<Volume2 className="h-4 w-4 text-indigo-500" />}
+            />
+          </div>
+
+          {/* Quiet hours for non-emergency alerts */}
+          <div className="p-3.5 rounded-2xl bg-background border border-border space-y-3">
+            <SwitchRow
+              id="quiet-hours-switch"
+              checked={quietHoursEnabled}
+              onCheckedChange={(checked) => {
+                setQuietHoursEnabled(checked);
+                saveNotifPref('kindlink_quiet_hours_enabled', checked);
+                toast.success(`Quiet hours ${checked ? 'enabled' : 'disabled'}`);
+              }}
+              label="Quiet hours for non-emergency alerts"
+              description="Mutes regular mutual aid notifications during your sleep hours. Emergency blood requests and neighbour SOS alerts always bypass quiet hours."
+              icon={<Clock className="h-4 w-4 text-purple-500" />}
+              className="p-0 border-0 bg-transparent hover:bg-transparent"
+            />
+
+            {quietHoursEnabled && (
+              <div className="pt-2 border-t border-border/80 flex flex-wrap items-center gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-muted-foreground">From:</span>
+                  <input
+                    type="time"
+                    value={quietHoursStart}
+                    onChange={(e) => {
+                      setQuietHoursStart(e.target.value);
+                      saveNotifPref('kindlink_quiet_hours_start', e.target.value);
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl border border-border bg-card text-foreground font-mono text-xs focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-muted-foreground">To:</span>
+                  <input
+                    type="time"
+                    value={quietHoursEnd}
+                    onChange={(e) => {
+                      setQuietHoursEnd(e.target.value);
+                      saveNotifPref('kindlink_quiet_hours_end', e.target.value);
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl border border-border bg-card text-foreground font-mono text-xs focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
               </div>
-              <input
-                type="checkbox"
-                checked={soundSirens}
-                onChange={(e) => {
-                  setSoundSirens(e.target.checked);
-                  toast.success(`Audio alert siren ${e.target.checked ? 'enabled' : 'muted'}`);
-                }}
-                className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer touch-target"
-              />
+            )}
+          </div>
+
+          {/* Test Notification Button & Privacy Note */}
+          <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-border">
+            <button
+              type="button"
+              onClick={handleSendTestNotification}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-background border border-border hover:bg-muted text-xs font-bold text-primary transition touch-target self-start sm:self-auto"
+            >
+              <Bell className="h-4 w-4 notranslate" />
+              <span>Send me a test notification</span>
+            </button>
+
+            <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+              <Shield className="h-3.5 w-3.5 text-teal-600 notranslate shrink-0" />
+              <span>Notification tokens are encrypted; exact GPS is never transmitted in payloads.</span>
             </div>
           </div>
         </div>
 
         {/* =========================================================================
-            5. PWA INSTALL APP CARD
+            5. PWA MOBILE APP CARD
            ========================================================================= */}
         <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -503,7 +836,7 @@ export function SettingsView() {
           <button
             onClick={handleInstallPwa}
             disabled={isPwaInstalled}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-soft transition disabled:opacity-60 touch-target self-start sm:self-auto"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-soft transition disabled:opacity-60 touch-target self-start sm:self-auto shrink-0"
           >
             <Download className="h-4 w-4 notranslate" />
             <span>{isPwaInstalled ? 'Already Installed' : 'Install App'}</span>
@@ -511,7 +844,7 @@ export function SettingsView() {
         </div>
 
         {/* =========================================================================
-            6. SECURITY / CHANGE PASSWORD
+            6. ACCOUNT SECURITY ("Change your password" & Session control)
            ========================================================================= */}
         <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-4">
           <div className="flex items-center gap-3">
@@ -519,14 +852,35 @@ export function SettingsView() {
               <Lock className="h-5 w-5 notranslate" />
             </div>
             <div>
-              <h2 className="text-sm sm:text-base font-bold text-foreground">Account Security & Password</h2>
+              <h2 className="text-sm sm:text-base font-bold text-foreground">Account Security &amp; Password</h2>
               <p className="text-xs text-muted-foreground">
-                Verify current password and update your credentials via Supabase GoTrue
+                Verify current password and update your credentials via Supabase GoTrue with live strength auditing
               </p>
             </div>
           </div>
 
           <ChangePasswordForm />
+
+          {/* Sign Out of All Other Devices Action */}
+          <div className="pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <strong className="text-xs font-bold text-foreground block">
+                Sign out of all other devices
+              </strong>
+              <p className="text-[11px] text-muted-foreground">
+                Revokes active refresh tokens across other phones and browsers while keeping this session signed in.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleSignOutOtherDevices}
+              disabled={revokingOthers}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-background border border-border hover:bg-muted text-xs font-bold text-foreground transition touch-target self-start sm:self-auto shrink-0"
+            >
+              {revokingOthers && <Loader2 className="h-3.5 w-3.5 animate-spin notranslate" />}
+              <span>{revokingOthers ? 'Revoking Sessions...' : 'Revoke Other Devices'}</span>
+            </button>
+          </div>
         </div>
 
         {/* =========================================================================
@@ -546,16 +900,15 @@ export function SettingsView() {
           </div>
 
           <p className="text-xs text-muted-foreground leading-relaxed">
-            All interactive maps and spatial calculations strictly comply with provider licenses and intellectual property guidelines. Coordinates are rounded and queries are proxied server-side to safeguard user privacy.
+            All interactive maps and spatial calculations strictly comply with provider licenses. Coordinates are rounded and queries are proxied server-side to safeguard user privacy.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            {/* MapTiler */}
-            <div className="p-3.5 rounded-2xl bg-background border border-border space-y-2">
+            <div className="p-3.5 rounded-2xl bg-background border border-border space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 notranslate" />
-                  MapTiler
+                  MapTiler &amp; OSM
                 </span>
                 <a
                   href="https://www.maptiler.com/copyright/"
@@ -567,20 +920,16 @@ export function SettingsView() {
                   <ExternalLink className="h-2.5 w-2.5 notranslate" />
                 </a>
               </div>
-              <div className="text-[11px] font-mono font-medium text-foreground bg-muted/60 px-2 py-1 rounded-lg">
-                &copy; MapTiler &copy; OpenStreetMap contributors
-              </div>
               <p className="text-[11px] text-muted-foreground">
                 High-definition vector and raster basemap tiles in light &amp; dark themes.
               </p>
             </div>
 
-            {/* Geoapify */}
-            <div className="p-3.5 rounded-2xl bg-background border border-border space-y-2">
+            <div className="p-3.5 rounded-2xl bg-background border border-border space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 notranslate" />
-                  Geoapify
+                  Geoapify &amp; OpenRouteService
                 </span>
                 <a
                   href="https://www.geoapify.com/"
@@ -592,61 +941,8 @@ export function SettingsView() {
                   <ExternalLink className="h-2.5 w-2.5 notranslate" />
                 </a>
               </div>
-              <div className="text-[11px] font-mono font-medium text-foreground bg-muted/60 px-2 py-1 rounded-lg">
-                Powered by Geoapify
-              </div>
               <p className="text-[11px] text-muted-foreground">
-                Forward address search, geocoding, and emergency healthcare facilities lookup.
-              </p>
-            </div>
-
-            {/* OpenRouteService */}
-            <div className="p-3.5 rounded-2xl bg-background border border-border space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
-                  <MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 notranslate" />
-                  OpenRouteService
-                </span>
-                <a
-                  href="https://openrouteservice.org/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-0.5"
-                >
-                  <span>Website</span>
-                  <ExternalLink className="h-2.5 w-2.5 notranslate" />
-                </a>
-              </div>
-              <div className="text-[11px] font-mono font-medium text-foreground bg-muted/60 px-2 py-1 rounded-lg">
-                openrouteservice.org | &copy; OpenStreetMap contributors
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Walking, cycling, and driving route computations and estimated travel times.
-              </p>
-            </div>
-
-            {/* OpenStreetMap */}
-            <div className="p-3.5 rounded-2xl bg-background border border-border space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
-                  <MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 notranslate" />
-                  OpenStreetMap
-                </span>
-                <a
-                  href="https://www.openstreetmap.org/copyright"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-0.5"
-                >
-                  <span>Copyright</span>
-                  <ExternalLink className="h-2.5 w-2.5 notranslate" />
-                </a>
-              </div>
-              <div className="text-[11px] font-mono font-medium text-foreground bg-muted/60 px-2 py-1 rounded-lg">
-                &copy; OpenStreetMap contributors
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Global crowd-sourced geographic data and open tile server fallback.
+                Forward address search, geocoding, and walking/driving route computations.
               </p>
             </div>
           </div>
@@ -664,10 +960,10 @@ export function SettingsView() {
         </div>
 
         {/* =========================================================================
-            8. SESSION CONTROL & DANGER ZONE
+            8. SESSION CONTROL & REQUEST ACCOUNT DELETION FLOW
            ========================================================================= */}
         <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-4">
-          <h2 className="text-sm sm:text-base font-bold text-foreground">Session Control & Danger Zone</h2>
+          <h2 className="text-sm sm:text-base font-bold text-foreground">Session Control &amp; Danger Zone</h2>
 
           {/* Sign Out Button */}
           <div className="p-4 rounded-2xl bg-background border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -676,13 +972,14 @@ export function SettingsView() {
                 Sign Out of KindLink
               </strong>
               <p className="text-[11px] text-muted-foreground">
-                Terminates your active session on this device.
+                Terminates your active session on this device and clears local storage.
               </p>
             </div>
             <button
               onClick={async () => {
                 try {
                   await fetch('/api/auth/logout', { method: 'POST' });
+                  localStorage.clear();
                   window.location.href = '/login';
                 } catch {
                   window.location.href = '/login';
@@ -695,28 +992,142 @@ export function SettingsView() {
             </button>
           </div>
 
-          {/* Delete Account Button */}
-          <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <strong className="text-xs sm:text-sm font-bold text-rose-700 dark:text-rose-300 block flex items-center gap-1.5">
-                <AlertTriangle className="h-4 w-4 text-rose-500 notranslate" />
-                <span>Delete Account & Data</span>
-              </strong>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Permanently purge your profile, identity verification docs, and active requests.
-              </p>
+          {/* Request Account Deletion Card with Status */}
+          <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+              <div>
+                <strong className="text-xs sm:text-sm font-bold text-rose-700 dark:text-rose-300 block flex items-center gap-1.5">
+                  <AlertTriangle className="h-4 w-4 text-rose-500 notranslate" />
+                  <span>Request Account Deletion</span>
+                </strong>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Submits an account closure request. Once processed, all personal data is deleted, active requests are cancelled, and past volunteer history is anonymised as &quot;Deleted user&quot;.
+                </p>
+              </div>
+
+              {deletionStatus.status === 'none' && (
+                <button
+                  type="button"
+                  onClick={() => setDeleteModalOpen(true)}
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-soft transition touch-target self-start sm:self-auto shrink-0"
+                >
+                  <span>Request Deletion</span>
+                </button>
+              )}
             </div>
-            <button
-              onClick={() => setDeleteModalOpen(true)}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-soft transition touch-target self-start sm:self-auto"
-            >
-              <span>Delete Account</span>
-            </button>
+
+            {/* If Status is PENDING */}
+            {deletionStatus.status === 'pending' && (
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 notranslate" />
+                    Status: Pending Review
+                  </span>
+                  <p className="text-[11px] text-muted-foreground">
+                    Your request was submitted on{' '}
+                    {deletionStatus.createdAt
+                      ? new Date(deletionStatus.createdAt).toLocaleDateString()
+                      : 'recently'}
+                    . A moderator will review it shortly. You can cancel anytime before processing.
+                  </p>
+                  {deletionStatus.reason && (
+                    <p className="text-[11px] text-muted-foreground italic">
+                      Reason provided: &quot;{deletionStatus.reason}&quot;
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCancelDeletion}
+                  disabled={cancellingDeletion}
+                  className="px-3 py-1.5 rounded-xl bg-background border border-border hover:bg-muted text-xs font-bold text-foreground transition touch-target shrink-0 self-start sm:self-auto"
+                >
+                  {cancellingDeletion ? 'Cancelling...' : 'Cancel Request'}
+                </button>
+              </div>
+            )}
+
+            {/* If Status is APPROVED */}
+            {deletionStatus.status === 'approved' && (
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 notranslate" />
+                    Status: Approved for Deletion
+                  </span>
+                  <p className="text-[11px] text-muted-foreground">
+                    Your account deletion request has been approved. Click to complete purging of your personal records.
+                  </p>
+                  {deletionStatus.adminNote && (
+                    <p className="text-[11px] text-muted-foreground italic">
+                      Admin note: &quot;{deletionStatus.adminNote}&quot;
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/auth/delete-account', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'execute_approved', confirmation: 'DELETE' }),
+                      });
+                      if (res.ok) {
+                        localStorage.clear();
+                        window.location.href = '/login?deleted=true';
+                      }
+                    } catch {}
+                  }}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition touch-target shrink-0 self-start sm:self-auto"
+                >
+                  Finalize &amp; Purge Account
+                </button>
+              </div>
+            )}
+
+            {/* If Status is DENIED */}
+            {deletionStatus.status === 'denied' && (
+              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 space-y-1 animate-fade-in">
+                <span className="text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
+                  <XCircle className="h-3.5 w-3.5 notranslate" />
+                  Status: Deletion Request Denied
+                </span>
+                <p className="text-[11px] text-muted-foreground">
+                  Your request could not be processed at this time.
+                </p>
+                {deletionStatus.adminNote && (
+                  <p className="text-[11px] text-foreground font-medium">
+                    Admin note: &quot;{deletionStatus.adminNote}&quot;
+                  </p>
+                )}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteModalOpen(true)}
+                    className="text-xs font-bold text-primary hover:underline"
+                  >
+                    Submit a new request with updated details
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Last Admin warning */}
+            {isLastAdmin && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 notranslate" />
+                <span>
+                  <strong>Admin Notice:</strong> You are currently the sole administrator of KindLink. You must promote another member to admin before your account can be deleted.
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* LANGUAGE MODAL */}
+      {/* LANGUAGE MODAL (Persists to cookie, localStorage, and database via /api/auth/profile) */}
       <LanguageModal open={langModalOpen} onClose={() => setLangModalOpen(false)} />
 
       {/* IOS / PWA INSTRUCTIONS MODAL */}
@@ -751,8 +1162,8 @@ export function SettingsView() {
                 <strong className="text-foreground block">🍏 On Safari (iOS / iPhone):</strong>
                 <ol className="list-decimal list-inside text-muted-foreground text-[11px] space-y-1">
                   <li>Tap the <strong>Share</strong> button (📤) in Safari bottom bar.</li>
-                  <li>Scroll down and tap <strong>"Add to Home Screen"</strong> (+).</li>
-                  <li>Tap <strong>"Add"</strong> in the top right corner.</li>
+                  <li>Scroll down and tap <strong>&quot;Add to Home Screen&quot;</strong> (+).</li>
+                  <li>Tap <strong>&quot;Add&quot;</strong> in the top right corner.</li>
                 </ol>
               </div>
 
@@ -760,7 +1171,7 @@ export function SettingsView() {
                 <strong className="text-foreground block">🤖 On Chrome / Android:</strong>
                 <ol className="list-decimal list-inside text-muted-foreground text-[11px] space-y-1">
                   <li>Tap the browser menu (⋮) in the top-right.</li>
-                  <li>Tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</li>
+                  <li>Tap <strong>&quot;Install app&quot;</strong> or <strong>&quot;Add to Home screen&quot;</strong>.</li>
                 </ol>
               </div>
             </div>
@@ -775,10 +1186,14 @@ export function SettingsView() {
         </div>
       )}
 
-      {/* DELETE ACCOUNT CONFIRMATION MODAL */}
+      {/* REQUEST ACCOUNT DELETION MODAL */}
       {deleteModalOpen && (
-        <DeleteAccountModal
-          username={userProfile.username || 'user'}
+        <RequestAccountDeletionModal
+          isLastAdmin={isLastAdmin}
+          onSuccess={() => {
+            setDeleteModalOpen(false);
+            fetchDeletionStatus();
+          }}
           onClose={() => setDeleteModalOpen(false)}
         />
       )}
@@ -994,7 +1409,11 @@ function ChangePasswordForm() {
           ) : (
             <XCircle className="h-3.5 w-3.5 text-muted-foreground/60 notranslate shrink-0" />
           )}
-          <span className={hasMinLength ? 'text-emerald-700 dark:text-emerald-300 font-semibold' : 'text-muted-foreground'}>
+          <span
+            className={
+              hasMinLength ? 'text-emerald-700 dark:text-emerald-300 font-semibold' : 'text-muted-foreground'
+            }
+          >
             At least 8 characters
           </span>
         </div>
@@ -1004,7 +1423,13 @@ function ChangePasswordForm() {
           ) : (
             <XCircle className="h-3.5 w-3.5 text-muted-foreground/60 notranslate shrink-0" />
           )}
-          <span className={hasSpecialOrNumber ? 'text-emerald-700 dark:text-emerald-300 font-semibold' : 'text-muted-foreground'}>
+          <span
+            className={
+              hasSpecialOrNumber
+                ? 'text-emerald-700 dark:text-emerald-300 font-semibold'
+                : 'text-muted-foreground'
+            }
+          >
             At least one number or special symbol
           </span>
         </div>
@@ -1014,24 +1439,29 @@ function ChangePasswordForm() {
           ) : (
             <XCircle className="h-3.5 w-3.5 text-muted-foreground/60 notranslate shrink-0" />
           )}
-          <span className={passwordsMatch ? 'text-emerald-700 dark:text-emerald-300 font-semibold' : 'text-muted-foreground'}>
+          <span
+            className={
+              passwordsMatch
+                ? 'text-emerald-700 dark:text-emerald-300 font-semibold'
+                : 'text-muted-foreground'
+            }
+          >
             Passwords match
           </span>
         </div>
       </div>
 
-      {/* Sign out of other devices checkbox */}
-      <label className="flex items-center gap-2 cursor-pointer pt-1 touch-target">
-        <input
-          type="checkbox"
+      {/* Sign out of other devices switch row */}
+      <div className="pt-1">
+        <SwitchRow
+          id="signout-others-switch"
           checked={signOutOthers}
-          onChange={(e) => setSignOutOthers(e.target.checked)}
-          className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20"
+          onCheckedChange={setSignOutOthers}
+          label="Sign out of all other devices"
+          description="Keep this device signed in while terminating sessions on all other phones and tablets."
+          icon={<Lock className="h-4 w-4" />}
         />
-        <span className="text-xs text-muted-foreground">
-          Sign out of all other devices (keep this device signed in)
-        </span>
-      </label>
+      </div>
 
       <button
         type="submit"
@@ -1046,49 +1476,58 @@ function ChangePasswordForm() {
 }
 
 {/* =========================================================================
-    DELETE ACCOUNT SAFETY CONFIRMATION MODAL
+    REQUEST ACCOUNT DELETION MODAL COMPONENT
    ========================================================================= */}
-function DeleteAccountModal({
-  username,
+function RequestAccountDeletionModal({
+  isLastAdmin,
+  onSuccess,
   onClose,
 }: {
-  username: string;
+  isLastAdmin: boolean;
+  onSuccess: () => void;
   onClose: () => void;
 }) {
+  const [reason, setReason] = useState('');
   const [confirmationInput, setConfirmationInput] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isConfirmed = confirmationInput.trim().toUpperCase() === 'DELETE';
 
-  const handleDelete = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!isConfirmed) return;
-    setIsDeleting(true);
+    if (isLastAdmin) {
+      setError('You are the last administrator on KindLink. Promote another admin before requesting deletion.');
+      return;
+    }
+
+    setIsSubmitting(true);
     setError(null);
 
     try {
       const res = await fetch('/api/auth/delete-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ confirmation: 'DELETE' }),
+        body: JSON.stringify({
+          reason: reason.trim(),
+          confirmation: 'DELETE',
+          action: 'request',
+        }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Failed to delete account.');
-        setIsDeleting(false);
+        setError(data.error || 'Failed to submit account deletion request.');
+        setIsSubmitting(false);
         return;
       }
 
-      toast.success('Your KindLink account has been deleted.');
-      // Clear all local state
-      try {
-        localStorage.clear();
-      } catch {}
-      window.location.href = '/login?deleted=true';
+      toast.success('Your deletion request has been submitted for review.');
+      onSuccess();
     } catch {
       setError('Connection error. Please try again.');
-      setIsDeleting(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -1104,14 +1543,28 @@ function DeleteAccountModal({
             <AlertTriangle className="h-6 w-6 notranslate" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-foreground">Delete Account Permanently</h3>
-            <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">Irreversible action</p>
+            <h3 className="text-base font-bold text-foreground">Request Account Deletion</h3>
+            <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">
+              Permanent account closure flow
+            </p>
           </div>
         </div>
 
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Deleting your account will immediately remove all your personal profile data, verification submissions, and active mutual aid requests from KindLink servers. This action cannot be undone.
+          Requesting deletion will submit your account for administrative review. Once approved:
         </p>
+
+        <ul className="list-disc list-inside text-[11px] text-muted-foreground space-y-1">
+          <li>Active help requests and volunteer offers will be immediately cancelled.</li>
+          <li>Personal identity documents and phone numbers will be permanently deleted.</li>
+          <li>Completed volunteer history and reviews are anonymised as &quot;Deleted user&quot;.</li>
+        </ul>
+
+        {isLastAdmin && (
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-900 rounded-xl text-xs text-amber-800 dark:text-amber-200">
+            <strong>Action Blocked:</strong> You are the last administrator on this KindLink instance. You must assign another administrator before your account can be deleted.
+          </div>
+        )}
 
         {error && (
           <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-xl text-xs text-rose-700 dark:text-rose-300">
@@ -1119,38 +1572,52 @@ function DeleteAccountModal({
           </div>
         )}
 
-        <div>
-          <label className="block text-xs font-bold text-foreground mb-1">
-            Type <span className="font-mono text-rose-600 dark:text-rose-400 font-extrabold">DELETE</span> to confirm:
-          </label>
-          <input
-            type="text"
-            value={confirmationInput}
-            onChange={(e) => setConfirmationInput(e.target.value)}
-            placeholder="Type DELETE"
-            className="w-full px-3.5 py-2.5 rounded-xl border border-rose-300 dark:border-rose-900 bg-background text-foreground text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-500/20 touch-target"
-          />
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-3 pt-1">
+          <div>
+            <label className="block text-xs font-bold text-foreground mb-1">
+              Reason for leaving (Optional):
+            </label>
+            <textarea
+              rows={2}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Tell us why you are requesting account deletion..."
+              className="w-full p-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+            />
+          </div>
 
-        <div className="flex gap-2.5 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isDeleting}
-            className="flex-1 py-2.5 rounded-xl border border-border text-xs font-bold hover:bg-muted transition touch-target"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={!isConfirmed || isDeleting}
-            className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-soft transition disabled:opacity-40 touch-target flex items-center justify-center gap-2"
-          >
-            {isDeleting && <Loader2 className="h-4 w-4 animate-spin notranslate" />}
-            <span>{isDeleting ? 'Deleting...' : 'Permanently Delete'}</span>
-          </button>
-        </div>
+          <div>
+            <label className="block text-xs font-bold text-foreground mb-1">
+              Type <span className="font-mono text-rose-600 dark:text-rose-400 font-extrabold">DELETE</span> to confirm:
+            </label>
+            <input
+              type="text"
+              value={confirmationInput}
+              onChange={(e) => setConfirmationInput(e.target.value)}
+              placeholder="Type DELETE"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-rose-300 dark:border-rose-900 bg-background text-foreground text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-500/20 touch-target"
+            />
+          </div>
+
+          <div className="flex gap-2.5 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="flex-1 py-2.5 rounded-xl border border-border text-xs font-bold hover:bg-muted transition touch-target"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!isConfirmed || isSubmitting || isLastAdmin}
+              className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-soft transition disabled:opacity-40 touch-target flex items-center justify-center gap-2"
+            >
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin notranslate" />}
+              <span>{isSubmitting ? 'Submitting...' : 'Submit Request'}</span>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

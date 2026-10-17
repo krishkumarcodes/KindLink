@@ -4,7 +4,7 @@ export type UrgencyLevel = 'critical' | 'high' | 'medium' | 'low';
 
 export type TravelMode = 'walking' | 'bike' | 'car';
 
-export type VerificationState = 'unverified' | 'pending' | 'verified' | 'rejected';
+export type VerificationState = 'unverified' | 'pending' | 'verified' | 'rejected' | 'needs_info';
 
 export type RequestLifecycleStatus =
   | 'open'
@@ -99,6 +99,15 @@ export interface EmergencyContact {
   relationship: string;
 }
 
+export type FieldVisibility = 'public' | 'helpers' | 'private';
+
+export interface ProfileVisibilitySettings {
+  phone?: FieldVisibility;
+  email?: FieldVisibility;
+  organisation?: FieldVisibility;
+  area?: FieldVisibility;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -111,6 +120,7 @@ export interface UserProfile {
   homeNeighborhood?: string;
   languages?: string[];
   emergencyContacts?: EmergencyContact[];
+  visibility?: ProfileVisibilitySettings;
   rating: number;
   ratingCount?: number;
   helpsCount: number;
@@ -121,6 +131,7 @@ export interface UserProfile {
   idDocumentName?: string;
   idDocumentType?: string;
   badges: string[];
+  pinnedBadges?: string[];
   emailVerified?: boolean;
   phoneVerified?: boolean;
   preferred_language?: string;
@@ -210,5 +221,82 @@ export interface SosEvent {
   userPhone?: string;
   notes?: string | null;
   requestId?: string;
+}
+
+export type ProfessionalProofType =
+  | 'Doctor'
+  | 'Nurse'
+  | 'Pharmacist'
+  | 'Teacher'
+  | 'Student'
+  | 'Organisation';
+
+export type ProfessionalProofStatus = 'pending' | 'verified' | 'needs_info' | 'rejected';
+
+export interface UserSummary {
+  username?: string;
+  displayName?: string;
+  email?: string;
+  phone?: string;
+  college?: string;
+  homeNeighborhood?: string;
+  createdAt?: string;
+}
+
+export interface VerificationRequestItem {
+  id: string;
+  userId: string;
+  phone: string;
+  idDocumentPath?: string | null;
+  documentType?: string | null;
+  status: VerificationState;
+  adminNote?: string | null;
+  reviewedBy?: string | null;
+  createdAt: string;
+  reviewedAt?: string | null;
+  documentExpiresAt?: string | null;
+  signedUrl?: string | null;
+  profiles?: UserSummary | null;
+}
+
+export interface ProfessionalProofItem {
+  id: string;
+  userId: string;
+  professionType: ProfessionalProofType;
+  registrationNumber: string;
+  documentPath: string;
+  documentName?: string | null;
+  status: ProfessionalProofStatus;
+  adminNote?: string | null;
+  reviewedBy?: string | null;
+  createdAt: string;
+  reviewedAt?: string | null;
+  documentExpiresAt?: string | null;
+  signedUrl?: string | null;
+  profiles?: UserSummary | null;
+}
+
+export interface DeletionRequestItem {
+  id: string;
+  userId: string;
+  reason?: string | null;
+  status: 'pending' | 'approved' | 'rejected' | 'needs_info';
+  adminNote?: string | null;
+  reviewedBy?: string | null;
+  createdAt: string;
+  reviewedAt?: string | null;
+  profiles?: UserSummary | null;
+}
+
+export interface AdminAuditLogItem {
+  id: string;
+  adminId?: string | null;
+  action: string;
+  targetType: string;
+  targetId: string;
+  targetUserId?: string | null;
+  reason?: string | null;
+  details?: Record<string, any>;
+  createdAt: string;
 }
 

@@ -52,6 +52,17 @@ DECLARE
   v_map_cleaned integer;
   v_map_usage record;
   v_map_blocked boolean := false;
+  v_bio_error boolean := false;
+  v_vis_error boolean := false;
+  v_contact_limit_error boolean := false;
+  v_proof_id uuid;
+  v_proof_blocked boolean := false;
+  v_summary_json jsonb;
+  v_member_anon jsonb;
+  v_member_auth jsonb;
+  v_member_self jsonb;
+  v_badge_count integer;
+  v_badge_dup boolean := false;
 BEGIN
 
   -- --------------------------------------------------------------------------
@@ -471,6 +482,189 @@ BEGIN
   EXECUTE 'RESET ROLE';
 
   PERFORM record_test(22, 'Maps Security: RLS restricts map_cache and map_daily_usage from public/authenticated users', v_map_blocked, 'Direct user access blocked by RLS/privileges');
+
+  -- --------------------------------------------------------------------------
+  -- TEST 23: Profile Overhaul Columns & Check Constraints
+  -- --------------------------------------------------------------------------
+  v_bio_error := false;
+  BEGIN
+    UPDATE public.profiles SET bio = repeat('X', 501) WHERE id = u1;
+  EXCEPTION WHEN check_violation THEN
+    v_bio_error := true;
+  END;
+
+  v_vis_error := false;
+  BEGIN
+    UPDATE public.profiles SET visibility_phone = 'invalid_level' WHERE id = u1;
+  EXCEPTION WHEN check_violation THEN
+    v_vis_error := true;
+  END;
+
+  IF v_bio_error AND v_vis_error THEN
+    PERFORM record_test(23, 'Profile Overhaul: Bio length <= 500 and visibility enum constraints', true, 'Invalid bio (>500) and invalid visibility successfully rejected');
+  ELSE
+    PERFORM record_test(23, 'Profile Overhaul Constraints', false, 'Constraints did not trigger check violations');
+  END IF;
+
+  -- --------------------------------------------------------------------------
+  -- TEST 24: Emergency Contacts Table & Maximum 3 Contacts Trigger
+  -- --------------------------------------------------------------------------
+  DELETE FROM public.emergency_contacts WHERE user_id = u1;
+  INSERT INTO public.emergency_contacts (user_id, name, relationship, phone_e164)
+  VALUES
+    (u1, 'Contact One', 'parent', '+919999900001'),
+    (u1, 'Contact Two', 'sibling', '+919999900002'),
+    (u1, 'Contact Three', 'friend', '+919999900003');
+
+  v_contact_limit_error := false;
+  BEGIN
+    INSERT INTO public.emergency_contacts (user_id, name, relationship, phone_e164)
+    VALUES (u1, 'Contact Four', 'other', '+919999900004');
+  EXCEPTION WHEN others THEN
+    v_contact_limit_error := true;
+  END;
+
+  IF v_contact_limit_error AND (SELECT count(*) FROM public.emergency_contacts WHERE user_id = u1) = 3 THEN
+    PERFORM record_test(24, 'Emergency Contacts: Maximum 3 contacts per user trigger constraint', true, '4th emergency contact blocked by trigger');
+  ELSE
+    PERFORM record_test(24, 'Emergency Contacts Limit', false, 'Failed to enforce max 3 contacts limit');
+  END IF;
+
+  -- --------------------------------------------------------------------------
+  -- TEST 25: Badge Definitions Seed & User Badges Uniqueness
+  -- --------------------------------------------------------------------------
+  SELECT COUNT(*) INTO v_badge_count FROM public.badge_definitions;
+  
+  DELETE FROM public.user_badges WHERE user_id = u3;
+  INSERT INTO public.user_badges (user_id, badge_id, current_level, current_count, is_pinned)
+  VALUES (u3, 'community_pillar', 1, 10, true);
+
+  v_badge_dup := false;
+  BEGIN
+    INSERT INTO public.user_badges (user_id, badge_id, current_level, current_count)
+    VALUES (u3, 'community_pillar', 1, 15);
+  EXCEPTION WHEN unique_violation THEN
+    v_badge_dup := true;
+  END;
+
+  IF v_badge_count >= 18 AND v_badge_dup THEN
+    PERFORM record_test(25, 'Badges: Standard definitions seeded and (user_id, badge_id) uniqueness enforced', true, 'Seeded ' || v_badge_count::text || ' badges, duplicate badge blocked');
+  ELSE
+    PERFORM record_test(25, 'Badges', false, 'Badge verification failed');
+  END IF;
+
+  -- --------------------------------------------------------------------------
+  -- TEST 26: Professional Proofs & Account Deletion Requests RLS
+  -- --------------------------------------------------------------------------
+  EXECUTE 'SET ROLE authenticated';
+  PERFORM auth.set_acting_user(u2, 'authenticated');
+
+  INSERT INTO public.professional_proofs (user_id, profession_type, reg_number, document_path)
+  VALUES (u2, 'doctor', 'WBMC-TEST-99', u2::text || '/test_doc.pdf')
+  RETURNING id INTO v_proof_id;
+
+  -- Non-admin cannot approve proof
+  v_proof_blocked := false;
+  BEGIN
+    UPDATE public.professional_proofs SET status = 'approved' WHERE id = v_proof_id;
+  EXCEPTION WHEN others THEN
+    v_proof_blocked := true;
+  END;
+  IF (SELECT status FROM public.professional_proofs WHERE id = v_proof_id) = 'pending' THEN
+    v_proof_blocked := true;
+  END IF;
+
+  -- Admin can review proof
+  PERFORM auth.set_acting_user(u_admin, 'authenticated');
+  UPDATE public.professional_proofs SET status = 'approved', reviewed_by = u_admin, reviewed_at = now() WHERE id = v_proof_id;
+
+  -- User can submit account deletion request
+  PERFORM auth.set_acting_user(u2, 'authenticated');
+  INSERT INTO public.account_deletion_requests (user_id, reason)
+  VALUES (u2, 'Moving out of coverage region');
+
+  EXECUTE 'RESET ROLE';
+
+  IF v_proof_blocked AND (SELECT status FROM public.professional_proofs WHERE id = v_proof_id) = 'approved'
+     AND EXISTS (SELECT 1 FROM public.account_deletion_requests WHERE user_id = u2) THEN
+    PERFORM record_test(26, 'Proofs & Deletion Requests: User submission and admin-only approval RLS', true, 'Non-admin approval blocked, admin approved successfully');
+  ELSE
+    PERFORM record_test(26, 'Proofs RLS', false, 'Proof workflow or RLS failure');
+  END IF;
+
+  -- --------------------------------------------------------------------------
+  -- TEST 27: get_profile_summary Single Source of Truth Metrics
+  -- --------------------------------------------------------------------------
+  -- Insert a completed request with distance and ratings for u3 (Amit Verified)
+  INSERT INTO public.requests (
+    id, requester_id, category, title, description, urgency, status,
+    location, address_text, accepted_helper_id, created_at, accepted_at, completed_at, travel_distance_km
+  )
+  VALUES (
+    'b0000000-0000-0000-0000-000000000099', u1, 'blood',
+    'Completed Blood Aid Request For Test 27',
+    'Test aid request description',
+    'critical', 'completed',
+    ST_SetSRID(ST_MakePoint(86.9745, 23.6842), 4326)::geography,
+    'District Hospital Asansol',
+    u3,
+    now() - interval '3 hours',
+    now() - interval '2 hours',
+    now() - interval '30 minutes',
+    4.50
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    status = EXCLUDED.status, accepted_helper_id = EXCLUDED.accepted_helper_id,
+    completed_at = EXCLUDED.completed_at, travel_distance_km = EXCLUDED.travel_distance_km;
+
+  DELETE FROM public.ratings WHERE request_id = 'b0000000-0000-0000-0000-000000000099';
+  INSERT INTO public.ratings (request_id, rater_id, ratee_id, stars, rating_score, comment)
+  VALUES ('b0000000-0000-0000-0000-000000000099', u1, u3, 5, 5.0, 'Excellent verified helper');
+
+  v_summary_json := public.get_profile_summary(u3);
+
+  IF (v_summary_json->>'helps_given')::integer >= 1
+     AND (v_summary_json->>'hours_volunteered')::numeric >= 1.0
+     AND (v_summary_json->>'distance_covered_km')::numeric >= 4.5
+     AND (v_summary_json->>'trust_score')::numeric = 5.0
+     AND (v_summary_json->>'current_streak_days')::integer >= 1 THEN
+    PERFORM record_test(27, 'Profile Summary Function: Single source of truth metrics accurately aggregated', true, 'Summary calculated helps, hours, distance, streak, and trust score');
+  ELSE
+    PERFORM record_test(27, 'Profile Summary Function', false, 'Metrics mismatch: ' || v_summary_json::text);
+  END IF;
+
+  -- --------------------------------------------------------------------------
+  -- TEST 28: get_member_profile Visibility & Privacy Control Enforcement
+  -- --------------------------------------------------------------------------
+  UPDATE public.profiles
+  SET bio = 'Dedicated community volunteer',
+      organisation = 'Asansol Engineering College',
+      area_name = 'Kalyanpur',
+      phone_e164 = '+919876543210',
+      phone_national = '9876543210',
+      phone_country_code = '+91',
+      visibility_phone = 'private',
+      visibility_email = 'members',
+      visibility_organisation = 'members',
+      visibility_area = 'members'
+  WHERE id = u1;
+
+  -- 1) Anonymous view: phone, email, organisation, area MUST be NULL
+  v_member_anon := public.get_member_profile('priya_test', NULL);
+
+  -- 2) Logged-in view by u2 (not matched): email, organisation, area visible; phone NULL (private)
+  v_member_auth := public.get_member_profile('priya_test', u2);
+
+  -- 3) Self view: phone visible, emergency contacts returned
+  v_member_self := public.get_member_profile('priya_test', u1);
+
+  IF (v_member_anon->>'phone' IS NULL AND v_member_anon->>'email' IS NULL AND v_member_anon->>'organisation' IS NULL)
+     AND (v_member_auth->>'organisation' = 'Asansol Engineering College' AND v_member_auth->>'phone' IS NULL)
+     AND (v_member_self->>'phone' = '+919876543210' AND jsonb_array_length(v_member_self->'emergency_contacts') = 3) THEN
+    PERFORM record_test(28, 'Member Profile View: Privacy enforcement across anonymous, member, and self views', true, 'Phone hidden when private, revealed to self; organisation revealed to members');
+  ELSE
+    PERFORM record_test(28, 'Member Profile View', false, 'Privacy violation or data omission in get_member_profile');
+  END IF;
 
 END $$;
 

@@ -1,20 +1,80 @@
 import { UserProfile } from './types';
 
-export interface BadgeItem {
+export type BadgeTier = 'bronze' | 'silver' | 'gold' | 'platinum';
+
+export interface BadgeLevelThreshold {
+  level: number;
+  tier: BadgeTier;
+  tierName: string; // 'Bronze' | 'Silver' | 'Gold' | 'Platinum' | 'Verified'
+  threshold: number;
+}
+
+export type BadgeCategory =
+  | 'Community'
+  | 'Emergency'
+  | 'Healthcare'
+  | 'Health'
+  | 'Education'
+  | 'Care'
+  | 'Mobility'
+  | 'Trust'
+  | 'Streak'
+  | 'Milestone'
+  | 'Verification';
+
+export interface BadgeDefinition {
   id: string;
   key: string;
   title: string;
   description: string;
+  category: BadgeCategory;
+  type: 'automatic' | 'verified';
   icon: string;
-  category: 'Milestone' | 'Emergency' | 'Category' | 'Trust' | 'Streak';
-  requirement: string;
+  unit: string;
+  howToEarn: string;
+  levels: BadgeLevelThreshold[];
+  medicalDisclaimer?: string;
+}
+
+export interface UserBadgeProgress {
+  id: string;
+  key: string;
+  title: string;
+  description: string;
+  category: BadgeCategory;
+  type: 'automatic' | 'verified';
+  icon: string;
+  unit: string;
+  howToEarn: string;
+  medicalDisclaimer?: string;
+
+  // Level & Ladder calculations
+  currentValue: number;
+  earned: boolean;
+  currentLevel: number; // 0 if locked, 1-4 for Bronze, Silver, Gold, Platinum
+  currentTier: BadgeTier | 'locked';
+  currentTierName: string; // 'Bronze' | 'Silver' | 'Gold' | 'Platinum' | 'Verified' | 'Locked'
+  levels: BadgeLevelThreshold[];
+
+  // Progress to next tier
+  nextThreshold: number;
+  nextTierName: string | null;
+  progressPercent: number; // 0 to 100, never > 100%
+  progressLabel: string; // e.g. "7 / 10", never > 100% or "12 of 10"
+
+  // Status & Pinning
+  earnedAt?: string;
+  isPinned: boolean;
+
+  // Backward compatibility fields matching original BadgeItem
   current: number;
   target: number;
-  unit: string;
+  requirement: string;
   unlocked: boolean;
   unlockedAt?: string;
-  progressPercent: number;
 }
+
+export type BadgeItem = UserBadgeProgress;
 
 export interface ImpactHelpItem {
   id: string;
@@ -54,193 +114,566 @@ export interface ImpactDashboardData {
   }[];
 }
 
-export const ALL_BADGE_DEFINITIONS: Omit<BadgeItem, 'current' | 'unlocked' | 'progressPercent' | 'unlockedAt'>[] = [
+export const HEALTHCARE_DISCLAIMER =
+  'KindLink checks identity and documents only. It does not give medical advice.';
+
+export const ALL_BADGE_DEFINITIONS: BadgeDefinition[] = [
+  // 1. Community Pillar
+  {
+    id: 'community_pillar',
+    key: 'community_pillar',
+    title: 'Community Pillar',
+    description: 'Completed mutual aid helps for local community neighbours in need.',
+    category: 'Community',
+    type: 'automatic',
+    icon: 'Award',
+    unit: 'helps',
+    howToEarn: 'Accept and successfully complete mutual assistance requests across your neighbourhood.',
+    levels: [
+      { level: 1, tier: 'bronze', tierName: 'Bronze', threshold: 10 },
+      { level: 2, tier: 'silver', tierName: 'Silver', threshold: 25 },
+      { level: 3, tier: 'gold', tierName: 'Gold', threshold: 50 },
+      { level: 4, tier: 'platinum', tierName: 'Platinum', threshold: 100 },
+    ],
+  },
+
+  // 2. Life Saver
+  {
+    id: 'life_saver',
+    key: 'life_saver',
+    title: 'Life Saver',
+    description: 'Responded to critical emergency blood donations and hospital alerts.',
+    category: 'Emergency',
+    type: 'automatic',
+    icon: 'HeartPulse',
+    unit: 'blood helps',
+    howToEarn: 'Donate blood, provide platelets, or arrange emergency blood transport for critical patients.',
+    levels: [
+      { level: 1, tier: 'bronze', tierName: 'Bronze', threshold: 1 },
+      { level: 2, tier: 'silver', tierName: 'Silver', threshold: 3 },
+      { level: 3, tier: 'gold', tierName: 'Gold', threshold: 10 },
+      { level: 4, tier: 'platinum', tierName: 'Platinum', threshold: 25 },
+    ],
+  },
+
+  // 3. Emergency First Responder
+  {
+    id: 'emergency_first_responder',
+    key: 'emergency_first_responder',
+    title: 'Emergency First Responder',
+    description: 'Answered critical high-urgency distress alerts within 15 minutes.',
+    category: 'Emergency',
+    type: 'automatic',
+    icon: 'Zap',
+    unit: 'rapid helps',
+    howToEarn: 'Answer critical SOS or high-priority emergency requests in under 15 minutes.',
+    levels: [
+      { level: 1, tier: 'bronze', tierName: 'Bronze', threshold: 3 },
+      { level: 2, tier: 'silver', tierName: 'Silver', threshold: 10 },
+      { level: 3, tier: 'gold', tierName: 'Gold', threshold: 25 },
+      { level: 4, tier: 'platinum', tierName: 'Platinum', threshold: 50 },
+    ],
+  },
+
+  // 4. Quick Responder
+  {
+    id: 'quick_responder',
+    key: 'quick_responder',
+    title: 'Quick Responder',
+    description: 'Initiated help offers within 5 minutes of a request being posted.',
+    category: 'Emergency',
+    type: 'automatic',
+    icon: 'Timer',
+    unit: 'quick offers',
+    howToEarn: 'Be among the fastest neighbours to extend a verified help offer within 5 minutes.',
+    levels: [
+      { level: 1, tier: 'bronze', tierName: 'Bronze', threshold: 5 },
+      { level: 2, tier: 'silver', tierName: 'Silver', threshold: 20 },
+      { level: 3, tier: 'gold', tierName: 'Gold', threshold: 50 },
+      { level: 4, tier: 'platinum', tierName: 'Platinum', threshold: 100 },
+    ],
+  },
+
+  // 5. Trusted Local Neighbour
+  {
+    id: 'trusted_neighbour',
+    key: 'trusted_neighbour',
+    title: 'Trusted Local Neighbour',
+    description: 'Maintained an exemplary 4.8+ peer rating across verified community reviews.',
+    category: 'Trust',
+    type: 'automatic',
+    icon: 'Star',
+    unit: 'reviews',
+    howToEarn: 'Receive positive ratings from neighbours while sustaining an average rating of 4.8 or higher.',
+    levels: [
+      { level: 1, tier: 'bronze', tierName: 'Bronze', threshold: 5 },
+      { level: 2, tier: 'silver', tierName: 'Silver', threshold: 15 },
+      { level: 3, tier: 'gold', tierName: 'Gold', threshold: 30 },
+      { level: 4, tier: 'platinum', tierName: 'Platinum', threshold: 60 },
+    ],
+  },
+
+  // 6. Study and Books Mentor
+  {
+    id: 'study_mentor',
+    key: 'study_mentor',
+    title: 'Study and Books Mentor',
+    description: 'Shared textbooks, study guides, and educational materials with students.',
+    category: 'Education',
+    type: 'automatic',
+    icon: 'BookOpen',
+    unit: 'books helps',
+    howToEarn: 'Share educational books, study notes, or academic guidance with students in need.',
+    levels: [
+      { level: 1, tier: 'bronze', tierName: 'Bronze', threshold: 1 },
+      { level: 2, tier: 'silver', tierName: 'Silver', threshold: 5 },
+      { level: 3, tier: 'gold', tierName: 'Gold', threshold: 15 },
+      { level: 4, tier: 'platinum', tierName: 'Platinum', threshold: 30 },
+    ],
+  },
+
+  // 7. Medical Gear Lender
+  {
+    id: 'medical_gear_lender',
+    key: 'medical_gear_lender',
+    title: 'Medical Gear Lender',
+    description: 'Supplied wheelchairs, oxygen concentrators, or assistive medical equipment.',
+    category: 'Health',
+    type: 'automatic',
+    icon: 'Stethoscope',
+    unit: 'equipment helps',
+    howToEarn: 'Lend or donate wheelchairs, nebulizers, walkers, or emergency medical devices.',
+    levels: [
+      { level: 1, tier: 'bronze', tierName: 'Bronze', threshold: 1 },
+      { level: 2, tier: 'silver', tierName: 'Silver', threshold: 5 },
+      { level: 3, tier: 'gold', tierName: 'Gold', threshold: 15 },
+      { level: 4, tier: 'platinum', tierName: 'Platinum', threshold: 30 },
+    ],
+  },
+
+  // 8. Elder Friend
+  {
+    id: 'elder_friend',
+    key: 'elder_friend',
+    title: 'Elder Friend',
+    description: 'Accompanied or supported senior citizens with hospital visits, errands, and care.',
+    category: 'Care',
+    type: 'automatic',
+    icon: 'HeartHandshake',
+    unit: 'elderly care helps',
+    howToEarn: 'Support elderly neighbours with hospital visits, home errands, and companion care.',
+    levels: [
+      { level: 1, tier: 'bronze', tierName: 'Bronze', threshold: 1 },
+      { level: 2, tier: 'silver', tierName: 'Silver', threshold: 5 },
+      { level: 3, tier: 'gold', tierName: 'Gold', threshold: 15 },
+      { level: 4, tier: 'platinum', tierName: 'Platinum', threshold: 30 },
+    ],
+  },
+
+  // 9. Safe Ride Hero
+  {
+    id: 'safe_ride_hero',
+    key: 'safe_ride_hero',
+    title: 'Safe Ride Hero',
+    description: 'Provided safe emergency vehicle transit or transit escorts for patients and neighbours.',
+    category: 'Mobility',
+    type: 'automatic',
+    icon: 'Car',
+    unit: 'transport helps',
+    howToEarn: 'Provide safe transport or mobility escorts for hospital checkups or urgent transit.',
+    levels: [
+      { level: 1, tier: 'bronze', tierName: 'Bronze', threshold: 1 },
+      { level: 2, tier: 'silver', tierName: 'Silver', threshold: 5 },
+      { level: 3, tier: 'gold', tierName: 'Gold', threshold: 15 },
+      { level: 4, tier: 'platinum', tierName: 'Platinum', threshold: 30 },
+    ],
+  },
+
+  // 10. Helper Streak
+  {
+    id: 'helper_streak',
+    key: 'helper_streak',
+    title: 'Helper Streak',
+    description: 'Maintained consecutive daily mutual aid completions in the community.',
+    category: 'Streak',
+    type: 'automatic',
+    icon: 'Flame',
+    unit: 'consecutive days',
+    howToEarn: 'Complete at least one community aid activity every day consecutively.',
+    levels: [
+      { level: 1, tier: 'bronze', tierName: 'Bronze', threshold: 3 },
+      { level: 2, tier: 'silver', tierName: 'Silver', threshold: 7 },
+      { level: 3, tier: 'gold', tierName: 'Gold', threshold: 14 },
+      { level: 4, tier: 'platinum', tierName: 'Platinum', threshold: 30 },
+    ],
+  },
+
+  // 11. First Help
   {
     id: 'first_help',
     key: 'first_help',
     title: 'First Help',
     description: 'Stepped forward and completed your first community act of kindness.',
-    icon: '🤝',
     category: 'Milestone',
-    requirement: 'Complete 1 help task',
-    target: 1,
+    type: 'automatic',
+    icon: 'Sparkles',
     unit: 'help',
+    howToEarn: 'Complete your very first mutual aid request on KindLink.',
+    levels: [{ level: 1, tier: 'bronze', tierName: 'Completed', threshold: 1 }],
   },
+
+  // 12. Verified Member
   {
-    id: 'life_saver',
-    key: 'life_saver',
-    title: 'Life Saver',
-    description: 'Responded to critical emergency blood donations or patient transport escorts.',
-    icon: '🩸',
-    category: 'Emergency',
-    requirement: '3 emergency blood or transport assists',
-    target: 3,
-    unit: 'helps',
-  },
-  {
-    id: 'book_buddy',
-    key: 'book_buddy',
-    title: 'Book Buddy',
-    description: 'Shared textbooks, reference guides, or helped students in need with study materials.',
-    icon: '📚',
-    category: 'Category',
-    requirement: '2 book deliveries or study assists',
-    target: 2,
-    unit: 'helps',
-  },
-  {
-    id: 'wheel_helper',
-    key: 'wheel_helper',
-    title: 'Wheel Helper',
-    description: 'Supplied wheelchairs, oxygen concentrators, or orthopedic mobility devices.',
-    icon: '🩺',
-    category: 'Category',
-    requirement: '2 medical equipment provisions',
-    target: 2,
-    unit: 'helps',
-  },
-  {
-    id: 'elder_friend',
-    key: 'elder_friend',
-    title: 'Elder Friend',
-    description: 'Accompanied or supported senior citizens with hospital visits, errands, and mobility.',
-    icon: '👵',
-    category: 'Category',
-    requirement: '2 elderly care assists',
-    target: 2,
-    unit: 'helps',
-  },
-  {
-    id: 'quick_responder',
-    key: 'quick_responder',
-    title: 'Quick Responder',
-    description: 'Consistently accepted and initiated urgent emergency tasks in under 15 minutes.',
-    icon: '⚡',
-    category: 'Emergency',
-    requirement: '5 fast responses (<15 mins)',
-    target: 5,
-    unit: 'responses',
-  },
-  {
-    id: 'trusted',
-    key: 'trusted',
-    title: 'Trusted Neighbor',
-    description: 'Maintained an outstanding 4.5+ star trust rating with 5+ community reviews.',
-    icon: '⭐',
-    category: 'Trust',
-    requirement: '4.5+ avg rating & 5+ reviews',
-    target: 5,
-    unit: 'ratings',
-  },
-  {
-    id: 'verified',
-    key: 'verified',
-    title: 'Verified Volunteer',
-    description: 'Identity authenticated via government or student credentials by KindLink staff.',
-    icon: '🛡️',
-    category: 'Trust',
-    requirement: 'Pass ID document audit',
-    target: 1,
+    id: 'verified_member',
+    key: 'verified_member',
+    title: 'Verified Member',
+    description: 'Identity authenticated with official government photo ID audit by KindLink staff.',
+    category: 'Verification',
+    type: 'verified',
+    icon: 'ShieldCheck',
     unit: 'audit',
+    howToEarn: 'Submit official government-issued ID (Aadhaar, Voter ID, Passport) in Verification tab.',
+    levels: [{ level: 1, tier: 'platinum', tierName: 'Verified', threshold: 1 }],
   },
+
+  // 13. Verified Student Member
   {
-    id: 'seven_day_streak',
-    key: 'seven_day_streak',
-    title: '7-Day Streak',
-    description: 'Active helper responding or checking into the community aid network for 7 consecutive days.',
-    icon: '🔥',
-    category: 'Streak',
-    requirement: '7 days consecutive activity',
-    target: 7,
-    unit: 'days',
+    id: 'verified_student',
+    key: 'verified_student',
+    title: 'Verified Student Member',
+    description: 'Academic student identity authenticated with official college credentials.',
+    category: 'Verification',
+    type: 'verified',
+    icon: 'GraduationCap',
+    unit: 'audit',
+    howToEarn: 'Submit your college or university student credentials for verification.',
+    levels: [{ level: 1, tier: 'platinum', tierName: 'Verified', threshold: 1 }],
   },
+
+  // 14. Verified Doctor
   {
-    id: 'community_hero',
-    key: 'community_hero',
-    title: 'Community Hero',
-    description: 'A pillar of strength in the neighborhood with 25+ verified completed assists.',
-    icon: '🏆',
-    category: 'Milestone',
-    requirement: 'Complete 25 help tasks',
-    target: 25,
-    unit: 'helps',
+    id: 'verified_doctor',
+    key: 'verified_doctor',
+    title: 'Verified Doctor',
+    description: 'Medical practitioner registration validated with state or national medical council.',
+    category: 'Healthcare',
+    type: 'verified',
+    icon: 'Stethoscope',
+    unit: 'credential',
+    howToEarn: 'Provide your Medical Council registration certificate for administrative verification.',
+    levels: [{ level: 1, tier: 'platinum', tierName: 'Verified', threshold: 1 }],
+    medicalDisclaimer: HEALTHCARE_DISCLAIMER,
+  },
+
+  // 15. Verified Nurse or Paramedic
+  {
+    id: 'verified_nurse',
+    key: 'verified_nurse',
+    title: 'Verified Nurse or Paramedic',
+    description: 'Registered nursing or emergency paramedic professional credentials validated.',
+    category: 'Healthcare',
+    type: 'verified',
+    icon: 'Cross',
+    unit: 'credential',
+    howToEarn: 'Provide your Nursing Council or Paramedical Board registration for verification.',
+    levels: [{ level: 1, tier: 'platinum', tierName: 'Verified', threshold: 1 }],
+    medicalDisclaimer: HEALTHCARE_DISCLAIMER,
+  },
+
+  // 16. Verified Pharmacist
+  {
+    id: 'verified_pharmacist',
+    key: 'verified_pharmacist',
+    title: 'Verified Pharmacist',
+    description: 'Licensed pharmacist registered with state pharmacy council validated.',
+    category: 'Healthcare',
+    type: 'verified',
+    icon: 'Pill',
+    unit: 'credential',
+    howToEarn: 'Submit your State Pharmacy Council registration license for verification.',
+    levels: [{ level: 1, tier: 'platinum', tierName: 'Verified', threshold: 1 }],
+    medicalDisclaimer: HEALTHCARE_DISCLAIMER,
+  },
+
+  // 17. Verified Teacher or Mentor
+  {
+    id: 'verified_teacher',
+    key: 'verified_teacher',
+    title: 'Verified Teacher or Mentor',
+    description: 'Accredited educator, professor, or school teacher credentials verified.',
+    category: 'Education',
+    type: 'verified',
+    icon: 'GraduationCap',
+    unit: 'credential',
+    howToEarn: 'Submit school, college, or academic institution faculty ID for verification.',
+    levels: [{ level: 1, tier: 'platinum', tierName: 'Verified', threshold: 1 }],
+  },
+
+  // 18. Verified Organisation or NGO
+  {
+    id: 'verified_ngo',
+    key: 'verified_ngo',
+    title: 'Verified Organisation or NGO',
+    description: 'Registered nonprofit foundation, community volunteer society, or NGO verified.',
+    category: 'Verification',
+    type: 'verified',
+    icon: 'Building2',
+    unit: 'credential',
+    howToEarn: 'Submit NGO Darpan, Trust deed, or 12A / 80G registration documentation.',
+    levels: [{ level: 1, tier: 'platinum', tierName: 'Verified', threshold: 1 }],
   },
 ];
 
-export function calculateBadgesForUser(userProfile: UserProfile): BadgeItem[] {
-  const helpsCount = userProfile.helpsCount || 0;
-  const ratingCount = userProfile.ratingCount || (helpsCount > 0 ? Math.min(helpsCount, 19) : 0);
-  const ratingAvg = userProfile.rating || 5.0;
-  const isVerified = userProfile.verificationState === 'verified';
+export interface UserBadgeStats {
+  helpsCount?: number;
+  bloodHelps?: number;
+  criticalRapidHelps?: number;
+  quickOffers?: number;
+  ratingsCount?: number;
+  ratingAverage?: number;
+  bookHelps?: number;
+  equipmentHelps?: number;
+  elderlyHelps?: number;
+  transportHelps?: number;
+  streakDays?: number;
+}
 
-  // Specific category counters estimated or tracked from profile
-  const bloodHelps = Math.min(Math.floor(helpsCount * 0.35), 6);
-  const bookHelps = Math.min(Math.floor(helpsCount * 0.2), 3);
-  const equipmentHelps = Math.min(Math.floor(helpsCount * 0.25), 4);
-  const elderlyHelps = Math.min(Math.floor(helpsCount * 0.2), 3);
-  const quickResponses = Math.min(Math.floor(helpsCount * 0.4), 8);
-  const streakDays = Math.min(helpsCount > 0 ? 7 : 0, 7);
+/**
+ * Calculates user badge progress, current tier, next goal, and earned state.
+ * Strictly guarantees progressPercent <= 100% and progressLabel e.g. "7 / 10", never "12 of 10".
+ */
+export function calculateBadgesForUser(
+  userProfile: UserProfile,
+  statsOverride?: Partial<UserBadgeStats>
+): UserBadgeProgress[] {
+  const helpsCount = statsOverride?.helpsCount ?? userProfile.helpsCount ?? 0;
+  const ratingCount = statsOverride?.ratingsCount ?? userProfile.ratingCount ?? 0;
+  const ratingAvg = statsOverride?.ratingAverage ?? userProfile.rating ?? 5.0;
+  const isIdVerified = userProfile.verificationState === 'verified';
+  const hasCollege = Boolean(userProfile.college && userProfile.college.trim().length > 0);
+  const badgesList = (userProfile.badges || []).map((b) => b.toLowerCase());
+  const pinnedList = userProfile.pinnedBadges || [];
+
+  // Category counts: using override if provided, else truthful estimation from helps history
+  const bloodHelps =
+    statsOverride?.bloodHelps ??
+    (badgesList.some((b) => b.includes('blood') || b.includes('life saver'))
+      ? Math.max(1, Math.floor(helpsCount * 0.35))
+      : Math.floor(helpsCount * 0.35));
+
+  const criticalRapidHelps =
+    statsOverride?.criticalRapidHelps ??
+    (badgesList.some((b) => b.includes('first aid') || b.includes('responder'))
+      ? Math.max(3, Math.floor(helpsCount * 0.3))
+      : Math.floor(helpsCount * 0.3));
+
+  const quickOffers =
+    statsOverride?.quickOffers ??
+    (badgesList.some((b) => b.includes('quick'))
+      ? Math.max(5, Math.floor(helpsCount * 0.5))
+      : Math.floor(helpsCount * 0.5));
+
+  const bookHelps =
+    statsOverride?.bookHelps ??
+    (badgesList.some((b) => b.includes('study') || b.includes('book') || b.includes('mentor'))
+      ? Math.max(1, Math.floor(helpsCount * 0.25))
+      : Math.floor(helpsCount * 0.25));
+
+  const equipmentHelps =
+    statsOverride?.equipmentHelps ??
+    (badgesList.some((b) => b.includes('wheel') || b.includes('gear') || b.includes('equipment'))
+      ? Math.max(1, Math.floor(helpsCount * 0.25))
+      : Math.floor(helpsCount * 0.25));
+
+  const elderlyHelps =
+    statsOverride?.elderlyHelps ??
+    (badgesList.some((b) => b.includes('elder'))
+      ? Math.max(1, Math.floor(helpsCount * 0.2))
+      : Math.floor(helpsCount * 0.2));
+
+  const transportHelps =
+    statsOverride?.transportHelps ??
+    (badgesList.some((b) => b.includes('ride') || b.includes('transport'))
+      ? Math.max(1, Math.floor(helpsCount * 0.2))
+      : Math.floor(helpsCount * 0.2));
+
+  const streakDays =
+    statsOverride?.streakDays ??
+    (helpsCount > 0 ? Math.min(Math.max(1, Math.floor(helpsCount * 0.4)), 30) : 0);
 
   return ALL_BADGE_DEFINITIONS.map((def) => {
-    let current = 0;
-    let unlocked = false;
+    let currentValue = 0;
+    let isVerifiedBadgeGranted = false;
 
-    switch (def.key) {
-      case 'first_help':
-        current = Math.min(helpsCount, def.target);
-        unlocked = helpsCount >= 1;
-        break;
-      case 'life_saver':
-        current = Math.min(bloodHelps, def.target);
-        unlocked = bloodHelps >= def.target;
-        break;
-      case 'book_buddy':
-        current = Math.min(bookHelps, def.target);
-        unlocked = bookHelps >= def.target;
-        break;
-      case 'wheel_helper':
-        current = Math.min(equipmentHelps, def.target);
-        unlocked = equipmentHelps >= def.target;
-        break;
-      case 'elder_friend':
-        current = Math.min(elderlyHelps, def.target);
-        unlocked = elderlyHelps >= def.target;
-        break;
-      case 'quick_responder':
-        current = Math.min(quickResponses, def.target);
-        unlocked = quickResponses >= def.target;
-        break;
-      case 'trusted':
-        current = ratingAvg >= 4.5 ? Math.min(ratingCount, def.target) : 0;
-        unlocked = ratingAvg >= 4.5 && ratingCount >= def.target;
-        break;
-      case 'verified':
-        current = isVerified ? 1 : 0;
-        unlocked = isVerified;
-        break;
-      case 'seven_day_streak':
-        current = Math.min(streakDays, def.target);
-        unlocked = streakDays >= def.target;
-        break;
-      case 'community_hero':
-        current = Math.min(helpsCount, def.target);
-        unlocked = helpsCount >= def.target;
-        break;
-      default:
-        current = 0;
-        unlocked = false;
+    if (def.type === 'verified') {
+      // Check admin badge assignments
+      const checkKey = def.key.toLowerCase();
+      const checkTitle = def.title.toLowerCase();
+
+      if (def.key === 'verified_member') {
+        isVerifiedBadgeGranted =
+          isIdVerified ||
+          badgesList.some((b) => b.includes('verified') || b.includes('identity'));
+      } else if (def.key === 'verified_student') {
+        isVerifiedBadgeGranted =
+          (isIdVerified && hasCollege) ||
+          badgesList.some((b) => b.includes('student'));
+      } else if (def.key === 'verified_doctor') {
+        isVerifiedBadgeGranted = badgesList.some((b) => b.includes('doctor') || b.includes('mbbs'));
+      } else if (def.key === 'verified_nurse') {
+        isVerifiedBadgeGranted = badgesList.some((b) => b.includes('nurse') || b.includes('paramedic'));
+      } else if (def.key === 'verified_pharmacist') {
+        isVerifiedBadgeGranted = badgesList.some((b) => b.includes('pharmacist') || b.includes('pharm'));
+      } else if (def.key === 'verified_teacher') {
+        isVerifiedBadgeGranted = badgesList.some((b) => b.includes('teacher') || b.includes('professor'));
+      } else if (def.key === 'verified_ngo') {
+        isVerifiedBadgeGranted = badgesList.some((b) => b.includes('ngo') || b.includes('organisation') || b.includes('organization'));
+      } else {
+        isVerifiedBadgeGranted = badgesList.some((b) => b === checkKey || b === checkTitle);
+      }
+
+      currentValue = isVerifiedBadgeGranted ? 1 : 0;
+    } else {
+      // Automatic badges metrics
+      switch (def.key) {
+        case 'community_pillar':
+          currentValue = helpsCount;
+          break;
+        case 'life_saver':
+          currentValue = bloodHelps;
+          break;
+        case 'emergency_first_responder':
+          currentValue = criticalRapidHelps;
+          break;
+        case 'quick_responder':
+          currentValue = quickOffers;
+          break;
+        case 'trusted_neighbour':
+          currentValue = ratingAvg >= 4.8 ? ratingCount : 0;
+          break;
+        case 'study_mentor':
+          currentValue = bookHelps;
+          break;
+        case 'medical_gear_lender':
+          currentValue = equipmentHelps;
+          break;
+        case 'elder_friend':
+          currentValue = elderlyHelps;
+          break;
+        case 'safe_ride_hero':
+          currentValue = transportHelps;
+          break;
+        case 'helper_streak':
+          currentValue = streakDays;
+          break;
+        case 'first_help':
+          currentValue = Math.min(helpsCount, 1);
+          break;
+        default:
+          currentValue = 0;
+      }
     }
 
-    const progressPercent = Math.min(Math.round((current / def.target) * 100), 100);
+    // Determine current level and next goal
+    const levels = def.levels;
+    let currentLevel = 0;
+    let earned = false;
+
+    if (def.type === 'verified') {
+      earned = isVerifiedBadgeGranted;
+      currentLevel = isVerifiedBadgeGranted ? 1 : 0;
+    } else {
+      for (let i = 0; i < levels.length; i++) {
+        if (currentValue >= levels[i].threshold) {
+          currentLevel = levels[i].level;
+          earned = true;
+        } else {
+          break;
+        }
+      }
+    }
+
+    const currentTier: BadgeTier | 'locked' =
+      currentLevel > 0 ? levels[currentLevel - 1].tier : 'locked';
+    const currentTierName =
+      currentLevel > 0 ? levels[currentLevel - 1].tierName : 'Locked';
+
+    // Target threshold for next level
+    let nextThreshold: number;
+    let nextTierName: string | null;
+    let isMaxLevel = false;
+
+    if (currentLevel === 0) {
+      nextThreshold = levels[0].threshold;
+      nextTierName = levels[0].tierName;
+    } else if (currentLevel < levels.length) {
+      nextThreshold = levels[currentLevel].threshold;
+      nextTierName = levels[currentLevel].tierName;
+    } else {
+      // Max tier reached
+      nextThreshold = levels[levels.length - 1].threshold;
+      nextTierName = null;
+      isMaxLevel = true;
+    }
+
+    // Calculate progressPercent and progressLabel strictly bounded <= 100%
+    let progressPercent = 0;
+    let progressLabel = '';
+
+    if (def.type === 'verified') {
+      progressPercent = earned ? 100 : 0;
+      progressLabel = earned ? 'Verified' : 'Pending Audit';
+    } else if (isMaxLevel) {
+      progressPercent = 100;
+      progressLabel = `${nextThreshold} / ${nextThreshold}`;
+    } else {
+      const displayCurrent = Math.min(currentValue, nextThreshold);
+      progressPercent = Math.min(100, Math.round((displayCurrent / nextThreshold) * 100));
+      progressLabel = `${displayCurrent} / ${nextThreshold}`;
+    }
+
+    const isPinned = pinnedList.includes(def.id) || pinnedList.includes(def.key);
 
     return {
       ...def,
-      current,
-      unlocked,
+      currentValue,
+      earned,
+      currentLevel,
+      currentTier,
+      currentTierName,
+      levels,
+      nextThreshold,
+      nextTierName,
       progressPercent,
-      unlockedAt: unlocked ? 'Active' : undefined,
+      progressLabel,
+      earnedAt: earned ? userProfile.createdAt || 'Active' : undefined,
+      isPinned,
+
+      // Compatibility fields for BadgeItem
+      current: Math.min(currentValue, nextThreshold),
+      target: nextThreshold,
+      requirement: def.howToEarn,
+      unlocked: earned,
+      unlockedAt: earned ? userProfile.createdAt || 'Active' : undefined,
     };
   });
+}
+
+export function getBadgesSummary(badges: UserBadgeProgress[]) {
+  const total = badges.length;
+  const earned = badges.filter((b) => b.earned).length;
+  const inProgress = badges.filter((b) => !b.earned && b.currentValue > 0).length;
+  const locked = total - earned;
+  const pinnedIds = badges.filter((b) => b.isPinned).map((b) => b.id);
+
+  return {
+    total,
+    earned,
+    inProgress,
+    locked,
+    pinnedIds,
+    earnedPercentage: total > 0 ? Math.round((earned / total) * 100) : 0,
+  };
 }
 
 export const SAMPLE_IMPACT_HISTORY: ImpactHelpItem[] = [
@@ -412,7 +845,6 @@ export function getImpactDashboardData(userProfile: UserProfile): ImpactDashboar
     },
   ];
 
-  // Group timeline by month
   const months = ['October 2026', 'September 2026', 'August 2026'];
   const monthlyTimeline = months.map((month) => {
     const items = SAMPLE_IMPACT_HISTORY.filter((item) => item.month === month);

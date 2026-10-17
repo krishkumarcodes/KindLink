@@ -46,6 +46,8 @@ export async function PATCH(req: NextRequest) {
       homeNeighborhood,
       avatarUrl,
       languages,
+      preferredLanguage,
+      preferred_language,
     } = body;
 
     // Validate username if provided
@@ -91,6 +93,8 @@ export async function PATCH(req: NextRequest) {
     if (homeNeighborhood !== undefined) updateData.home_neighborhood = homeNeighborhood;
     if (avatarUrl !== undefined) updateData.avatar_url = avatarUrl;
     if (languages !== undefined) updateData.languages = languages;
+    const targetLang = preferredLanguage || preferred_language;
+    if (targetLang !== undefined) updateData.preferred_language = targetLang;
 
     let updateRes = await admin
       .from('profiles')
@@ -105,6 +109,7 @@ export async function PATCH(req: NextRequest) {
       if (displayName !== undefined) baseUpdate.display_name = displayName;
       if (username !== undefined) baseUpdate.username = username.trim().toLowerCase();
       if (phone !== undefined) baseUpdate.phone = phone;
+      if (targetLang !== undefined) baseUpdate.preferred_language = targetLang;
 
       const baseRes = await admin
         .from('profiles')
