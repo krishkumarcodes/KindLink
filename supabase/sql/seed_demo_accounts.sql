@@ -61,6 +61,58 @@ BEGIN
   END;
 
   -- --------------------------------------------------------------------------
+  -- 0. CLEANUP CONFLICTING / LEGACY DEMO ACCOUNTS
+  -- --------------------------------------------------------------------------
+  -- If any demo account exists in auth.users with a different UUID (e.g. from
+  -- manual signups or earlier seed runs), remove it so unique constraints on
+  -- auth.users(email) and public.profiles(username) do not cause 23505 errors.
+  DELETE FROM auth.users
+  WHERE lower(email) IN (
+    'volunteer@kindlink.demo',
+    'requester@kindlink.demo',
+    'admin@kindlink.demo',
+    'kind_volunteer@kindlink.demo',
+    'need_aid@kindlink.demo',
+    'admin_kindlink@kindlink.demo'
+  )
+  AND id NOT IN (
+    v_volunteer_id,
+    v_requester_id,
+    v_admin_id,
+    v_alias_vol_id,
+    v_alias_req_id,
+    v_alias_adm_id
+  );
+
+  DELETE FROM public.profiles
+  WHERE (
+    lower(email) IN (
+      'volunteer@kindlink.demo',
+      'requester@kindlink.demo',
+      'admin@kindlink.demo',
+      'kind_volunteer@kindlink.demo',
+      'need_aid@kindlink.demo',
+      'admin_kindlink@kindlink.demo'
+    )
+    OR lower(username) IN (
+      'kind_volunteer',
+      'need_aid',
+      'admin_kindlink',
+      'kind_volunteer_alias',
+      'need_aid_alias',
+      'admin_kindlink_alias'
+    )
+  )
+  AND id NOT IN (
+    v_volunteer_id,
+    v_requester_id,
+    v_admin_id,
+    v_alias_vol_id,
+    v_alias_req_id,
+    v_alias_adm_id
+  );
+
+  -- --------------------------------------------------------------------------
   -- 1. VOLUNTEER (volunteer@kindlink.demo) - Dr. Ananya Roy
   -- --------------------------------------------------------------------------
   IF v_has_instance_id THEN
