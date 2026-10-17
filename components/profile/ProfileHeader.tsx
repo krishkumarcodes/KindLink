@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -12,12 +12,15 @@ import {
   FileCheck,
   Star,
   Copy,
-  Building2,
-  Stethoscope,
   Award,
+  Pin,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
+import { calculateBadgesForUser, UserBadgeProgress } from '@/lib/data/badges';
+import { BadgeMedalIcon } from './BadgeMedalIcon';
+import { BadgeDetailSheet } from './BadgeDetailSheet';
+import { BadgePinningModal } from './BadgePinningModal';
 
 export type ProfileTab = 'overview' | 'activity' | 'badges' | 'impact' | 'verification' | 'settings';
 
@@ -27,7 +30,11 @@ interface ProfileHeaderProps {
 }
 
 export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps) {
-  const { userProfile, requests, userCoords, userAreaName } = useKindLinkStore();
+  const { userProfile, updateUserProfile, requests, userCoords, userAreaName } = useKindLinkStore();
+
+  // State for Badge Detail Sheet and Pinning Modal
+  const [selectedBadge, setSelectedBadge] = useState<UserBadgeProgress | null>(null);
+  const [isPinningOpen, setIsPinningOpen] = useState(false);
 
   // Display Name & Username
   const displayName =
@@ -97,12 +104,12 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
       try {
         await navigator.share({
           title: `${displayName} on KindLink`,
-          text: `Check out ${displayName}'s profile and mutual aid record on KindLink`,
+          text: `Check out ${displayName}'s profile and community impact on KindLink`,
           url: shareUrl,
         });
         return;
       } catch {
-        // User cancelled or share aborted; proceed with clipboard fallback if needed
+        // Fallback to clipboard
       }
     }
 
@@ -114,81 +121,55 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
     }
   };
 
-  // Top role badge
-  const getTopRoleBadge = () => {
-    if (userProfile.badges?.some((b) => /doctor|physician|medical/i.test(b))) {
-      return { label: 'Verified Doctor', icon: Stethoscope, color: 'emerald' };
+  // Badges calculation and pinned list
+  const allBadges = useMemo(() => calculateBadgesForUser(userProfile), [userProfile]);
+  const pinnedBadges = useMemo(() => {
+    return allBadges.filter((b) => b.isPinned).slice(0, 3);
+  }, [allBadges]);
+
+  // Handle pin toggle (Max 3 badges)
+  const handleTogglePin = async (badgeId: string, willPin: boolean) => {
+    const currentPinned = userProfile.pinnedBadges || [];
+
+    if (willPin) {
+      if (currentPinned.length >= 3) {
+        toast.error('Maximum 3 badges can be pinned to your profile header card.');
+        return;
+      }
+      const nextPinned = [...currentPinned, badgeId];
+      updateUserProfile({ pinnedBadges: nextPinned });
+
+      try {
+        const res = await fetch('/api/badges/pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ badgeId, pinned: true }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          if (data.error) toast.error(data.error);
+        } else {
+          toast.success('Badge pinned to profile header!');
+        }
+      } catch {
+        // Optimistic store already updated
+      }
+    } else {
+      const nextPinned = currentPinned.filter((id) => id !== badgeId);
+      updateUserProfile({ pinnedBadges: nextPinned });
+
+      try {
+        await fetch('/api/badges/pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ badgeId, pinned: false }),
+        });
+        toast.success('Badge unpinned from profile header');
+      } catch {
+        // Handled
+      }
     }
-    if (userProfile.badges?.some((b) => /responder|first aid/i.test(b))) {
-      return { label: 'First Responder', icon: ShieldCheck, color: 'indigo' };
-    }
-    if (userProfile.badges?.some((b) => /blood|life saver/i.test(b))) {
-      return { label: 'Blood Hero', icon: Award, color: 'rose' };
-    }
-    if (userProfile.verificationState === 'verified') {
-      return { label: 'Verified Volunteer', icon: ShieldCheck, color: 'teal' };
-    }
-    return null;
   };
-
-  const topRole = getTopRoleBadge();
-
-  // Pinned badges: up to 3 medal badges with level indicator
-  const pinnedBadges = [
-    {
-      id: 'community-pillar',
-      title: 'Community Pillar',
-      icon: '/illustrations/badge-community-pillar.svg',
-      level:
-        (userProfile.helpsCount || 0) >= 20
-          ? 'Level 3 Gold'
-          : (userProfile.helpsCount || 0) >= 10
-          ? 'Level 2 Silver'
-          : 'Level 1 Bronze',
-      levelVariant:
-        (userProfile.helpsCount || 0) >= 20
-          ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
-          : (userProfile.helpsCount || 0) >= 10
-          ? 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-400/30'
-          : 'bg-amber-700/10 text-amber-800 dark:text-amber-300 border-amber-700/30',
-    },
-    {
-      id: 'trusted-neighbor',
-      title: 'Trusted Neighbor',
-      icon: '/illustrations/badge-trusted-neighbor.svg',
-      level:
-        hasEnoughRatings && (userProfile.rating ?? 0) >= 4.9
-          ? 'Level 3 Gold'
-          : hasEnoughRatings
-          ? 'Level 2 Silver'
-          : 'Level 1 Bronze',
-      levelVariant:
-        hasEnoughRatings && (userProfile.rating ?? 0) >= 4.9
-          ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
-          : hasEnoughRatings
-          ? 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-400/30'
-          : 'bg-amber-700/10 text-amber-800 dark:text-amber-300 border-amber-700/30',
-    },
-    {
-      id: 'urgent-hero',
-      title: userProfile.badges?.some((b) => /blood|life saver/i.test(b))
-        ? 'Life Saver'
-        : userProfile.badges?.some((b) => /responder|first aid/i.test(b))
-        ? 'First Responder'
-        : userProfile.college
-        ? 'Verified Student'
-        : 'Study Mentor',
-      icon: userProfile.badges?.some((b) => /blood|life saver/i.test(b))
-        ? '/illustrations/badge-blood-hero.svg'
-        : userProfile.badges?.some((b) => /responder|first aid/i.test(b))
-        ? '/illustrations/badge-first-aid.svg'
-        : userProfile.college
-        ? '/illustrations/badge-student-verified.svg'
-        : '/illustrations/badge-study-mentor.svg',
-      level: 'Level 2 Silver',
-      levelVariant: 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-400/30',
-    },
-  ].slice(0, 3);
 
   // Location logic
   const isLiveLocation = Boolean(userCoords?.isLive);
@@ -197,13 +178,17 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
   const hasArea = Boolean(liveArea || savedArea);
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-card/85 backdrop-blur-md p-5 sm:p-8 shadow-soft">
-      {/* Subtle decorative gradient accents (teal to indigo to emerald, light and dark responsive) */}
+    <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-card/85 backdrop-blur-md p-4 sm:p-8 shadow-soft">
+      {/* Subtle decorative gradient accents */}
       <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-gradient-to-br from-teal-500/15 via-indigo-500/10 to-transparent blur-3xl" />
       <div className="pointer-events-none absolute -left-20 -bottom-20 h-72 w-72 rounded-full bg-gradient-to-tr from-emerald-500/15 via-teal-500/10 to-transparent blur-3xl" />
 
-      <div className="relative flex flex-col items-center text-center space-y-4">
-        {/* Centred avatar with verified shield badge neatly overlapping corner */}
+      <div className="relative flex flex-col items-center text-center space-y-3.5">
+        {/* =========================================================================
+            1. CLEAN IDENTITY BLOCK: Avatar, Display Name, @username, Verification Chip
+           ========================================================================= */}
+
+        {/* Centered Avatar with Corner Verification Shield */}
         <div className="relative inline-flex items-center justify-center shrink-0">
           {userProfile.avatarUrl ? (
             <img
@@ -239,7 +224,7 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
         </div>
 
         {/* Display name: large text, wraps up to 2 lines, centered, never cut off */}
-        <div className="space-y-1 w-full max-w-xl">
+        <div className="space-y-1 w-full max-w-xl px-1">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-foreground tracking-tight break-words line-clamp-2 leading-tight">
             {displayName}
           </h1>
@@ -259,11 +244,10 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
           </div>
         </div>
 
-        {/* Status chips: Verification status, top role badge, organisation chip */}
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {/* Verification status chip */}
+        {/* ONE Small Verification Chip Only (Verified / Pending / Not verified) */}
+        <div className="flex items-center justify-center pt-0.5">
           <span
-            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold tracking-wide border ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide border shadow-2xs ${
               userProfile.verificationState === 'verified'
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                 : userProfile.verificationState === 'pending'
@@ -273,68 +257,25 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
           >
             {userProfile.verificationState === 'verified' ? (
               <>
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500 notranslate shrink-0" />
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500 notranslate shrink-0 stroke-[2.2]" />
                 <span>Verified</span>
               </>
             ) : userProfile.verificationState === 'pending' ? (
               <>
-                <Clock className="h-3.5 w-3.5 text-amber-500 notranslate shrink-0" />
+                <Clock className="h-3.5 w-3.5 text-amber-500 notranslate shrink-0 stroke-[2.2]" />
                 <span>Pending review</span>
               </>
             ) : (
               <>
-                <ShieldAlert className="h-3.5 w-3.5 text-muted-foreground notranslate shrink-0" />
+                <ShieldAlert className="h-3.5 w-3.5 text-muted-foreground notranslate shrink-0 stroke-[2.2]" />
                 <span>Not verified</span>
               </>
             )}
           </span>
-
-          {/* Top role badge (e.g. Verified Doctor, First Responder, Blood Hero, Verified Volunteer) */}
-          {topRole && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-primary/10 text-primary border border-primary/20">
-              <topRole.icon className="h-3.5 w-3.5 notranslate shrink-0" />
-              <span>{topRole.label}</span>
-            </span>
-          )}
-
-          {/* Organisation chip */}
-          {userProfile.college && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-muted text-muted-foreground border border-border">
-              <Building2 className="h-3.5 w-3.5 text-primary notranslate shrink-0" />
-              <span className="truncate max-w-[200px]">{userProfile.college}</span>
-            </span>
-          )}
-        </div>
-
-        {/* Pinned badges: up to 3 pinned medal badges shown under chips with level indicator */}
-        <div className="flex flex-wrap items-center justify-center gap-2 pt-0.5">
-          {pinnedBadges.map((badge) => (
-            <button
-              key={badge.id}
-              type="button"
-              onClick={() => onSelectTab('badges')}
-              className="inline-flex items-center gap-2 px-2.5 py-1 rounded-xl bg-background/80 hover:bg-muted border border-border/80 shadow-xs transition-all touch-target text-left"
-              title={`${badge.title} (${badge.level}) - View badges`}
-            >
-              <img
-                src={badge.icon}
-                alt={badge.title}
-                className="w-5 h-5 object-contain shrink-0"
-              />
-              <span className="text-xs font-bold text-foreground truncate max-w-[120px]">
-                {badge.title}
-              </span>
-              <span
-                className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border ${badge.levelVariant}`}
-              >
-                {badge.level}
-              </span>
-            </button>
-          ))}
         </div>
 
         {/* Location line & Member since */}
-        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground pt-1">
+        <div className="flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1 text-xs text-muted-foreground pt-0.5">
           {/* Location line */}
           {isLiveLocation ? (
             <span className="inline-flex items-center gap-1.5 font-medium">
@@ -342,14 +283,14 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
               </span>
-              <span className="truncate max-w-[200px] sm:max-w-none text-foreground font-semibold">
+              <span className="truncate max-w-[180px] sm:max-w-none text-foreground font-semibold">
                 {liveArea || savedArea || 'Live Area'}
               </span>
             </span>
           ) : hasArea ? (
             <span className="inline-flex items-center gap-1 font-medium">
               <MapPin className="h-3.5 w-3.5 text-rose-500 notranslate shrink-0" />
-              <span className="truncate max-w-[200px] sm:max-w-none">
+              <span className="truncate max-w-[180px] sm:max-w-none">
                 {savedArea || liveArea}
               </span>
             </span>
@@ -371,7 +312,9 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
           </span>
         </div>
 
-        {/* Action row: Edit Profile button (h-10) & Share button (exact h-10 w-10 square, 0px offset error) */}
+        {/* =========================================================================
+            2. ACTION BUTTONS: Edit Profile & Share
+           ========================================================================= */}
         <div className="flex items-center justify-center gap-2.5 pt-1">
           <button
             type="button"
@@ -393,13 +336,100 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
           </button>
         </div>
 
-        {/* 4 Stat tiles in an even 2x2 grid (4 across on desktop). Tapping a tile switches to matching tab! */}
+        {/* =========================================================================
+            3. DEDICATED PINNED BADGES SHELF
+            Placed between the action buttons and the four stat tiles
+           ========================================================================= */}
+        <div className="w-full max-w-md mx-auto pt-3 pb-1">
+          {/* Shelf Header */}
+          <div className="flex items-center justify-between px-1.5 mb-2.5">
+            <span className="text-[11px] font-bold tracking-wider uppercase text-muted-foreground flex items-center gap-1.5">
+              <Award className="h-3.5 w-3.5 text-primary notranslate shrink-0" />
+              <span>Pinned Badges</span>
+              {pinnedBadges.length > 0 && (
+                <span className="text-[10px] font-semibold text-muted-foreground/80 normal-case">
+                  ({pinnedBadges.length}/3)
+                </span>
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsPinningOpen(true)}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary-hover hover:underline touch-target"
+              title="Customize pinned badges"
+            >
+              <Pin className="h-3 w-3 notranslate shrink-0" />
+              <span>{pinnedBadges.length > 0 ? 'Edit' : 'Pin'}</span>
+            </button>
+          </div>
+
+          {pinnedBadges.length > 0 ? (
+            /* Displays up to 3 round medals (48px diameter with metallic level ring) */
+            <div className="flex items-start justify-center gap-3 sm:gap-6 w-full mx-auto">
+              {pinnedBadges.map((badge) => (
+                <button
+                  key={badge.id}
+                  type="button"
+                  onClick={() => setSelectedBadge(badge)}
+                  className="flex flex-col items-center text-center group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-2xl p-1.5 transition flex-1 max-w-[104px] hover:bg-muted/40 touch-target"
+                  title={`${badge.title} (${badge.currentTierName} Level ${badge.currentLevel}) - View details`}
+                >
+                  <div className="relative transform transition group-hover:scale-110">
+                    <BadgeMedalIcon
+                      size="shelf"
+                      iconName={badge.icon}
+                      tier={badge.currentTier}
+                      isEarned={badge.earned}
+                    />
+                  </div>
+                  {/* Each medal has its short title under it (centered, 1-2 lines, text-xs font-medium, never cut off with ellipsis) */}
+                  <span className="mt-2 text-xs font-medium text-foreground leading-snug text-center break-words w-full">
+                    {badge.title}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            /* If no badges are pinned: show 3 soft dashed/tinted circular empty medal slots (48px) with friendly prompt */
+            <div
+              onClick={() => setIsPinningOpen(true)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setIsPinningOpen(true);
+                }
+              }}
+              className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl bg-muted/20 border border-dashed border-border hover:border-primary/40 hover:bg-muted/40 transition cursor-pointer group"
+              title="Click to pin badges"
+            >
+              <div className="flex items-center justify-center gap-4 sm:gap-6">
+                {[0, 1, 2].map((slot) => (
+                  <div
+                    key={`empty-slot-${slot}`}
+                    className="w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground/30 bg-background/60 flex items-center justify-center text-muted-foreground/40 group-hover:border-primary/50 group-hover:text-primary/70 transition"
+                  >
+                    <Award className="h-5 w-5 notranslate opacity-60" />
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2.5 text-xs font-medium text-muted-foreground group-hover:text-foreground transition text-center">
+                Pin your favourite badges
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* =========================================================================
+            4. FOUR STAT TILES: Helps Given, Requests, Hours Active, Trust Score
+           ========================================================================= */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 w-full pt-4 border-t border-border/70">
           {/* Tile 1: Helps Given -> switches to Activity tab */}
           <button
             type="button"
             onClick={() => onSelectTab('activity')}
-            className="p-3.5 rounded-2xl bg-background/80 hover:bg-muted/50 border border-border/80 flex flex-col items-center sm:items-start text-center sm:text-left transition-all group focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
+            className="p-3 sm:p-3.5 rounded-2xl bg-background/80 hover:bg-muted/50 border border-border/80 flex flex-col items-center sm:items-start text-center sm:text-left transition-all group focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
           >
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-primary transition-colors font-semibold">
               <HeartHandshake className="h-4 w-4 text-primary notranslate shrink-0" />
@@ -414,7 +444,7 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
           <button
             type="button"
             onClick={() => onSelectTab('activity')}
-            className="p-3.5 rounded-2xl bg-background/80 hover:bg-muted/50 border border-border/80 flex flex-col items-center sm:items-start text-center sm:text-left transition-all group focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
+            className="p-3 sm:p-3.5 rounded-2xl bg-background/80 hover:bg-muted/50 border border-border/80 flex flex-col items-center sm:items-start text-center sm:text-left transition-all group focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
           >
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-teal-600 transition-colors font-semibold">
               <FileCheck className="h-4 w-4 text-teal-500 notranslate shrink-0" />
@@ -434,7 +464,7 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
           <button
             type="button"
             onClick={() => onSelectTab('impact')}
-            className="p-3.5 rounded-2xl bg-background/80 hover:bg-muted/50 border border-border/80 flex flex-col items-center sm:items-start text-center sm:text-left transition-all group focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
+            className="p-3 sm:p-3.5 rounded-2xl bg-background/80 hover:bg-muted/50 border border-border/80 flex flex-col items-center sm:items-start text-center sm:text-left transition-all group focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
           >
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-indigo-600 transition-colors font-semibold">
               <Clock className="h-4 w-4 text-indigo-500 notranslate shrink-0" />
@@ -449,7 +479,7 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
           <button
             type="button"
             onClick={() => onSelectTab('badges')}
-            className="p-3.5 rounded-2xl bg-background/80 hover:bg-muted/50 border border-border/80 flex flex-col items-center sm:items-start text-center sm:text-left transition-all group focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
+            className="p-3 sm:p-3.5 rounded-2xl bg-background/80 hover:bg-muted/50 border border-border/80 flex flex-col items-center sm:items-start text-center sm:text-left transition-all group focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
           >
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-amber-500 transition-colors font-semibold">
               <Star className="h-4 w-4 fill-amber-400 text-amber-500 notranslate shrink-0" />
@@ -474,6 +504,37 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
           </button>
         </div>
       </div>
+
+      {/* =========================================================================
+          5. BADGE DETAIL SHEET (When a pinned medal is tapped)
+         ========================================================================= */}
+      <BadgeDetailSheet
+        badge={selectedBadge}
+        open={Boolean(selectedBadge)}
+        onClose={() => setSelectedBadge(null)}
+        onTogglePin={handleTogglePin}
+        isPinned={
+          selectedBadge
+            ? (userProfile.pinnedBadges || []).includes(selectedBadge.id) ||
+              (userProfile.pinnedBadges || []).includes(selectedBadge.key)
+            : false
+        }
+        pinnedCount={(userProfile.pinnedBadges || []).length}
+      />
+
+      {/* =========================================================================
+          6. BADGE PINNING SELECTOR MODAL
+         ========================================================================= */}
+      <BadgePinningModal
+        open={isPinningOpen}
+        onClose={() => setIsPinningOpen(false)}
+        badges={allBadges}
+        pinnedIds={userProfile.pinnedBadges || []}
+        onTogglePin={handleTogglePin}
+        onViewAllBadges={() => onSelectTab('badges')}
+      />
     </div>
   );
 }
+
+export default ProfileHeader;

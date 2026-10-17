@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { BadgesTab } from './tabs/BadgesTab';
 import { BadgeMedalIcon } from './BadgeMedalIcon';
 import { calculateBadgesForUser } from '@/lib/data/badges';
@@ -67,6 +67,61 @@ export function ProfileView() {
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<EmergencyContact | null>(null);
   const [reviewsModalOpen, setReviewsModalOpen] = useState(false);
+
+  // Guard scroll position across opening and closing modals & sheets (NEVER alter scrollY)
+  const savedScrollYRef = useRef<number>(0);
+  const anyModalOpen = editProfileOpen || contactModalOpen || reviewsModalOpen;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (anyModalOpen) {
+      savedScrollYRef.current = window.scrollY;
+    } else {
+      const saved = savedScrollYRef.current;
+      if (typeof window.scrollY === 'number' && window.scrollY !== saved) {
+        window.scrollTo({ top: saved, behavior: 'instant' as ScrollBehavior });
+      }
+    }
+  }, [anyModalOpen]);
+
+  // Tab switching: Do NOT jump or scroll if near top; gently bring tab into view only if scrolled past
+  const handleTabChange = useCallback((newTab: ProfileTab) => {
+    setActiveTab(newTab);
+
+    if (typeof window === 'undefined') return;
+
+    const tabStrip = document.getElementById('profile-tabs-strip');
+    const headerOffset = window.innerWidth >= 1024 ? 72 : 64;
+
+    const mainEl = document.querySelector('main');
+    if (mainEl && mainEl.scrollTop > 0) {
+      if (tabStrip) {
+        const rect = tabStrip.getBoundingClientRect();
+        const mainRect = mainEl.getBoundingClientRect();
+        const relativeTop = rect.top - mainRect.top;
+        if (relativeTop < headerOffset - 4) {
+          mainEl.scrollTo({
+            top: Math.max(0, mainEl.scrollTop + relativeTop - headerOffset),
+            behavior: 'smooth',
+          });
+        }
+      }
+      return;
+    }
+
+    if (tabStrip) {
+      const rect = tabStrip.getBoundingClientRect();
+      if (rect.top < headerOffset - 4) {
+        const currentScrollY = window.scrollY;
+        const targetScrollY = currentScrollY + rect.top - headerOffset;
+        window.scrollTo({
+          top: Math.max(0, targetScrollY),
+          behavior: 'smooth',
+        });
+      }
+    }
+  }, []);
 
   // Real requests created by this user
   const myActiveRequests = (requests || []).filter(
@@ -226,7 +281,7 @@ export function ProfileView() {
          ========================================================================= */}
       <ProfileHeader
         onEditProfile={() => setEditProfileOpen(true)}
-        onSelectTab={(tab) => setActiveTab(tab)}
+        onSelectTab={(tab) => handleTabChange(tab)}
       />
 
       {/* =========================================================================
@@ -234,7 +289,7 @@ export function ProfileView() {
          ========================================================================= */}
       <ProfileTabs
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         activityCount={totalActivityCount}
         badgesCount={earnedBadgesCount}
         hasVerificationAlert={userProfile.verificationState !== 'verified'}
@@ -246,7 +301,7 @@ export function ProfileView() {
       {activeTab === 'overview' && (
         <OverviewTab
           onEditProfile={() => setEditProfileOpen(true)}
-          onSelectTab={(tab) => setActiveTab(tab)}
+          onSelectTab={(tab) => handleTabChange(tab)}
         />
       )}
 
@@ -270,7 +325,7 @@ export function ProfileView() {
       )}
 
       {/* =========================================================================
-          6. TAB 4: IMPACT (Verified mutual aid impact, totals, breakdown, streak)
+          6. TAB 4: IMPACT (Verified community impact, totals, breakdown, streak)
          ========================================================================= */}
       {activeTab === 'impact' && (
         <ImpactTab

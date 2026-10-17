@@ -58,7 +58,42 @@ All custom illustrations located in `public/illustrations/` were created for Kin
 
 ---
 
-## 5. Software Libraries & Platform Acknowledgements
+## 5. Custom SVG Badge Medal Artwork & Glyphs
+
+All medal artwork and 18 distinct vector glyphs in `components/profile/BadgeMedalIcon.tsx` were designed specifically for KindLink under the project's [MIT License](file:///data/data/com.termux/files/home/storage/downloads/KindLink/LICENSE).
+
+### Metallic Tier Gradients & Finishes
+- **Bronze**: Rich copper/bronze metallic gradient (`#B45309` to `#78350F`) with soft warm shine and amber sheen.
+- **Silver**: Crisp silver metallic gradient (`#94A3B8` to `#475569`) with cool chrome specular highlight.
+- **Gold**: Radiant amber/gold metallic gradient (`#F59E0B` to `#B45309`) with luminous warm sheen.
+- **Platinum**: High-end icy platinum gradient (`#38BDF8` to `#6366F1`) with violet/cyan shimmer.
+- **Locked**: Flat, muted dark/light grey silhouette with semi-transparent glyph and security lock badge.
+
+### 18 Distinct SVG Glyphs
+| Badge Key | Badge Title | Distinct Glyph Artwork Motif |
+| :--- | :--- | :--- |
+| `life_saver` | Life Saver | Blood droplet with inner heart and specular shine arc. |
+| `community_pillar` | Community Pillar | Classical triumvirate columns, pediment entablature, and stepped plinth. |
+| `emergency_first_responder` | Emergency First Responder | Siren beacon with emergency Greek cross and radial flash rays. |
+| `quick_responder` | Quick Responder | Circular stopwatch with top pusher stem and dynamic electric lightning bolt. |
+| `trusted_neighbour` | Trusted Local Neighbour | Home roof gable with chimney, protective shield, and warm heart. |
+| `study_mentor` | Study and Books Mentor | Open book pages with floating academic mortarboard cap and tassel. |
+| `medical_gear_lender` | Medical Gear Lender | Wheelchair profile, spoked wheel, caster, and medical cross badge. |
+| `elder_friend` | Elder Friend | Two caring hands lifting and protecting a radiant heart. |
+| `safe_ride_hero` | Safe Ride Hero | Transport vehicle silhouette protected within an outer shield emblem. |
+| `helper_streak` | Helper Streak | Blazing multi-tongue flame with hot inner fire core. |
+| `first_help` | First Help | Radiant golden 5-point star with facet highlights and sparkle flares. |
+| `verified_doctor` | Verified Doctor | Stethoscope binaural tubing looping into a resonator seal with verified checkmark. |
+| `verified_student` | Verified Student Member | Academic graduation mortarboard with dangling tassel and verified checkmark seal. |
+| `verified_nurse` | Verified Nurse / Paramedic | Emergency Greek cross with medical caduceus / heart emblem. |
+| `verified_pharmacist` | Verified Pharmacist | Mortar bowl with angled pestle and verified checkmark seal. |
+| `verified_teacher` | Verified Teacher or Mentor | Chalkboard slate frame and writing quill with verified checkmark. |
+| `verified_ngo` | Verified Organisation / NGO | Institutional NGO portico building with classical pillars and verified shield. |
+| `verified_member` | Verified Member | KindLink curved security shield with verified checkmark. |
+
+---
+
+## 6. Software Libraries & Platform Acknowledgements
 
 - **Next.js & React**: Vercel Inc. (MIT License)
 - **Tailwind CSS**: Tailwind Labs Inc. (MIT License)
@@ -66,3 +101,4 @@ All custom illustrations located in `public/illustrations/` were created for Kin
 - **Leaflet & React-Leaflet**: Vladimir Agafonkin and contributors (BSD-2-Clause)
 - **Sonner**: Emil Kowalski (MIT License)
 - **Supabase Client**: Supabase Inc. (Apache-2.0)
+

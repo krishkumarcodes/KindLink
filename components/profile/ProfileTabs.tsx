@@ -63,11 +63,15 @@ export function ProfileTabs({
     { id: 'settings', label: 'Settings', icon: Sliders },
   ];
 
-  // Auto scroll active tab into view smoothly
+  // Auto scroll active tab into view smoothly inside horizontal container ONLY (never scroll window)
   useEffect(() => {
     const activeEl = tabButtonRefs.current[activeTab];
-    if (activeEl) {
-      activeEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    const container = scrollContainerRef.current;
+    if (container && activeEl) {
+      const containerLeft = container.getBoundingClientRect().left;
+      const activeLeft = activeEl.getBoundingClientRect().left;
+      const offset = activeLeft - containerLeft - (container.clientWidth / 2 - activeEl.clientWidth / 2);
+      container.scrollTo({ left: container.scrollLeft + offset, behavior: 'smooth' });
     }
   }, [activeTab]);
 
@@ -88,12 +92,15 @@ export function ProfileTabs({
       e.preventDefault();
       const nextTab = tabs[nextIndex];
       onTabChange(nextTab.id);
-      tabButtonRefs.current[nextTab.id]?.focus();
+      tabButtonRefs.current[nextTab.id]?.focus({ preventScroll: true });
     }
   };
 
   return (
-    <div className="sticky top-[64px] lg:top-[72px] z-20 -mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 bg-background/95 backdrop-blur-md border-b border-border/80 py-2.5 transition-colors">
+    <div
+      id="profile-tabs-strip"
+      className="sticky top-[64px] lg:top-[72px] z-20 -mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 bg-background/95 backdrop-blur-md border-b border-border/80 py-2.5 transition-colors"
+    >
       <div className="relative max-w-5xl mx-auto">
         {/* Soft fade edges on left & right to indicate scrollability */}
         <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-5 bg-gradient-to-r from-background via-background/60 to-transparent z-10" />

@@ -20,7 +20,6 @@ import {
   XCircle,
   Loader2,
   Check,
-  ShieldCheck,
   HeartPulse,
   AlertOctagon,
   MessageSquare,
@@ -30,9 +29,7 @@ import {
   ExternalLink,
   MapPin,
   X,
-  Radio,
   Sliders,
-  HelpCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
@@ -41,10 +38,9 @@ import { LanguageModal } from '../shell/LanguageModal';
 import {
   getCurrentLanguageCode,
   SUPPORTED_LANGUAGES,
-  changeLanguageInstantly,
 } from '@/lib/translate/googleTranslate';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
-import { Switch, SwitchRow } from '@/components/ui/Switch';
+import { SwitchRow } from '@/components/ui/Switch';
 
 export function SettingsView() {
   const { theme, setTheme } = useTheme();
@@ -305,7 +301,7 @@ export function SettingsView() {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       try {
         new Notification('KindLink Test Alert', {
-          body: 'This is a test notification. Emergency blood and mutual aid alerts will appear here.',
+          body: 'This is a test notification. Emergency blood and community help alerts will appear here.',
           icon: '/icon.svg',
           tag: 'kindlink-test',
         });
@@ -313,7 +309,7 @@ export function SettingsView() {
     }
 
     // 3. Always show in-app toast preview
-    toast.success('Test notification dispatched! Alerts will appear on your device when volunteers respond.', {
+    toast.success('Test notification sent! Alerts will appear on your device when neighbors respond.', {
       duration: 4000,
       icon: <Bell className="h-4 w-4 text-primary notranslate" />,
     });
@@ -374,30 +370,30 @@ export function SettingsView() {
   const currentLang = SUPPORTED_LANGUAGES.find((l) => l.code === langCode);
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full pb-36 lg:pb-16 text-foreground">
+    <div className="flex-1 space-y-3.5 sm:space-y-4 px-3 sm:px-4 py-4 sm:py-6 max-w-4xl mx-auto w-full pb-36 lg:pb-16 text-foreground">
       {/* Page Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
           Settings &amp; Security
         </h1>
         <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-          Customise appearance, typography accessibility, real-time push dispatch, password credentials, and privacy controls.
+          Customise appearance, text size, notifications, password, and privacy settings.
         </p>
       </div>
 
-      <div className="space-y-5">
+      <div className="space-y-3.5 sm:space-y-4">
         {/* =========================================================================
             1. APPEARANCE THEME (Light, Dark, System)
            ========================================================================= */}
-        <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-4">
+        <div className="rounded-3xl border border-border bg-card p-3.5 sm:p-4 shadow-soft space-y-3.5">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500">
+            <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500">
               <Sun className="h-5 w-5 notranslate" />
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-bold text-foreground">Appearance Theme</h2>
               <p className="text-xs text-muted-foreground">
-                High-contrast WCAG AA compliant palette optimized for outdoor daylight and low-light night shifts
+                Choose a comfortable theme for daytime or night use
               </p>
             </div>
           </div>
@@ -432,17 +428,17 @@ export function SettingsView() {
         {/* =========================================================================
             2. TEXT SIZE & READABILITY (Compact, Standard, Elderly Large)
            ========================================================================= */}
-        <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-4">
+        <div className="rounded-3xl border border-border bg-card p-3.5 sm:p-4 shadow-soft space-y-3.5">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-500">
+            <div className="p-2.5 rounded-2xl bg-blue-500/10 text-blue-500">
               <Type className="h-5 w-5 notranslate" />
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-bold text-foreground">
-                Text Size &amp; Readability
+                Text Size
               </h2>
               <p className="text-xs text-muted-foreground">
-                Scales root font size dynamically. Elderly Large expands touch targets to ≥52px with generous button padding.
+                Make text easier to read across KindLink.
               </p>
             </div>
           </div>
@@ -500,7 +496,7 @@ export function SettingsView() {
               checked={reduceMotion}
               onCheckedChange={handleReduceMotionToggle}
               label="Reduce Animations & Motion"
-              description="Disables animated banners, decorative map pulses, and transitions for users sensitive to motion."
+              description="Disables animations and transitions across the app."
               icon={<Sliders className="h-4 w-4" />}
             />
           </div>
@@ -509,9 +505,9 @@ export function SettingsView() {
         {/* =========================================================================
             3. LANGUAGE SELECTOR & PERSISTENCE
            ========================================================================= */}
-        <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="rounded-3xl border border-border bg-card p-3.5 sm:p-4 shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-teal-500/10 text-teal-600">
+            <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-600">
               <Globe className="h-5 w-5 notranslate" />
             </div>
             <div>
@@ -520,7 +516,7 @@ export function SettingsView() {
                 Active: <span className="font-bold text-foreground">{currentLang?.nativeName || 'English'}</span> ({currentLang?.name || 'English'})
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Saved to cookie, localStorage, and persisted to database profile to prevent flash of English.
+                Your choice is saved on this device and your account.
               </p>
             </div>
           </div>
@@ -535,17 +531,17 @@ export function SettingsView() {
         {/* =========================================================================
             4. PUSH NOTIFICATIONS & REAL-TIME ALERTS (REDESIGNED)
            ========================================================================= */}
-        <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-4">
+        <div className="rounded-3xl border border-border bg-card p-3.5 sm:p-4 shadow-soft space-y-3.5">
           {/* Header & Status Row */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-600">
+              <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-600">
                 <Bell className="h-5 w-5 notranslate" />
               </div>
               <div>
                 <h2 className="text-sm sm:text-base font-bold text-foreground">Push Notifications &amp; Alerts</h2>
                 <p className="text-xs text-muted-foreground">
-                  Real-time push dispatches for life-safety emergency blood and neighbourhood mutual aid
+                  Get alerts for urgent help and community requests near you
                 </p>
               </div>
             </div>
@@ -603,7 +599,7 @@ export function SettingsView() {
               </div>
 
               <p className="text-[11px] text-muted-foreground">
-                To receive life-saving blood alerts and SOS beacons, unblock notifications using these steps:
+                To receive urgent blood and emergency alerts, turn on notifications using these steps:
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-xs">
@@ -646,7 +642,7 @@ export function SettingsView() {
                 toast.success(`Emergency blood alerts ${checked ? 'enabled' : 'disabled'}`);
               }}
               label="Emergency alerts near you"
-              description="High-priority dispatches for life-threatening blood requests, platelet transfusions, and critical hospital transport."
+              description="Urgent alerts for emergency blood requests, platelet needs, and hospital transport."
               icon={<HeartPulse className="h-4 w-4 text-rose-500" />}
               badge={
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400">
@@ -665,7 +661,7 @@ export function SettingsView() {
                 toast.success(`SOS distress alerts ${checked ? 'enabled' : 'disabled'}`);
               }}
               label="SOS from neighbours"
-              description="Instant distress beacon whenever a verified neighbour triggers an emergency safety beacon."
+              description="Instant emergency alert when a verified neighbor in your area asks for help."
               icon={<AlertOctagon className="h-4 w-4 text-amber-500" />}
               badge={
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
@@ -685,7 +681,7 @@ export function SettingsView() {
                   toast.success(`Nearby request alerts ${checked ? 'enabled' : 'disabled'}`);
                 }}
                 label="New requests near you"
-                description="Mutual aid requests within your preferred distance radius (study materials, elderly assistance, mobility gear)."
+                description="Community requests within your chosen distance (study materials, elder care, mobility items)."
                 icon={<MapPin className="h-4 w-4 text-teal-600" />}
                 className="p-0 border-0 bg-transparent hover:bg-transparent"
               />
@@ -732,7 +728,7 @@ export function SettingsView() {
                 toast.success(`Task reply alerts ${checked ? 'enabled' : 'disabled'}`);
               }}
               label="Replies to my requests and offers"
-              description="Notifications when community volunteers offer help or respond to tasks you submitted."
+              description="Notifications when community neighbors offer help or respond to your requests."
               icon={<MessageSquare className="h-4 w-4 text-blue-500" />}
             />
 
@@ -746,7 +742,7 @@ export function SettingsView() {
                 toast.success(`In-app alert sound ${checked ? 'enabled' : 'muted'}`);
               }}
               label="Alert sound when KindLink is open"
-              description="Plays an audible resonant chime when urgent tasks appear on your screen. (Note: Mobile operating systems control sound and vibration when the browser is closed or backgrounded)."
+              description="Plays a sound when KindLink is open. (Phones control sound and vibration when the browser is closed)."
               icon={<Volume2 className="h-4 w-4 text-indigo-500" />}
             />
           </div>
@@ -762,7 +758,7 @@ export function SettingsView() {
                 toast.success(`Quiet hours ${checked ? 'enabled' : 'disabled'}`);
               }}
               label="Quiet hours for non-emergency alerts"
-              description="Mutes regular mutual aid notifications during your sleep hours. Emergency blood requests and neighbour SOS alerts always bypass quiet hours."
+              description="Pauses regular notifications during your sleep hours. Emergency blood requests and neighbor SOS alerts always bypass quiet hours."
               icon={<Clock className="h-4 w-4 text-purple-500" />}
               className="p-0 border-0 bg-transparent hover:bg-transparent"
             />
@@ -810,7 +806,7 @@ export function SettingsView() {
 
             <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
               <Shield className="h-3.5 w-3.5 text-teal-600 notranslate shrink-0" />
-              <span>Notification tokens are encrypted; exact GPS is never transmitted in payloads.</span>
+              <span>Your notification tokens are encrypted and your exact GPS location is never shared.</span>
             </div>
           </div>
         </div>
@@ -818,17 +814,17 @@ export function SettingsView() {
         {/* =========================================================================
             5. PWA MOBILE APP CARD
            ========================================================================= */}
-        <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="rounded-3xl border border-border bg-card p-3.5 sm:p-4 shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-teal-500/10 text-teal-600">
+            <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-600">
               <Smartphone className="h-5 w-5 notranslate" />
             </div>
             <div>
-              <h2 className="text-sm sm:text-base font-bold text-foreground">KindLink Mobile Web App</h2>
+              <h2 className="text-sm sm:text-base font-bold text-foreground">KindLink Mobile App</h2>
               <p className="text-xs text-muted-foreground">
                 {isPwaInstalled
-                  ? 'KindLink is installed and operating in standalone mode.'
-                  : 'Install to your home screen for instant offline access and fast emergency response.'}
+                  ? 'KindLink is installed on your device.'
+                  : 'Add to your home screen for fast one-tap access and quick emergency alerts.'}
               </p>
             </div>
           </div>
@@ -846,15 +842,15 @@ export function SettingsView() {
         {/* =========================================================================
             6. ACCOUNT SECURITY ("Change your password" & Session control)
            ========================================================================= */}
-        <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-4">
+        <div className="rounded-3xl border border-border bg-card p-3.5 sm:p-4 shadow-soft space-y-3.5">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-rose-500/10 text-rose-500">
+            <div className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-500">
               <Lock className="h-5 w-5 notranslate" />
             </div>
             <div>
-              <h2 className="text-sm sm:text-base font-bold text-foreground">Account Security &amp; Password</h2>
+              <h2 className="text-sm sm:text-base font-bold text-foreground">Change Password</h2>
               <p className="text-xs text-muted-foreground">
-                Verify current password and update your credentials via Supabase GoTrue with live strength auditing
+                Enter your current password to choose a new secure password
               </p>
             </div>
           </div>
@@ -868,7 +864,7 @@ export function SettingsView() {
                 Sign out of all other devices
               </strong>
               <p className="text-[11px] text-muted-foreground">
-                Revokes active refresh tokens across other phones and browsers while keeping this session signed in.
+                Signs out all your other phones and computers while keeping you signed in here.
               </p>
             </div>
             <button
@@ -878,7 +874,7 @@ export function SettingsView() {
               className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-background border border-border hover:bg-muted text-xs font-bold text-foreground transition touch-target self-start sm:self-auto shrink-0"
             >
               {revokingOthers && <Loader2 className="h-3.5 w-3.5 animate-spin notranslate" />}
-              <span>{revokingOthers ? 'Revoking Sessions...' : 'Revoke Other Devices'}</span>
+              <span>{revokingOthers ? 'Signing Out...' : 'Sign Out Other Devices'}</span>
             </button>
           </div>
         </div>
@@ -886,15 +882,15 @@ export function SettingsView() {
         {/* =========================================================================
             7. MAP DATA & CREDITS
            ========================================================================= */}
-        <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-4">
+        <div className="rounded-3xl border border-border bg-card p-3.5 sm:p-4 shadow-soft space-y-3.5">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
+            <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
               <Layers className="h-5 w-5 notranslate" />
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-bold text-foreground">Map Data &amp; Credits</h2>
               <p className="text-xs text-muted-foreground">
-                Geospatial basemaps, address geocoding, and routing services powering KindLink
+                Map tiles, search, and routes powering KindLink
               </p>
             </div>
           </div>
@@ -962,7 +958,7 @@ export function SettingsView() {
         {/* =========================================================================
             8. SESSION CONTROL & REQUEST ACCOUNT DELETION FLOW
            ========================================================================= */}
-        <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-4">
+        <div className="rounded-3xl border border-border bg-card p-3.5 sm:p-4 shadow-soft space-y-3.5">
           <h2 className="text-sm sm:text-base font-bold text-foreground">Session Control &amp; Danger Zone</h2>
 
           {/* Sign Out Button */}
@@ -972,7 +968,7 @@ export function SettingsView() {
                 Sign Out of KindLink
               </strong>
               <p className="text-[11px] text-muted-foreground">
-                Terminates your active session on this device and clears local storage.
+                Signs you out of KindLink on this device.
               </p>
             </div>
             <button
@@ -1082,7 +1078,7 @@ export function SettingsView() {
                   }}
                   className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition touch-target shrink-0 self-start sm:self-auto"
                 >
-                  Finalize &amp; Purge Account
+                  Finalize Account Deletion
                 </button>
               </div>
             )}
@@ -1127,7 +1123,7 @@ export function SettingsView() {
         </div>
       </div>
 
-      {/* LANGUAGE MODAL (Persists to cookie, localStorage, and database via /api/auth/profile) */}
+      {/* LANGUAGE MODAL (Saved on this device and your account) */}
       <LanguageModal open={langModalOpen} onClose={() => setLangModalOpen(false)} />
 
       {/* IOS / PWA INSTRUCTIONS MODAL */}

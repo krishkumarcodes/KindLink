@@ -99,13 +99,14 @@ export interface EmergencyContact {
   relationship: string;
 }
 
-export type FieldVisibility = 'public' | 'helpers' | 'private';
+export type VisibilityLevel = 'members' | 'matched' | 'private';
+export type FieldVisibility = VisibilityLevel | 'public' | 'helpers' | 'all';
 
 export interface ProfileVisibilitySettings {
-  phone?: FieldVisibility;
-  email?: FieldVisibility;
-  organisation?: FieldVisibility;
-  area?: FieldVisibility;
+  phone?: VisibilityLevel | FieldVisibility;
+  email?: VisibilityLevel | FieldVisibility;
+  organisation?: VisibilityLevel | FieldVisibility;
+  area?: VisibilityLevel | FieldVisibility;
 }
 
 export interface UserProfile {
@@ -116,11 +117,17 @@ export interface UserProfile {
   email: string;
   phone: string;
   college: string;
+  organisation?: string;
   avatarUrl?: string;
   homeNeighborhood?: string;
+  area_name?: string;
   languages?: string[];
   emergencyContacts?: EmergencyContact[];
   visibility?: ProfileVisibilitySettings;
+  visibility_phone?: VisibilityLevel;
+  visibility_email?: VisibilityLevel;
+  visibility_organisation?: VisibilityLevel;
+  visibility_area?: VisibilityLevel;
   rating: number;
   ratingCount?: number;
   helpsCount: number;

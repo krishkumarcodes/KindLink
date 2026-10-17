@@ -168,6 +168,17 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
     }
   }, [open, userProfile]);
 
+  // Preserve window.scrollY across modal open and close
+  useEffect(() => {
+    if (!open) return;
+    const savedScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+    return () => {
+      if (typeof window !== 'undefined' && window.scrollY !== savedScrollY) {
+        window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior });
+      }
+    };
+  }, [open]);
+
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -517,14 +528,25 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
                     {displayName.charAt(0).toUpperCase() || 'K'}
                   </div>
                 )}
+                {/* Perfect circle camera badge (40px with 3px ring-background, 44px tap target area, centered on corner) */}
                 <button
                   type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 p-2 rounded-xl bg-primary text-white shadow-md hover:bg-primary-hover transition touch-target"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  className="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 min-w-[44px] min-h-[44px] p-0.5 flex items-center justify-center rounded-full group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 z-10"
                   title="Upload Photo"
                   aria-label="Upload profile photo"
                 >
-                  <Camera className="h-3.5 w-3.5 notranslate" />
+                  <div className="w-10 h-10 rounded-full bg-primary hover:bg-primary-hover text-white shadow-md ring-[3px] ring-background flex items-center justify-center transition-transform active:scale-95 group-hover:scale-105">
+                    <Camera className="w-[18px] h-[18px] notranslate" />
+                  </div>
                 </button>
                 <input
                   ref={fileInputRef}
@@ -574,9 +596,9 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
 
             {/* Full Display Name */}
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-baseline justify-between mb-1.5">
                 <label htmlFor="profile-display-name" className="text-xs font-bold text-foreground">
-                  Full Display Name <span className="text-rose-500">*</span>
+                  Full Display Name <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <span className="text-[10px] text-muted-foreground font-mono">
                   {displayName.length} / 60
@@ -597,20 +619,20 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
                 }`}
               />
               {displayName.trim().length > 0 && displayName.trim().length < 2 && (
-                <p className="text-[10px] text-rose-500 font-semibold mt-1">
+                <p className="text-[10px] text-rose-500 font-semibold mt-1.5 px-0.5">
                   Display name must be between 2 and 60 characters.
                 </p>
               )}
-              <p className="text-[10px] text-muted-foreground mt-1">
+              <p className="text-[10px] text-muted-foreground mt-1.5 px-0.5">
                 Your real name displayed to neighbors and matched emergency responders.
               </p>
             </div>
 
             {/* Username (@handle) with perfectly centered '@' input addon */}
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-baseline justify-between mb-1.5">
                 <label htmlFor="profile-username" className="text-xs font-bold text-foreground">
-                  Username (@handle) <span className="text-rose-500">*</span>
+                  Username (@handle) <span className="text-rose-500 font-bold">*</span>
                 </label>
                 {isCheckingUsername && (
                   <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold">
@@ -634,7 +656,7 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
 
               {/* Flex input addon with 0px baseline misalignment */}
               <div
-                className={`flex items-center w-full rounded-xl border bg-background overflow-hidden transition ${
+                className={`flex items-center w-full h-11 rounded-xl border bg-background overflow-hidden transition ${
                   usernameAvailable === false
                     ? 'border-rose-400 focus-within:ring-2 focus-within:ring-rose-500/20'
                     : usernameAvailable === true
@@ -642,7 +664,7 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
                     : 'border-border focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20'
                 }`}
               >
-                <span className="flex items-center justify-center pl-3.5 pr-2 py-2.5 text-muted-foreground font-bold text-xs select-none shrink-0 leading-none">
+                <span className="flex items-center leading-none text-muted-foreground select-none pl-3 pr-1.5 font-mono text-xs font-semibold shrink-0 h-full">
                   @
                 </span>
                 <input
@@ -655,10 +677,10 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
                     setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))
                   }
                   placeholder="username"
-                  className="w-full py-2.5 pr-3.5 bg-transparent text-foreground text-xs font-mono focus:outline-none leading-none touch-target"
+                  className="w-full h-full py-0 pr-3.5 bg-transparent text-foreground text-xs font-mono focus:outline-none leading-none touch-target"
                 />
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1">
+              <p className="text-[10px] text-muted-foreground mt-1.5 px-0.5">
                 3-20 characters: lowercase letters, numbers, and underscores. Your unique handle on
                 KindLink.
               </p>
@@ -668,74 +690,78 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
           {/* =========================================================================
               SECTION 3: ABOUT
              ========================================================================= */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
-                About
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowBioPreview(!showBioPreview)}
-                className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline touch-target"
-              >
-                {showBioPreview ? (
-                  <>
-                    <EyeOff className="h-3.5 w-3.5 notranslate" />
-                    <span>Edit Bio</span>
-                  </>
-                ) : (
-                  <>
-                    <Eye className="h-3.5 w-3.5 notranslate" />
-                    <span>Preview Bio</span>
-                  </>
-                )}
-              </button>
-            </div>
+          <div className="space-y-3">
+            <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
+              About
+            </h3>
 
-            {showBioPreview ? (
-              <div className="p-4 rounded-2xl bg-muted/40 border border-border space-y-2 animate-fade-in">
-                <div className="flex items-center justify-between text-xs font-bold text-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <Quote className="h-4 w-4 text-primary notranslate" />
-                    <span>Profile Bio Preview</span>
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-normal">
-                    How neighbors see you
-                  </span>
-                </div>
-                <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
-                  {bio.trim() || (
-                    <span className="italic text-muted-foreground">
-                      No bio written yet. Share what mutual aid skills, equipment loans, or assistance
-                      you can offer!
-                    </span>
-                  )}
-                </p>
-              </div>
-            ) : (
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label htmlFor="profile-bio" className="text-xs font-bold text-foreground">
-                    Community Bio
-                  </label>
+            {/* Label, Character Counter, and Preview Toggle aligned on same baseline */}
+            <div>
+              <div className="flex items-baseline justify-between mb-1.5">
+                <label htmlFor="profile-bio" className="text-xs font-bold text-foreground">
+                  Community Bio
+                </label>
+                <div className="flex items-baseline gap-3 text-xs">
                   <span className="text-[10px] text-muted-foreground font-mono">
                     {bio.length} / 500
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowBioPreview(!showBioPreview)}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline touch-target"
+                  >
+                    {showBioPreview ? (
+                      <>
+                        <EyeOff className="h-3.5 w-3.5 notranslate self-center" />
+                        <span>Edit Bio</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-3.5 w-3.5 notranslate self-center" />
+                        <span>Preview Bio</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-                <textarea
-                  id="profile-bio"
-                  rows={3}
-                  maxLength={500}
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  placeholder="Tell neighbors how you can help (e.g. available for blood donation, wheelchair loan, student tutoring, emergency rides)..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none leading-relaxed touch-target"
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Max 500 characters. Toggle Preview anytime to check how it looks on your public card.
-                </p>
               </div>
-            )}
+
+              {showBioPreview ? (
+                <div className="p-4 rounded-2xl bg-muted/40 border border-border space-y-2 animate-fade-in">
+                  <div className="flex items-center justify-between text-xs font-bold text-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <Quote className="h-4 w-4 text-primary notranslate shrink-0" />
+                      <span>Profile Bio Preview</span>
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-normal">
+                      How neighbors see you
+                    </span>
+                  </div>
+                  <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
+                    {bio.trim() || (
+                      <span className="italic text-muted-foreground">
+                        No bio written yet. Share what community skills, equipment loans, or assistance
+                        you can offer!
+                      </span>
+                    )}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <textarea
+                    id="profile-bio"
+                    rows={3}
+                    maxLength={500}
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="Tell neighbors how you can help (e.g. available for blood donation, wheelchair loan, student tutoring, emergency rides)..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none leading-relaxed touch-target"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1.5 px-0.5">
+                    Max 500 characters. Toggle Preview anytime to check how it looks on your public card.
+                  </p>
+                </>
+              )}
+            </div>
           </div>
 
           {/* =========================================================================
@@ -933,7 +959,7 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
                 )}
               </div>
               <p className="text-[10px] text-muted-foreground">
-                Matches mutual aid requests within 2 to 5 km of your primary neighborhood.
+                Matches community help requests within 2 to 5 km of your primary neighborhood.
               </p>
 
               {/* Visibility Selector for Area */}

@@ -172,7 +172,7 @@ export function ActivityTab({
         };
       default:
         return {
-          label: 'Mutual Aid',
+          label: 'Community Help',
           icon: HeartHandshake,
           pillClass: 'text-primary bg-primary/10 border-primary/20',
           circleBg: 'bg-primary/10 text-primary',
@@ -274,7 +274,7 @@ export function ActivityTab({
         setSelectedRequest({
           id: item.requestId,
           title: item.title,
-          description: item.message || 'KindLink Community Mutual Aid Request',
+          description: item.message || 'KindLink Community Help Request',
           category: item.category,
           urgency: 'high',
           waitingMinutes: 15,
@@ -495,12 +495,12 @@ export function ActivityTab({
             </h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
               {subTab === 'helps'
-                ? 'When you accept and complete urgent neighbor requests, your mutual aid records will appear here.'
+                ? 'When you accept and complete urgent neighbor requests, your help records will appear here.'
                 : subTab === 'requests'
                 ? "You haven't posted any help requests yet. Need emergency blood, medical gear, or assistance?"
                 : subTab === 'offers'
                 ? 'You have not submitted volunteer offers on open community requests yet.'
-                : 'Your mutual aid history, posted requests, and volunteer offers will be cataloged here.'}
+                : 'Your community help history, posted requests, and volunteer offers will be saved here.'}
             </p>
           </div>
 

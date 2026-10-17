@@ -28,6 +28,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Select } from '@/components/ui/Select';
 
 export interface PublicMemberProfile {
   id: string;
@@ -41,13 +42,21 @@ export interface PublicMemberProfile {
   createdAt: string;
   bio?: string | null;
   college?: string | null;
+  organisation?: string | null;
   homeNeighborhood?: string | null;
+  area_name?: string | null;
   languages?: string[] | null;
   badges?: string[] | null;
   phone?: string | null;
   email?: string | null;
   phoneVisible: boolean;
   emailVisible: boolean;
+  orgVisible?: boolean;
+  areaVisible?: boolean;
+  visibility_phone?: string;
+  visibility_email?: string;
+  visibility_organisation?: string;
+  visibility_area?: string;
   isSelf: boolean;
 }
 
@@ -187,7 +196,7 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
     {
       id: 'neighbor_aid',
       title: 'Community Pillar',
-      desc: 'Completed multiple verified mutual aid requests in neighborhood',
+      desc: 'Completed multiple verified community help requests in neighborhood',
       icon: '🤝',
       unlocked: member.badges?.some((b) => /pillar|first|neighbor/i.test(b)) ?? member.ratingCount > 0,
     },
@@ -424,21 +433,49 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
 
         {/* Organization & Location details */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-          {member.college && (
+          {member.orgVisible === false ? (
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-background border border-border">
+              <div className="p-2 rounded-xl bg-muted text-muted-foreground notranslate shrink-0">
+                <Lock className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  Organisation
+                </span>
+                <p className="text-xs font-bold text-muted-foreground flex items-center gap-1">
+                  <Lock className="h-3 w-3" /> Private
+                </p>
+              </div>
+            </div>
+          ) : (member.organisation || member.college) ? (
             <div className="flex items-center gap-3 p-3 rounded-2xl bg-background border border-border">
               <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 notranslate shrink-0">
                 <GraduationCap className="h-4 w-4" />
               </div>
               <div className="min-w-0">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                  Organisation / College
+                  Organisation
                 </span>
-                <p className="text-xs font-bold text-foreground truncate">{member.college}</p>
+                <p className="text-xs font-bold text-foreground truncate">{member.organisation || member.college}</p>
               </div>
             </div>
-          )}
+          ) : null}
 
-          {member.homeNeighborhood && (
+          {member.areaVisible === false ? (
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-background border border-border">
+              <div className="p-2 rounded-xl bg-muted text-muted-foreground notranslate shrink-0">
+                <Lock className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  Community Area
+                </span>
+                <p className="text-xs font-bold text-muted-foreground flex items-center gap-1">
+                  <Lock className="h-3 w-3" /> Private
+                </p>
+              </div>
+            </div>
+          ) : (member.area_name || member.homeNeighborhood) ? (
             <div className="flex items-center gap-3 p-3 rounded-2xl bg-background border border-border">
               <div className="p-2 rounded-xl bg-primary/10 text-primary notranslate shrink-0">
                 <MapPin className="h-4 w-4" />
@@ -447,10 +484,10 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
                   Community Area
                 </span>
-                <p className="text-xs font-bold text-foreground truncate">{member.homeNeighborhood}</p>
+                <p className="text-xs font-bold text-foreground truncate">{member.area_name || member.homeNeighborhood}</p>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Languages Spoken */}
@@ -482,7 +519,7 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-bold text-foreground">Community Badges</h2>
-              <p className="text-xs text-muted-foreground">Recognitions earned through verified acts of mutual aid</p>
+              <p className="text-xs text-muted-foreground">Recognitions earned through verified acts of community help</p>
             </div>
           </div>
         </div>
@@ -583,7 +620,7 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
                   ••••••@••••••
                 </span>
                 <p className="text-[10px] text-muted-foreground">
-                  Private to prevent spam. Official updates dispatched via KindLink in-app notifications.
+                  Private to prevent spam. Official updates sent via KindLink in-app notifications.
                 </p>
               </div>
             )}
@@ -623,18 +660,20 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
                 <label className="block text-xs font-bold text-foreground mb-1">
                   Reason for reporting:
                 </label>
-                <select
+                <Select
                   value={reportReason}
-                  onChange={(e) => setReportReason(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:ring-2 focus:ring-primary/20"
-                >
-                  <option value="Suspicious or fake account">Suspicious or fake account</option>
-                  <option value="Harassment or inappropriate message">Harassment or inappropriate message</option>
-                  <option value="No-show on accepted emergency task">No-show on accepted emergency task</option>
-                  <option value="Demanding payment or commercial solicitation">Demanding payment / Commercial solicitation</option>
-                  <option value="Inaccurate identity documents">Inaccurate identity details</option>
-                  <option value="Other safety concern">Other safety concern</option>
-                </select>
+                  onChange={(val) => setReportReason(val)}
+                  options={[
+                    { value: 'Suspicious or fake account', label: 'Suspicious or fake account' },
+                    { value: 'Harassment or inappropriate message', label: 'Harassment or inappropriate message' },
+                    { value: 'No-show on accepted emergency task', label: 'No-show on accepted emergency task' },
+                    { value: 'Demanding payment or commercial solicitation', label: 'Demanding payment / Commercial solicitation' },
+                    { value: 'Inaccurate identity documents', label: 'Inaccurate identity details' },
+                    { value: 'Other safety concern', label: 'Other safety concern' },
+                  ]}
+                  variant="form"
+                  aria-label="Reason for reporting"
+                />
               </div>
 
               <div>

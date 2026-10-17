@@ -67,6 +67,17 @@ export function EmergencyContactModal({
     }
   }, [open, contact]);
 
+  // Preserve window.scrollY across modal open and close
+  useEffect(() => {
+    if (!open) return;
+    const savedScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+    return () => {
+      if (typeof window !== 'undefined' && window.scrollY !== savedScrollY) {
+        window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior });
+      }
+    };
+  }, [open]);
+
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -161,7 +172,7 @@ export function EmergencyContactModal({
                 {contact ? 'Edit Emergency Contact' : 'Add Emergency Contact'}
               </h2>
               <p className="text-xs text-muted-foreground">
-                Direct contacts for urgent distress beacons
+                Direct contacts for urgent emergency alerts
               </p>
             </div>
           </div>
@@ -181,7 +192,7 @@ export function EmergencyContactModal({
           <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-900 dark:text-rose-200 space-y-1">
             <div className="flex items-center gap-1.5 font-bold text-xs text-rose-700 dark:text-rose-300">
               <AlertCircle className="h-3.5 w-3.5 notranslate shrink-0" />
-              <span>Emergency Dispatch Transparency</span>
+              <span>Emergency Alert Information</span>
             </div>
             <p className="text-[11px] leading-relaxed text-rose-800/90 dark:text-rose-300/90">
               When you start an SOS you can send your live location to these contacts in one tap on
@@ -274,7 +285,7 @@ export function EmergencyContactModal({
                 setPhone(val);
                 setIsPhoneValid(valid);
               }}
-              helperText="International format with country picker. Used for 1-tap WhatsApp and SMS location dispatch."
+              helperText="International format with country picker. Used for 1-tap WhatsApp and SMS location alerts."
             />
           </div>
         </form>

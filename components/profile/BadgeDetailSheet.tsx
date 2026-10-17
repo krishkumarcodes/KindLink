@@ -16,7 +16,8 @@ import {
   TrendingUp,
   Award,
 } from 'lucide-react';
-import { UserBadgeProgress, BadgeTier, BadgeLevelThreshold } from '@/lib/data/badges';
+import { toast } from 'sonner';
+import { UserBadgeProgress, BadgeTier } from '@/lib/data/badges';
 import { BadgeMedalIcon } from './BadgeMedalIcon';
 
 interface BadgeDetailSheetProps {
@@ -42,9 +43,11 @@ export function BadgeDetailSheet({
   const [isCelebrating, setIsCelebrating] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Close on Escape key & lock scroll
+  // Close on Escape key & lock body scroll while strictly preserving window.scrollY
   useEffect(() => {
     if (!open) return;
+
+    const savedScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -57,6 +60,9 @@ export function BadgeDetailSheet({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = prevOverflow;
+      if (typeof window !== 'undefined' && window.scrollY !== savedScrollY) {
+        window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior });
+      }
     };
   }, [open, onClose]);
 
@@ -67,7 +73,7 @@ export function BadgeDetailSheet({
     }
   }, [open, badge?.id, badge?.earned]);
 
-  // Celebration animation (respects reduced motion)
+  // Celebration confetti animation (respects reduced motion)
   const triggerCelebration = () => {
     const prefersReducedMotion =
       reduceMotion ||
@@ -77,12 +83,10 @@ export function BadgeDetailSheet({
     setIsCelebrating(true);
 
     if (prefersReducedMotion) {
-      // Gentle pulse only, ends after 1.5s
-      const timer = setTimeout(() => setIsCelebrating(false), 1500);
+      const timer = setTimeout(() => setIsCelebrating(false), 1200);
       return () => clearTimeout(timer);
     }
 
-    // Canvas confetti burst
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -107,7 +111,7 @@ export function BadgeDetailSheet({
     }[] = [];
 
     const centerX = canvas.width / 2;
-    const centerY = canvas.height * 0.45;
+    const centerY = canvas.height * 0.35;
 
     for (let i = 0; i < 48; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -127,7 +131,7 @@ export function BadgeDetailSheet({
     }
 
     let animationId: number;
-    let startTime = performance.now();
+    const startTime = performance.now();
 
     const render = (time: number) => {
       const elapsed = time - startTime;
@@ -136,8 +140,8 @@ export function BadgeDetailSheet({
       particles.forEach((p) => {
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += 0.15; // vertical acceleration
-        p.vx *= 0.98; // air resistance
+        p.vy += 0.15;
+        p.vx *= 0.98;
         p.alpha = Math.max(0, 1 - elapsed / 1400);
         p.rotation += p.rotationSpeed;
 
@@ -175,7 +179,16 @@ export function BadgeDetailSheet({
   if (!open || !badge) return null;
 
   const handlePinClick = async () => {
-    if (!badge.earned) return;
+    if (!badge.earned) {
+      toast.error('Earn this badge first to pin it to your profile.');
+      return;
+    }
+
+    if (!isPinned && pinnedCount >= 3) {
+      toast.error('Maximum 3 badges can be pinned to your profile header card.');
+      return;
+    }
+
     setIsPinning(true);
     try {
       await onTogglePin(badge.id, !isPinned);
@@ -185,11 +198,32 @@ export function BadgeDetailSheet({
   };
 
   const tierColors: Record<BadgeTier | 'locked', string> = {
-    bronze: 'text-amber-700 bg-amber-500/10 border-amber-600/30',
-    silver: 'text-slate-500 bg-slate-500/10 border-slate-400/30 dark:text-slate-300',
-    gold: 'text-amber-500 bg-amber-500/10 border-amber-500/30',
-    platinum: 'text-cyan-600 bg-cyan-500/10 border-cyan-500/30 dark:text-cyan-400',
+    bronze: 'text-amber-700 dark:text-amber-400 bg-amber-500/10 border-amber-600/30',
+    silver: 'text-slate-600 dark:text-slate-300 bg-slate-500/10 border-slate-400/30',
+    gold: 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/30',
+    platinum: 'text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
     locked: 'text-muted-foreground bg-muted border-border',
+  };
+
+  // Generate clear next tier instruction text
+  const getNextTierExplanation = (): string => {
+    if (badge.type === 'verified') {
+      return badge.earned
+        ? 'Your identity and verification documents have been officially confirmed by KindLink.'
+        : `To earn this verified badge: ${badge.howToEarn}`;
+    }
+
+    const { currentValue, levels, currentLevel, unit, nextThreshold, nextTierName } = badge;
+    const numLevels = levels.length;
+
+    if (currentLevel >= numLevels) {
+      return `Outstanding achievement! You have unlocked the highest level (${levels[numLevels - 1].tierName}) for this milestone.`;
+    }
+
+    const remaining = Math.max(0, nextThreshold - currentValue);
+    const targetName = nextTierName || `Level ${currentLevel + 1}`;
+
+    return `Complete ${remaining} more ${unit} to unlock Level ${currentLevel + 1} (${targetName}). ${badge.howToEarn}`;
   };
 
   return (
@@ -204,7 +238,7 @@ export function BadgeDetailSheet({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-h-[90vh] sm:max-h-[85vh] rounded-t-[28px] sm:rounded-3xl bg-card border-t sm:border border-border/80 shadow-2xl flex flex-col overflow-hidden sm:max-w-lg transition-all duration-300 animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95"
+        className="relative w-full max-h-[92vh] sm:max-h-[85vh] rounded-t-[32px] sm:rounded-3xl bg-card border-t sm:border border-border shadow-2xl flex flex-col overflow-hidden sm:max-w-lg transition-all duration-300 animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95"
       >
         {/* Celebration Canvas Overlay */}
         <canvas
@@ -221,7 +255,7 @@ export function BadgeDetailSheet({
         </div>
 
         {/* Sticky Header with Title and Close Button */}
-        <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3.5 border-b border-border/80 bg-card/95 backdrop-blur-md">
+        <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3.5 border-b border-border bg-card/95 backdrop-blur-md">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Badge Details
@@ -247,18 +281,36 @@ export function BadgeDetailSheet({
 
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 pb-8">
-          {/* Badge Showcase Hero */}
+          {/* Badge Showcase Hero: 80px Medal Artwork Preview with Soft Radial Ambient Glow */}
           <div className="flex flex-col items-center text-center space-y-3 pt-2">
             <div
-              className={`relative transition-transform duration-500 ${
+              className={`relative flex items-center justify-center transition-transform duration-500 ${
                 isCelebrating ? 'scale-110' : ''
               }`}
             >
+              {/* Soft Radial Ambient Glow */}
+              <div
+                className={`absolute inset-0 rounded-full blur-xl transition-opacity duration-500 ${
+                  badge.earned
+                    ? badge.currentTier === 'gold'
+                      ? 'bg-amber-400/35 opacity-100 scale-125'
+                      : badge.currentTier === 'platinum'
+                      ? 'bg-cyan-400/35 opacity-100 scale-125'
+                      : badge.currentTier === 'silver'
+                      ? 'bg-slate-300/35 dark:bg-slate-500/25 opacity-100 scale-125'
+                      : 'bg-amber-700/35 opacity-100 scale-125'
+                    : 'opacity-0'
+                }`}
+              />
+
+              {/* Large 80px SVG Medal Artwork */}
               <BadgeMedalIcon
+                badgeId={badge.id}
                 iconName={badge.icon}
                 tier={badge.currentTier}
-                size="xl"
+                size="lg" // 80px preview
                 isEarned={badge.earned}
+                isRecent={isCelebrating}
                 className={isCelebrating ? 'ring-4 ring-primary/40' : ''}
               />
 
@@ -279,14 +331,17 @@ export function BadgeDetailSheet({
               >
                 {badge.title}
               </h2>
-              <div className="flex items-center justify-center gap-2 pt-0.5">
+              <div className="flex items-center justify-center gap-2 pt-0.5 flex-wrap">
+                {/* Category Pill */}
                 <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
                   {badge.category}
                 </span>
+
+                {/* Earned Date or Unlocked Status */}
                 {badge.earned && (
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 className="h-3.5 w-3.5 notranslate" />
-                    <span>Unlocked</span>
+                    <span>Unlocked {badge.earnedAt ? `· ${badge.earnedAt}` : ''}</span>
                   </span>
                 )}
               </div>
@@ -314,27 +369,18 @@ export function BadgeDetailSheet({
             <div className="rounded-2xl border border-sky-500/20 bg-sky-500/10 p-3.5 flex items-start gap-2.5 text-xs text-sky-800 dark:text-sky-200">
               <ShieldAlert className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400 mt-0.5 notranslate" />
               <div className="space-y-0.5">
-                <span className="font-bold text-sky-900 dark:text-sky-100">Honest Notice:</span>
+                <span className="font-bold text-sky-900 dark:text-sky-100">Important Notice:</span>
                 <p className="leading-relaxed">{badge.medicalDisclaimer}</p>
               </div>
             </div>
           )}
 
-          {/* How to Earn */}
-          <div className="rounded-2xl border border-border bg-muted/20 p-4 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-foreground">
-              <Compass className="h-4 w-4 text-primary notranslate" />
-              <span>How to Earn</span>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">{badge.howToEarn}</p>
-          </div>
-
-          {/* Level Ladder */}
+          {/* Level Ladder: Showing Level 1 Bronze, Level 2 Silver, Level 3 Gold, Level 4 Platinum with requirements */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-                <TrendingUp className="h-4 w-4 text-teal-600 notranslate" />
-                <span>Level Ladder & Thresholds</span>
+                <TrendingUp className="h-4 w-4 text-primary notranslate" />
+                <span>Level Ladder &amp; Requirements</span>
               </div>
               <span className="text-[11px] font-semibold text-muted-foreground">
                 {badge.levels.length === 1 ? '1 Level' : `${badge.levels.length} Tiers`}
@@ -345,6 +391,14 @@ export function BadgeDetailSheet({
               {badge.levels.map((lvl) => {
                 const isAchieved = badge.currentValue >= lvl.threshold;
                 const isCurrentTarget = !isAchieved && badge.nextThreshold === lvl.threshold;
+
+                const tierLadderColors: Record<BadgeTier | 'locked', string> = {
+                  bronze: 'text-amber-700 dark:text-amber-400',
+                  silver: 'text-slate-600 dark:text-slate-300',
+                  gold: 'text-amber-600 dark:text-amber-400',
+                  platinum: 'text-cyan-600 dark:text-cyan-400',
+                  locked: 'text-muted-foreground',
+                };
 
                 return (
                   <div
@@ -378,15 +432,12 @@ export function BadgeDetailSheet({
 
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <h4 className="text-xs font-bold text-foreground">
-                            {lvl.tierName}
+                          <h4 className={`text-xs font-bold ${tierLadderColors[lvl.tier]}`}>
+                            Level {lvl.level} {lvl.tierName}
                           </h4>
-                          <span className="text-[10px] text-muted-foreground">
-                            (Level {lvl.level})
-                          </span>
                         </div>
                         <p className="text-[11px] text-muted-foreground">
-                          {lvl.threshold} {badge.unit}
+                          {lvl.threshold} {badge.unit} requirement
                         </p>
                       </div>
                     </div>
@@ -412,7 +463,18 @@ export function BadgeDetailSheet({
             </div>
           </div>
 
-          {/* Current Progress & Next Goal */}
+          {/* Explanation of How to Earn Next Tier */}
+          <div className="rounded-2xl border border-border bg-muted/30 p-4 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+              <Compass className="h-4 w-4 text-primary notranslate" />
+              <span>How to Earn &amp; Advance</span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {getNextTierExplanation()}
+            </p>
+          </div>
+
+          {/* Current Progress & Bounded Next Goal Bar */}
           <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-foreground">Current Progress</span>
@@ -449,7 +511,7 @@ export function BadgeDetailSheet({
             </div>
           </div>
 
-          {/* Pin to Profile Action Button */}
+          {/* "Pin to profile" Toggle Button (Max 3 pinned) */}
           <div className="pt-2">
             <button
               type="button"
@@ -466,21 +528,19 @@ export function BadgeDetailSheet({
               {isPinned ? (
                 <>
                   <PinOff className="h-4 w-4 notranslate" />
-                  <span>Unpin from Profile Header</span>
+                  <span>Unpin from Profile Header ({pinnedCount}/3 pinned)</span>
                 </>
               ) : (
                 <>
                   <Pin className="h-4 w-4 notranslate" />
-                  <span>
-                    Pin to Profile Header ({pinnedCount}/3 pinned)
-                  </span>
+                  <span>Pin to Profile Header ({pinnedCount}/3 pinned)</span>
                 </>
               )}
             </button>
 
             {!badge.earned && (
               <p className="text-center text-[11px] text-muted-foreground mt-2">
-                Earn this badge first to pin it to your profile header.
+                Earn this badge first to pin it to your profile.
               </p>
             )}
           </div>

@@ -14,11 +14,8 @@ import {
   ShieldCheck,
   BookOpen,
   Info,
-  X,
-  Copy,
-  Check,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { ShareImpactModal } from '../ShareImpactModal';
 
 export interface ImpactStats {
   helpsGiven: number;
@@ -49,7 +46,7 @@ interface ImpactTabProps {
 
 export function ImpactTab({ stats, userName = 'Community Member', userHandle = 'user' }: ImpactTabProps) {
   const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [selectedMonthIdx, setSelectedMonthIdx] = useState<number | null>(null);
 
   const totalHelps = stats.helpsGiven || 0;
 
@@ -116,25 +113,6 @@ export function ImpactTab({ stats, userName = 'Community Member', userHandle = '
 
   const maxMonthlyCount = Math.max(1, ...monthlyData.map((m) => m.count));
 
-  // Copy shareable impact summary
-  const handleCopyShare = () => {
-    const text = `🤝 My KindLink Mutual Aid Impact:
-• ${stats.helpsGiven} Helps Delivered
-• ${stats.hoursActive}h Volunteered
-• ${stats.neighboursSupported} Neighbors Supported
-• ${stats.distanceCovered} km Traveled
-🔥 Current Streak: ${stats.currentStreak} days (Best: ${stats.bestStreak} days)
-
-Join me in helping neighbors on KindLink!`;
-
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(text);
-      setCopied(true);
-      toast.success('Impact summary copied to clipboard!');
-      setTimeout(() => setCopied(false), 2500);
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* =========================================================================
@@ -146,7 +124,7 @@ Join me in helping neighbors on KindLink!`;
             <TrendingUp className="h-6 w-6 stroke-[2.2] notranslate" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-foreground">Verified Mutual Aid Impact</h2>
+            <h2 className="text-base font-bold text-foreground">Verified Community Impact</h2>
             <p className="text-xs text-muted-foreground">
               Record of community tasks completed and neighbors supported
             </p>
@@ -193,7 +171,7 @@ Join me in helping neighbors on KindLink!`;
               {stats.hoursActive}h
             </span>
             <span className="text-[11px] text-muted-foreground block mt-0.5">
-              Dedicated mutual aid time
+              Dedicated volunteer time
             </span>
           </div>
         </div>
@@ -282,7 +260,7 @@ Join me in helping neighbors on KindLink!`;
           <div>
             <h3 className="text-sm font-bold text-foreground">Helps by Category</h3>
             <p className="text-xs text-muted-foreground">
-              Distribution of verified mutual aid assistance across focus areas
+              Distribution of verified community help across focus areas
             </p>
           </div>
           <span className="text-xs font-bold text-muted-foreground font-mono">
@@ -332,68 +310,99 @@ Join me in helping neighbors on KindLink!`;
           <div>
             <h3 className="text-sm font-bold text-foreground">Activity Trend (Last 6 Months)</h3>
             <p className="text-xs text-muted-foreground">
-              Verified mutual aid completed month by month
+              Verified community helps completed month by month
             </p>
           </div>
+          {selectedMonthIdx !== null && (
+            <span className="text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full animate-in fade-in">
+              {monthlyData[selectedMonthIdx]?.count || 0} helps in {monthlyData[selectedMonthIdx]?.month}
+            </span>
+          )}
         </div>
 
-        {/* SVG Bar Chart */}
-        <div className="pt-2">
-          <div className="h-40 w-full flex items-end justify-between gap-2 px-2 pb-6 pt-4 border-b border-border/80 relative">
-            {/* Background grid line */}
-            <div className="absolute inset-x-0 top-1/2 border-b border-dashed border-border/40 pointer-events-none" />
-
-            {monthlyData.map((item, idx) => {
-              const isCurrent = idx === monthlyData.length - 1;
-              const barHeightPct = totalHelps > 0 && maxMonthlyCount > 0
-                ? Math.max(8, Math.round((item.count / maxMonthlyCount) * 85))
-                : 6;
-
-              return (
-                <div
-                  key={`${item.month}-${item.year}`}
-                  className="flex-1 flex flex-col items-center justify-end h-full group relative"
-                >
-                  {/* Tooltip / Value above bar */}
-                  <span
-                    className={`text-[10px] font-bold font-mono mb-1 transition-transform group-hover:scale-110 ${
-                      item.count > 0 ? 'text-foreground' : 'text-muted-foreground/60'
-                    }`}
-                  >
-                    {item.count}
-                  </span>
-
-                  {/* Bar */}
-                  <div className="w-full max-w-[36px] bg-muted/60 rounded-xl overflow-hidden flex items-end h-full">
-                    <div
-                      className={`w-full rounded-xl transition-all duration-500 ${
-                        isCurrent
-                          ? 'bg-primary shadow-xs'
-                          : item.count > 0
-                          ? 'bg-teal-500 dark:bg-teal-400'
-                          : 'bg-muted-foreground/20'
-                      }`}
-                      style={{ height: `${barHeightPct}%` }}
-                    />
-                  </div>
-
-                  {/* Label underneath */}
-                  <span
-                    className={`absolute -bottom-5 text-[11px] font-semibold whitespace-nowrap ${
-                      isCurrent ? 'text-primary font-bold' : 'text-muted-foreground'
-                    }`}
-                  >
-                    {item.month}
-                  </span>
+        {totalHelps === 0 ? (
+          /* Clean, compact empty state with gentle baseline */
+          <div className="pt-4 pb-2 text-center space-y-3">
+            <div className="h-16 w-full flex items-end justify-between px-4 border-b border-dashed border-border/60">
+              {monthlyData.map((m) => (
+                <div key={m.month} className="flex flex-col items-center">
+                  <div className="h-1.5 w-6 rounded-full bg-muted" />
+                  <span className="text-[10px] text-muted-foreground/60 mt-2 font-medium">{m.month}</span>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground italic">
+              Your first completed help will show here
+            </p>
           </div>
-        </div>
+        ) : (
+          /* Real Data Bar Chart */
+          <div className="pt-2">
+            <div className="h-40 w-full flex items-end justify-between gap-2 px-2 pb-6 pt-4 border-b border-border/80 relative">
+              {/* Background grid line */}
+              <div className="absolute inset-x-0 top-1/2 border-b border-dashed border-border/40 pointer-events-none" />
+
+              {monthlyData.map((item, idx) => {
+                const isCurrent = idx === monthlyData.length - 1;
+                const isSelected = selectedMonthIdx === idx;
+                const barHeightPct = totalHelps > 0 && maxMonthlyCount > 0
+                  ? Math.max(8, Math.round((item.count / maxMonthlyCount) * 85))
+                  : 6;
+
+                return (
+                  <button
+                    key={`${item.month}-${item.year}`}
+                    type="button"
+                    onClick={() => setSelectedMonthIdx(isSelected ? null : idx)}
+                    className="flex-1 flex flex-col items-center justify-end h-full group relative focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
+                  >
+                    {/* Value above bar */}
+                    <span
+                      className={`text-[10px] font-bold font-mono mb-1 transition-transform group-hover:scale-110 ${
+                        item.count > 0 ? 'text-foreground' : 'text-muted-foreground/60'
+                      }`}
+                    >
+                      {item.count}
+                    </span>
+
+                    {/* Bar */}
+                    <div className="w-full max-w-[36px] bg-muted/60 rounded-xl overflow-hidden flex items-end h-full">
+                      <div
+                        className={`w-full rounded-xl transition-all duration-300 ${
+                          isSelected
+                            ? 'bg-amber-500 shadow-md ring-2 ring-amber-400'
+                            : isCurrent
+                            ? 'bg-primary shadow-xs'
+                            : item.count > 0
+                            ? 'bg-teal-500 dark:bg-teal-400'
+                            : 'bg-muted-foreground/20'
+                        }`}
+                        style={{ height: `${barHeightPct}%` }}
+                      />
+                    </div>
+
+                    {/* Label underneath */}
+                    <span
+                      className={`absolute -bottom-5 text-[11px] font-semibold whitespace-nowrap ${
+                        isSelected
+                          ? 'text-amber-500 font-bold'
+                          : isCurrent
+                          ? 'text-primary font-bold'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      {item.month}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* =========================================================================
-          6. TRUE AND SIMPLE EXPLANATION
+          6. SIMPLE EXPLANATION
          ========================================================================= */}
       <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-2">
         <div className="flex items-center gap-2 text-xs font-bold text-foreground">
@@ -406,102 +415,16 @@ Join me in helping neighbors on KindLink!`;
       </div>
 
       {/* =========================================================================
-          7. "SHARE MY IMPACT" MODAL
+          7. "SHARE MY IMPACT" HIGH-RES MODAL
+          Wire Share Your Impact modal dialog and handleCopyShare action
          ========================================================================= */}
-      {shareModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs animate-in fade-in">
-          <div className="relative w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl space-y-5">
-            <button
-              onClick={() => setShareModalOpen(false)}
-              className="absolute top-4 right-4 p-2 rounded-xl text-muted-foreground hover:bg-muted transition"
-              aria-label="Close share modal"
-            >
-              <X className="h-4 w-4 notranslate" />
-            </button>
-
-            <div>
-              <h3 className="text-base font-bold text-foreground">Share Your Impact</h3>
-              <p className="text-xs text-muted-foreground">
-                Inspire your campus and local community with your verified mutual aid record
-              </p>
-            </div>
-
-            {/* Shareable Card Snippet */}
-            <div className="p-5 rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/5 via-teal-500/5 to-emerald-500/5 shadow-soft space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-extrabold text-foreground">{userName}</h4>
-                  <span className="text-xs font-mono text-primary font-medium">@{userHandle}</span>
-                </div>
-                <div className="h-8 w-8 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                  KL
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2.5 pt-1 text-center font-mono">
-                <div className="p-2.5 rounded-2xl bg-background/80 border border-border/80">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block font-sans">
-                    Helps Delivered
-                  </span>
-                  <span className="text-xl font-extrabold text-foreground block mt-0.5">
-                    {stats.helpsGiven}
-                  </span>
-                </div>
-
-                <div className="p-2.5 rounded-2xl bg-background/80 border border-border/80">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block font-sans">
-                    Hours Active
-                  </span>
-                  <span className="text-xl font-extrabold text-foreground block mt-0.5">
-                    {stats.hoursActive}h
-                  </span>
-                </div>
-
-                <div className="p-2.5 rounded-2xl bg-background/80 border border-border/80">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block font-sans">
-                    Neighbours
-                  </span>
-                  <span className="text-xl font-extrabold text-foreground block mt-0.5">
-                    {stats.neighboursSupported}
-                  </span>
-                </div>
-
-                <div className="p-2.5 rounded-2xl bg-background/80 border border-border/80">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block font-sans">
-                    Current Streak
-                  </span>
-                  <span className="text-xl font-extrabold text-amber-500 block mt-0.5">
-                    {stats.currentStreak}d
-                  </span>
-                </div>
-              </div>
-
-              <div className="pt-1 text-center border-t border-border/60">
-                <span className="text-[10px] font-semibold text-muted-foreground">
-                  Verified Mutual Aid Network · KindLink
-                </span>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setShareModalOpen(false)}
-                className="px-4 py-2 rounded-xl border border-border text-xs font-bold text-muted-foreground hover:bg-muted transition touch-target"
-              >
-                Close
-              </button>
-              <button
-                onClick={handleCopyShare}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover shadow-soft transition touch-target"
-              >
-                {copied ? <Check className="h-4 w-4 notranslate" /> : <Copy className="h-4 w-4 notranslate" />}
-                <span>{copied ? 'Copied!' : 'Copy Summary'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ShareImpactModal
+        open={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        stats={stats}
+        userName={userName}
+        userHandle={userHandle}
+      />
     </div>
   );
 }

@@ -21,10 +21,36 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ profile });
+    const visibility = {
+      phone: profile.visibility_phone || 'members',
+      email: profile.visibility_email || 'members',
+      organisation: profile.visibility_organisation || 'members',
+      area: profile.visibility_area || 'members',
+    };
+
+    return NextResponse.json({
+      profile: {
+        ...profile,
+        organisation: profile.organisation || profile.college,
+        area_name: profile.area_name || profile.home_neighborhood,
+        visibility_phone: visibility.phone,
+        visibility_email: visibility.email,
+        visibility_organisation: visibility.organisation,
+        visibility_area: visibility.area,
+        visibility,
+      },
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });
   }
+}
+
+function normalizeVisibility(val: any): 'members' | 'matched' | 'private' | undefined {
+  if (!val) return undefined;
+  if (val === 'public' || val === 'all' || val === 'members') return 'members';
+  if (val === 'helpers' || val === 'matched') return 'matched';
+  if (val === 'private') return 'private';
+  return undefined;
 }
 
 export async function PATCH(req: NextRequest) {
@@ -42,12 +68,19 @@ export async function PATCH(req: NextRequest) {
       username,
       phone,
       college,
+      organisation,
       bio,
       homeNeighborhood,
+      area_name,
       avatarUrl,
       languages,
       preferredLanguage,
       preferred_language,
+      visibility,
+      visibility_phone,
+      visibility_email,
+      visibility_organisation,
+      visibility_area,
     } = body;
 
     // Validate username if provided
@@ -88,13 +121,34 @@ export async function PATCH(req: NextRequest) {
     if (phone !== undefined) updateData.phone = phone;
 
     // Optional columns in schema
-    if (college !== undefined) updateData.college = college;
+    const orgValue = organisation !== undefined ? organisation : college;
+    if (orgValue !== undefined) {
+      updateData.organisation = orgValue;
+      updateData.college = orgValue;
+    }
     if (bio !== undefined) updateData.bio = bio;
-    if (homeNeighborhood !== undefined) updateData.home_neighborhood = homeNeighborhood;
+    const areaValue = area_name !== undefined ? area_name : homeNeighborhood;
+    if (areaValue !== undefined) {
+      updateData.area_name = areaValue;
+      updateData.home_neighborhood = areaValue;
+    }
     if (avatarUrl !== undefined) updateData.avatar_url = avatarUrl;
     if (languages !== undefined) updateData.languages = languages;
     const targetLang = preferredLanguage || preferred_language;
     if (targetLang !== undefined) updateData.preferred_language = targetLang;
+
+    // Granular visibility controls
+    const vPhone = normalizeVisibility(visibility_phone ?? visibility?.phone);
+    if (vPhone) updateData.visibility_phone = vPhone;
+
+    const vEmail = normalizeVisibility(visibility_email ?? visibility?.email);
+    if (vEmail) updateData.visibility_email = vEmail;
+
+    const vOrg = normalizeVisibility(visibility_organisation ?? visibility?.organisation);
+    if (vOrg) updateData.visibility_organisation = vOrg;
+
+    const vArea = normalizeVisibility(visibility_area ?? visibility?.area);
+    if (vArea) updateData.visibility_area = vArea;
 
     let updateRes = await admin
       .from('profiles')

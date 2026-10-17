@@ -176,7 +176,7 @@ export function OverviewTab({ onEditProfile, onSelectTab }: OverviewTabProps) {
         ) : (
           <div className="p-6 rounded-2xl bg-muted/20 border border-dashed border-border text-center space-y-3">
             <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
-              No bio added yet. Tell neighbors what mutual aid, skills, tools, or supplies you can offer (up to 500 characters).
+              No bio added yet. Tell neighbors what community help, skills, tools, or supplies you can offer (up to 500 characters).
             </p>
             <button
               type="button"
@@ -241,7 +241,7 @@ export function OverviewTab({ onEditProfile, onSelectTab }: OverviewTabProps) {
           <p className="leading-relaxed">
             By default, registered mobile phone and email are set to{' '}
             <strong className="text-foreground font-semibold">All KindLink members</strong> so
-            nearby neighbors in distress can directly call or reach you for emergency mutual aid.
+            nearby neighbors in distress can directly call or reach you for emergency help.
             You can restrict visibility to matched helpers or only yourself at any time below.
           </p>
         </div>

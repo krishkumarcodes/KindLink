@@ -77,6 +77,17 @@ export function ReviewsModal({
     asRequester: [],
   });
 
+  // Preserve window.scrollY across modal open and close
+  useEffect(() => {
+    if (!open) return;
+    const savedScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+    return () => {
+      if (typeof window !== 'undefined' && window.scrollY !== savedScrollY) {
+        window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior });
+      }
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
 
@@ -172,7 +183,7 @@ export function ReviewsModal({
                 Trust Score & Peer Ratings
               </h2>
               <p className="text-xs text-muted-foreground">
-                Verified community feedback on mutual aid acts
+                Verified community feedback on completed help
               </p>
             </div>
           </div>
@@ -384,7 +395,7 @@ export function ReviewsModal({
                       </p>
                     ) : (
                       <p className="text-xs text-muted-foreground italic">
-                        Rated {review.stars} stars for mutual aid cooperation.
+                        Rated {review.stars} stars for community help.
                       </p>
                     )}
                   </div>

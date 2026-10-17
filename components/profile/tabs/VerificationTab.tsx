@@ -286,7 +286,7 @@ export function VerificationTab() {
       return;
     }
     if (!proofFile) {
-      toast.error('Please upload your credential or proof document');
+      toast.error('Please upload your proof document');
       return;
     }
 
@@ -312,7 +312,7 @@ export function VerificationTab() {
       setProofFile(null);
       await fetchStatus();
       toast.success('Professional proof submitted!', {
-        description: 'Staff will audit your credential to unlock specialized badges.',
+        description: 'Staff will review your proof to unlock specialized badges.',
       });
     } catch (err: any) {
       toast.error(err.message || 'Submission failed');
@@ -379,7 +379,7 @@ export function VerificationTab() {
             </div>
             <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
               {reviewStatus === 'verified'
-                ? `Officially verified on ${formattedDate || 'record'}. You can respond to emergency blood donations and critical dispatch requests.`
+                ? `Officially verified on ${formattedDate || 'record'}. You can respond to emergency blood donations and critical emergency requests.`
                 : reviewStatus === 'pending'
                 ? `Submitted on ${formattedDate || 'recently'}. Community administrators are currently auditing your verification submission.`
                 : reviewStatus === 'needs_info'
@@ -449,7 +449,7 @@ export function VerificationTab() {
             </div>
 
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Matched beneficiaries and dispatch volunteers require contact coordinates for coordination.
+              People you help and volunteers who help you will see this for coordination.
             </p>
 
             {/* Sub-items */}
@@ -693,7 +693,7 @@ export function VerificationTab() {
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Verification has not been submitted yet. Once requested, community administrators will audit your credentials.
+                  Verification has not been submitted yet. Once requested, community administrators will review your verification proof.
                 </p>
               )}
             </div>
@@ -783,7 +783,7 @@ export function VerificationTab() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
               <Briefcase className="h-4 w-4 text-indigo-500" />
-              <span>Professional Proofs & Credentials ({professionalProofs.length})</span>
+              <span>Professional Proofs &amp; Documents ({professionalProofs.length})</span>
             </h3>
             <button
               onClick={() => setProofModalOpen(true)}
@@ -879,7 +879,6 @@ export function VerificationTab() {
               <PhoneInput
                 value={tempPhone}
                 onChange={(val) => setTempPhone(val)}
-                autoFocus
               />
             </div>
 
@@ -1084,7 +1083,7 @@ export function VerificationTab() {
               <label className="p-4 rounded-2xl border-2 border-dashed border-border bg-muted/30 text-xs text-muted-foreground flex flex-col items-center gap-2 cursor-pointer hover:bg-muted/60 transition">
                 <Upload className="h-5 w-5 text-indigo-500 notranslate" />
                 <span className="font-semibold text-foreground text-center">
-                  {proofFile ? proofFile.name : 'Select credential file'}
+                  {proofFile ? proofFile.name : 'Select proof file'}
                 </span>
                 <span className="text-[11px] text-muted-foreground">
                   {proofFile

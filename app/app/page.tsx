@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Heart, Loader2 } from 'lucide-react';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
@@ -19,6 +19,7 @@ import { initializeRealtime } from '@/lib/supabase/realtime';
 
 export default function KindLinkApp() {
   const router = useRouter();
+  const mainRef = useRef<HTMLElement>(null);
   const {
     currentView,
     fetchLiveRequests,
@@ -113,6 +114,53 @@ export default function KindLinkApp() {
     };
   }, [isAuthenticated]);
 
+  // Set manual scroll restoration on mount while preserving browser back/forward if history state has a position
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'manual';
+      }
+
+      const handlePopState = (event: PopStateEvent) => {
+        if (event.state && typeof event.state.scrollY === 'number') {
+          window.scrollTo(0, event.state.scrollY);
+          if (mainRef.current && typeof event.state.mainScrollTop === 'number') {
+            mainRef.current.scrollTop = event.state.mainScrollTop;
+          }
+        }
+      };
+
+      window.addEventListener('popstate', handlePopState);
+
+      const state = window.history.state;
+      if (state && typeof state.scrollY === 'number') {
+        window.scrollTo(0, state.scrollY);
+        if (mainRef.current && typeof state.mainScrollTop === 'number') {
+          mainRef.current.scrollTop = state.mainScrollTop;
+        }
+      } else {
+        window.scrollTo(0, 0);
+        if (mainRef.current) {
+          mainRef.current.scrollTop = 0;
+        }
+      }
+
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+      };
+    }
+  }, []);
+
+  // When switching currentView (e.g. from home to profile, or between views), ensure window.scrollTo(0, 0) and reset main scroll position to 0
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0);
+    }
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+  }, [currentView]);
+
   // 1. Loading state while checking authentication
   if (authChecking) {
     return (
@@ -155,7 +203,7 @@ export default function KindLinkApp() {
         <Sidebar />
 
         {/* Dynamic Center Stage Views */}
-        <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        <main ref={mainRef} className="flex-1 flex flex-col min-w-0 overflow-y-auto">
           {currentView === 'home' && <HomeView />}
           {currentView === 'requests' && <RequestsView />}
           {currentView === 'map' && <MapView />}

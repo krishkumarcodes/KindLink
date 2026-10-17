@@ -1,6 +1,6 @@
 {
   "name": "@krishkumarcodes/kindlink",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "description": "Hyper-local community mutual aid and emergency response platform",
   "repository": {
     "type": "git",
@@ -26,7 +26,9 @@
     "check:fonts": "node scripts/check-fonts.mjs",
     "check:maps": "node scripts/check-maps.mjs",
     "maps:check": "node scripts/maps-check.mjs",
-    "check:profile": "node scripts/check-profile.mjs"
+    "check:profile": "node scripts/check-profile.mjs",
+    "test:scroll": "node scripts/test-scroll.mjs",
+    "test:visibility": "node scripts/test-visibility.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

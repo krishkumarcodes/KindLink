@@ -63,6 +63,9 @@ DECLARE
   v_member_self jsonb;
   v_badge_count integer;
   v_badge_dup boolean := false;
+  v_rating_self_blocked boolean := false;
+  v_rating_id uuid;
+  v_report_id uuid;
 BEGIN
 
   -- --------------------------------------------------------------------------
@@ -664,6 +667,64 @@ BEGIN
     PERFORM record_test(28, 'Member Profile View: Privacy enforcement across anonymous, member, and self views', true, 'Phone hidden when private, revealed to self; organisation revealed to members');
   ELSE
     PERFORM record_test(28, 'Member Profile View', false, 'Privacy violation or data omission in get_member_profile');
+  END IF;
+  -- --------------------------------------------------------------------------
+  -- TEST 29: Ratings Anti-Self-Rating & Completion Constraints
+  -- --------------------------------------------------------------------------
+  v_rating_self_blocked := false;
+  BEGIN
+    INSERT INTO public.ratings (request_id, rater_id, ratee_id, stars, role, feedback)
+    VALUES ('b0000000-0000-0000-0000-000000000099', u1, u1, 5, 'helper', 'Rating myself');
+  EXCEPTION WHEN others THEN
+    v_rating_self_blocked := true;
+  END;
+
+  IF v_rating_self_blocked THEN
+    PERFORM record_test(29, 'Ratings Enforcement: Self-rating strictly prohibited', true, 'Blocked self-rating attempt (rater_id = ratee_id)');
+  ELSE
+    PERFORM record_test(29, 'Ratings Anti-Self-Rating', false, 'Self-rating was not blocked');
+  END IF;
+
+  -- --------------------------------------------------------------------------
+  -- TEST 30: Review Reports & Admin Hiding with Audit Logging
+  -- --------------------------------------------------------------------------
+  -- Insert valid rating from u1 for helper u3
+  DELETE FROM public.ratings WHERE request_id = 'b0000000-0000-0000-0000-000000000099' AND rater_id = u1;
+  INSERT INTO public.ratings (request_id, rater_id, ratee_id, stars, role, feedback, tags)
+  VALUES ('b0000000-0000-0000-0000-000000000099', u1, u3, 5, 'helper', 'Excellent prompt responder', ARRAY['On time', 'Helpful'])
+  RETURNING id INTO v_rating_id;
+
+  -- User u2 reports the review
+  INSERT INTO public.review_reports (review_id, reporter_id, reason)
+  VALUES (v_rating_id, u2, 'Inappropriate language in comment')
+  RETURNING id INTO v_report_id;
+
+  -- Admin hides the review
+  UPDATE public.ratings
+  SET is_hidden = true, hide_reason = 'Violates community guidelines', hidden_by = u_admin
+  WHERE id = v_rating_id;
+
+  IF (SELECT is_hidden FROM public.ratings WHERE id = v_rating_id) = true
+     AND EXISTS (SELECT 1 FROM public.review_reports WHERE id = v_report_id) THEN
+    PERFORM record_test(30, 'Review Moderation: Reporting and admin review hiding with audit trail', true, 'Report filed and review successfully hidden by administrator');
+  ELSE
+    PERFORM record_test(30, 'Review Moderation', false, 'Review report or hiding failure');
+  END IF;
+
+  -- --------------------------------------------------------------------------
+  -- TEST 31: Trust Score Breakdown & Multiple Ratings Aggregation
+  -- --------------------------------------------------------------------------
+  -- Reset unhidden rating
+  UPDATE public.ratings SET is_hidden = false WHERE id = v_rating_id;
+
+  v_summary_json := public.get_profile_summary(u3);
+
+  IF (v_summary_json->>'ratings_count')::integer >= 1
+     AND (v_summary_json->>'trust_score')::numeric = 5.0
+     AND v_summary_json->'ratings_breakdown' IS NOT NULL THEN
+    PERFORM record_test(31, 'Trust Score & Breakdown: Star distribution dynamically aggregated', true, 'Trust score 5.0 and breakdown array correctly computed');
+  ELSE
+    PERFORM record_test(31, 'Trust Score & Breakdown', false, 'Breakdown or score calculation failure');
   END IF;
 
 END $$;

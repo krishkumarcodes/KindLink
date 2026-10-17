@@ -104,10 +104,57 @@ export default async function MemberPage({ params }: MemberPageProps) {
   // 4. Enforce database visibility rules
   const isSelf = user.id === profile.id;
 
-  // Phone and email visibility rules:
-  // Visible to the user themselves, or if explicitly enabled by member privacy preferences
-  const phoneVisible = isSelf || Boolean(profile.phone_visible || profile.privacy_settings?.show_phone);
-  const emailVisible = isSelf || Boolean(profile.email_visible || profile.privacy_settings?.show_email);
+  // Check viewer admin role
+  const { data: viewerProfile } = await admin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+  const isAdmin = viewerProfile?.role === 'admin';
+
+  // Check if matched via active/completed request or offer exchange
+  let isMatched = false;
+  if (!isSelf && user) {
+    try {
+      const { data: matchedReq } = await admin
+        .from('requests')
+        .select('id')
+        .or(
+          `and(requester_id.eq.${profile.id},accepted_helper_id.eq.${user.id}),and(requester_id.eq.${user.id},accepted_helper_id.eq.${profile.id})`
+        )
+        .in('status', ['accepted', 'completed'])
+        .limit(1);
+
+      if (matchedReq && matchedReq.length > 0) {
+        isMatched = true;
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  // 4 Contact Fields: Phone, Email, Organisation, Area
+  // 3 Visibility Levels:
+  // - 'members': Visible to any logged-in KindLink member
+  // - 'matched': Visible ONLY to users who have an active or completed request/offer with this user
+  // - 'private': Visible ONLY to the user themselves and platform admins
+  const visPhone = profile.visibility_phone || 'members';
+  const visEmail = profile.visibility_email || 'members';
+  const visOrg = profile.visibility_organisation || 'members';
+  const visArea = profile.visibility_area || 'members';
+
+  const phoneVisible =
+    isSelf || isAdmin || (visPhone === 'members' && Boolean(user)) || (visPhone === 'matched' && isMatched);
+  const emailVisible =
+    isSelf || isAdmin || (visEmail === 'members' && Boolean(user)) || (visEmail === 'matched' && isMatched);
+  const orgVisible =
+    isSelf || isAdmin || (visOrg === 'members' && Boolean(user)) || (visOrg === 'matched' && isMatched);
+  const areaVisible =
+    isSelf || isAdmin || (visArea === 'members' && Boolean(user)) || (visArea === 'matched' && isMatched);
+
+  // Area rule: NEVER reveal exact coordinates or street addresses to other members—only area_name
+  const safeAreaName = profile.area_name || profile.home_neighborhood || null;
+  const safeOrgName = profile.organisation || profile.college || null;
 
   const memberData: PublicMemberProfile = {
     id: profile.id,
@@ -120,14 +167,22 @@ export default async function MemberPage({ params }: MemberPageProps) {
     ratingCount: profile.rating_count || 0,
     createdAt: profile.created_at || new Date().toISOString(),
     bio: profile.bio,
-    college: profile.college,
-    homeNeighborhood: profile.home_neighborhood,
+    college: safeOrgName,
+    organisation: safeOrgName,
+    homeNeighborhood: safeAreaName,
+    area_name: safeAreaName,
     languages: Array.isArray(profile.languages) ? profile.languages : ['Bengali', 'Hindi', 'English'],
     badges: Array.isArray(profile.badges) ? profile.badges : [],
-    phone: phoneVisible ? profile.phone : null,
+    phone: phoneVisible ? (profile.phone_e164 || profile.phone) : null,
     email: emailVisible ? profile.email : null,
     phoneVisible,
     emailVisible,
+    orgVisible,
+    areaVisible,
+    visibility_phone: visPhone,
+    visibility_email: visEmail,
+    visibility_organisation: visOrg,
+    visibility_area: visArea,
     isSelf,
   };
 

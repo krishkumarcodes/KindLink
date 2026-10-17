@@ -390,7 +390,7 @@ export function PhoneInput({
 
       // Re-focus phone input
       setTimeout(() => {
-        phoneInputRef.current?.focus();
+        phoneInputRef.current?.focus({ preventScroll: true });
       }, 50);
     },
     [nationalInput, onChange]
@@ -400,7 +400,7 @@ export function PhoneInput({
   useEffect(() => {
     if (isPickerOpen) {
       const timer = setTimeout(() => {
-        searchInputRef.current?.focus();
+        searchInputRef.current?.focus({ preventScroll: true });
       }, 100);
       return () => clearTimeout(timer);
     }

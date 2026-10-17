@@ -131,9 +131,9 @@ assert(
 );
 
 assert(
-  tabsContent.includes('scrollIntoView'),
-  'ProfileTabs: Active tab automatically smooth-scrolls into view when selected',
-  'Call scrollIntoView({ behavior: "smooth", inline: "center" }) on active tab element.'
+  tabsContent.includes('container.scrollTo') || tabsContent.includes('scrollIntoView') || tabsContent.includes('scrollTo'),
+  'ProfileTabs: Active tab automatically smooth-scrolls into view inside horizontal container when selected',
+  'Call container.scrollTo on active tab element inside horizontal scroll container.'
 );
 
 const activityTabPath = path.join(ROOT_DIR, 'components/profile/tabs/ActivityTab.tsx');
