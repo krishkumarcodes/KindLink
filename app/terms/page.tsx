@@ -6,6 +6,7 @@ import {
   Sparkles,
   ArrowRight,
   GraduationCap,
+  ShieldCheck,
 } from 'lucide-react';
 import { PublicHeader } from '@/components/public/PublicHeader';
 import { PublicFooter } from '@/components/public/PublicFooter';
@@ -81,7 +82,7 @@ export default function TermsPage() {
               assistance to injured persons or medical emergencies are protected from civil or criminal liability.
             </p>
             <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              KindLink, its student developers, and Asansol Engineering College provide an open matchmaking protocol on
+              KindLink and its developers provide an open matchmaking protocol on
               an &quot;as is&quot; and &quot;as available&quot; basis, without warranties of any kind. Volunteers and requesters assume
               responsibility for exercising ordinary prudence, mutual respect, and basic safety during all physical interactions.
             </p>
@@ -117,18 +118,59 @@ export default function TermsPage() {
             </div>
           </section>
 
-          {/* SECTION 5: ACADEMIC CAPSTONE STATUS */}
+          {/* SECTION 5: COMMUNITY GOVERNANCE STATUS */}
           <section className="mt-12 rounded-2xl border border-border bg-muted/40 p-6">
             <div className="flex items-center gap-2 text-foreground font-bold text-sm">
-              <GraduationCap className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-              <span>Academic Capstone Status &amp; Jurisdiction</span>
+              <ShieldCheck className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <span>Community Governance Status &amp; Jurisdiction</span>
             </div>
             <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-              KindLink is developed and administered under academic research guidelines within the Department of Computer
-              Science &amp; Engineering at Asansol Engineering College, West Bengal. Any disputes arising in connection
+              KindLink is developed and administered under open-source civic guidelines in Asansol, West Bengal. Any disputes arising in connection
               with the platform shall be subject to the exclusive jurisdiction of the competent courts in Paschim Bardhaman,
               West Bengal, India.
             </p>
+          </section>
+
+          {/* SECTION 6: THIRD-PARTY SERVICES & ATTRIBUTIONS */}
+          <section className="mt-12">
+            <h2 className="font-heading text-xl font-bold text-foreground">
+              6. Third-Party Services &amp; Attributions
+            </h2>
+            <div className="mt-3 rounded-2xl border border-border bg-card p-5 text-xs sm:text-sm text-muted-foreground leading-relaxed space-y-2">
+              <p>
+                KindLink utilizes third-party geospatial, map tile, routing, and IP geolocation providers under open and attribution licenses.
+                Users acknowledge and agree to comply with applicable third-party terms:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-xs pt-1">
+                <li>
+                  <a
+                    href="https://ipinfo.io"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-teal-600 dark:text-teal-400 font-semibold hover:underline"
+                  >
+                    IP address data powered by IPinfo
+                  </a>{' '}
+                  (used solely for privacy-first initial country and starting language estimation; IP addresses are never logged or stored).
+                </li>
+                <li>
+                  Map tiles and vector geometry powered by MapTiler and OpenStreetMap contributors.
+                </li>
+                <li>
+                  Geocoding and place queries powered by Geoapify and Photon.
+                </li>
+                <li>
+                  Routing and directions powered by OpenRouteService and Project OSRM.
+                </li>
+              </ul>
+              <p className="pt-1 text-[11px] text-muted-foreground">
+                For complete legal notices and attribution documentation, visit our{' '}
+                <Link href="/credits" className="text-teal-600 dark:text-teal-400 font-semibold underline underline-offset-2">
+                  Credits &amp; Attributions
+                </Link>{' '}
+                page.
+              </p>
+            </div>
           </section>
 
           {/* BOTTOM CTA */}

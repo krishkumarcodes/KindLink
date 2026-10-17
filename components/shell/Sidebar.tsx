@@ -31,7 +31,7 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="hidden sm:flex flex-col border-r border-border/80 bg-card/95 backdrop-blur-md transition-all duration-300 ease-in-out sm:w-20 lg:w-64 h-[calc(100dvh-4rem)] sticky top-16 z-20 select-none shadow-[2px_0_12px_rgba(0,0,0,0.02)]">
+    <aside className="hidden sm:flex flex-col border-r border-border/80 bg-card/95 backdrop-blur-md transition-all duration-300 ease-in-out sm:w-20 lg:w-64 h-[calc(100dvh-var(--header-height))] sticky top-[var(--header-height)] z-20 select-none shadow-[2px_0_12px_rgba(0,0,0,0.02)]">
       {/* Ask for help CTA button */}
       <div className="p-3 lg:p-4">
         <button
@@ -95,7 +95,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* College Project Credit Tag */}
+      {/* Community Project Credit Tag */}
       <div className="p-3 lg:p-4 border-t border-border/80 mt-auto">
         <div className="rounded-2xl bg-gradient-to-br from-muted/80 to-muted/40 p-3.5 hidden lg:block border border-border/80 shadow-xs backdrop-blur-xs">
           <div className="flex items-center gap-2 text-primary font-bold text-xs mb-1">
@@ -103,8 +103,8 @@ export function Sidebar() {
             <span className="tracking-wide uppercase text-[11px] font-black">Community Aid</span>
           </div>
           <p className="text-[11px] text-muted-foreground leading-tight">
-            B.Tech CSE Project<br />
-            Asansol Engineering College
+            KindLink Civic Network<br />
+            Asansol &amp; Beyond
           </p>
           <div className="flex items-center gap-1.5 mt-2.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 px-2 py-0.5 rounded-full w-fit">
             <ShieldCheck className="h-3 w-3 notranslate shrink-0" />
@@ -113,7 +113,7 @@ export function Sidebar() {
         </div>
         <div
           className="lg:hidden flex justify-center text-primary hover:text-primary/80 transition-colors p-2"
-          title="Asansol Engineering College Student Project"
+          title="KindLink Community Project"
         >
           <HeartHandshake className="h-5 w-5 notranslate transition-transform hover:scale-110" />
         </div>

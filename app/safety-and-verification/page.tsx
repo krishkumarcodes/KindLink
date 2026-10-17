@@ -32,16 +32,16 @@ export default function SafetyAndVerificationPage() {
     {
       level: 'Tier 1',
       title: 'Phone OTP Verification',
-      scope: 'Basic community membership & broadcast viewing',
+      scope: 'Basic community membership & viewing requests',
       detail:
         'All users verify their mobile phone number via SMS OTP. This prevents automated bots, burner accounts, and mass spamming across the network.',
     },
     {
       level: 'Tier 2',
-      title: 'Student or Government ID Validation',
+      title: 'Government or Student ID Validation',
       scope: 'Active response to emergency blood, transport & elder care',
       detail:
-        'Volunteers submit an official identification card (Aadhaar, Voter ID, or Asansol Engineering College Student Card). Documents are encrypted at rest in private storage buckets and inspected by designated platform administrators.',
+        'Volunteers submit an official identification card (Aadhaar, Voter ID, or institutional photo ID). Documents are encrypted at rest in private storage buckets and inspected by designated platform administrators.',
     },
     {
       level: 'Tier 3',
@@ -55,7 +55,7 @@ export default function SafetyAndVerificationPage() {
   const safetyRules = [
     {
       title: 'Conduct Handoffs in Well-Lit, Public Locations',
-      desc: 'For non-emergency items like study materials and medical devices, meet at prominent landmarks such as Asansol Station Plaza, AEC College Gate, or hospital reception desks.',
+      desc: 'For non-emergency items like study materials and medical devices, meet at prominent landmarks such as Asansol Station Plaza, City Center, or hospital reception desks.',
     },
     {
       title: 'Zero Financial Transactions or Demands',

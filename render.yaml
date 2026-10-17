@@ -66,4 +66,12 @@ services:
         value: "43200"
       - key: MAPS_CACHE_TILES_TTL
         value: "604800"
+      - key: IPINFO_TOKEN
+        sync: false
+      - key: IPINFO_TIMEOUT_MS
+        value: "600"
+      - key: IPINFO_MODE
+        value: api
+      - key: ALLOW_TEST_COUNTRY
+        value: "false"
 

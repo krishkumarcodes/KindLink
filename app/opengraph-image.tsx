@@ -98,7 +98,7 @@ export default async function Image() {
               fontWeight: 600,
             }}
           >
-            Hyperlocal Verified Community Mutual Aid
+            Local Verified Community Mutual Aid
           </div>
           <h1
             style={{

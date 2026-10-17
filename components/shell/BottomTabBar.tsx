@@ -23,7 +23,7 @@ export function BottomTabBar() {
 
   return (
     <nav
-      className="sm:hidden fixed bottom-0 left-0 right-0 z-40 backdrop-blur-xl bg-card/90 dark:bg-slate-950/90 border-t border-border/80 dark:border-slate-800/80 px-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.625rem)] pt-2 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] select-none transition-colors"
+      className="sm:hidden fixed bottom-0 left-0 right-0 z-30 backdrop-blur-xl bg-card/90 dark:bg-slate-950/90 border-t border-border/80 dark:border-slate-800/80 px-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.625rem)] pt-2 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] select-none transition-colors"
       aria-label="Mobile Navigation"
     >
       <div className="flex items-center justify-around max-w-md mx-auto relative">

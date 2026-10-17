@@ -316,7 +316,7 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
               setUserCoords({ lat: latitude, lng: longitude, isLive: true }, cleanLoc);
               toast.success('Live location updated successfully');
             } else {
-              toast.success('GPS coordinates retrieved');
+              toast.success('Location coordinates retrieved');
               setUserCoords({ lat: latitude, lng: longitude, isLive: true });
             }
           }
@@ -864,7 +864,7 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
                   maxLength={100}
                   value={organization}
                   onChange={(e) => setOrganization(e.target.value)}
-                  placeholder="e.g. Asansol Engineering College, MAKAUT, Rotary Club, District Hospital"
+                  placeholder="e.g. Rotary Club, District Hospital, Community Welfare Society"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
                 />
               </div>

@@ -30,6 +30,8 @@ import {
   MapPin,
   X,
   Sliders,
+  Radio,
+  Phone,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
@@ -51,6 +53,7 @@ export function SettingsView() {
   const [iosPwaModalOpen, setIosPwaModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [showUnblockGuide, setShowUnblockGuide] = useState(false);
+  const [aboutModalOpen, setAboutModalOpen] = useState(false);
 
   // Text size state ('compact' | 'normal' | 'large')
   const [textSize, setTextSize] = useState<'compact' | 'normal' | 'large'>(() => {
@@ -156,6 +159,124 @@ export function SettingsView() {
   }>({ status: 'none' });
   const [isLastAdmin, setIsLastAdmin] = useState(false);
   const [cancellingDeletion, setCancellingDeletion] = useState(false);
+
+  // Emergency SOS Sharing Privacy (Profile > Settings > Emergency)
+  // Off by default except Name and Live Location
+  const [emergencySharePhone, setEmergencySharePhone] = useState<boolean>(() => {
+    if (userProfile.emergencyPrivacy?.sharePhone !== undefined) {
+      return Boolean(userProfile.emergencyPrivacy.sharePhone);
+    }
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('kindlink_emergency_share_phone');
+      if (saved !== null) return saved === 'true';
+    }
+    return false;
+  });
+
+  const [emergencyShareBlood, setEmergencyShareBlood] = useState<boolean>(() => {
+    if (userProfile.emergencyPrivacy?.shareBloodGroup !== undefined) {
+      return Boolean(userProfile.emergencyPrivacy.shareBloodGroup);
+    }
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('kindlink_emergency_share_blood');
+      if (saved !== null) return saved === 'true';
+    }
+    return false;
+  });
+
+  const [emergencyBloodGroup, setEmergencyBloodGroup] = useState<string>(() => {
+    return userProfile.bloodGroup || '';
+  });
+
+  const [emergencyShareMedical, setEmergencyShareMedical] = useState<boolean>(() => {
+    if (userProfile.emergencyPrivacy?.shareMedicalNote !== undefined) {
+      return Boolean(userProfile.emergencyPrivacy.shareMedicalNote);
+    }
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('kindlink_emergency_share_medical');
+      if (saved !== null) return saved === 'true';
+    }
+    return false;
+  });
+
+  const [emergencyMedicalNote, setEmergencyMedicalNote] = useState<string>(() => {
+    return userProfile.emergencyPrivacy?.medicalNote || '';
+  });
+
+  const handleToggleEmergencyPhone = (checked: boolean) => {
+    setEmergencySharePhone(checked);
+    try { localStorage.setItem('kindlink_emergency_share_phone', String(checked)); } catch {}
+    updateUserProfile({
+      emergencyPrivacy: {
+        ...(userProfile.emergencyPrivacy || {}),
+        sharePhone: checked,
+        shareBloodGroup: emergencyShareBlood,
+        shareMedicalNote: emergencyShareMedical,
+        medicalNote: emergencyMedicalNote,
+      },
+    });
+    toast.success(`Emergency phone sharing ${checked ? 'enabled' : 'disabled'}`);
+  };
+
+  const handleToggleEmergencyBlood = (checked: boolean) => {
+    setEmergencyShareBlood(checked);
+    try { localStorage.setItem('kindlink_emergency_share_blood', String(checked)); } catch {}
+    updateUserProfile({
+      bloodGroup: emergencyBloodGroup,
+      emergencyPrivacy: {
+        ...(userProfile.emergencyPrivacy || {}),
+        sharePhone: emergencySharePhone,
+        shareBloodGroup: checked,
+        shareMedicalNote: emergencyShareMedical,
+        medicalNote: emergencyMedicalNote,
+      },
+    });
+    toast.success(`Emergency blood group sharing ${checked ? 'enabled' : 'disabled'}`);
+  };
+
+  const handleBloodGroupSelect = (group: string) => {
+    setEmergencyBloodGroup(group);
+    updateUserProfile({
+      bloodGroup: group,
+      emergencyPrivacy: {
+        ...(userProfile.emergencyPrivacy || {}),
+        sharePhone: emergencySharePhone,
+        shareBloodGroup: emergencyShareBlood,
+        shareMedicalNote: emergencyShareMedical,
+        medicalNote: emergencyMedicalNote,
+      },
+    });
+    toast.success(`Blood group set to ${group}`);
+  };
+
+  const handleToggleEmergencyMedical = (checked: boolean) => {
+    setEmergencyShareMedical(checked);
+    try { localStorage.setItem('kindlink_emergency_share_medical', String(checked)); } catch {}
+    updateUserProfile({
+      emergencyPrivacy: {
+        ...(userProfile.emergencyPrivacy || {}),
+        sharePhone: emergencySharePhone,
+        shareBloodGroup: emergencyShareBlood,
+        shareMedicalNote: checked,
+        medicalNote: emergencyMedicalNote,
+      },
+    });
+    toast.success(`Emergency medical note sharing ${checked ? 'enabled' : 'disabled'}`);
+  };
+
+  const handleMedicalNoteChange = (text: string) => {
+    const trimmed = text.slice(0, 200);
+    setEmergencyMedicalNote(trimmed);
+    updateUserProfile({
+      emergencyPrivacy: {
+        ...(userProfile.emergencyPrivacy || {}),
+        sharePhone: emergencySharePhone,
+        shareBloodGroup: emergencyShareBlood,
+        shareMedicalNote: emergencyShareMedical,
+        medicalNote: trimmed,
+      },
+    });
+  };
 
   // Sync language listener
   useEffect(() => {
@@ -812,7 +933,148 @@ export function SettingsView() {
         </div>
 
         {/* =========================================================================
-            5. PWA MOBILE APP CARD
+            5. EMERGENCY SOS & PRIVACY SETTINGS
+           ========================================================================= */}
+        <div id="emergency" className="rounded-3xl border border-border bg-card p-3.5 sm:p-4 shadow-soft space-y-3.5 scroll-mt-24">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+              <Radio className="h-5 w-5 notranslate" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-foreground">
+                Emergency SOS &amp; Sharing Privacy
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Control what optional personal details are shared with responders during an active SOS beacon
+              </p>
+            </div>
+          </div>
+
+          {/* Core Distress Beacon Note (Always Shared) */}
+          <div className="p-3.5 rounded-2xl bg-muted/40 border border-border space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-foreground flex items-center gap-1.5">
+                <Shield className="h-4 w-4 text-emerald-600 dark:text-emerald-400 notranslate" />
+                <span>Core Distress Beacon (Always Shared)</span>
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
+                Always active
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Your <strong>Full Name</strong> and <strong>Live GPS Location</strong> are always broadcasted so verified emergency volunteers and first responders can find and reach you.
+            </p>
+          </div>
+
+          {/* Toggle Switches for Optional Sharing (Off by default except Name and Live Location) */}
+          <div className="space-y-3 pt-1">
+            {/* 1. Phone sharing toggle */}
+            <SwitchRow
+              id="emergency-share-phone"
+              checked={emergencySharePhone}
+              onCheckedChange={handleToggleEmergencyPhone}
+              label="Share phone number during SOS"
+              description="Allows responders and contacts to call you back directly during the emergency."
+              icon={<Phone className="h-4 w-4 text-primary" />}
+              badge={
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                  {emergencySharePhone ? 'Shared' : 'Hidden'}
+                </span>
+              }
+            />
+
+            {/* 2. Blood Group sharing toggle */}
+            <div className="p-3.5 rounded-2xl border border-border bg-background space-y-3">
+              <SwitchRow
+                id="emergency-share-blood"
+                checked={emergencyShareBlood}
+                onCheckedChange={handleToggleEmergencyBlood}
+                label="Share blood group during SOS"
+                description="Helps first responders and hospital trauma units prepare transfusions without delay."
+                icon={<HeartPulse className="h-4 w-4 text-rose-500" />}
+                className="p-0 border-0 bg-transparent hover:bg-transparent"
+                badge={
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                    {emergencyShareBlood ? 'Shared' : 'Hidden'}
+                  </span>
+                }
+              />
+
+              <div className="pt-2 border-t border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <span className="text-[11px] font-bold text-muted-foreground">
+                  Select Blood Group:
+                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bg) => {
+                    const isSelected = emergencyBloodGroup === bg;
+                    return (
+                      <button
+                        key={bg}
+                        type="button"
+                        onClick={() => handleBloodGroupSelect(bg)}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition touch-target ${
+                          isSelected
+                            ? 'bg-rose-600 text-white shadow-soft ring-1 ring-rose-500/40'
+                            : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                        }`}
+                      >
+                        {bg}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Short Medical Note toggle */}
+            <div className="p-3.5 rounded-2xl border border-border bg-background space-y-3">
+              <SwitchRow
+                id="emergency-share-medical"
+                checked={emergencyShareMedical}
+                onCheckedChange={handleToggleEmergencyMedical}
+                label="Share short medical note (up to 200 chars)"
+                description="Include vital emergency medical notes (e.g. allergies, asthma, diabetes, heart conditions)."
+                icon={<AlertOctagon className="h-4 w-4 text-amber-500" />}
+                className="p-0 border-0 bg-transparent hover:bg-transparent"
+                badge={
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                    {emergencyShareMedical ? 'Shared' : 'Hidden'}
+                  </span>
+                }
+              />
+
+              <div className="pt-2 border-t border-border/80 space-y-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <label htmlFor="emergency-medical-note-input" className="font-bold text-muted-foreground">
+                    Medical Note for Responders:
+                  </label>
+                  <span className="font-mono text-muted-foreground font-semibold">
+                    {emergencyMedicalNote.length} / 200 chars
+                  </span>
+                </div>
+                <textarea
+                  id="emergency-medical-note-input"
+                  rows={2}
+                  maxLength={200}
+                  value={emergencyMedicalNote}
+                  onChange={(e) => handleMedicalNoteChange(e.target.value)}
+                  placeholder="e.g. Severe peanut allergy (carry EpiPen), diabetic on insulin, asthma..."
+                  className="w-full p-2.5 rounded-xl border border-border bg-card text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground border-t border-border">
+            <Lock className="h-3.5 w-3.5 text-primary notranslate shrink-0" />
+            <span>
+              All emergency details are private and shared only while an Emergency SOS beacon is active.
+            </span>
+          </div>
+        </div>
+
+        {/* =========================================================================
+            6. PWA MOBILE APP CARD
            ========================================================================= */}
         <div className="rounded-3xl border border-border bg-card p-3.5 sm:p-4 shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -904,7 +1166,7 @@ export function SettingsView() {
               <div className="flex items-center justify-between">
                 <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 notranslate" />
-                  MapTiler &amp; OSM
+                  MapTiler &amp; Map Data
                 </span>
                 <a
                   href="https://www.maptiler.com/copyright/"
@@ -941,17 +1203,56 @@ export function SettingsView() {
                 Forward address search, geocoding, and walking/driving route computations.
               </p>
             </div>
+
+            <div className="p-3.5 rounded-2xl bg-background border border-border space-y-1.5 sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                  <Globe className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 notranslate" />
+                  IP Geolocation &amp; Language Detection
+                </span>
+                <a
+                  href="https://ipinfo.io"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-0.5"
+                >
+                  <span>IPinfo</span>
+                  <ExternalLink className="h-2.5 w-2.5 notranslate" />
+                </a>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                <a
+                  href="https://ipinfo.io"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline font-medium text-foreground"
+                >
+                  IP address data powered by IPinfo
+                </a>
+                . Used once on first visit to estimate country and suggest a local language. IP addresses are never logged or stored.
+              </p>
+            </div>
           </div>
 
-          <div className="pt-2 flex items-center justify-between text-xs border-t border-border">
-            <span className="text-muted-foreground">Need complete license texts &amp; open source credits?</span>
-            <Link
-              href="/credits"
-              className="text-teal-600 dark:text-teal-400 font-semibold hover:underline inline-flex items-center gap-1"
-            >
-              <span>View Full Credits &amp; Attributions</span>
-              <ExternalLink className="h-3 w-3 notranslate" />
-            </Link>
+          <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs border-t border-border">
+            <span className="text-muted-foreground">KindLink v3.5 &bull; Open-source mutual aid platform</span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setAboutModalOpen(true)}
+                className="text-teal-600 dark:text-teal-400 font-semibold hover:underline inline-flex items-center gap-1"
+              >
+                <span>About KindLink</span>
+              </button>
+              <span className="text-border">&bull;</span>
+              <Link
+                href="/credits"
+                className="text-teal-600 dark:text-teal-400 font-semibold hover:underline inline-flex items-center gap-1"
+              >
+                <span>View Full Credits &amp; Attributions</span>
+                <ExternalLink className="h-3 w-3 notranslate" />
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -1193,13 +1494,97 @@ export function SettingsView() {
           onClose={() => setDeleteModalOpen(false)}
         />
       )}
+
+      {/* ABOUT KINDLINK MODAL */}
+      {aboutModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+        >
+          <div className="w-full max-w-md rounded-3xl bg-card border border-border p-6 shadow-2xl text-left space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
+                  <Shield className="h-5 w-5 notranslate" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">About KindLink</h3>
+                  <p className="text-xs text-muted-foreground">Version 3.5.0 &bull; Mutual Aid Platform</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAboutModalOpen(false)}
+                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition"
+                aria-label="Close modal"
+              >
+                <X className="h-5 w-5 notranslate" />
+              </button>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              KindLink is a 100% free, open-source community mutual aid platform created to empower neighborhood support,
+              emergency blood donor dispatch, and student resource sharing in West Bengal and beyond.
+            </p>
+
+            <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/80 space-y-2 text-xs">
+              <strong className="text-foreground block font-semibold">Attributions &amp; Third-Party Services:</strong>
+              <p className="text-[11px] text-muted-foreground">
+                <a
+                  href="https://ipinfo.io"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-teal-600 dark:text-teal-400 font-semibold hover:underline"
+                >
+                  IP address data powered by IPinfo
+                </a>
+                . Used strictly once on first visit to detect starting language; we never log, store, or track IP addresses.
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Basemaps &amp; routing courtesy of MapTiler, OpenRouteService, Geoapify, and OpenStreetMap contributors.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1">
+              <Link
+                href="/credits"
+                onClick={() => setAboutModalOpen(false)}
+                className="p-2.5 rounded-xl border border-border hover:bg-muted text-teal-600 dark:text-teal-400 font-semibold transition"
+              >
+                Full Credits
+              </Link>
+              <Link
+                href="/privacy"
+                onClick={() => setAboutModalOpen(false)}
+                className="p-2.5 rounded-xl border border-border hover:bg-muted text-teal-600 dark:text-teal-400 font-semibold transition"
+              >
+                Privacy
+              </Link>
+              <Link
+                href="/terms"
+                onClick={() => setAboutModalOpen(false)}
+                className="p-2.5 rounded-xl border border-border hover:bg-muted text-teal-600 dark:text-teal-400 font-semibold transition"
+              >
+                Terms
+              </Link>
+            </div>
+
+            <button
+              onClick={() => setAboutModalOpen(false)}
+              className="w-full py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-soft transition touch-target"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-{/* =========================================================================
+/* =========================================================================
     CHANGE PASSWORD FORM COMPONENT
-   ========================================================================= */}
+   ========================================================================= */
 function ChangePasswordForm() {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -1471,9 +1856,9 @@ function ChangePasswordForm() {
   );
 }
 
-{/* =========================================================================
+/* =========================================================================
     REQUEST ACCOUNT DELETION MODAL COMPONENT
-   ========================================================================= */}
+   ========================================================================= */
 function RequestAccountDeletionModal({
   isLastAdmin,
   onSuccess,

@@ -99,7 +99,7 @@ export function ProfileTabs({
   return (
     <div
       id="profile-tabs-strip"
-      className="sticky top-[64px] lg:top-[72px] z-20 -mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 bg-background/95 backdrop-blur-md border-b border-border/80 py-2.5 transition-colors"
+      className="sticky top-[var(--header-height)] z-20 -mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 bg-background/95 backdrop-blur-md border-b border-border/80 py-2.5 transition-colors"
     >
       <div className="relative max-w-5xl mx-auto">
         {/* Soft fade edges on left & right to indicate scrollability */}

@@ -37,8 +37,8 @@ export const metadata: Metadata = {
     'blood donation Asansol',
     'emergency help',
     'community aid',
-    'hyperlocal volunteer',
-    'Hyperlocal Dispatch',
+    'local volunteer',
+    'Local Dispatch',
     'West Bengal aid network',
   ],
   manifest: '/manifest.json',
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: 'KindLink - Hyperlocal Mutual Aid & Community Support',
+        alt: 'KindLink - Local Mutual Aid & Community Support',
       },
     ],
   },
@@ -106,6 +106,7 @@ export const viewport: Viewport = {
 
 import { cookies } from 'next/headers';
 import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, isRTL, isValidLocale } from '@/lib/i18n';
+import { AutoLanguageNotice } from '@/components/locale/AutoLanguageNotice';
 
 export default function RootLayout({
   children,
@@ -148,6 +149,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-background font-sans text-foreground antialiased selection:bg-primary/20">
         <Providers initialLocale={initialLocale}>
           {children}
+          <AutoLanguageNotice />
         </Providers>
 
         {/* Hidden Google Translate Mount Element (visually hidden, not display:none) */}

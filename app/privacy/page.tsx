@@ -117,7 +117,7 @@ export default function PrivacyPage() {
           {/* SECTION 4: ZERO COOKIES & TRACKING */}
           <section className="mt-12">
             <h2 className="font-heading text-xl font-bold text-foreground">
-              4. Zero Third-Party Advertising &amp; Tracking Cookies
+              4. Zero Advertising Trackers &amp; Transparent Cookie List
             </h2>
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="rounded-xl border border-border bg-card p-4">
@@ -131,9 +131,87 @@ export default function PrivacyPage() {
               <div className="rounded-xl border border-border bg-card p-4">
                 <h3 className="text-xs font-bold text-foreground mb-1">Functional Session Cookies Only</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  The only cookies stored in your browser are secure HTTP-only authentication tokens and UI theme
-                  preferences (light vs. dark mode).
+                  The only cookies stored in your browser are secure HTTP-only authentication tokens and your UI
+                  preferences (language and theme).
                 </p>
+              </div>
+            </div>
+
+            {/* First-Visit IP Country Detection & Attribution Notice */}
+            <div className="mt-4 rounded-2xl border border-teal-500/30 bg-teal-500/5 p-5 text-xs sm:text-sm leading-relaxed text-muted-foreground space-y-2.5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <strong className="text-foreground font-semibold flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" />
+                  <span>First-Visit Language Preference &amp; Privacy Safeguard</span>
+                </strong>
+                <a
+                  href="https://ipinfo.io"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline"
+                >
+                  IP address data powered by IPinfo
+                </a>
+              </div>
+              <p>
+                On your first visit, we check your IP address once through IPinfo to estimate your country and pick a
+                starting language. We do not store, log, or track your IP address. We only save your chosen language in a
+                functional cookie so your preference stays remembered.
+              </p>
+              <p className="text-[11px] text-muted-foreground pt-1">
+                Attribution: <a href="https://ipinfo.io" target="_blank" rel="noopener noreferrer" className="text-teal-600 dark:text-teal-400 underline font-medium">IP address data powered by IPinfo</a>.
+                Once your language preference is established, IP lookups are never performed again for your session.
+              </p>
+            </div>
+
+            {/* Explicit Cookie List */}
+            <div className="mt-4 rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-3">
+              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
+                KindLink Cookie &amp; Storage Inventory
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-muted-foreground">
+                  <thead>
+                    <tr className="border-b border-border text-foreground font-semibold">
+                      <th className="pb-2 pr-3">Cookie / Key</th>
+                      <th className="pb-2 pr-3">Purpose</th>
+                      <th className="pb-2 pr-3">Category</th>
+                      <th className="pb-2">Lifespan</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60 text-[11px]">
+                    <tr>
+                      <td className="py-2.5 pr-3 font-mono font-bold text-foreground">kindlink_lang</td>
+                      <td className="py-2.5 pr-3">Remembers your chosen language code</td>
+                      <td className="py-2.5 pr-3">Functional</td>
+                      <td className="py-2.5">1 year</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 pr-3 font-mono font-bold text-foreground">kindlink_lang_source</td>
+                      <td className="py-2.5 pr-3">Remembers if language was auto-detected or chosen by you</td>
+                      <td className="py-2.5 pr-3">Functional</td>
+                      <td className="py-2.5">1 year</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 pr-3 font-mono font-bold text-foreground">kindlink_locale</td>
+                      <td className="py-2.5 pr-3">Synchronizes selected language locale between server and client</td>
+                      <td className="py-2.5 pr-3">Functional</td>
+                      <td className="py-2.5">1 year</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 pr-3 font-mono font-bold text-foreground">googtrans</td>
+                      <td className="py-2.5 pr-3">Stores Google Translate engine target language selection</td>
+                      <td className="py-2.5 pr-3">Functional</td>
+                      <td className="py-2.5">1 year</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 pr-3 font-mono font-bold text-foreground">sb-*-auth-token</td>
+                      <td className="py-2.5 pr-3">Encrypted HTTP-only authentication session tokens</td>
+                      <td className="py-2.5 pr-3">Essential / Security</td>
+                      <td className="py-2.5">Session / 30 days</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </section>

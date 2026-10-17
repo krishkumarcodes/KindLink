@@ -17,8 +17,17 @@ export interface SavedPlace {
   label: string;
   lat: number;
   lng: number;
-  type: 'home' | 'work' | 'campus' | 'custom';
+  type: 'home' | 'work' | 'clinic' | 'campus' | 'custom';
   createdAt?: number;
+}
+
+export interface RecentPlace {
+  id: string;
+  name: string;
+  label?: string;
+  lat: number;
+  lng: number;
+  timestamp: number;
 }
 
 export interface LocationSearchResult {
@@ -50,8 +59,8 @@ export interface LocationContextValue {
   ) => Promise<void>;
   setAreaNameOnly: (name: string) => void;
   resetToDefaultHub: () => void;
-  savePlace: (place: Omit<SavedPlace, 'id'>) => void;
-  updateSavedPlace: (id: string, updates: { name: string; type?: SavedPlace['type'] }) => void;
-  removeSavedPlace: (id: string) => void;
+  savePlace: (place: Omit<SavedPlace, 'id'>) => Promise<void> | void;
+  updateSavedPlace: (id: string, updates: { name: string; type?: SavedPlace['type'] }) => Promise<void> | void;
+  removeSavedPlace: (id: string) => Promise<void> | void;
+  syncSavedPlacesWithRemote?: () => Promise<void>;
 }
-

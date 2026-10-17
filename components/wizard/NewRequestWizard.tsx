@@ -117,7 +117,7 @@ export function NewRequestWizard() {
   // Landmark presets in Asansol and surrounding coalfield zone
   const landmarks = [
     { name: 'Asansol District Hospital, SB Gorai Road', lat: 23.6845, lng: 86.9742 },
-    { name: 'Asansol Engineering College, Kalyanpur', lat: 23.6889, lng: 86.9661 },
+    { name: 'Kalyanpur Housing Hub, Asansol', lat: 23.6889, lng: 86.9661 },
     { name: 'HLG Memorial Hospital, Sen Raleigh Road', lat: 23.7012, lng: 86.9554 },
     { name: 'Burnpur Riverside Road, Burnpur', lat: 23.6642, lng: 86.9388 },
     { name: 'Ushagram Main Crossing, Asansol', lat: 23.6791, lng: 86.9814 },
@@ -401,7 +401,7 @@ export function NewRequestWizard() {
       if (category === 'transport') {
         setPickupAddress(name);
       }
-      toast.success('Live GPS coordinates locked for this request!');
+      toast.success('Live location locked for this request!');
     }
   };
 
@@ -489,7 +489,7 @@ export function NewRequestWizard() {
         setCurrentView('requests');
       }, 2400);
     } catch (err: any) {
-      toast.error('Could not broadcast request', {
+      toast.error('Could not send request', {
         description: err.message || 'Please check network connection and try again.',
       });
     } finally {
@@ -1211,7 +1211,7 @@ export function NewRequestWizard() {
                 Where is help required?
               </h2>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                Provide GPS coordinates or select a landmark in Asansol to calculate proximity ETA.
+                Provide location or select a landmark in Asansol to calculate proximity ETA.
               </p>
             </div>
 
@@ -1259,7 +1259,7 @@ export function NewRequestWizard() {
                       At my current location
                     </span>
                     <span className="text-[11px] text-muted-foreground truncate block">
-                      Instant GPS or saved neighborhood
+                      Instant location or saved neighborhood
                     </span>
                   </div>
                 </div>

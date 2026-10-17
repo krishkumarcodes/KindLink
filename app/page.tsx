@@ -96,7 +96,7 @@ export default function PublicHomePage() {
       urgencyHint: 'Community aid',
       eta: 'Peer semester book bank',
       description:
-        'Academic textbook lending for engineering (AEC MAKAUT syllabus), CBSE, and state board curriculums, reducing semester costs for hardworking students.',
+        'Academic textbook lending for engineering, CBSE, and state board curriculums, reducing semester costs for hardworking students.',
       icon: BookOpen,
       accent: 'from-indigo-500/20 via-indigo-500/10 to-transparent border-indigo-500/30 text-indigo-600 dark:text-indigo-400',
       badgeBg: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300',
@@ -110,7 +110,7 @@ export default function PublicHomePage() {
       number: '01',
       title: 'Post or Discover a Need',
       summary:
-        'Requesters submit an urgent aid request in under 30 seconds. Your exact street address and phone number remain completely hidden — only an approximate spatial zone is broadcast.',
+        'Requesters submit an urgent aid request in under 30 seconds. Your exact street address and phone number remain completely hidden — only an approximate spatial zone is shared with nearby helpers.',
     },
     {
       number: '02',
@@ -156,7 +156,7 @@ export default function PublicHomePage() {
               {/* Mission & Problem Statement */}
               <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">
                 When an emergency hits — whether your family member needs rare O-negative blood, an elderly parent
-                requires immediate prescription medicines, or an injured student needs a wheelchair — broadcast messages
+                requires immediate prescription medicines, or an injured student needs a wheelchair — urgent alert messages
                 on WhatsApp get lost in noise. KindLink connects you directly with verified neighbors living within
                 walking or cycling distance, using transparent community urgency ranking instead of commercial ad models.
               </p>
@@ -272,7 +272,7 @@ export default function PublicHomePage() {
                     <Navigation className="h-5 w-5 text-teal-500" />
                   </div>
                   <h3 className="mt-5 font-heading text-lg font-bold text-foreground group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
-                    Hyperlocal Road Routing &amp; Hospitals
+                    Local Road Routing &amp; Hospitals
                   </h3>
                   <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                     KindLink features real road distance calculation, bike and walking ETAs via OSRM,

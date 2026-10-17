@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { useBodyScrollLock } from '@/components/ui/OverlayPortal';
 import {
   MapPin,
   Crosshair,
-  RotateCcw,
   Search,
   Check,
   X,
@@ -21,16 +22,25 @@ import {
   GraduationCap,
   Navigation,
   Sliders,
+  Clock,
   Building2,
+  Stethoscope,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLocation } from '@/lib/location/LocationProvider';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
-import { LocationSearchResult } from '@/lib/location/types';
-import { searchAddressNominatim, SUGGESTED_AREAS } from '@/lib/location/search';
+import { LocationSearchResult, RecentPlace, SavedPlace } from '@/lib/location/types';
+import {
+  searchAddress,
+  FALLBACK_CITIES,
+  FallbackCity,
+  fetchNearbyPlaces,
+  NearbyPlaceItem,
+} from '@/lib/location/search';
 import { reverseGeocode } from '@/lib/geo/reverse-geocode';
 import { PinDropMap } from '@/components/location/PinDropMap';
-import { ASANSOL_CENTER } from '@/lib/data/mock-requests';
 
 interface LocationModalProps {
   open: boolean;
@@ -38,6 +48,9 @@ interface LocationModalProps {
 }
 
 type ModalTab = 'search' | 'map' | 'saved';
+
+const RECENT_PLACES_KEY = 'kindlink_recent_places';
+const SNAP_RADII = [1, 2, 5, 10, 25, 50] as const;
 
 export function LocationModal({ open, onClose }: LocationModalProps) {
   const {
@@ -49,31 +62,41 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
     savedPlaces,
     requestLiveLocation,
     setLocation,
-    resetToDefaultHub,
     savePlace,
     updateSavedPlace,
     removeSavedPlace,
   } = useLocation();
 
-  const { filterRadius, setFilterRadius } = useKindLinkStore();
+  const { filterRadius, setFilterRadius, userProfile } = useKindLinkStore();
 
   const [activeTab, setActiveTab] = useState<ModalTab>('search');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<LocationSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [showPermissionGuide, setShowPermissionGuide] = useState(false);
 
   // Pin drop state
-  const [pinLat, setPinLat] = useState<number>(userCoords.lat || ASANSOL_CENTER.lat);
-  const [pinLng, setPinLng] = useState<number>(userCoords.lng || ASANSOL_CENTER.lng);
-  const [pinAreaName, setPinAreaName] = useState<string>(userAreaName || 'Asansol Region');
+  const [pinLat, setPinLat] = useState<number>(userCoords.lat || 23.6889);
+  const [pinLng, setPinLng] = useState<number>(userCoords.lng || 86.9661);
+  const [pinAreaName, setPinAreaName] = useState<string>(userAreaName || 'Selected Location');
   const [isGeocodingPin, setIsGeocodingPin] = useState(false);
 
   // Saved place management
   const [showAddSavedPlace, setShowAddSavedPlace] = useState(false);
   const [editingPlaceId, setEditingPlaceId] = useState<string | null>(null);
   const [newPlaceName, setNewPlaceName] = useState('');
-  const [newPlaceType, setNewPlaceType] = useState<'home' | 'work' | 'campus' | 'custom'>('home');
+  const [newPlaceType, setNewPlaceType] = useState<SavedPlace['type']>('home');
+
+  // Recent places on device
+  const [recentPlaces, setRecentPlaces] = useState<RecentPlace[]>([]);
+
+  // Nearby places from server
+  const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlaceItem[]>([]);
+  const [isLoadingNearby, setIsLoadingNearby] = useState(false);
+
+  // Home area from user profile
+  const [profileHomeArea, setProfileHomeArea] = useState<string>('');
 
   const searchAbortRef = useRef<AbortController | null>(null);
   const pinGeocodeTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -81,18 +104,130 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
   // Sync pin coordinates with current location when opening modal
   useEffect(() => {
     if (open) {
-      setPinLat(userCoords.lat || ASANSOL_CENTER.lat);
-      setPinLng(userCoords.lng || ASANSOL_CENTER.lng);
-      setPinAreaName(userAreaName || 'Asansol Region');
+      setPinLat(userCoords.lat || 23.6889);
+      setPinLng(userCoords.lng || 86.9661);
+      setPinAreaName(userAreaName || 'Selected Location');
+      setShowAddSavedPlace(false);
+      setEditingPlaceId(null);
+      setSearchError(null);
     }
   }, [open, userCoords.lat, userCoords.lng, userAreaName]);
 
-  // Debounced Nominatim address search with caching
+  // Load recent places from localStorage on mount & when opening
   useEffect(() => {
-    const trimmed = searchQuery.trim();
+    if (typeof window === 'undefined' || !open) return;
+    try {
+      const stored = localStorage.getItem(RECENT_PLACES_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setRecentPlaces(parsed.slice(0, 5));
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [open]);
+
+  // Add to recent places
+  const recordRecentPlace = useCallback((name: string, lat: number, lng: number, label?: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const cleanName = name.trim();
+      if (!cleanName) return;
+
+      const newRecent: RecentPlace = {
+        id: `rec-${Date.now()}`,
+        name: cleanName,
+        label: label || cleanName,
+        lat: Number(lat.toFixed(5)),
+        lng: Number(lng.toFixed(5)),
+        timestamp: Date.now(),
+      };
+
+      setRecentPlaces((prev) => {
+        const filtered = prev.filter(
+          (p) =>
+            p.name.toLowerCase() !== cleanName.toLowerCase() &&
+            !(Math.abs(p.lat - lat) < 0.001 && Math.abs(p.lng - lng) < 0.001)
+        );
+        const updated = [newRecent, ...filtered].slice(0, 5);
+        try {
+          localStorage.setItem(RECENT_PLACES_KEY, JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+        return updated;
+      });
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Clear recent places
+  const handleClearRecent = () => {
+    setRecentPlaces([]);
+    try {
+      localStorage.removeItem(RECENT_PLACES_KEY);
+    } catch {
+      // ignore
+    }
+    toast.info('Recent places cleared');
+  };
+
+  // Determine user's home area from store or fetch profile
+  useEffect(() => {
+    if (!open) return;
+    const home = userProfile?.homeNeighborhood || '';
+    if (home) {
+      setProfileHomeArea(home);
+      return;
+    }
+
+    // Try fetching /api/auth/profile if empty in store
+    fetch('/api/auth/profile')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.profile?.home_neighborhood || data?.profile?.area_name) {
+          setProfileHomeArea(data.profile.home_neighborhood || data.profile.area_name);
+        }
+      })
+      .catch(() => {});
+  }, [open, userProfile]);
+
+  // Fetch nearby places when open in search mode
+  useEffect(() => {
+    if (!open || activeTab !== 'search' || !userCoords.lat || !userCoords.lng) return;
+
+    let cancelled = false;
+    setIsLoadingNearby(true);
+
+    fetchNearbyPlaces(userCoords.lat, userCoords.lng, 5000)
+      .then((places) => {
+        if (!cancelled) {
+          setNearbyPlaces(places);
+          setIsLoadingNearby(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setNearbyPlaces([]);
+          setIsLoadingNearby(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, activeTab, userCoords.lat, userCoords.lng]);
+
+  // Debounced address search routing through /api/maps/search
+  const triggerSearch = useCallback(async (query: string) => {
+    const trimmed = query.trim();
     if (!trimmed || trimmed.length < 2) {
       setSearchResults([]);
       setIsSearching(false);
+      setSearchError(null);
       return;
     }
 
@@ -103,25 +238,28 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
     const abortController = new AbortController();
     searchAbortRef.current = abortController;
     setIsSearching(true);
+    setSearchError(null);
 
-    const timer = setTimeout(async () => {
-      try {
-        const results = await searchAddressNominatim(trimmed, abortController.signal);
-        setSearchResults(results);
-      } catch (err: unknown) {
-        if ((err as Error)?.name !== 'AbortError') {
-          setSearchResults([]);
-        }
-      } finally {
-        setIsSearching(false);
+    try {
+      const results = await searchAddress(trimmed, abortController.signal);
+      setSearchResults(results);
+    } catch (err: unknown) {
+      if ((err as Error)?.name !== 'AbortError') {
+        setSearchResults([]);
+        setSearchError('Search failed to complete. Please try again or check network.');
       }
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      triggerSearch(searchQuery);
     }, 300);
 
-    return () => {
-      clearTimeout(timer);
-      abortController.abort();
-    };
-  }, [searchQuery]);
+    return () => clearTimeout(timer);
+  }, [searchQuery, triggerSearch]);
 
   // Handle pin movement with reverse geocoding
   const handlePinMoved = (newLat: number, newLng: number) => {
@@ -147,9 +285,10 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
     }, 350);
   };
 
-  // Confirm pin location
+  // Confirm pin location ("Use this location")
   const handleConfirmPinLocation = async () => {
     await setLocation({ lat: pinLat, lng: pinLng, isLive: false }, pinAreaName);
+    recordRecentPlace(pinAreaName, pinLat, pinLng, `${pinLat.toFixed(4)}°N, ${pinLng.toFixed(4)}°E`);
     toast.success(`Location set to ${pinAreaName}!`, {
       description: 'Mutual aid requests and distances updated.',
     });
@@ -159,29 +298,82 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
   // Select a search result
   const handleSelectSearchResult = async (result: LocationSearchResult) => {
     await setLocation({ lat: result.lat, lng: result.lng, isLive: false }, result.shortLabel);
+    recordRecentPlace(result.shortLabel, result.lat, result.lng, result.displayName);
     toast.success(`Location set to ${result.shortLabel}!`);
     setSearchQuery('');
     setSearchResults([]);
     onClose();
   };
 
-  // Select a saved place
-  const handleSelectSavedPlace = async (place: { lat: number; lng: number; name: string }) => {
+  // Select a fallback city
+  const handleSelectCity = async (city: FallbackCity) => {
+    await setLocation({ lat: city.lat, lng: city.lng, isLive: false }, city.name);
+    recordRecentPlace(city.name, city.lat, city.lng, city.state);
+    toast.success(`Location set to ${city.name}!`);
+    onClose();
+  };
+
+  // Select a recent place
+  const handleSelectRecentPlace = async (place: RecentPlace) => {
     await setLocation({ lat: place.lat, lng: place.lng, isLive: false }, place.name);
+    recordRecentPlace(place.name, place.lat, place.lng, place.label);
     toast.success(`Location set to ${place.name}!`);
     onClose();
   };
 
+  // Select a nearby place
+  const handleSelectNearbyPlace = async (place: NearbyPlaceItem) => {
+    await setLocation({ lat: place.lat, lng: place.lng, isLive: false }, place.name);
+    recordRecentPlace(place.name, place.lat, place.lng, place.address);
+    toast.success(`Location set to ${place.name}!`);
+    onClose();
+  };
+
+  // Select a saved place
+  const handleSelectSavedPlace = async (place: SavedPlace) => {
+    await setLocation({ lat: place.lat, lng: place.lng, isLive: false }, place.name);
+    recordRecentPlace(place.name, place.lat, place.lng, place.label);
+    toast.success(`Location set to ${place.name}!`);
+    onClose();
+  };
+
+  // Handle "Use my home area" button
+  const handleUseHomeArea = async () => {
+    if (!profileHomeArea) {
+      toast.error('Home area not configured in your profile', {
+        description: 'Set your home neighborhood in Profile Settings.',
+      });
+      return;
+    }
+
+    try {
+      // Search home area to resolve coordinates
+      const matches = await searchAddress(profileHomeArea);
+      if (matches.length > 0 && matches[0]) {
+        await setLocation({ lat: matches[0].lat, lng: matches[0].lng, isLive: false }, profileHomeArea);
+      } else {
+        await setLocation(userCoords, profileHomeArea);
+      }
+      recordRecentPlace(profileHomeArea, userCoords.lat, userCoords.lng, 'Home Area');
+      toast.success(`Switched to your home area: ${profileHomeArea}!`);
+      onClose();
+    } catch {
+      await setLocation(userCoords, profileHomeArea);
+      toast.success(`Switched to your home area: ${profileHomeArea}!`);
+      onClose();
+    }
+  };
+
   // Save or rename a place
-  const handleSavePlace = (e: React.FormEvent) => {
+  const handleSavePlace = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = newPlaceName.trim() || userAreaName;
 
     if (editingPlaceId) {
-      updateSavedPlace(editingPlaceId, { name, type: newPlaceType });
+      await updateSavedPlace(editingPlaceId, { name, type: newPlaceType });
       setEditingPlaceId(null);
     } else {
-      savePlace({
+      await savePlace({
         name,
         label: userAreaName,
         lat: userCoords.lat,
@@ -198,6 +390,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
   const handleGpsLocate = async () => {
     const result = await requestLiveLocation();
     if (result) {
+      recordRecentPlace(result.areaName, result.lat, result.lng, 'Live GPS Position');
       toast.success(`Locked to live GPS: ${result.areaName}`, {
         description: 'Tracking your location in real time.',
       });
@@ -205,103 +398,154 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
     }
   };
 
+  // Radius slider handling with snap values: 1, 2, 5, 10, 25, 50 km
+  const currentSnapIndex = useMemo(() => {
+    const idx = SNAP_RADII.indexOf(filterRadius as (typeof SNAP_RADII)[number]);
+    return idx !== -1 ? idx : 3; // Default 10 km
+  }, [filterRadius]);
+
+  const handleRadiusSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const stepIdx = Number(e.target.value);
+    const snapVal = SNAP_RADII[stepIdx] ?? 10;
+    setFilterRadius(snapVal);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('kindlink_filter_radius', String(snapVal));
+        fetch('/api/auth/profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            notification_preferences: { nearby_radius_km: snapVal },
+          }),
+        }).catch(() => {});
+      } catch {
+        // ignore
+      }
+    }
+  };
+
+  const getSavedPlaceIcon = (type?: SavedPlace['type']) => {
+    switch (type) {
+      case 'home':
+        return <Home className="h-4 w-4 notranslate" />;
+      case 'work':
+        return <Briefcase className="h-4 w-4 notranslate" />;
+      case 'clinic':
+        return <Stethoscope className="h-4 w-4 notranslate" />;
+      case 'campus':
+        return <GraduationCap className="h-4 w-4 notranslate" />;
+      default:
+        return <Bookmark className="h-4 w-4 notranslate" />;
+    }
+  };
+
+  useBodyScrollLock(open);
+
   if (!open) return null;
 
-  return (
+  const modalTree = (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="location-dialog-title"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-xl animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget && !isLocating) onClose();
       }}
     >
-      <div className="w-full sm:max-w-lg rounded-t-[32px] sm:rounded-3xl bg-card dark:bg-slate-950 border-t sm:border border-border/80 dark:border-slate-800/80 p-4 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.4)] text-card-foreground max-h-[88vh] sm:max-h-[92vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
+      <div className="relative w-full sm:max-w-xl rounded-t-3xl sm:rounded-3xl bg-card/98 dark:bg-slate-950/98 border-t sm:border border-border/80 shadow-[0_20px_60px_rgba(0,0,0,0.35)] text-card-foreground flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom duration-200 sm:slide-in-from-bottom-0 sm:zoom-in-95">
         {/* Mobile Drag Handle */}
-        <div className="sm:hidden w-12 h-1.5 bg-muted-foreground/30 rounded-full mx-auto mb-3 shrink-0" />
+        <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full mx-auto my-2.5 sm:hidden shrink-0" />
 
-        {/* Sticky Header with Title and Current Area */}
-        <div className="flex items-center justify-between pb-3 border-b border-border/80 shrink-0">
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 shadow-xs">
-              <MapPin className="h-5 w-5 notranslate" />
-            </div>
-            <div className="min-w-0">
-              <h2
-                id="location-dialog-title"
-                className="text-base sm:text-lg font-bold text-foreground truncate"
-              >
-                Your location
-              </h2>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
-                <span className="truncate">
-                  Current: <strong className="text-primary font-semibold">{userAreaName}</strong>
-                </span>
-                {userCoords.isLive && (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 px-2 py-0.5 rounded-full shrink-0">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    GPS {accuracy ? `±${accuracy}m` : 'Live'}
+        {/* Sticky Header: "Your location" and current area name */}
+        <div className="p-4 sm:p-5 pb-3 sm:pb-3.5 border-b border-border/80 bg-card/90 dark:bg-slate-950/90 shrink-0">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 shadow-xs">
+                <MapPin className="h-5 w-5 notranslate" />
+              </div>
+              <div className="min-w-0">
+                <h2
+                  id="location-dialog-title"
+                  className="text-base sm:text-lg font-black text-foreground truncate"
+                >
+                  Your location
+                </h2>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
+                  <span className="truncate">
+                    Current: <strong className="text-primary font-bold">{userAreaName}</strong>
                   </span>
-                )}
+                  {userCoords.isLive && (
+                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/25 px-2 py-0.5 rounded-full shrink-0">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      GPS {accuracy ? `±${accuracy}m` : 'Live'}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isLocating}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted touch-target transition-colors"
+              aria-label="Close location selector"
+            >
+              <X className="h-5 w-5 notranslate" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted touch-target transition-colors"
-            aria-label="Close location selector"
-          >
-            <X className="h-5 w-5 notranslate" />
-          </button>
+
+          {/* Segmented Control: "Search", "Drop pin", "Saved" - Single row guaranteed at 360px */}
+          <div className="grid grid-cols-3 gap-1 p-1 mt-3 bg-muted/60 dark:bg-slate-900/60 rounded-2xl shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab('search')}
+              className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl text-xs font-bold transition-all min-w-0 truncate touch-target ${
+                activeTab === 'search'
+                  ? 'bg-card dark:bg-slate-800 text-foreground shadow-xs ring-1 ring-border/50'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Search className="h-3.5 w-3.5 shrink-0 notranslate" />
+              <span className="truncate">Search</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('map')}
+              className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl text-xs font-bold transition-all min-w-0 truncate touch-target ${
+                activeTab === 'map'
+                  ? 'bg-card dark:bg-slate-800 text-foreground shadow-xs ring-1 ring-border/50'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Compass className="h-3.5 w-3.5 shrink-0 notranslate" />
+              <span className="truncate">Drop pin</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('saved')}
+              className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl text-xs font-bold transition-all min-w-0 truncate touch-target ${
+                activeTab === 'saved'
+                  ? 'bg-card dark:bg-slate-800 text-foreground shadow-xs ring-1 ring-border/50'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Bookmark className="h-3.5 w-3.5 shrink-0 notranslate" />
+              <span className="truncate">
+                Saved{savedPlaces.length > 0 ? ` (${savedPlaces.length})` : ''}
+              </span>
+            </button>
+          </div>
         </div>
 
-        {/* Tab Navigation - Single Line Guaranteed with Perfect Horizontal Alignment */}
-        <div className="grid grid-cols-3 gap-1 p-1 my-3 bg-muted/60 rounded-2xl shrink-0">
-          <button
-            type="button"
-            onClick={() => setActiveTab('search')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-              activeTab === 'search'
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Search className="h-3.5 w-3.5 shrink-0 notranslate" />
-            <span>Search</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('map')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-              activeTab === 'map'
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Compass className="h-3.5 w-3.5 shrink-0 notranslate" />
-            <span>Drop pin</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('saved')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-              activeTab === 'saved'
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Bookmark className="h-3.5 w-3.5 shrink-0 notranslate" />
-            <span>Saved {savedPlaces.length > 0 ? `(${savedPlaces.length})` : ''}</span>
-          </button>
-        </div>
-
-        {/* TAB 1: Search */}
+        {/* TAB 1: Search & Live Location */}
         {activeTab === 'search' && (
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            {/* Live GPS & Default Area Actions */}
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-4 sm:p-5 pt-3">
+            {/* Top Action Row: "Use my live location" and "Use my home area" */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pb-3 shrink-0">
+              {/* Use my live location */}
               <button
                 type="button"
                 onClick={handleGpsLocate}
@@ -309,7 +553,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                 className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-teal-600/25 active:scale-[0.98] transition-all min-h-[44px] touch-target disabled:opacity-60"
               >
                 {isLocating ? (
-                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin notranslate" />
+                  <Loader2 className="h-4 w-4 animate-spin notranslate" />
                 ) : (
                   <Crosshair className="h-4 w-4 shrink-0 notranslate" />
                 )}
@@ -322,21 +566,31 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                 </span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  resetToDefaultHub();
-                  toast.success('Location set to default area (Kalyanpur, Asansol)');
-                  onClose();
-                }}
-                className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl border border-border/80 bg-background/80 hover:bg-muted/80 text-foreground font-semibold text-xs sm:text-sm transition-all min-h-[44px] touch-target active:scale-[0.98]"
-              >
-                <RotateCcw className="h-4 w-4 text-primary shrink-0 notranslate" />
-                <span>Use default area</span>
-              </button>
+              {/* Use my home area (reads from profile) */}
+              {profileHomeArea ? (
+                <button
+                  type="button"
+                  onClick={handleUseHomeArea}
+                  className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl border border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary font-bold text-xs sm:text-sm transition-all min-h-[44px] touch-target active:scale-[0.98] truncate"
+                  title={`Use home area: ${profileHomeArea}`}
+                >
+                  <Home className="h-4 w-4 text-primary shrink-0 notranslate" />
+                  <span className="truncate">Use my home area ({profileHomeArea})</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl border border-dashed border-border/80 bg-muted/30 text-muted-foreground font-medium text-xs sm:text-sm min-h-[44px] cursor-not-allowed opacity-75"
+                  title="Configure your home area in Profile Settings"
+                >
+                  <Home className="h-4 w-4 text-muted-foreground shrink-0 notranslate" />
+                  <span className="truncate">Use home area (Not set in profile)</span>
+                </button>
+              )}
             </div>
 
-            {/* Permission Denied Friendly Explanation Banner */}
+            {/* Permission Denied Explanatory Guide Banner */}
             {permissionStatus === 'denied' && (
               <div className="mb-3 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-200 shrink-0">
                 <div className="flex items-start justify-between gap-2">
@@ -360,52 +614,72 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                 {showPermissionGuide && (
                   <div className="mt-2.5 pt-2 border-t border-amber-500/20 text-[11px] space-y-1.5 leading-relaxed text-muted-foreground">
                     <p>
-                      <strong>Chrome / Edge:</strong> Tap the lock or tune icon in the address
-                      bar &rarr; Permissions &rarr; Location &rarr; Allow, then refresh.
+                      <strong>Chrome / Edge:</strong> Tap the lock or tune icon in the address bar &rarr; Permissions &rarr; Location &rarr; Allow, then refresh.
                     </p>
                     <p>
-                      <strong>Safari (iOS):</strong> Tap &lsquo;aA&rsquo; in the address bar &rarr;
-                      Website Settings &rarr; Location &rarr; Allow.
+                      <strong>Safari (iOS):</strong> Tap &lsquo;aA&rsquo; in the address bar &rarr; Website Settings &rarr; Location &rarr; Allow.
                     </p>
                     <p>
-                      <strong>Android:</strong> Tap browser settings &rarr; Site Settings &rarr;
-                      Location &rarr; Allow KindLink.
+                      <strong>Android:</strong> Tap browser settings &rarr; Site Settings &rarr; Location &rarr; Allow KindLink.
                     </p>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Address Search Form - Short non-truncating placeholder */}
+            {/* Address Search Form */}
             <div className="relative pb-2 shrink-0">
               <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground notranslate pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search area or address"
-                className="w-full pl-10 pr-10 py-2.5 rounded-2xl border border-border/80 bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary min-h-[44px] transition-all"
+                placeholder="Search area, landmark or city"
+                className="w-full pl-10 pr-10 py-2.5 rounded-2xl border border-border/80 bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary min-h-[44px] transition-all shadow-inner"
               />
               {isSearching ? (
                 <div className="absolute right-3.5 top-3.5 h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin notranslate" />
               ) : searchQuery ? (
                 <button
                   type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3.5 top-3.5 text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSearchResults([]);
+                    setSearchError(null);
+                  }}
+                  className="absolute right-3.5 top-3.5 text-muted-foreground hover:text-foreground touch-target"
+                  aria-label="Clear search input"
                 >
                   <X className="h-4 w-4 notranslate" />
                 </button>
               ) : null}
             </div>
 
-            {/* Results or Suggested Areas */}
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-1">
+            {/* Search Results OR (Recent Places + Nearby Places + Fallback Cities) */}
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1 my-1">
+              {/* Active Search Mode */}
               {searchQuery.trim().length >= 2 ? (
-                <>
+                <div className="space-y-2">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-1 pb-1">
                     Search Results ({searchResults.length})
                   </div>
+
+                  {searchError && (
+                    <div className="p-3 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        <span>{searchError}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => triggerSearch(searchQuery)}
+                        className="px-2.5 py-1 rounded-lg bg-destructive text-white text-[11px] font-bold shrink-0"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  )}
+
                   {searchResults.map((res) => (
                     <button
                       key={res.id}
@@ -432,7 +706,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                     </button>
                   ))}
 
-                  {searchResults.length === 0 && !isSearching && (
+                  {searchResults.length === 0 && !isSearching && !searchError && (
                     <div className="text-center py-6 px-4 rounded-2xl bg-muted/40 border border-border/80">
                       <p className="text-xs text-muted-foreground mb-3">
                         No matches found online for &ldquo;{searchQuery}&rdquo;.
@@ -441,6 +715,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                         type="button"
                         onClick={() => {
                           setLocation(userCoords, searchQuery.trim());
+                          recordRecentPlace(searchQuery.trim(), userCoords.lat, userCoords.lng, 'Manual Area Label');
                           toast.success(`Location label set to "${searchQuery.trim()}"`);
                           onClose();
                         }}
@@ -450,81 +725,138 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                       </button>
                     </div>
                   )}
-
-                  <div className="text-[10px] text-muted-foreground/70 text-center pt-2">
-                    Data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">OpenStreetMap contributors</a>
-                  </div>
-                </>
+                </div>
               ) : (
-                <>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-1 pb-1">
-                    Suggested Areas
-                  </div>
-                  {SUGGESTED_AREAS.map((area) => {
-                    const isSelected =
-                      userAreaName.toLowerCase().includes(area.name.toLowerCase().split(',')[0]);
+                /* Empty Search Query: Show Recent Places, Nearby Places, and Fallback Cities */
+                <div className="space-y-4">
+                  {/* 1. Recent Places (from localStorage) */}
+                  {recentPlaces.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Recent places
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleClearRecent}
+                          className="text-[10px] text-muted-foreground hover:text-foreground font-semibold"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-1.5">
+                        {recentPlaces.map((rec) => (
+                          <button
+                            key={rec.id}
+                            type="button"
+                            onClick={() => handleSelectRecentPlace(rec)}
+                            className="flex items-center justify-between p-2.5 rounded-2xl border border-border/70 bg-card/60 dark:bg-slate-900/40 hover:bg-muted/70 text-left transition-all touch-target"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                                <Clock className="h-3.5 w-3.5 notranslate" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-foreground truncate">
+                                  {rec.name}
+                                </div>
+                                {rec.label && (
+                                  <div className="text-[10px] text-muted-foreground truncate">
+                                    {rec.label}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-[11px] font-semibold text-primary shrink-0">
+                              Select
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                    const getAreaIcon = () => {
-                      switch (area.type) {
-                        case 'campus':
-                          return <GraduationCap className="h-4 w-4 notranslate" />;
-                        case 'hospital':
-                          return <Building2 className="h-4 w-4 notranslate" />;
-                        case 'residential':
-                          return <Home className="h-4 w-4 notranslate" />;
-                        default:
-                          return <MapPin className="h-4 w-4 notranslate" />;
-                      }
-                    };
+                  {/* 2. Nearby Places (from existing places service for current coordinates) */}
+                  {nearbyPlaces.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Nearby Places &amp; Landmarks
+                        </span>
+                        {isLoadingNearby && (
+                          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {nearbyPlaces.map((nb) => (
+                          <button
+                            key={nb.id}
+                            type="button"
+                            onClick={() => handleSelectNearbyPlace(nb)}
+                            className="flex items-center justify-between p-2.5 rounded-2xl border border-border/70 bg-card/60 dark:bg-slate-900/40 hover:bg-muted/70 text-left transition-all touch-target"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                {nb.category.includes('health') || nb.category.includes('hospital') ? (
+                                  <Stethoscope className="h-3.5 w-3.5 notranslate" />
+                                ) : (
+                                  <Building2 className="h-3.5 w-3.5 notranslate" />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-foreground truncate">
+                                  {nb.name}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground truncate">
+                                  {nb.address || nb.category}
+                                </div>
+                              </div>
+                            </div>
+                            {typeof nb.distanceMeters === 'number' && (
+                              <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                                {nb.distanceMeters >= 1000
+                                  ? `${(nb.distanceMeters / 1000).toFixed(1)} km`
+                                  : `${Math.round(nb.distanceMeters)} m`}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                    return (
-                      <button
-                        key={area.id}
-                        type="button"
-                        onClick={() => {
-                          setLocation({ lat: area.lat, lng: area.lng, isLive: false }, area.name);
-                          toast.success(`Location set to ${area.name}!`);
-                          onClose();
-                        }}
-                        className={`flex w-full items-center justify-between p-3 rounded-2xl border text-left transition-all touch-target ${
-                          isSelected
-                            ? 'border-primary/60 bg-primary/10 text-foreground ring-1 ring-primary/40'
-                            : 'border-border/80 bg-card/60 dark:bg-slate-900/40 hover:bg-muted/70 hover:border-border text-foreground'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0 pr-2">
-                          <div
-                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                              isSelected
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted text-muted-foreground'
+                  {/* 3. Fallback City List: Kolkata, Asansol, Durgapur, Dhanbad, Ranchi, Patna, Delhi, Mumbai */}
+                  <div className="space-y-1.5">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-1">
+                      Major Cities &amp; Hubs
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {FALLBACK_CITIES.map((city) => {
+                        const isCurrent = userAreaName.toLowerCase().includes(city.name.toLowerCase());
+                        return (
+                          <button
+                            key={city.id}
+                            type="button"
+                            onClick={() => handleSelectCity(city)}
+                            className={`flex flex-col p-2.5 rounded-2xl border text-left transition-all touch-target ${
+                              isCurrent
+                                ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/30'
+                                : 'border-border/80 bg-card/60 dark:bg-slate-900/40 hover:bg-muted/70 text-foreground'
                             }`}
                           >
-                            {getAreaIcon()}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-xs sm:text-sm font-bold truncate">
-                              {area.name}
-                            </div>
-                            <div className="text-[11px] text-muted-foreground truncate">
-                              {area.label}
-                            </div>
-                          </div>
-                        </div>
-                        {isSelected ? (
-                          <span className="flex items-center gap-1 text-[11px] font-bold text-primary shrink-0">
-                            <Check className="h-3.5 w-3.5 notranslate" />
-                            <span>Active</span>
-                          </span>
-                        ) : (
-                          <span className="text-[11px] font-semibold text-muted-foreground shrink-0">
-                            Select
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </>
+                            <span className="text-xs font-bold truncate flex items-center justify-between">
+                              <span>{city.name}</span>
+                              {isCurrent && <Check className="h-3 w-3 text-primary shrink-0" />}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground truncate">
+                              {city.state}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -532,8 +864,8 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
 
         {/* TAB 2: Drop Pin */}
         {activeTab === 'map' && (
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <div className="relative flex-1 min-h-[220px] rounded-2xl overflow-hidden border border-border/80">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-4 sm:p-5 pt-3">
+            <div className="relative flex-1 min-h-[220px] rounded-2xl overflow-hidden border border-border/80 shadow-inner">
               <PinDropMap
                 lat={pinLat}
                 lng={pinLng}
@@ -542,14 +874,21 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
               />
 
               {/* Reverse Geocoding Status Chip */}
-              <div className="absolute top-2 left-2 right-2 z-10">
+              <div className="absolute top-2 left-2 right-2 z-10 pointer-events-none">
                 <div className="flex items-center gap-2 p-2.5 rounded-xl bg-card/90 dark:bg-slate-900/90 backdrop-blur-md border border-border/80 shadow-md">
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <MapPin className="h-3.5 w-3.5 notranslate" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-xs font-bold truncate text-foreground">
-                      {isGeocodingPin ? 'Identifying area...' : pinAreaName}
+                    <div className="text-xs font-bold truncate text-foreground flex items-center gap-1.5">
+                      {isGeocodingPin ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />
+                          <span>Identifying area...</span>
+                        </>
+                      ) : (
+                        <span>{pinAreaName}</span>
+                      )}
                     </div>
                     <div className="text-[10px] text-muted-foreground font-mono truncate">
                       {pinLat.toFixed(4)}°N, {pinLng.toFixed(4)}°E
@@ -559,41 +898,53 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
               </div>
             </div>
 
-            {/* Confirm Pin Button */}
+            {/* Confirm Pin Button ("Use this location") */}
             <div className="pt-3 shrink-0">
               <button
                 type="button"
                 onClick={handleConfirmPinLocation}
                 disabled={isGeocodingPin}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold text-sm shadow-md shadow-teal-600/30 transition-all min-h-[44px] touch-target active:scale-[0.98]"
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold text-sm shadow-md shadow-teal-600/30 transition-all min-h-[44px] touch-target active:scale-[0.98] disabled:opacity-60"
               >
                 <Check className="h-4 w-4 notranslate" />
-                <span>Confirm location: {pinAreaName}</span>
+                <span className="truncate">Use this location: {pinAreaName}</span>
               </button>
             </div>
           </div>
         )}
 
-        {/* TAB 3: Saved Places (Real User Data Only) */}
+        {/* TAB 3: Saved Places (Local & Database Sync) */}
         {activeTab === 'saved' && (
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-4 sm:p-5 pt-3">
             {/* Add Saved Place Trigger or Form */}
             {!showAddSavedPlace ? (
-              <div className="pb-3 shrink-0">
+              <div className="pb-3 shrink-0 flex items-center justify-between gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddSavedPlace(true)}
-                  className="w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl border border-dashed border-primary/50 bg-primary/5 hover:bg-primary/10 text-primary font-semibold text-xs transition-colors min-h-[44px] touch-target"
+                  disabled={savedPlaces.length >= 10}
+                  onClick={() => {
+                    setNewPlaceName(userAreaName);
+                    setNewPlaceType('home');
+                    setShowAddSavedPlace(true);
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 p-2.5 rounded-2xl border border-dashed border-primary/50 bg-primary/5 hover:bg-primary/10 text-primary font-bold text-xs transition-colors min-h-[44px] touch-target disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Plus className="h-4 w-4 notranslate" />
-                  <span>Save current area ({userAreaName})</span>
+                  <span>
+                    {savedPlaces.length >= 10
+                      ? 'Limit reached (10/10 saved places)'
+                      : `Save current area (${userAreaName})`}
+                  </span>
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSavePlace} className="p-3 mb-3 rounded-2xl bg-muted/40 border border-border/80 shrink-0 space-y-2.5">
+              <form
+                onSubmit={handleSavePlace}
+                className="p-3 mb-3 rounded-2xl bg-muted/40 border border-border/80 shrink-0 space-y-2.5 animate-in fade-in duration-150"
+              >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-foreground">
-                    {editingPlaceId ? 'Rename Saved Place' : 'Save New Place'}
+                    {editingPlaceId ? 'Rename Saved Place' : 'Save New Place (up to 10)'}
                   </span>
                   <button
                     type="button"
@@ -601,48 +952,59 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                       setShowAddSavedPlace(false);
                       setEditingPlaceId(null);
                     }}
-                    className="text-xs text-muted-foreground hover:text-foreground"
+                    className="text-xs text-muted-foreground hover:text-foreground touch-target"
                   >
                     Cancel
                   </button>
                 </div>
+
                 <input
                   type="text"
                   value={newPlaceName}
                   onChange={(e) => setNewPlaceName(e.target.value)}
-                  placeholder="e.g. Home, Office, Hostel"
+                  placeholder="e.g. Home, Work, Clinic, Campus"
+                  maxLength={60}
                   className="w-full px-3 py-2 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 min-h-[38px]"
                   required
                 />
-                <div className="flex items-center gap-2">
-                  <select
-                    value={newPlaceType}
-                    onChange={(e) => setNewPlaceType(e.target.value as 'home' | 'work' | 'campus' | 'custom')}
-                    className="flex-1 px-3 py-1.5 rounded-xl border border-border bg-background text-xs text-foreground min-h-[36px]"
-                  >
-                    <option value="home">Home</option>
-                    <option value="work">Work</option>
-                    <option value="campus">Campus</option>
-                    <option value="custom">Other</option>
-                  </select>
+
+                {/* Quick label chips */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                  {(['home', 'work', 'clinic', 'campus', 'custom'] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setNewPlaceType(t)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold capitalize transition-all shrink-0 ${
+                        newPlaceType === t
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'bg-muted text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex justify-end pt-1">
                   <button
                     type="submit"
-                    className="px-4 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors min-h-[36px]"
+                    className="px-5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors min-h-[38px] touch-target"
                   >
-                    Save
+                    {editingPlaceId ? 'Update Place' : 'Save Place'}
                   </button>
                 </div>
               </form>
             )}
 
-            {/* List of Saved Places (Strictly Real Data) */}
+            {/* List of Saved Places (Synchronized with localStorage & DB) */}
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-1">
               {savedPlaces.length === 0 ? (
                 <div className="text-center py-8 px-4 rounded-2xl bg-muted/20 border border-dashed border-border/80">
                   <Bookmark className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2 notranslate" />
-                  <p className="text-xs font-semibold text-foreground">No saved places yet</p>
+                  <p className="text-xs font-bold text-foreground">No saved places yet</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    Save your Home, Work, or Hostel for fast 1-tap switching.
+                    Save your Home, Work, or Clinic for fast 1-tap switching.
                   </p>
                 </div>
               ) : (
@@ -654,18 +1016,10 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                     <button
                       type="button"
                       onClick={() => handleSelectSavedPlace(place)}
-                      className="flex items-center gap-3 min-w-0 pr-2 text-left flex-1"
+                      className="flex items-center gap-3 min-w-0 pr-2 text-left flex-1 touch-target"
                     >
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                        {place.type === 'home' ? (
-                          <Home className="h-4 w-4 notranslate" />
-                        ) : place.type === 'work' ? (
-                          <Briefcase className="h-4 w-4 notranslate" />
-                        ) : place.type === 'campus' ? (
-                          <GraduationCap className="h-4 w-4 notranslate" />
-                        ) : (
-                          <Bookmark className="h-4 w-4 notranslate" />
-                        )}
+                        {getSavedPlaceIcon(place.type)}
                       </div>
                       <div className="min-w-0">
                         <div className="text-xs sm:text-sm font-bold truncate text-foreground">
@@ -683,10 +1037,10 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                         onClick={() => {
                           setEditingPlaceId(place.id);
                           setNewPlaceName(place.name);
-                          setNewPlaceType(place.type);
+                          setNewPlaceType(place.type || 'custom');
                           setShowAddSavedPlace(true);
                         }}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted touch-target"
                         aria-label={`Rename ${place.name}`}
                         title="Rename"
                       >
@@ -695,7 +1049,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                       <button
                         type="button"
                         onClick={() => removeSavedPlace(place.id)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 touch-target"
                         aria-label={`Delete ${place.name}`}
                         title="Delete"
                       >
@@ -709,42 +1063,48 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
           </div>
         )}
 
-        {/* Search Radius Slider (1 to 50 km) */}
-        <div className="pt-3 pb-2 border-t border-border/80 shrink-0">
-          <div className="flex items-center justify-between text-xs font-semibold text-foreground mb-1.5">
+        {/* Search Radius Slider (Snap Values: 1, 2, 5, 10, 25, 50 km) */}
+        <div className="px-4 sm:px-5 pt-3 pb-2.5 border-t border-border/80 bg-card/60 dark:bg-slate-950/60 shrink-0">
+          <div className="flex items-center justify-between text-xs font-bold text-foreground mb-1.5">
             <span className="flex items-center gap-1.5">
               <Sliders className="h-3.5 w-3.5 text-primary notranslate" />
               <span>Search radius:</span>
             </span>
-            <span className="font-bold text-primary">{filterRadius} km</span>
+            <span className="font-extrabold text-primary text-sm">{filterRadius} km</span>
           </div>
+
+          {/* Stepped slider snapping directly to: 1, 2, 5, 10, 25, 50 km */}
           <input
             type="range"
-            min={1}
-            max={50}
+            min={0}
+            max={SNAP_RADII.length - 1}
             step={1}
-            value={filterRadius}
-            onChange={(e) => setFilterRadius(Number(e.target.value))}
-            className="w-full accent-primary h-1.5 bg-muted rounded-lg cursor-pointer"
-            aria-label="Mutual aid search radius slider"
+            value={currentSnapIndex}
+            onChange={handleRadiusSliderChange}
+            className="w-full accent-primary h-2 bg-muted dark:bg-slate-800 rounded-lg cursor-pointer"
+            aria-label="Search radius snap slider"
           />
-          <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-            <span>1 km (Hyperlocal)</span>
+
+          {/* Simple Labels: 1 km (Nearby), 25 km (City), 50 km (Wide) */}
+          <div className="flex justify-between text-[10px] text-muted-foreground font-medium mt-1">
+            <span>1 km (Nearby)</span>
             <span>25 km (City)</span>
-            <span>50 km (Regional)</span>
+            <span>50 km (Wide)</span>
           </div>
         </div>
 
-        {/* Sticky Footer Info & Close Action */}
-        <div className="pt-2.5 border-t border-border/80 shrink-0 flex items-center justify-between text-xs text-muted-foreground">
-          <span className="flex items-center gap-1 text-[11px] truncate">
+        {/* Sticky Footer: "Updates your feed, map and distances." & Close button */}
+        <div className="p-3 sm:p-4 border-t border-border/80 bg-card/90 dark:bg-slate-950/90 shrink-0 flex items-center justify-between gap-3 text-xs">
+          <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground truncate">
             <Navigation className="h-3.5 w-3.5 text-primary notranslate shrink-0" />
-            <span className="truncate">Updates feed, radar &amp; distances live</span>
+            <span className="truncate">Updates your feed, map and distances.</span>
           </span>
+
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-secondary text-secondary-foreground text-xs font-semibold hover:bg-secondary/80 transition-colors shadow-xs touch-target"
+            disabled={isLocating}
+            className="px-5 py-2 rounded-xl bg-secondary text-secondary-foreground text-xs font-bold hover:bg-secondary/80 transition-colors shadow-xs touch-target ml-auto"
           >
             Close
           </button>
@@ -752,4 +1112,6 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalTree, document.body) : null;
 }

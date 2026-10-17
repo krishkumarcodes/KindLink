@@ -76,7 +76,7 @@ To make sure nobody else steals your free map quota on their own websites, you c
 
 ### 📜 MapTiler Terms of Service Note (Non-Commercial Community Use)
 MapTiler's free plan allows non-commercial, evaluation, and community open-source use.
-Because KindLink is a **free academic capstone community mutual-aid project** built at Asansol Engineering College that charges zero user fees and displays zero ads, it strictly complies with MapTiler's free tier terms.
+Because KindLink is a **free academic capstone community mutual-aid project** built at KindLink Community Initiative that charges zero user fees and displays zero ads, it strictly complies with MapTiler's free tier terms.
 
 ---
 
@@ -320,4 +320,4 @@ If something doesn't look right, check these quick fixes:
 - **KindLink Privacy Policy:** [https://kindlink-gd8e.onrender.com/privacy](https://kindlink-gd8e.onrender.com/privacy)
 
 ---
-*Created with care by the KindLink Engineering Team at Asansol Engineering College.*
+*Created with care by the KindLink Engineering Team at KindLink Community Initiative.*

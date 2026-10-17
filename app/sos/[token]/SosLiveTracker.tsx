@@ -315,7 +315,7 @@ export function SosLiveTracker({ initialEvent, token }: SosLiveTrackerProps) {
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-background hover:bg-muted text-xs font-bold text-foreground transition touch-target"
               >
                 <ExternalLink className="h-3.5 w-3.5 notranslate" />
-                <span>Full OSM</span>
+                <span>Full Map</span>
               </a>
             </div>
           </div>
@@ -325,7 +325,7 @@ export function SosLiveTracker({ initialEvent, token }: SosLiveTrackerProps) {
             <iframe
               src={iframeSrc}
               className="w-full h-full border-0"
-              title="OpenStreetMap Live Emergency Beacon Location"
+              title="Live Emergency Alert Location Map"
               loading="lazy"
               referrerPolicy="no-referrer"
             />

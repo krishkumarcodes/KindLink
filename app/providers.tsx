@@ -54,6 +54,7 @@ export function Providers({
             position="top-right"
             richColors
             closeButton
+            style={{ zIndex: 100 }}
             toastOptions={{
               className: 'font-sans',
             }}

@@ -59,7 +59,7 @@ export function buildWebSiteSchema() {
     alternateName: ['Kind Link', 'KindLink Community Aid'],
     url: SITE_URL,
     description:
-      'Hyperlocal verified community mutual aid network for Asansol. Connect urgent help requests with nearby verified volunteers.',
+      'Verified community mutual aid network for Asansol. Connect urgent help requests with nearby verified volunteers.',
     potentialAction: {
       '@type': 'SearchAction',
       target: `${SITE_URL}/help?q={search_term_string}`,
@@ -85,8 +85,8 @@ export function buildWebApplicationSchema() {
     featureList: [
       'Three-key community urgency ranking algorithm',
       'Verified volunteer badge security',
-      'SOS emergency broadcasting',
-      'Hyperlocal radius filtering within 1-15 km',
+      'SOS emergency alerts',
+      'Local radius filtering within 1-15 km',
       'Multi-language interface (29 Indian and International languages)',
     ],
     description:

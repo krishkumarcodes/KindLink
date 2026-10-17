@@ -900,7 +900,7 @@ export function AuthPageContent({ initialTab = 'login' }: AuthPageContentProps) 
 
       {/* Footer */}
       <footer className="w-full py-4 text-center text-xs text-slate-500 border-t border-slate-900">
-        <p>KindLink Mutual Aid Network &bull; Asansol Engineering College &bull; Non-Profit Public Good</p>
+        <p>KindLink Mutual Aid Network &bull; Asansol Community &bull; Non-Profit Public Good</p>
       </footer>
     </div>
   );

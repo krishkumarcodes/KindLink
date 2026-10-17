@@ -24,7 +24,7 @@ import { constructMetadata } from '@/lib/seo';
 export const metadata: Metadata = constructMetadata({
   title: 'Credits & Map Data Attributions | KindLink',
   description:
-    'Legal attributions and acknowledgments for MapTiler, Geoapify, OpenRouteService, OpenStreetMap, and open-source geospatial technologies powering KindLink.',
+    'Legal attributions and acknowledgments for MapTiler, Geoapify, OpenRouteService, OpenStreetMap, IPinfo, and open-source geospatial technologies powering KindLink.',
   path: '/credits',
 });
 
@@ -63,10 +63,10 @@ const MAP_PROVIDERS: ProviderCredit[] = [
     license: 'Open Database License (ODbL) & Geoapify API Terms',
     url: 'https://www.geoapify.com/',
     description:
-      'Powers forward address autocomplete, landmark resolution, reverse geocoding from GPS coordinates, and proximity searches for local hospitals, clinics, and pharmacies.',
+      'Powers forward address autocomplete, landmark resolution, reverse geocoding from location, and proximity searches for local hospitals, clinics, and pharmacies.',
     usedFor: [
       'Neighborhood address search and autocomplete',
-      'GPS coordinates to readable street names',
+      'Location coordinates to readable street names',
       'Emergency healthcare and pharmacy lookup',
     ],
   },
@@ -140,6 +140,21 @@ const MAP_PROVIDERS: ProviderCredit[] = [
     usedFor: [
       'Community health resource queries',
       'Open amenity fallback discovery',
+    ],
+  },
+  {
+    id: 'ipinfo',
+    name: 'IPinfo',
+    badge: 'IP Geolocation & Language Detection',
+    attribution: 'IP address data powered by IPinfo',
+    license: 'IPinfo Attribution License & Free Tier Terms',
+    url: 'https://ipinfo.io',
+    description:
+      'Provides privacy-first country estimation from visitor IP addresses during initial visits to automatically select the most relevant local or regional language. KindLink never logs, stores, or tracks user IP addresses.',
+    usedFor: [
+      'Initial country estimation for default language',
+      'Zero IP storage, logging, or persistent tracking',
+      'Ephemeral server-side lookup with 24-hour subnet caching',
     ],
   },
 ];
@@ -285,7 +300,18 @@ export default function CreditsPage() {
                       Required Attribution Text:
                     </span>
                     <span className="font-mono text-xs font-bold text-foreground select-all">
-                      {provider.attribution}
+                      {provider.id === 'ipinfo' ? (
+                        <a
+                          href="https://ipinfo.io"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline text-teal-600 dark:text-teal-400"
+                        >
+                          IP address data powered by IPinfo
+                        </a>
+                      ) : (
+                        provider.attribution
+                      )}
                     </span>
                   </div>
 
@@ -317,14 +343,13 @@ export default function CreditsPage() {
             <div className="flex items-center gap-2 mb-2">
               <BookOpen className="h-5 w-5 text-teal-600 dark:text-teal-400" />
               <h2 className="font-heading text-xl font-bold text-foreground">
-                2. Academic Research Capstone Initiative
+                2. Community Civic Initiative
               </h2>
             </div>
             <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-3">
               <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                KindLink was designed, prototyped, and engineered as an undergraduate Capstone Project in the Department
-                of <strong>Computer Science &amp; Engineering</strong> at <strong>Asansol Engineering College (AEC)</strong>,
-                affiliated with <strong>Maulana Abul Kalam Azad University of Technology (MAKAUT)</strong>, West Bengal, India.
+                KindLink was designed, prototyped, and engineered as an open-source civic initiative
+                dedicated to mutual aid and community support in West Bengal, India.
               </p>
               <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">
                 The platform is dedicated as a 100% free, non-commercial community public utility to improve emergency

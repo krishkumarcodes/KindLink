@@ -777,7 +777,7 @@ export const SAMPLE_IMPACT_HISTORY: ImpactHelpItem[] = [
     rating: 5.0,
     comment: 'Lent engineering computer science and math volumes for semester exams.',
     beneficiary: 'Tanmay Ghosh',
-    location: 'AEC Campus Hostel',
+    location: 'Community Campus Hostel',
     distanceKm: 0.8,
     hoursSpent: 0.5,
   },

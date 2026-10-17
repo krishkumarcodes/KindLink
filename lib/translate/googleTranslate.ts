@@ -9,9 +9,16 @@ export interface LanguageOption {
 }
 
 export const DEFAULT_LOCALE = 'en';
+export const LANG_COOKIE_NAME = 'kindlink_lang';
+export const LANG_SOURCE_COOKIE_NAME = 'kindlink_lang_source';
 export const LOCALE_COOKIE_NAME = 'kindlink_locale';
 export const LOCALE_STORAGE_KEY = 'kindlink_selected_lang';
+export const LANG_SOURCE_STORAGE_KEY = 'kindlink_lang_source';
+export const LANG_EXPLICIT_TIME_KEY = 'kindlink_lang_explicit_time';
+export const LANG_EXPLICIT_SYNCED_KEY = 'kindlink_lang_explicit_synced';
 export const GOOGLE_TRANS_COOKIE_NAME = 'googtrans';
+
+export type LanguageSource = 'user' | 'auto';
 
 /**
  * All 29 supported languages confirmed with Google Translate:
@@ -359,36 +366,113 @@ export function clearGoogleTransCookie() {
 }
 
 /**
- * Sets googtrans and kindlink_locale cookies across domains and root paths
+ * Reads a document cookie by name safely in browser context
  */
-export function setGoogleTransCookie(langCode: string) {
+export function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/**
+ * Returns the current language selection source ('user' | 'auto' | null).
+ * Explicit user choice always takes highest precedence.
+ */
+export function getLanguageSource(): LanguageSource | null {
+  let cookieVal: string | null = null;
+  let localVal: string | null = null;
+
+  if (typeof document !== 'undefined') {
+    cookieVal = getCookie(LANG_SOURCE_COOKIE_NAME);
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      localVal = localStorage.getItem(LANG_SOURCE_STORAGE_KEY);
+    } catch {}
+  }
+
+  if (cookieVal === 'user' || localVal === 'user') {
+    return 'user';
+  }
+  if (cookieVal === 'auto' || localVal === 'auto') {
+    return 'auto';
+  }
+  return null;
+}
+
+/**
+ * Sets kindlink_lang, kindlink_lang_source, kindlink_locale, and googtrans cookies
+ * and mirrors into localStorage keys kindlink_selected_lang and kindlink_lang_source.
+ */
+export function setLanguageCookies(langCode: string, source: LanguageSource = 'user') {
   if (typeof document === 'undefined') return;
   const host = window.location.hostname;
   const maxAge = 60 * 60 * 24 * 365; // 1 year
 
+  const setCookiesWithAttributes = (cookiePairs: Array<[string, string]>, domain?: string) => {
+    const domainPart = domain ? ` domain=${domain};` : '';
+    for (const [name, val] of cookiePairs) {
+      document.cookie = `${name}=${val}; path=/; max-age=${maxAge}; SameSite=Lax;${domainPart}`;
+    }
+  };
+
+  const pairs: Array<[string, string]> = [
+    [LANG_COOKIE_NAME, langCode],
+    [LANG_SOURCE_COOKIE_NAME, source],
+    [LOCALE_COOKIE_NAME, langCode],
+  ];
+
   if (langCode === 'en') {
     clearGoogleTransCookie();
-    document.cookie = `googtrans=/en/en; path=/; max-age=${maxAge}; SameSite=Lax;`;
-    document.cookie = `${LOCALE_COOKIE_NAME}=en; path=/; max-age=${maxAge}; SameSite=Lax;`;
-    return;
+    pairs.push([GOOGLE_TRANS_COOKIE_NAME, '/en/en']);
+  } else {
+    pairs.push([GOOGLE_TRANS_COOKIE_NAME, `/en/${langCode}`]);
   }
 
-  const cookieVal = `/en/${langCode}`;
-
-  // Set cookies for path /
-  document.cookie = `googtrans=${cookieVal}; path=/; max-age=${maxAge}; SameSite=Lax;`;
-  document.cookie = `${LOCALE_COOKIE_NAME}=${langCode}; path=/; max-age=${maxAge}; SameSite=Lax;`;
+  setCookiesWithAttributes(pairs);
 
   // Also set with domain if applicable (non-localhost)
   if (host && host !== 'localhost' && !/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
     const parts = host.split('.');
     if (parts.length > 1) {
       const rootDomain = '.' + parts.slice(-2).join('.');
-      document.cookie = `googtrans=${cookieVal}; domain=${rootDomain}; path=/; max-age=${maxAge}; SameSite=Lax;`;
-      document.cookie = `${LOCALE_COOKIE_NAME}=${langCode}; domain=${rootDomain}; path=/; max-age=${maxAge}; SameSite=Lax;`;
+      setCookiesWithAttributes(pairs, rootDomain);
     }
-    document.cookie = `googtrans=${cookieVal}; domain=.${host}; path=/; max-age=${maxAge}; SameSite=Lax;`;
-    document.cookie = `${LOCALE_COOKIE_NAME}=${langCode}; domain=.${host}; path=/; max-age=${maxAge}; SameSite=Lax;`;
+    setCookiesWithAttributes(pairs, `.${host}`);
+  }
+
+  // Mirror into localStorage
+  try {
+    localStorage.setItem(LOCALE_STORAGE_KEY, langCode);
+    localStorage.setItem(LANG_SOURCE_STORAGE_KEY, source);
+    if (source === 'user') {
+      localStorage.setItem(LANG_EXPLICIT_TIME_KEY, Date.now().toString());
+    }
+  } catch {}
+}
+
+/**
+ * Sets googtrans and kindlink cookies across domains and root paths
+ */
+export function setGoogleTransCookie(langCode: string, source: LanguageSource = 'user') {
+  setLanguageCookies(langCode, source);
+}
+
+/**
+ * Ensures RTL layout is applied to document and body for Urdu (ur) and Arabic (ar)
+ */
+export function applyTextDirection(langCode: string) {
+  if (typeof document === 'undefined') return;
+  const rtl = isRTL(langCode);
+  const dir = rtl ? 'rtl' : 'ltr';
+
+  document.documentElement.setAttribute('dir', dir);
+  if (rtl) {
+    document.documentElement.classList.add('rtl-layout');
+    if (document.body) document.body.classList.add('rtl-layout');
+  } else {
+    document.documentElement.classList.remove('rtl-layout');
+    if (document.body) document.body.classList.remove('rtl-layout');
   }
 }
 
@@ -468,34 +552,25 @@ export function setupDynamicContentTranslateObserver() {
  * Triggers instant native and widget language change without reloading,
  * with a 3-second fallback to cookie persistence & single reload.
  */
-export function changeLanguageInstantly(langCode: string) {
+export function changeLanguageInstantly(langCode: string, source: LanguageSource = 'user') {
   if (typeof window === 'undefined') return;
 
   const validLang = SUPPORTED_LANGUAGES.find((l) => l.code === langCode);
   const targetCode = validLang ? validLang.code : DEFAULT_LOCALE;
-  const dir = isRTL(targetCode) ? 'rtl' : 'ltr';
 
   // 1. Update HTML attributes:
   // The source document is English, so lang="en" must remain on <html> so Google Translate knows
   // the source language. Target language is tracked in data-current-lang.
   document.documentElement.setAttribute('lang', 'en');
   document.documentElement.setAttribute('data-current-lang', targetCode);
-  document.documentElement.setAttribute('dir', dir);
-  if (dir === 'rtl') {
-    document.documentElement.classList.add('rtl-layout');
-  } else {
-    document.documentElement.classList.remove('rtl-layout');
-  }
+  applyTextDirection(targetCode);
 
   // 2. Set Cookies and LocalStorage
-  setGoogleTransCookie(targetCode);
-  try {
-    localStorage.setItem(LOCALE_STORAGE_KEY, targetCode);
-  } catch {}
+  setLanguageCookies(targetCode, source);
 
   // 3. Dispatch custom event for React components
   window.dispatchEvent(
-    new CustomEvent('kindlink:locale-change', { detail: { locale: targetCode } })
+    new CustomEvent('kindlink:locale-change', { detail: { locale: targetCode, source } })
   );
 
   // 4. Trigger hidden select element if legacy widget is mounted
@@ -563,7 +638,7 @@ export function changeLanguageInstantly(langCode: string) {
         const lastFallback = sessionStorage.getItem('kindlink_last_fallback_reload');
         if (lastFallback !== fallbackKey) {
           sessionStorage.setItem('kindlink_last_fallback_reload', fallbackKey);
-          setGoogleTransCookie(targetCode);
+          setLanguageCookies(targetCode, source);
           window.location.reload();
         }
       } catch {
@@ -574,24 +649,190 @@ export function changeLanguageInstantly(langCode: string) {
 }
 
 /**
- * Gets currently active language code from LocalStorage or cookies
+ * Gets currently active language code according to Priority Order:
+ * 1) User explicit choice (kindlink_lang_source === 'user')
+ * 2) Previous auto detection (kindlink_lang_source === 'auto')
+ * 3) New auto detection (from cookie or googtrans)
+ * 4) English ('en')
  */
 export function getCurrentLanguageCode(): string {
   if (typeof window === 'undefined') return DEFAULT_LOCALE;
-  try {
-    const saved = localStorage.getItem(LOCALE_STORAGE_KEY);
-    if (saved && SUPPORTED_LANGUAGES.some((l) => l.code === saved)) {
-      return saved;
-    }
-  } catch {}
 
-  if (typeof document !== 'undefined') {
-    const match = document.cookie.match(/(?:^|;\s*)googtrans=\/en\/([a-zA-Z-]+)/);
-    if (match && match[1] && SUPPORTED_LANGUAGES.some((l) => l.code === match[1])) {
-      return match[1];
+  const source = getLanguageSource();
+
+  const getValidCode = (candidate?: string | null): string | null => {
+    if (!candidate) return null;
+    return SUPPORTED_LANGUAGES.some((l) => l.code === candidate) ? candidate : null;
+  };
+
+  // 1) User explicit choice (source === 'user')
+  if (source === 'user') {
+    // Check localStorage first
+    try {
+      const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
+      const valid = getValidCode(stored);
+      if (valid) return valid;
+    } catch {}
+
+    // Check kindlink_lang cookie
+    if (typeof document !== 'undefined') {
+      const cookieLang = getValidCode(getCookie(LANG_COOKIE_NAME));
+      if (cookieLang) return cookieLang;
+
+      const legacyCookie = getValidCode(getCookie(LOCALE_COOKIE_NAME));
+      if (legacyCookie) return legacyCookie;
+
+      const match = document.cookie.match(/(?:^|;\s*)googtrans=\/en\/([a-zA-Z-]+)/);
+      if (match && getValidCode(match[1])) return match[1];
     }
   }
 
+  // 2) Previous auto detection (source === 'auto')
+  if (source === 'auto') {
+    try {
+      const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
+      const valid = getValidCode(stored);
+      if (valid) return valid;
+    } catch {}
+
+    if (typeof document !== 'undefined') {
+      const cookieLang = getValidCode(getCookie(LANG_COOKIE_NAME));
+      if (cookieLang) return cookieLang;
+
+      const legacyCookie = getValidCode(getCookie(LOCALE_COOKIE_NAME));
+      if (legacyCookie) return legacyCookie;
+    }
+  }
+
+  // 3) New auto detection: check if cookie is present from edge / server detect
+  if (typeof document !== 'undefined') {
+    const cookieLang = getValidCode(getCookie(LANG_COOKIE_NAME));
+    if (cookieLang) return cookieLang;
+
+    const legacyCookie = getValidCode(getCookie(LOCALE_COOKIE_NAME));
+    if (legacyCookie) return legacyCookie;
+
+    const match = document.cookie.match(/(?:^|;\s*)googtrans=\/en\/([a-zA-Z-]+)/);
+    if (match && getValidCode(match[1])) return match[1];
+  }
+
+  // Check localStorage fallback if source was unset
+  try {
+    const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
+    const valid = getValidCode(stored);
+    if (valid) return valid;
+  } catch {}
+
+  // 4) English default
   return DEFAULT_LOCALE;
+}
+
+/**
+ * Asynchronously detects user locale via /api/locale/detect if no user explicit choice
+ * or previous auto detection has occurred.
+ *
+ * Rule: Once source is 'user', automatic detection NEVER runs or overrides again.
+ */
+export async function detectAndApplyLanguage(): Promise<string> {
+  if (typeof window === 'undefined') return DEFAULT_LOCALE;
+
+  const source = getLanguageSource();
+
+  // Once source is 'user', automatic detection NEVER runs or overrides again
+  if (source === 'user') {
+    return getCurrentLanguageCode();
+  }
+
+  // If already auto-detected previously, do not re-detect/override
+  if (source === 'auto') {
+    return getCurrentLanguageCode();
+  }
+
+  // Check if server set kindlink_lang cookie
+  const cookieLang = getCookie(LANG_COOKIE_NAME);
+  if (cookieLang && SUPPORTED_LANGUAGES.some((l) => l.code === cookieLang)) {
+    changeLanguageInstantly(cookieLang, 'auto');
+    return cookieLang;
+  }
+
+  // Check /api/locale/detect
+  try {
+    const res = await fetch('/api/locale/detect', { method: 'GET' });
+    if (res.ok) {
+      const data = await res.json();
+      const detected = data.language || data.locale || data.lang;
+      if (detected && SUPPORTED_LANGUAGES.some((l) => l.code === detected)) {
+        // Re-verify that user has not made an explicit selection during the fetch
+        if (getLanguageSource() !== 'user') {
+          changeLanguageInstantly(detected, 'auto');
+          return detected;
+        }
+      }
+    }
+  } catch (err) {
+    console.debug('[LanguageEngine] Auto detection fetch skipped:', err);
+  }
+
+  return DEFAULT_LOCALE;
+}
+
+export interface UserProfileLanguageSyncInput {
+  preferredLanguage?: string | null;
+  preferred_language?: string | null;
+}
+
+/**
+ * Account Sync:
+ * - For logged-in users, if profile has a saved preferredLanguage, apply it. Never write an 'auto' language to user account.
+ * - If logged out user picks explicit language and then logs in, most recent explicit choice wins.
+ */
+export async function syncAccountLanguage(
+  profile?: UserProfileLanguageSyncInput | null
+): Promise<string> {
+  if (typeof window === 'undefined') return DEFAULT_LOCALE;
+
+  const profileLang = profile?.preferredLanguage || profile?.preferred_language;
+  const currentSource = getLanguageSource();
+  const currentLang = getCurrentLanguageCode();
+
+  // Check if user made an unsynced explicit choice (e.g. while logged out before logging in)
+  let isUnsyncedExplicitChoice = false;
+  try {
+    isUnsyncedExplicitChoice =
+      currentSource === 'user' &&
+      localStorage.getItem(LANG_EXPLICIT_SYNCED_KEY) === 'false';
+  } catch {}
+
+  // Rule: If logged out user picks explicit language and then logs in, most recent explicit choice wins
+  if (isUnsyncedExplicitChoice && currentLang) {
+    try {
+      localStorage.setItem(LANG_EXPLICIT_SYNCED_KEY, 'true');
+    } catch {}
+
+    // Persist to user profile
+    fetch('/api/auth/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preferredLanguage: currentLang }),
+    }).catch(() => {});
+
+    changeLanguageInstantly(currentLang, 'user');
+    return currentLang;
+  }
+
+  // Rule: For logged-in users, if profile has a saved preferredLanguage, apply it.
+  if (profileLang && SUPPORTED_LANGUAGES.some((l) => l.code === profileLang)) {
+    try {
+      localStorage.setItem(LANG_EXPLICIT_SYNCED_KEY, 'true');
+    } catch {}
+
+    if (currentLang !== profileLang || currentSource !== 'user') {
+      changeLanguageInstantly(profileLang, 'user');
+    }
+    return profileLang;
+  }
+
+  // Rule: Never write an 'auto' language to user account
+  return currentLang;
 }
 

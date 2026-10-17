@@ -181,8 +181,8 @@ export default function HowItWorksPage() {
                 <tbody className="divide-y divide-border text-muted-foreground">
                   <tr>
                     <td className="p-3.5 font-semibold text-foreground">Geographic Targeting</td>
-                    <td className="p-3.5">Uncontrolled broadcasts forward across state lines</td>
-                    <td className="p-3.5 text-foreground font-medium">Hyperlocal radius matching (&lt; 5 km in Asansol)</td>
+                    <td className="p-3.5">Uncontrolled messages forwarded across state lines</td>
+                    <td className="p-3.5 text-foreground font-medium">Local radius matching (&lt; 5 km in Asansol)</td>
                   </tr>
                   <tr>
                     <td className="p-3.5 font-semibold text-foreground">Urgency Ranking</td>
@@ -191,13 +191,13 @@ export default function HowItWorksPage() {
                   </tr>
                   <tr>
                     <td className="p-3.5 font-semibold text-foreground">Personal Privacy</td>
-                    <td className="p-3.5">Phone number broadcast to thousands, invites scam calls</td>
+                    <td className="p-3.5">Phone number exposed to thousands, invites scam calls</td>
                     <td className="p-3.5 text-foreground font-medium">Zero public PII; contact unlocked ONLY on mutual agreement</td>
                   </tr>
                   <tr>
                     <td className="p-3.5 font-semibold text-foreground">Verification &amp; Trust</td>
                     <td className="p-3.5">Unverified strangers and frequent outdated requests</td>
-                    <td className="p-3.5 text-foreground font-medium">Government/College ID verified profiles with trust score</td>
+                    <td className="p-3.5 text-foreground font-medium">Government / community ID verified profiles with trust score</td>
                   </tr>
                 </tbody>
               </table>

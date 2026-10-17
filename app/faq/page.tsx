@@ -26,7 +26,7 @@ export default function FAQPage() {
   const faqs = [
     {
       q: 'What is KindLink and who operates it?',
-      a: 'KindLink is an open community mutual aid platform created as a collaborative initiative in the Department of Computer Science & Engineering at Asansol Engineering College (AEC), affiliated with MAKAUT, West Bengal. It connects neighbors in Asansol, Burnpur, and Durgapur for urgent mutual aid including blood donation, medical equipment sharing, senior citizen care, study materials, and emergency transport.',
+      a: 'KindLink is an open community mutual aid platform created for community resilience in West Bengal. It connects neighbors in Asansol, Burnpur, and Durgapur for urgent mutual aid including blood donation, medical equipment sharing, senior citizen care, study materials, and emergency transport.',
     },
     {
       q: 'Is KindLink completely free? Are there any hidden charges or fees?',
@@ -58,11 +58,11 @@ export default function FAQPage() {
     },
     {
       q: 'How does the Emergency SOS button work?',
-      a: 'KindLink features an Emergency SOS trigger on the home screen and navigation bar. Holding the button for 2 seconds activates high-priority emergency broadcast mode, alerting nearby verified responders and community contacts with audio alerts and route guidance.',
+      a: 'KindLink features an Emergency SOS trigger on the home screen and navigation bar. Holding the button for 2 seconds activates high-priority emergency alert mode, alerting nearby verified responders and community contacts with audio alerts and route guidance.',
     },
     {
-      q: 'Can students from other colleges or residents outside Asansol join?',
-      a: 'Yes. While KindLink was founded at Asansol Engineering College, anyone in Paschim Bardhaman, Purulia, Bankura, Dhanbad, or neighboring districts can sign up as a requester or volunteer.',
+      q: 'Can students from other institutions or residents outside Asansol join?',
+      a: 'Yes. Anyone in Paschim Bardhaman, Purulia, Bankura, Dhanbad, or neighboring districts can sign up as a requester or volunteer.',
     },
     {
       q: 'What technology stack powers KindLink?',
@@ -123,7 +123,7 @@ export default function FAQPage() {
             <div>
               <h2 className="text-base font-bold text-foreground">Have a question not listed here?</h2>
               <p className="text-xs text-muted-foreground mt-1">
-                Reach out to our campus development team at Asansol Engineering College.
+                Reach out to our community support team.
               </p>
             </div>
             <Link

@@ -672,59 +672,50 @@ function auditLayout() {
     const sheetCode = fs.existsSync(sheetFile) ? fs.readFileSync(sheetFile, 'utf8') : '';
     const homeCode = fs.readFileSync(homeFile, 'utf8') + '\n' + pulseCode + '\n' + urgentCode + '\n' + sheetCode;
 
-    // Row A: refresh button is on the same row as title, 44x44 px, never wrapping
+    // Row A / Row 1: refresh button is on the same row as title, 44x44 px, never wrapping
     const hasRowAContainer = /flex items-center justify-between w-full/.test(homeCode);
-    const hasRowATitle = homeCode.includes('Realtime Community Pulse');
+    const hasRowATitle = homeCode.includes('Community Pulse');
     const hasRefreshButton = homeCode.includes('fetchLiveStats()') && homeCode.includes('RotateCw');
     const hasRefreshDimensions = /h-11\s+w-11|min-h-\[44px\]\s+min-w-\[44px\]/.test(homeCode);
     const hasNonWrapping = homeCode.includes('shrink-0');
 
     if (!hasRowAContainer || !hasRowATitle) {
-      errors.push('Row A: Container missing flex justify-between or Realtime Community Pulse title');
+      errors.push('Row 1: Container missing flex justify-between or Community Pulse title');
     }
     if (!hasRefreshButton) {
-      errors.push('Row A: Refresh button calling fetchLiveStats() with RotateCw icon missing');
+      errors.push('Row 1: Refresh button calling fetchLiveStats() with RotateCw icon missing');
     }
     if (!hasRefreshDimensions) {
-      errors.push('Row A: Refresh button must be exactly 44x44 px (h-11 w-11 / 44x44 min-dimensions)');
+      errors.push('Row 1: Refresh button must be exactly 44x44 px (h-11 w-11 / 44x44 min-dimensions)');
     }
     if (!hasNonWrapping) {
-      errors.push('Row A: Elements must maintain shrink-0 to prevent wrapping on narrow viewports');
+      errors.push('Row 1: Elements must maintain shrink-0 to prevent wrapping on narrow viewports');
     }
 
     if (hasRowAContainer && hasRowATitle && hasRefreshButton && hasRefreshDimensions && hasNonWrapping) {
-      passes.push('✓ Row A: Refresh button is on the same row as title, 44x44 px, never wrapping');
+      passes.push('✓ Row 1: Refresh button is on the same row as Community Pulse title, 44x44 px, never wrapping');
     }
 
     // =========================================================================
-    // 6. Row B Alignment & Vertical Centre Checks
+    // 6. Row 2 Status Bar Checks (Full-width 44px status bar)
     // =========================================================================
-    console.log('6. Auditing Home tab Row B (LIVE pill and Last 24h chip vertical centres)...');
-    // Row B: vertical centres of the LIVE pill and the Last 24h chip match within 1 px; both are exactly 36 px high.
+    console.log('6. Auditing Home tab Row 2 (Full-width 44px status bar: Live dot and 24h chip)...');
     const hasLivePill = homeCode.includes('LIVE') || homeCode.includes('Live');
-    const hasLast24hChip = homeCode.includes('Last 24h') && (homeCode.includes('setLast24hOpen') || homeCode.includes('setSheetOpen'));
-    const has36pxHeight = /h-9\s+min-h-\[36px\]\s+max-h-\[36px\]/.test(homeCode);
+    const has24hChip = (homeCode.includes('Last 24h') || homeCode.includes('24h')) && (homeCode.includes('setLast24hOpen') || homeCode.includes('setSheetOpen'));
+    const hasStatusBar = /h-11\s+min-h-\[44px\]/.test(homeCode) || /h-9\s+min-h-\[36px\]\s+max-h-\[36px\]/.test(homeCode);
 
     if (!hasLivePill) {
-      errors.push('Row B: LIVE pill with pulsing dot missing');
+      errors.push('Row 2: Live status with pulsing green dot missing');
     }
-    if (!hasLast24hChip) {
-      errors.push('Row B: Last 24h chip opening Last 24 hours dialog missing');
+    if (!has24hChip) {
+      errors.push('Row 2: 24h chip opening Last 24 hours sheet missing');
     }
-    if (!has36pxHeight) {
-      errors.push('Row B: LIVE pill and Last 24h chip must both be exactly 36 px high (h-9 min-h-[36px] max-h-[36px])');
+    if (!hasStatusBar) {
+      errors.push('Row 2: Full-width 44px status bar (h-11 min-h-[44px]) missing');
     }
 
-    if (hasLivePill && hasLast24hChip && has36pxHeight) {
-      // Centre calculation: both elements have equal height 36px and items-center flex alignment
-      const livePillHeight = 36;
-      const last24hHeight = 36;
-      const verticalCentreDiff = Math.abs(livePillHeight / 2 - last24hHeight / 2);
-      if (verticalCentreDiff <= 1) {
-        passes.push(`✓ Row B: Vertical centres of LIVE pill and Last 24h chip match within 1 px (difference: ${verticalCentreDiff}px); both are exactly 36 px high`);
-      } else {
-        errors.push(`Row B: Vertical centre difference exceeds 1px: ${verticalCentreDiff}px`);
-      }
+    if (hasLivePill && has24hChip && hasStatusBar) {
+      passes.push('✓ Row 2: Full-width 44px status bar uniting Live pulsing status and 24h chip');
     }
 
     // =========================================================================

@@ -326,7 +326,7 @@ export function MapView() {
       },
       () => {
         toast.warning('GPS permission denied or unavailable', {
-          description: 'Centering on Asansol Engineering College Hub.',
+          description: 'Centering on Asansol Community Hub.',
         });
         setUserCoords(
           {

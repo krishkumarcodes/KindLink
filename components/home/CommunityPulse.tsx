@@ -17,6 +17,7 @@ import { Last24HoursSheet } from './Last24HoursSheet';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { HelpRequest } from '@/lib/data/types';
 import { Last24HoursData, HourlyStat } from '@/app/api/stats/24h/route';
+import { formatHumanTime, formatLivePulseStatus } from '@/lib/utils/formatTime';
 
 interface CommunityPulseProps {
   className?: string;
@@ -151,11 +152,8 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
     return () => window.removeEventListener('click', handleWindowClick);
   }, [activeTooltip]);
 
-  const relativeUpdateTimeText = useMemo(() => {
-    if (secondsSinceUpdate < 5) return 'updated just now';
-    if (secondsSinceUpdate < 60) return `updated ${secondsSinceUpdate}s ago`;
-    const mins = Math.floor(secondsSinceUpdate / 60);
-    return `updated ${mins}m ago`;
+  const liveStatus = useMemo(() => {
+    return formatLivePulseStatus(secondsSinceUpdate);
   }, [secondsSinceUpdate]);
 
   // Anonymized real live events
@@ -182,14 +180,14 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
         cleanLoc = parts[parts.length - 1] || 'Asansol';
       }
 
-      // Determine time
-      let timeAgo = req.createdAt || '';
-      if (!timeAgo || !timeAgo.includes('ago')) {
-        if (req.waitingMinutes !== undefined && req.waitingMinutes > 0) {
-          timeAgo = `${req.waitingMinutes} min ago`;
-        } else {
-          timeAgo = 'recently';
-        }
+      // Determine human-friendly relative time
+      let timeAgo = '';
+      if (req.createdAt) {
+        timeAgo = formatHumanTime(req.createdAt);
+      } else if (req.waitingMinutes !== undefined && req.waitingMinutes > 0) {
+        timeAgo = formatHumanTime(req.waitingMinutes);
+      } else {
+        timeAgo = 'recently';
       }
 
       const isAccepted =
@@ -365,11 +363,11 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
 
   return (
     <div className={`mt-8 pt-6 border-t border-border/80 space-y-3 w-full ${className}`}>
-      {/* Row A: Title on left + Refresh button on right (min height 44 px, items centered, never wrapping) */}
+      {/* Row 1: Title "Community Pulse" + Refresh button (min height 44 px, items centered, never wrapping) */}
       <div className="flex items-center justify-between w-full gap-3 min-h-[44px]">
         <h2 className="text-base sm:text-lg font-extrabold text-foreground tracking-tight flex items-center gap-2 min-w-0">
           <Activity className="h-4 w-4 text-primary shrink-0 notranslate" />
-          <span className="overflow-visible">Realtime Community Pulse</span>
+          <span className="truncate">Community Pulse</span>
         </h2>
 
         {/* 44 x 44 px round refresh button that spins while refreshing */}
@@ -392,32 +390,33 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
         </button>
       </div>
 
-      {/* Row B: LIVE pill on left + Last 24h button on right (gap 8px, exactly 36 px high with the SAME vertical centre) */}
-      <div className="flex items-center justify-between w-full gap-2 h-9 min-h-[36px] max-h-[36px]">
-        {/* Left: LIVE pill (36 px high, pulsing green dot, ticking timestamp) */}
-        <div className="h-9 min-h-[36px] max-h-[36px] inline-flex items-center gap-1.5 px-3 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-xs font-medium shrink-0 select-none">
+      {/* Row 2: Full-width 44px status bar (rounded, flex, min-w-0):
+          - Left: Pulsing green dot with single "Live · updated 18s ago" (or "Live · 18s ago" on narrow screens).
+          - Right: "24h" chip with tiny sparkline, label "24h", and chevron (opens last 24h details sheet).
+          - Below 340px: hide sparkline; never wrap or overflow horizontally. */}
+      <div className="h-11 min-h-[44px] w-full rounded-2xl border border-border/80 bg-card/85 dark:bg-card/50 backdrop-blur-xs px-3 sm:px-3.5 flex items-center justify-between gap-2 min-w-0 overflow-hidden shadow-xs">
+        {/* Left: Pulsing green dot + single status string */}
+        <div className="flex items-center gap-2 min-w-0 shrink">
           <span className="relative flex h-2 w-2 shrink-0">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
-          <span className="font-bold text-[11px] uppercase tracking-wider">LIVE</span>
-          <span className="text-muted-foreground/60">·</span>
-          <span className="text-[11px] text-muted-foreground tabular-nums">
-            <span className="max-[379px]:hidden">updated </span>
-            {relativeUpdateTimeText}
+          <span className="text-xs font-semibold text-foreground truncate select-none">
+            <span className="hidden min-[380px]:inline">{liveStatus.long}</span>
+            <span className="min-[380px]:hidden">{liveStatus.short}</span>
           </span>
         </div>
 
-        {/* Right: Last 24h chip (Real button, 36 px visible height, 44 px tap target, hover/pressed state) */}
+        {/* Right: "Last 24h" chip with tiny sparkline (hidden below 340px), label "Last 24h", and chevron */}
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
           aria-label="Last 24 hours activity trend"
-          className="group relative h-9 min-h-[36px] max-h-[36px] px-3 rounded-full border border-border/80 bg-background/80 hover:bg-muted/80 active:scale-[0.98] transition-all text-xs font-medium text-foreground flex items-center gap-2 shrink-0 select-none shadow-xs before:absolute before:-inset-y-1 before:-inset-x-1 before:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="group relative h-9 min-h-[36px] max-h-[36px] px-2.5 sm:px-3 rounded-full border border-border/70 bg-background/80 hover:bg-muted/90 active:scale-[0.98] transition-all text-xs font-medium text-foreground flex items-center gap-1.5 sm:gap-2 shrink-0 select-none shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary touch-target cursor-pointer"
         >
-          {/* Tiny inline SVG sparkline (56 x 20 px) */}
+          {/* Tiny inline SVG sparkline (56 x 20 px) - hidden below 340px */}
           <svg
-            className="w-[56px] h-[20px] text-emerald-500 shrink-0 overflow-visible"
+            className="w-[42px] sm:w-[50px] h-[18px] text-emerald-500 shrink-0 hidden min-[340px]:block overflow-visible"
             viewBox="0 0 56 20"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -450,7 +449,7 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
           <span className="text-[11px] font-bold text-foreground/90 whitespace-nowrap">
             Last 24h
           </span>
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5 notranslate" />
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5 notranslate shrink-0" />
         </button>
       </div>
 

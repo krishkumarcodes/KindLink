@@ -8,7 +8,7 @@ This guide is written in very simple, beginner-friendly language with exact step
 
 1. **Clean Civic Mutual Aid Architecture**:
    - We removed all legacy scoring columns and experimental sensor hooks, transitioning to a streamlined civic platform.
-   - KindLink is now presented as a clean, student-built community mutual aid platform created for **Asansol Engineering College**.
+   - KindLink is now presented as a clean, student-built community mutual aid platform created for **KindLink Community Initiative**.
 2. **Pure, Real-World Aid Ranking**:
    - Needs are now ranked by what truly matters in an emergency:
      1. **Urgency Level** (Critical ➔ High ➔ Medium ➔ Low)

@@ -21,9 +21,9 @@ import { JsonLd, buildBreadcrumbSchema } from '@/components/seo/JsonLd';
 import { constructMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = constructMetadata({
-  title: 'About KindLink | Hyperlocal Mutual Aid in Asansol',
+  title: 'About KindLink | Local Mutual Aid in Asansol',
   description:
-    'KindLink is an open community mutual aid platform developed at Asansol Engineering College. Learn our mission, engineering ethos, and community commitment.',
+    'KindLink is an open community mutual aid platform serving Asansol and neighboring areas. Learn our mission, engineering ethos, and community commitment.',
   path: '/about',
 });
 
@@ -67,8 +67,8 @@ export default function AboutPage() {
 
           <div className="flex items-center gap-2 mb-3">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-500/10 px-3 py-1 text-xs font-bold text-teal-600 dark:text-teal-400">
-              <GraduationCap className="h-3.5 w-3.5" />
-              Academic Capstone Initiative &bull; Asansol Engineering College
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Community Civic Initiative &bull; Asansol Mutual Aid Network
             </span>
           </div>
 
@@ -95,14 +95,13 @@ export default function AboutPage() {
                   Community Platform Initiative
                 </h2>
                 <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                  KindLink was conceptualized and developed as a collaborative initiative in the
-                  Department of Computer Science &amp; Engineering at <strong>Asansol Engineering College (AEC)</strong>,
-                  affiliated with the Maulana Abul Kalam Azad University of Technology (MAKAUT), West Bengal.
+                  KindLink was conceptualized and developed as an open-source civic initiative for
+                  <strong> Asansol and neighboring districts</strong>, West Bengal.
                 </p>
                 <p className="mt-3 text-xs sm:text-sm text-muted-foreground leading-relaxed">
                   Rather than building another generic corporate web application, our engineering team sought to apply
                   modern geospatial routing, cryptographic trust verification, and transparent urgency prioritization
-                  to solve pressing human challenges in our local college town and neighboring industrial townships.
+                  to solve pressing human challenges in our local community and neighboring industrial townships.
                 </p>
               </div>
             </div>

@@ -62,7 +62,7 @@ export function PublicHeader() {
     {
       title: 'Study Materials',
       href: '/help/books-and-study-material',
-      desc: 'B.Tech textbooks, MAKAUT syllabus & book bank',
+      desc: 'Textbooks, exam notes & community book bank',
       icon: BookOpen,
       color: 'text-blue-500',
     },

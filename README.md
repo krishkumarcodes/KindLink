@@ -426,8 +426,8 @@ KindLink/
 KindLink was conceptualized and developed as a collaborative community initiative in the Department of Computer Science & Engineering at:
 
 <p align="center">
-  <strong>Asansol Engineering College (AEC)</strong><br />
-  <em>Affiliated to Maulana Abul Kalam Azad University of Technology (MAKAUT), West Bengal, India</em>
+  <strong>KindLink Community Initiative</strong><br />
+  <em>Affiliated to Community Open Initiative</em>
 </p>
 
 - **Lead Engineer & Author**: [Krish Kumar](https://github.com/krishkumarcodes) (`krishkumarcodes@gmail.com`)

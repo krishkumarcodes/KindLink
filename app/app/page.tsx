@@ -15,6 +15,7 @@ import { NewRequestWizard } from '@/components/wizard/NewRequestWizard';
 import { ProfileView } from '@/components/profile/ProfileView';
 import { SettingsView } from '@/components/settings/SettingsView';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
+import { AutoLanguageNotice } from '@/components/locale/AutoLanguageNotice';
 import { initializeRealtime } from '@/lib/supabase/realtime';
 
 export default function KindLinkApp() {
@@ -193,17 +194,17 @@ export default function KindLinkApp() {
 
   // 3. Authenticated: Render the main application shell
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col w-full max-w-[100vw] overflow-x-hidden">
       {/* Top App Bar */}
       <Header />
 
       {/* Main Container Layout */}
-      <div className="flex-1 flex max-w-[1920px] w-full mx-auto">
+      <div className="flex-1 flex max-w-[1920px] w-full mx-auto min-w-0 overflow-x-hidden">
         {/* Left Sidebar on tablet, laptop, desktop */}
         <Sidebar />
 
         {/* Dynamic Center Stage Views */}
-        <main ref={mainRef} className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        <main ref={mainRef} className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden">
           {currentView === 'home' && <HomeView />}
           {currentView === 'requests' && <RequestsView />}
           {currentView === 'map' && <MapView />}
@@ -218,6 +219,9 @@ export default function KindLinkApp() {
 
       {/* First Visit Onboarding Modal */}
       <WelcomeModal />
+
+      {/* First-Time Auto-Language Notice Banner */}
+      <AutoLanguageNotice />
     </div>
   );
 }

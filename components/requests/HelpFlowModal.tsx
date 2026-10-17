@@ -79,7 +79,7 @@ export function HelpFlowModal({
     onClose();
     setCurrentView('profile');
     toast.info('Complete Your Identity Verification', {
-      description: 'Upload your College or Government ID to unlock volunteer aid.',
+      description: 'Upload your Government ID or Verification Document to unlock volunteer aid.',
     });
   };
 
@@ -195,7 +195,7 @@ export function HelpFlowModal({
                 <span>Identity Verification Required</span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                To safeguard patients and family members in Asansol, only verified community volunteers can submit aid offers. Verification takes only 2 minutes by uploading your Student ID or Government ID.
+                To safeguard patients and family members in Asansol, only verified community volunteers can submit aid offers. Verification takes only 2 minutes by uploading your Government Photo ID.
               </p>
               <button
                 type="button"

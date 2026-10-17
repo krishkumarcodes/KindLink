@@ -166,7 +166,7 @@ export function WelcomeModal() {
 
             <div className="space-y-2">
               <span className="text-xs font-bold uppercase tracking-wider text-primary">
-                Asansol Engineering College Student Project
+                KindLink Community Project
               </span>
               <h2 className="text-2xl font-black text-foreground">Ranked by Urgency, Driven by Trust</h2>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">

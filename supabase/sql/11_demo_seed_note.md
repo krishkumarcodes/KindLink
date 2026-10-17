@@ -10,7 +10,7 @@ When you run `npm run seed`, the script automatically provisions:
 
 1. **8 Realistic Demo Users**:
    - `priya_nurse`: Verified nurse in Asansol (`priya.nurse@kindlink.demo`)
-   - `rahul_aec`: AEC Engineering student (`rahul.aec@kindlink.demo`)
+   - `rahul_student`: Community Engineering student (`rahul.student@kindlink.demo`)
    - `dr_sen`: Verified physician (`dr.sen@kindlink.demo`)
    - `amit_dhanbad`: Blood donor volunteer in Dhanbad (`amit.dhanbad@kindlink.demo`)
    - `swati_durgapur`: Verified NGO coordinator (`swati.durgapur@kindlink.demo`)

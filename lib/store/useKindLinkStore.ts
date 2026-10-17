@@ -40,6 +40,13 @@ export const DEFAULT_USER: UserProfile = {
   visibility_email: 'members',
   visibility_organisation: 'members',
   visibility_area: 'members',
+  bloodGroup: '',
+  emergencyPrivacy: {
+    sharePhone: false,
+    shareBloodGroup: false,
+    shareMedicalNote: false,
+    medicalNote: '',
+  },
   rating: 5.0,
   ratingCount: 0,
   helpsCount: 0,
@@ -430,6 +437,11 @@ export const useKindLinkStore = create<KindLinkState>()(
           notifications: updated,
           unreadNotificationCount: updated.filter((n) => n.unread).length,
         });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('kindlink:new-notification', { detail: { id: notif.id } })
+          );
+        }
       },
     }),
     {

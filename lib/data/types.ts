@@ -109,6 +109,13 @@ export interface ProfileVisibilitySettings {
   area?: VisibilityLevel | FieldVisibility;
 }
 
+export interface EmergencyPrivacySettings {
+  sharePhone?: boolean;
+  shareBloodGroup?: boolean;
+  shareMedicalNote?: boolean;
+  medicalNote?: string;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -128,6 +135,8 @@ export interface UserProfile {
   visibility_email?: VisibilityLevel;
   visibility_organisation?: VisibilityLevel;
   visibility_area?: VisibilityLevel;
+  bloodGroup?: string;
+  emergencyPrivacy?: EmergencyPrivacySettings;
   rating: number;
   ratingCount?: number;
   helpsCount: number;

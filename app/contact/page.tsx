@@ -20,9 +20,9 @@ import { JsonLd, buildBreadcrumbSchema } from '@/components/seo/JsonLd';
 import { constructMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = constructMetadata({
-  title: 'Contact KindLink | Campus Office & Support in Asansol',
+  title: 'Contact KindLink | Community Office & Support in Asansol',
   description:
-    'Get in touch with the KindLink development team at Asansol Engineering College. Submit civic feedback, report bugs, or collaborate on open-source mutual aid.',
+    'Get in touch with the KindLink development team in Asansol. Submit civic feedback, report bugs, or collaborate on open-source mutual aid.',
   path: '/contact',
 });
 
@@ -49,11 +49,11 @@ export default function ContactPage() {
           </div>
 
           <h1 className="font-heading text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-            Contact KindLink: Campus Office &amp; Community Support
+            Contact KindLink: Community Office &amp; Support
           </h1>
 
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-            Whether you want to suggest new mutual aid features, partner with us for college blood donation drives in
+            Whether you want to suggest new mutual aid features, partner with us for community blood donation drives in
             Asansol, report a platform bug, or inquire about community partnerships, we welcome your communication.
           </p>
 
@@ -68,16 +68,15 @@ export default function ContactPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-            {/* CONTACT DETAILS & CAMPUS ADDRESS */}
+            {/* CONTACT DETAILS & COMMUNITY ADDRESS */}
             <div className="space-y-6">
               <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                 <div className="flex items-center gap-2.5 text-teal-600 dark:text-teal-400 font-bold text-sm mb-3">
                   <Building className="h-4 w-4" />
-                  <span>Campus Research Lab &amp; Office</span>
+                  <span>Community Office &amp; Support</span>
                 </div>
                 <div className="space-y-1 text-xs text-muted-foreground leading-relaxed">
-                  <p className="font-semibold text-foreground">Department of Computer Science &amp; Engineering</p>
-                  <p>Asansol Engineering College (AEC)</p>
+                  <p className="font-semibold text-foreground">KindLink Community Aid Support Office</p>
                   <p>Vivekananda Sarani, Kalla Bypass More</p>
                   <p>Asansol - 713305, Paschim Bardhaman</p>
                   <p>West Bengal, India</p>
@@ -219,7 +218,7 @@ export default function ContactPage() {
               href="/about"
               className="text-xs font-semibold text-muted-foreground hover:text-foreground"
             >
-              Read more about Asansol Engineering College roots &rarr;
+              Read more about KindLink community roots &rarr;
             </Link>
           </div>
         </div>

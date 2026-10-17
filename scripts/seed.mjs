@@ -88,9 +88,9 @@ const DEMO_USERS = [
     rating_count: 24,
   },
   {
-    email: 'rahul.aec@kindlink.demo',
-    username: 'rahul_aec',
-    display_name: 'Rahul Sen (AEC)',
+    email: 'rahul.student@kindlink.demo',
+    username: 'rahul_student',
+    display_name: 'Rahul Sen (Community)',
     phone: '+91 98320 12345',
     role: 'user',
     verification_status: 'unverified',
@@ -197,7 +197,7 @@ const DEMO_REQUESTS = [
   },
   {
     id: '00000000-0000-4000-a000-000000000102',
-    requester_username: 'rahul_aec',
+    requester_username: 'rahul_student',
     accepted_helper_username: 'vikram_driver',
     category: 'transport',
     urgency: 'critical',
@@ -235,13 +235,13 @@ const DEMO_REQUESTS = [
   },
   {
     id: '00000000-0000-4000-a000-000000000104',
-    requester_username: 'rahul_aec',
+    requester_username: 'rahul_student',
     category: 'elderly_help',
     urgency: 'high',
     title: 'Urgent Insulin & BP Medicine Delivery for Senior Citizen',
     description:
-      'Senior citizen living alone near AEC Kalyanpur road unable to step out due to knee pain. Prescription copy ready.',
-    address_text: 'Kalyanpur Housing, Near AEC Gate 2, Asansol',
+      'Senior citizen living alone near Community Kalyanpur road unable to step out due to knee pain. Prescription copy ready.',
+    address_text: 'Kalyanpur Housing, Near Community Gate 2, Asansol',
     location: 'POINT(86.9612 23.6934)',
     status: 'open',
     details: {
@@ -253,7 +253,7 @@ const DEMO_REQUESTS = [
   },
   {
     id: '00000000-0000-4000-a000-000000000105',
-    requester_username: 'rahul_aec',
+    requester_username: 'rahul_student',
     category: 'books',
     urgency: 'medium',
     title: 'Class 10 Madhyamik Maths & Physical Science Textbooks',
@@ -288,7 +288,7 @@ const DEMO_REQUESTS = [
   },
   {
     id: '00000000-0000-4000-a000-000000000107',
-    requester_username: 'rahul_aec',
+    requester_username: 'rahul_student',
     category: 'equipment',
     urgency: 'low',
     title: 'Compressor Nebulizer for Child with Acute Bronchitis',
@@ -363,7 +363,7 @@ const DEMO_REQUESTS = [
   },
   {
     id: '00000000-0000-4000-a000-000000000111',
-    requester_username: 'rahul_aec',
+    requester_username: 'rahul_student',
     category: 'books',
     urgency: 'medium',
     title: 'B.Tech Computer Science Reference Books (Algorithms & OS)',
@@ -681,7 +681,7 @@ const DEMO_NOTIFICATIONS = [
   },
   {
     id: '00000000-0000-4000-a000-000000000302',
-    user_username: 'rahul_aec',
+    user_username: 'rahul_student',
     request_id: '00000000-0000-4000-a000-000000000103',
     type: 'new_nearby_request',
     title: '🚨 New Urgent Need: Foldable Wheelchair',

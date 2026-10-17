@@ -44,9 +44,9 @@ let activeSearchAbortController: AbortController | null = null;
 // Curated quick search hints for common hubs in Asansol region
 export const CURATED_LOCAL_PLACES: PlaceSearchResult[] = [
   {
-    placeId: 'local-aec',
-    name: 'Asansol Engineering College',
-    displayName: 'Asansol Engineering College, Kalyanpur, Asansol, West Bengal',
+    placeId: 'local-kalyanpur',
+    name: 'KindLink Community Initiative',
+    displayName: 'KindLink Community Initiative, Kalyanpur, Asansol, West Bengal',
     lat: 23.6889,
     lng: 86.9661,
     city: 'Asansol',

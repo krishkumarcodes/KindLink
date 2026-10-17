@@ -368,7 +368,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     const shareData = {
       title: `KindLink Alert: ${request.title}`,
       text: `${request.title} at ${request.locationName}. Urgency: ${request.urgency}. Can you help?`,
-      url: window.location.href,
+      url: process.env.NEXT_PUBLIC_SITE_URL ? `${process.env.NEXT_PUBLIC_SITE_URL}/requests/${request.id}` : (typeof window !== 'undefined' ? window.location.href : ''),
     };
 
     if (navigator.share) {
@@ -427,7 +427,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
 
   // Timeline Steps
   const timelineSteps: { key: RequestLifecycleStatus; label: string; desc: string }[] = [
-    { key: 'open', label: 'Open', desc: 'Broadcasted to nearby volunteers' },
+    { key: 'open', label: 'Open', desc: 'Sent to nearby volunteers' },
     { key: 'offered', label: 'Offered', desc: 'Volunteer stepped up to assist' },
     { key: 'accepted', label: 'Accepted', desc: 'Matched pair confirmed & unlocked' },
     { key: 'on_the_way', label: 'On the way', desc: 'Volunteer en route to location' },
@@ -935,7 +935,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                       } notranslate`}
                     />
                     <span className="text-xs font-bold text-foreground">
-                      Live Transit GPS Sharing
+                      Live Transit Location Sharing
                     </span>
                   </div>
 
@@ -954,8 +954,8 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
 
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
                   {isSharingLocation
-                    ? 'Your live GPS pin is broadcasting securely to the requester. Updates every 10 seconds.'
-                    : 'Helper can broadcast live location while on the way with end-to-end privacy consent.'}
+                    ? 'Your live location pin is shared securely with the requester. Updates every 10 seconds.'
+                    : 'Helper can share live location while on the way with end-to-end privacy consent.'}
                 </p>
 
                 {transitLocation && (
@@ -1078,7 +1078,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
               Share Live Location While On the Way?
             </h3>
             <p className="text-xs text-muted-foreground leading-relaxed text-center">
-              Your real-time GPS coordinates will only be shared with {request.contactName} during this active response. It automatically terminates when the task is completed or when you toggle it off.
+              Your real-time location will only be shared with {request.contactName} during this active response. It automatically terminates when the task is completed or when you toggle it off.
             </p>
             <div className="flex gap-2 pt-2">
               <button

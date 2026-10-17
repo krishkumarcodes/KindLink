@@ -39,8 +39,8 @@ const PROFESSION_TYPES: { id: ProfessionalProofType; label: string; icon: any; p
   { id: 'Doctor', label: 'Doctor / Physician', icon: Stethoscope, placeholder: 'e.g. WBMC Reg. No. 12345' },
   { id: 'Nurse', label: 'Registered Nurse', icon: Briefcase, placeholder: 'e.g. Nursing Council Reg. No.' },
   { id: 'Pharmacist', label: 'Pharmacist', icon: Building2, placeholder: 'e.g. Pharmacy Council Reg. No.' },
-  { id: 'Teacher', label: 'Teacher / Faculty', icon: GraduationCap, placeholder: 'e.g. College / School Faculty ID' },
-  { id: 'Student', label: 'College Student', icon: GraduationCap, placeholder: 'e.g. MAKAUT / University Roll No.' },
+  { id: 'Teacher', label: 'Teacher / Faculty', icon: GraduationCap, placeholder: 'e.g. Institution / School Faculty ID' },
+  { id: 'Student', label: 'Enrolled Student', icon: GraduationCap, placeholder: 'e.g. Student / University Roll No.' },
   { id: 'Organisation', label: 'Verified NGO / Organisation', icon: Building2, placeholder: 'e.g. Trust / Society 12A Reg. No.' },
 ];
 
@@ -546,7 +546,7 @@ export function VerificationTab() {
             </div>
 
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Student ID (AEC/MAKAUT) or Government Photo ID (Aadhaar / Voter ID).{' '}
+              Government Photo ID (Aadhaar / Voter ID) or Student ID.{' '}
               <strong className="text-foreground">Optional</strong> — adds extra trust badge for critical emergency calls.
             </p>
 
@@ -943,7 +943,7 @@ export function VerificationTab() {
                 onChange={(e) => setSelectedDocType(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
               >
-                <option value="Student ID Card">College Student ID (AEC / MAKAUT / University)</option>
+                <option value="Student ID Card">Student / Educational ID Card</option>
                 <option value="Government Photo ID">Government Photo ID (Aadhaar / Voter ID / Passport)</option>
                 <option value="Driving License">Driving License</option>
                 <option value="Healthcare Certificate">Healthcare / First Responder Certificate</option>

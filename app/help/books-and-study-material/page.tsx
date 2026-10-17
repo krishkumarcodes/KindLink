@@ -20,18 +20,18 @@ import { JsonLd, buildBreadcrumbSchema } from '@/components/seo/JsonLd';
 import { constructMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = constructMetadata({
-  title: 'Books & Engineering Study Materials Exchange in Asansol | AEC Peer Book Bank',
+  title: 'Books & Study Materials Exchange in Asansol | Peer Book Bank',
   description:
-    'Free academic textbook sharing for Asansol Engineering College (MAKAUT) students, WBCHSE, and CBSE pupils. Exchange engineering books, GATE notes, and semester papers.',
+    'Free academic textbook sharing for students, WBCHSE, and CBSE pupils. Exchange engineering books, GATE notes, and semester papers.',
   path: '/help/books-and-study-material',
 });
 
 export default function BooksAndStudyMaterialPage() {
   const academicDisciplines = [
     {
-      discipline: 'B.Tech CSE & IT (MAKAUT Syllabus)',
+      discipline: 'Computer Science & IT Syllabus',
       subjects: 'Data Structures (Tanenbaum), Operating Systems (Galvin), DBMS (Korth), Computer Networks (Forouzan), Automata (Hopcroft).',
-      target: '1st through 8th Semester Asansol Engineering College undergraduates.',
+      target: '1st through 8th Semester undergraduates across universities.',
     },
     {
       discipline: 'Core Engineering (ECE, EE, ME, CE)',
@@ -78,15 +78,14 @@ export default function BooksAndStudyMaterialPage() {
           </div>
 
           <h1 className="font-heading text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-            Books &amp; Engineering Study Materials Exchange: AEC &amp; College Peer Book Bank
+            Books &amp; Study Materials Exchange: Community Peer Book Bank
           </h1>
 
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-            Academic textbooks are notoriously expensive. A single semester in the B.Tech curriculum under Maulana Abul
-            Kalam Azad University of Technology (MAKAUT) requires 5 to 6 reference books, costing upwards of ₹3,000 to
-            ₹5,000 per term. Once exams conclude, these thick volumes often sit dormant on hostel shelves while junior
-            batches struggle to afford them. KindLink creates a circular, peer-to-peer campus book bank in Asansol,
-            democratizing education and fostering cross-batch mentorship.
+            Academic textbooks are notoriously expensive. A single semester in standard higher education curricula requires 5 to 6 reference books, costing upwards of ₹3,000 to
+            ₹5,000 per term. Once exams conclude, these thick volumes often sit dormant on shelves while junior
+            batches struggle to afford them. KindLink creates a circular, peer-to-peer community book bank in Asansol,
+            democratizing education and fostering mentorship.
           </p>
 
           {/* Action Callout Box */}
@@ -171,10 +170,10 @@ export default function BooksAndStudyMaterialPage() {
                   <MapPin className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-foreground">Safe Campus Handoff Hubs</h3>
+                  <h3 className="text-xs font-bold text-foreground">Safe Community Handoff Hubs</h3>
                   <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                    Exchanges are typically conducted at visible campus landmarks: Asansol Engineering College Main Gate,
-                    the AEC Central Library corridor, student canteens, or hostel gates in Kalla and Kalyanpur.
+                    Exchanges are typically conducted at visible community landmarks: Asansol Station Plaza,
+                    local public library corridors, student centers, or community gates in Kalla and Kalyanpur.
                   </p>
                 </div>
               </div>
@@ -184,11 +183,10 @@ export default function BooksAndStudyMaterialPage() {
           {/* ACADEMIC ROOTS CALLOUT */}
           <section className="mt-12 rounded-2xl border border-border bg-muted/40 p-6">
             <h2 className="font-heading text-lg font-bold text-foreground">
-              Born Out of Student Camaraderie at AEC
+              Born Out of Community Camaraderie
             </h2>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              KindLink was conceived by final-year Computer Science &amp; Engineering students at Asansol Engineering
-              College. The textbook sharing pillar represents our commitment to circular campus resource sharing,
+              KindLink was conceived by community technology volunteers in Asansol. The textbook sharing pillar represents our commitment to circular community resource sharing,
               ensuring that lack of financial means never stands between an ambitious student and an engineering degree.
             </p>
           </section>
@@ -207,7 +205,7 @@ export default function BooksAndStudyMaterialPage() {
               href="/about"
               className="text-xs font-semibold text-muted-foreground hover:text-foreground"
             >
-              Read more about our AEC college roots &rarr;
+              Read more about our community roots &rarr;
             </Link>
           </div>
         </div>

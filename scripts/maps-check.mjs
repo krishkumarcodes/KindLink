@@ -4,9 +4,9 @@
  * 
  * Tests each provider (and fallback mode when keys are absent):
  * 1. Search (one search query: "Asansol Railway Station")
- * 2. Suggestion (one autocomplete query: "Asansol Eng")
+ * 2. Suggestion (one autocomplete query: "Asansol Court")
  * 3. Reverse lookup (one reverse geocode: lat 23.6889, lng 86.9661)
- * 4. Route (one route calculation: Asansol -> AEC)
+ * 4. Route (one route calculation: Asansol -> Community)
  * 5. Places query (one healthcare places query: hospitals within 5km)
  * 6. Tile fetch (one map tile fetch: z=12, x=3037, y=1778)
  * 
@@ -284,9 +284,9 @@ async function runMapsCheck() {
   }
 
   // ============================================================================
-  // TEST 4: ROUTE (Asansol Center -> AEC)
+  // TEST 4: ROUTE (Asansol Center -> Community)
   // ============================================================================
-  console.log(`\n${BOLD}4. Road Route Computation (Asansol Center -> AEC College)${RESET}`);
+  console.log(`\n${BOLD}4. Road Route Computation (Asansol Center -> Community College)${RESET}`);
 
   if (orsKey && !orsKey.includes('your_')) {
     const res = await timedFetch('https://api.openrouteservice.org/v2/directions/foot-walking?start=86.9661,23.6889&end=86.9750,23.6950', {

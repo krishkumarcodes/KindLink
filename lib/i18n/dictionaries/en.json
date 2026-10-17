@@ -89,8 +89,8 @@
     "emergency": "Emergency SOS"
   },
   "sos": {
-    "emergencyTitle": "Emergency SOS Beacon",
-    "emergencySubtitle": "Direct helpline connections & immediate Asansol local broadcast",
+    "emergencyTitle": "Emergency SOS Alert",
+    "emergencySubtitle": "Direct helpline connections & immediate Asansol local alert",
     "call112": "Call 112 (National Emergency)",
     "callAmbulance": "Call Ambulance (108)",
     "callPolice": "Call Police (100)",
@@ -98,7 +98,7 @@
     "bloodEmergency": "Blood Bank Emergency",
     "triggerBeacon": "Activate SOS Siren",
     "cancelEmergency": "Stand Down SOS",
-    "activeEmergency": "ACTIVE EMERGENCY BEACON",
+    "activeEmergency": "ACTIVE EMERGENCY ALERT",
     "disclaimer": "Only trigger for genuine life-threatening emergencies."
   },
   "wizard": {
@@ -113,7 +113,7 @@
     "categoryLabel": "Aid Category",
     "urgencyLabel": "Urgency Level",
     "locationLabel": "Current Asansol Location",
-    "submitRequest": "Broadcast to Nearby Community",
+    "submitRequest": "Send to Nearby Community",
     "contactLabel": "Callback Contact Number",
     "bloodGroupLabel": "Blood Group",
     "unitsNeededLabel": "Units Needed",
@@ -144,7 +144,7 @@
   "badges": {
     "bloodDonor": "Life Saver (Blood Donor)",
     "firstResponder": "Emergency First Responder",
-    "verifiedStudent": "Verified College Student",
+    "verifiedStudent": "Verified Student",
     "trustedNeighbor": "Trusted Local Neighbor",
     "topHelper": "Community Pillar",
     "techWizard": "Tech Volunteer",

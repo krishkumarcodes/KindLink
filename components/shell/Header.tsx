@@ -6,21 +6,15 @@ import {
   Globe,
   MapPin,
   Siren,
-  ChevronDown,
-  User,
-  Settings,
-  ShieldCheck,
-  AlertTriangle,
-  LogOut,
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { useLocation } from '@/lib/location/LocationProvider';
-import { getCurrentLanguageCode, SUPPORTED_LANGUAGES } from '@/lib/translate/googleTranslate';
+import { getCurrentLanguageCode } from '@/lib/translate/googleTranslate';
 import { LanguageModal } from './LanguageModal';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { EmergencySosModal } from './EmergencySosModal';
 import { LocationModal } from './LocationModal';
+import { ProfileQuickMenu } from './ProfileQuickMenu';
 
 export function Header() {
   const {
@@ -28,7 +22,7 @@ export function Header() {
     userProfile,
     setCurrentView,
   } = useKindLinkStore();
-  const { userCoords, userAreaName, accuracy } = useLocation();
+  const { userCoords, userAreaName } = useLocation();
 
   const [langOpen, setLangOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -37,7 +31,8 @@ export function Header() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [currentLangCode, setCurrentLangCode] = useState('en');
 
-  const menuRef = useRef<HTMLDivElement>(null);
+  const bellButtonRef = useRef<HTMLButtonElement>(null);
+  const avatarButtonRef = useRef<HTMLButtonElement>(null);
 
   // Sync current language code for display badge
   useEffect(() => {
@@ -54,28 +49,6 @@ export function Header() {
     };
   }, [langOpen]);
 
-  // Close quick profile menu on outside click or Escape key
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setProfileMenuOpen(false);
-      }
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        setProfileMenuOpen(false);
-      }
-    }
-    if (profileMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleKeyDown);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [profileMenuOpen]);
-
   const unreadCount = unreadNotificationCount;
 
   // Extract user initials
@@ -91,27 +64,32 @@ export function Header() {
 
   const displayAreaName = userAreaName || 'Asansol, WB';
 
-  // Format short area name for mobile
-  const shortArea = displayAreaName.split(',')[0].trim() || 'Asansol';
-
   return (
     <>
-      <header className="sticky top-0 z-30 w-full border-b border-border/80 bg-card/90 backdrop-blur-md pt-[env(safe-area-inset-top,0px)] transition-colors shadow-xs">
-        <div className="flex h-16 w-full max-w-[1920px] mx-auto items-center justify-between px-2 sm:px-6 gap-1 xs:gap-2">
-          {/* Brand Logo & Dynamic Location */}
-          <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-3 min-w-0">
-            {/* KindLink Brand Home Link */}
+      {/* 
+        Compact Accessible Header:
+        - Height: 56px (h-14), accounts for safe-area-inset-top
+        - Single line, perfectly vertically centered within 1px
+        - Zero wrap and zero overflow at 360px, 390px, 430px
+        - Lighter borders and softer backgrounds
+        - Overlays are rendered outside <header> in document.body to avoid backdrop-filter traps
+      */}
+      <header className="sticky top-0 z-30 w-full border-b border-border/70 bg-card supports-[backdrop-filter]:bg-card/90 dark:supports-[backdrop-filter]:bg-slate-950/90 supports-[backdrop-filter]:backdrop-blur-md pt-[env(safe-area-inset-top,0px)] transition-colors shadow-xs">
+        <div className="flex h-14 w-full max-w-[1920px] mx-auto items-center justify-between px-2 sm:px-6">
+          {/* LEFT: Brand Logo Emblem (30-32px) + Wordmark "KindLink" (16-17px) + 6px gap + Location Button */}
+          <div className="flex items-center gap-1.5 shrink-0 min-w-0">
+            {/* KindLink Brand Link */}
             <button
               type="button"
               onClick={() => setCurrentView('home')}
-              className="group flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl p-0.5 sm:p-1 transition-all active:scale-[0.98] shrink-0"
+              className="group flex items-center gap-1.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl p-0.5 transition-all active:scale-[0.98] shrink-0 touch-target"
               aria-label="KindLink - Help is just next door"
             >
-              {/* KindLink Vector Brand Emblem */}
-              <div className="relative flex h-8 w-8 xs:h-9 xs:w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center transition-transform duration-200 group-hover:scale-105">
+              {/* KindLink Vector Brand Emblem (32px) */}
+              <div className="relative flex h-8 w-8 shrink-0 items-center justify-center transition-transform duration-200 group-hover:scale-105">
                 <svg
                   viewBox="0 0 64 64"
-                  className="h-8 w-8 xs:h-9 xs:w-9 sm:h-10 sm:w-10 drop-shadow-sm select-none"
+                  className="h-8 w-8 drop-shadow-xs select-none"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                   aria-hidden="true"
@@ -179,14 +157,14 @@ export function Header() {
                   />
                   <circle cx="32" cy="32" r="18" stroke="#FFFFFF" strokeOpacity="0.18" strokeWidth="1.5" />
 
-                  {/* Connected Hearts & Hands Mobius Loop (KindLink Emblem) */}
+                  {/* Connected Hearts & Hands Mobius Loop */}
                   <path
                     d="M22 28 C18 22, 12 25, 12 32 C12 39, 24 46, 32 50 C40 46, 52 39, 52 32 C52 25, 46 22, 42 28 C39 32, 35 34, 32 34 C29 34, 25 32, 22 28 Z"
                     fill="#FFFFFF"
                     fillOpacity="0.96"
                   />
 
-                  {/* Secondary Inner Link Arch */}
+                  {/* Inner Link Arch */}
                   <path
                     d="M23.5 30 C26 33, 29 34.5, 32 34.5 C35 34.5, 38 33, 40.5 30"
                     stroke="#0D9488"
@@ -194,29 +172,31 @@ export function Header() {
                     strokeLinecap="round"
                   />
 
-                  {/* Quantum Core Pulse / Beacon */}
+                  {/* Beacon Core */}
                   <circle cx="32" cy="32" r="5" fill="url(#header-kl-beacon)" filter="url(#header-kl-glow)" />
                   <circle cx="32" cy="32" r="2" fill="#FFFFFF" />
                 </svg>
               </div>
 
-              {/* Brand Typography */}
-              <span className="notranslate text-sm xs:text-base sm:text-xl font-extrabold tracking-tight block leading-tight font-heading">
+              {/* Brand Typography (16-17px, font-extrabold, single line, hidden on < 360px) */}
+              <span className="notranslate text-[16px] sm:text-[17px] font-extrabold tracking-tight whitespace-nowrap leading-none font-heading hidden min-[360px]:flex items-center">
                 <span className="text-foreground transition-colors">Kind</span>
                 <span className="text-primary transition-colors">Link</span>
               </span>
             </button>
 
-            {/* Clean Icon-Only Location Button (44px touch target, matching bell & language button style) */}
+            {/* 6px gap is gap-1.5 above */}
+
+            {/* Location Button (icon only, 40px, status dot, 44px touch target) */}
             <button
               type="button"
               onClick={() => setLocationOpen(true)}
-              className="relative inline-flex items-center justify-center h-9 w-9 min-[420px]:h-10 min-[420px]:w-10 rounded-xl border border-border bg-background hover:bg-muted text-foreground transition-colors touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0 group"
+              className="relative inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl border border-border/70 bg-muted/40 hover:bg-muted text-foreground transition-colors touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0 group"
               aria-label="Change location"
               title={`Change location (Current: ${displayAreaName})`}
             >
               <MapPin className="h-4 w-4 text-primary shrink-0 notranslate group-hover:scale-105 transition-transform" />
-              {/* Status dot: green when live GPS is active, orange when off or denied */}
+              {/* Status dot: emerald pulse when live GPS is active, amber when static/denied */}
               {userCoords.isLive ? (
                 <span className="absolute top-1 right-1 flex h-2 w-2" aria-hidden="true">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
@@ -231,13 +211,13 @@ export function Header() {
             </button>
           </div>
 
-          {/* Right Action Icons & Controls */}
-          <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2.5 shrink-0">
-            {/* Improved Header SOS Button: 48px height, vertically aligned, red with siren icon and SOS text, subtle inner pulse */}
+          {/* RIGHT: SOS Button + Language Button + Notification Bell + Profile Avatar */}
+          <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 shrink-0">
+            {/* SOS Button: Pill 36-40px high with siren icon and "SOS", red and prominent */}
             <button
               type="button"
               onClick={() => setSosOpen(true)}
-              className="relative overflow-hidden inline-flex items-center justify-center gap-1.5 h-12 px-2.5 xs:px-3 sm:px-4 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold text-xs shadow-md shadow-red-600/25 transition-all duration-150 touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 shrink-0 group"
+              className="relative overflow-hidden inline-flex items-center justify-center gap-1.5 h-9 sm:h-10 px-2.5 xs:px-3 sm:px-3.5 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold text-xs shadow-sm shadow-red-600/25 transition-all duration-150 touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 shrink-0 group"
               aria-label="Emergency SOS"
               title="Emergency SOS"
             >
@@ -246,166 +226,82 @@ export function Header() {
                 aria-hidden="true"
               />
               <Siren className="h-4 w-4 shrink-0 notranslate group-hover:scale-110 transition-transform" />
-              <span className="tracking-wider font-black">SOS</span>
+              <span className="tracking-wider font-black text-xs">SOS</span>
             </button>
 
-            {/* Language Selector Button */}
+            {/* Language Selector Button: 40px button with globe icon and 2-letter uppercase code */}
             <button
               type="button"
               onClick={() => setLangOpen(true)}
-              className="inline-flex items-center justify-center gap-1 h-9 min-[420px]:h-10 px-1.5 sm:px-2.5 rounded-xl border border-border bg-background hover:bg-muted text-foreground transition-colors touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
+              className="inline-flex items-center justify-center gap-1 h-9 sm:h-10 px-1.5 xs:px-2 sm:px-2.5 rounded-xl border border-border/70 bg-muted/40 hover:bg-muted text-foreground transition-colors touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
               aria-label={`Switch language. Current: ${currentLangCode.toUpperCase()}`}
               title="Change Language"
             >
               <Globe className="h-4 w-4 text-primary shrink-0 notranslate" />
-              <span className="notranslate text-[11px] sm:text-xs font-bold uppercase tracking-wider">{currentLangCode}</span>
+              <span className="notranslate text-[11px] font-bold uppercase tracking-wider">{currentLangCode}</span>
             </button>
 
-            {/* Notifications Bell Button & Popover/Bottom-Sheet */}
-            <div className="relative shrink-0">
-              <button
-                type="button"
-                onClick={() => (notifOpen ? setNotifOpen(false) : setNotifOpen(true))}
-                className="relative inline-flex items-center justify-center h-9 w-9 min-[420px]:h-10 min-[420px]:w-10 rounded-xl border border-border bg-background hover:bg-muted text-foreground transition-colors touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
-                aria-label={`Notifications, ${unreadCount} unread`}
-                title="Notifications"
-                aria-expanded={notifOpen}
-              >
-                <Bell className="h-4 w-4 notranslate shrink-0" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-urgency-critical text-[9px] font-bold text-white shadow-xs ring-2 ring-card animate-in zoom-in-75">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </button>
-
-              <NotificationCenter
-                open={notifOpen}
-                onClose={() => setNotifOpen(false)}
-                anchor="bell"
-              />
-            </div>
-
-            {/* Profile Avatar / Initials Button & Quick Menu */}
-            <div className="relative shrink-0" ref={menuRef}>
-              <button
-                type="button"
-                onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                className="relative inline-flex items-center justify-center h-9 w-9 min-[420px]:h-10 min-[420px]:w-10 rounded-xl border border-border bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-all touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
-                aria-label="Open profile and user menu"
-                aria-expanded={profileMenuOpen}
-                title="User Profile Menu"
-              >
-                <span>{initials}</span>
-                {userProfile.verificationState === 'verified' && (
-                  <span
-                    className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-600 text-[8px] font-bold text-white ring-2 ring-card"
-                    title="Verified Volunteer"
-                  >
-                    ✓
-                  </span>
-                )}
-              </button>
-
-              {/* Quick Profile Dropdown Popover */}
-              {profileMenuOpen && (
-                <div
-                  role="menu"
-                  className="absolute right-0 mt-2 w-64 rounded-3xl border border-border bg-card p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 text-card-foreground"
-                >
-                  {/* User Header Summary */}
-                  <div className="flex items-center gap-3 p-2 pb-3 border-b border-border/80">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-white font-bold text-sm shadow-xs">
-                      {initials}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-bold text-sm text-foreground truncate">
-                        {userProfile.name}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground truncate">
-                        {userProfile.college || 'Asansol Engineering College'}
-                      </div>
-                      {userProfile.verificationState === 'verified' && (
-                        <div className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
-                          <ShieldCheck className="h-3 w-3 notranslate" />
-                          <span>Verified Volunteer</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Navigation Links */}
-                  <div className="py-1.5 space-y-1">
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setCurrentView('profile');
-                        setProfileMenuOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-2xl text-xs font-semibold hover:bg-muted text-foreground transition-colors min-h-[40px] text-left"
-                    >
-                      <User className="h-4 w-4 text-primary shrink-0 notranslate" />
-                      <span>View Profile &amp; Badges</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setCurrentView('settings');
-                        setProfileMenuOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-2xl text-xs font-semibold hover:bg-muted text-foreground transition-colors min-h-[40px] text-left"
-                    >
-                      <Settings className="h-4 w-4 text-primary shrink-0 notranslate" />
-                      <div className="flex flex-col">
-                        <span>Settings &amp; Appearance</span>
-                        <span className="text-[10px] text-muted-foreground font-normal">
-                          Theme, Text Size, Language
-                        </span>
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={async () => {
-                        setProfileMenuOpen(false);
-                        try {
-                          const supabaseClient = createClient();
-                          await supabaseClient.auth.signOut();
-                          await fetch('/api/auth/logout', { method: 'POST' });
-                        } catch {}
-                        window.location.reload();
-                      }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-2xl text-xs font-semibold hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-colors min-h-[40px] text-left"
-                    >
-                      <LogOut className="h-4 w-4 shrink-0 notranslate" />
-                      <span>Sign Out</span>
-                    </button>
-                  </div>
-
-                  {/* Quick SOS Trigger in Menu */}
-                  <div className="pt-2 border-t border-border/80">
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setSosOpen(true);
-                        setProfileMenuOpen(false);
-                      }}
-                      className="flex w-full items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-red-600/10 hover:bg-red-600/20 text-red-600 dark:text-red-400 text-xs font-bold transition-colors min-h-[36px]"
-                    >
-                      <AlertTriangle className="h-3.5 w-3.5 notranslate" />
-                      <span>Trigger Emergency SOS</span>
-                    </button>
-                  </div>
-                </div>
+            {/* Notifications Bell Button: 40px with red unread count badge */}
+            <button
+              ref={bellButtonRef}
+              type="button"
+              onClick={() => (notifOpen ? setNotifOpen(false) : setNotifOpen(true))}
+              className="relative inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl border border-border/70 bg-muted/40 hover:bg-muted text-foreground transition-colors touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
+              aria-label={`Notifications, ${unreadCount} unread`}
+              title="Notifications"
+              aria-expanded={notifOpen}
+            >
+              <Bell className="h-4 w-4 notranslate shrink-0" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white shadow-xs ring-2 ring-card animate-in zoom-in-75">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
               )}
-            </div>
+            </button>
+
+            {/* Profile Avatar Button: 36-40px with small verified checkmark */}
+            <button
+              ref={avatarButtonRef}
+              type="button"
+              onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+              className="relative inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl border border-border/70 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-all touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 shrink-0"
+              aria-label="Open profile and user menu"
+              aria-expanded={profileMenuOpen}
+              title="User Profile Menu"
+            >
+              <span>{initials}</span>
+              {userProfile.verificationState === 'verified' && (
+                <span
+                  className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-600 text-[8px] font-bold text-white ring-2 ring-card"
+                  title="Verified Volunteer"
+                >
+                  ✓
+                </span>
+              )}
+            </button>
           </div>
         </div>
       </header>
+
+      {/* 
+        SHARED OVERLAY SYSTEM:
+        Rendered outside <header> attached to document.body via React portal.
+        Eliminates backdrop-filter containing block trap and collision clipping.
+      */}
+      <NotificationCenter
+        open={notifOpen}
+        onClose={() => setNotifOpen(false)}
+        anchor="bell"
+        anchorRef={bellButtonRef}
+      />
+
+      <ProfileQuickMenu
+        open={profileMenuOpen}
+        onClose={() => setProfileMenuOpen(false)}
+        anchorRef={avatarButtonRef}
+        onOpenSos={() => setSosOpen(true)}
+        onOpenLanguage={() => setLangOpen(true)}
+      />
 
       {/* Modals */}
       <LanguageModal open={langOpen} onClose={() => setLangOpen(false)} />

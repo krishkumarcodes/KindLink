@@ -19,14 +19,14 @@ export function PublicFooter() {
         <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-teal-600/10 p-2 text-teal-600 dark:text-teal-400 shrink-0">
-              <GraduationCap className="h-5 w-5" />
+              <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
               <p className="text-xs font-semibold text-foreground">
-                Academic Capstone Initiative &bull; B.Tech Computer Science &amp; Engineering
+                Community Mutual Aid Initiative &bull; Open-Source Public Good
               </p>
               <p className="text-[11px] text-muted-foreground">
-                Asansol Engineering College (AEC), affiliated with MAKAUT, West Bengal &bull; Supervised Community Research
+                KindLink Civic Network &bull; Verified Community Support for Asansol and Neighboring Regions
               </p>
             </div>
           </div>
@@ -252,7 +252,7 @@ export function PublicFooter() {
         {/* Bottom Bar */}
         <div className="mt-12 border-t border-border/60 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
           <p>
-            &copy; {new Date().getFullYear()} KindLink. Built with pride at Asansol Engineering College. Non-commercial open community research.
+            &copy; {new Date().getFullYear()} KindLink. Built with pride for community mutual aid. Non-commercial open community platform.
           </p>
 
           <div className="flex items-center gap-4 text-xs">

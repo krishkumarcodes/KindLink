@@ -481,10 +481,10 @@ export function RequestsView() {
               className="w-full accent-primary h-2 bg-muted rounded-lg cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-muted-foreground font-semibold">
-              <span>1 km (Hyper-local)</span>
+              <span>1 km (Local)</span>
               <span>10 km (Asansol City)</span>
               <span>25 km (Greater Corridor)</span>
-              <span>50 km (Regional Wide)</span>
+              <span>50 km (Wide Area)</span>
             </div>
           </div>
 
@@ -773,7 +773,7 @@ export function RequestsView() {
             <div className="max-w-md mx-auto space-y-1.5">
               <h3 className="text-lg font-bold text-foreground">No requests found</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                There are currently no active mutual aid requests in the community feed. You can be the first to broadcast a need for assistance!
+                There are currently no active mutual aid requests in the community feed. You can be the first to send a request for assistance!
               </p>
             </div>
             <div className="pt-2">

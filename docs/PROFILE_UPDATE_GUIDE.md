@@ -126,7 +126,7 @@ This creates **3 clean showcase accounts**:
 
 2. **Sourav Mukherjee** (Neighbour in Need)
    - **Login**: `need_aid@kindlink.demo` / `KindLink#Requester2026`
-   - **Status**: Verified Student Member (AEC).
+   - **Status**: Verified Student Member (Community).
    - **Requests**: 1 urgent open blood donation request ready for a live volunteer offer during demo!
 
 3. **KindLink Administrator** (Platform Staff)

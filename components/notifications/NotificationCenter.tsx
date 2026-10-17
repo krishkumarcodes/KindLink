@@ -1,9 +1,12 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { useBodyScrollLock } from '@/components/ui/OverlayPortal';
 import {
   Bell,
   CheckCheck,
+  CheckCircle2,
   Clock,
   X,
   AlertTriangle,
@@ -12,6 +15,12 @@ import {
   Sparkles,
   Siren,
   Settings,
+  Star,
+  ShieldCheck,
+  Award,
+  Navigation,
+  ChevronRight,
+  RotateCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
@@ -21,12 +30,123 @@ export interface NotificationCenterProps {
   open: boolean;
   onClose: () => void;
   anchor?: 'bell' | 'dialog';
+  anchorRef?: React.RefObject<HTMLElement | null>;
 }
 
-type NotificationCategory = 'requests' | 'offers' | 'updates' | 'emergency';
-type FilterType = 'all' | NotificationCategory;
+export type NotificationCategory = 'requests' | 'offers' | 'updates' | 'emergency';
+export type FilterType = 'all' | NotificationCategory;
+export type NotificationDateGroup = 'today' | 'yesterday' | 'earlier';
 
-function getItemCategory(item: NotificationItem): NotificationCategory {
+export type ItemVisualType =
+  | 'sos'
+  | 'request'
+  | 'offer'
+  | 'accepted'
+  | 'on_the_way'
+  | 'completed'
+  | 'rating'
+  | 'verification'
+  | 'badge'
+  | 'update';
+
+export interface VisualConfig {
+  type: ItemVisualType;
+  icon: React.ReactNode;
+  bgCircle: string;
+  badgeLabel: string;
+  actionLabel?: string;
+  isEmergency: boolean;
+}
+
+/**
+ * Human relative time formatted with the shared time formatter
+ * (e.g. "2 h 48 min ago", "just now", "Yesterday")
+ */
+export function formatNotificationRelativeTime(
+  timestamp?: number,
+  fallbackTimeAgo?: string
+): string {
+  if (!timestamp) return fallbackTimeAgo || 'just now';
+
+  const now = Date.now();
+  const diffMs = now - timestamp;
+  if (diffMs < 0) return 'just now';
+
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHour / 24);
+
+  if (diffSec < 45) {
+    return 'just now';
+  }
+  if (diffMin < 60) {
+    return `${diffMin} min ago`;
+  }
+  if (diffHour < 24) {
+    const remainingMin = diffMin % 60;
+    if (remainingMin > 0 && diffHour < 6) {
+      return `${diffHour} h ${remainingMin} min ago`;
+    }
+    return `${diffHour} ${diffHour === 1 ? 'hour' : 'hours'} ago`;
+  }
+  if (diffDays === 1) {
+    return 'Yesterday';
+  }
+  if (diffDays < 7) {
+    return `${diffDays} days ago`;
+  }
+  if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7);
+    return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+  }
+  const months = Math.floor(diffDays / 30);
+  return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+}
+
+/**
+ * Group notifications into "Today", "Yesterday", and "Earlier"
+ */
+export function getItemDateGroup(item: NotificationItem): NotificationDateGroup {
+  const now = new Date();
+
+  if (item.timestamp) {
+    const itemDate = new Date(item.timestamp);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const itemDay = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
+
+    if (itemDay.getTime() === today.getTime()) {
+      return 'today';
+    }
+    if (itemDay.getTime() === yesterday.getTime()) {
+      return 'yesterday';
+    }
+    return 'earlier';
+  }
+
+  const time = (item.timeAgo || '').toLowerCase();
+  if (
+    time.includes('just now') ||
+    time.includes('min') ||
+    time.includes('hr') ||
+    time.includes('hour') ||
+    time.includes('sec')
+  ) {
+    return 'today';
+  }
+  if (time.includes('yesterday')) {
+    return 'yesterday';
+  }
+  return 'earlier';
+}
+
+/**
+ * Filter classification
+ */
+export function getItemCategory(item: NotificationItem): NotificationCategory {
   const t = (item.type || '').toLowerCase();
   const title = (item.title || '').toLowerCase();
   const msg = (item.message || '').toLowerCase();
@@ -77,72 +197,158 @@ function getItemCategory(item: NotificationItem): NotificationCategory {
   return 'updates';
 }
 
-function getCategoryVisual(cat: NotificationCategory) {
-  switch (cat) {
-    case 'emergency':
-      return {
-        bg: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 shadow-[0_0_12px_rgba(244,63,94,0.25)]',
-        icon: <Siren className="h-4 w-4 shrink-0 notranslate animate-pulse" />,
-        badgeLabel: 'Emergency',
-      };
-    case 'offers':
-      return {
-        bg: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.2)]',
-        icon: <UserCheck className="h-4 w-4 shrink-0 notranslate" />,
-        badgeLabel: 'Offer',
-      };
-    case 'requests':
-      return {
-        bg: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.2)]',
-        icon: <HeartHandshake className="h-4 w-4 shrink-0 notranslate" />,
-        badgeLabel: 'Request',
-      };
-    case 'updates':
-    default:
-      return {
-        bg: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 shadow-xs',
-        icon: <Sparkles className="h-4 w-4 shrink-0 notranslate" />,
-        badgeLabel: 'Update',
-      };
+/**
+ * Typed colored icon circle and visual metadata
+ */
+export function getItemVisual(item: NotificationItem): VisualConfig {
+  const t = (item.type || '').toLowerCase();
+  const title = (item.title || '').toLowerCase();
+  const msg = (item.message || '').toLowerCase();
+  const isCritical =
+    item.urgency === 'critical' ||
+    title.includes('sos') ||
+    title.includes('🚨') ||
+    title.includes('emergency') ||
+    t === 'sos' ||
+    t === 'emergency' ||
+    Boolean(item.sosToken);
+
+  // 1. SOS / Emergency
+  if (isCritical || t === 'sos' || t === 'emergency') {
+    return {
+      type: 'sos',
+      icon: <Siren className="h-4 w-4 shrink-0 notranslate animate-pulse text-rose-600 dark:text-rose-400" />,
+      bgCircle: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 shadow-[0_0_12px_rgba(244,63,94,0.3)]',
+      badgeLabel: 'Emergency',
+      actionLabel: 'Open map',
+      isEmergency: true,
+    };
   }
+
+  // 2. Badge
+  if (t === 'badge' || title.includes('badge') || msg.includes('badge')) {
+    return {
+      type: 'badge',
+      icon: <Award className="h-4 w-4 shrink-0 notranslate text-purple-600 dark:text-purple-400" />,
+      bgCircle: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.2)]',
+      badgeLabel: 'Badge',
+      actionLabel: 'View',
+      isEmergency: false,
+    };
+  }
+
+  // 3. Verification
+  if (t === 'verification' || title.includes('verification') || title.includes('verified') || msg.includes('verified')) {
+    return {
+      type: 'verification',
+      icon: <ShieldCheck className="h-4 w-4 shrink-0 notranslate text-cyan-600 dark:text-cyan-400" />,
+      bgCircle: 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.2)]',
+      badgeLabel: 'Verified',
+      actionLabel: 'View',
+      isEmergency: false,
+    };
+  }
+
+  // 4. Rating / Feedback
+  if (t === 'rating' || title.includes('rating') || title.includes('review') || msg.includes('points') || msg.includes('rate')) {
+    return {
+      type: 'rating',
+      icon: <Star className="h-4 w-4 shrink-0 notranslate text-amber-500 fill-amber-500/40" />,
+      bgCircle: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.2)]',
+      badgeLabel: 'Rating',
+      actionLabel: 'Rate',
+      isEmergency: false,
+    };
+  }
+
+  // 5. Completed
+  if (t === 'completed' || title.includes('completed') || title.includes('thank you') || msg.includes('completed')) {
+    return {
+      type: 'completed',
+      icon: <CheckCheck className="h-4 w-4 shrink-0 notranslate text-emerald-600 dark:text-emerald-400" />,
+      bgCircle: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 shadow-xs',
+      badgeLabel: 'Completed',
+      actionLabel: 'Rate',
+      isEmergency: false,
+    };
+  }
+
+  // 6. On the way
+  if (t === 'on_the_way' || title.includes('on the way') || title.includes('en route') || msg.includes('on the way')) {
+    return {
+      type: 'on_the_way',
+      icon: <Navigation className="h-4 w-4 shrink-0 notranslate text-indigo-600 dark:text-indigo-400" />,
+      bgCircle: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 shadow-[0_0_10px_rgba(99,102,241,0.2)]',
+      badgeLabel: 'On The Way',
+      actionLabel: 'Open map',
+      isEmergency: false,
+    };
+  }
+
+  // 7. Accepted
+  if (t === 'accepted' || title.includes('accepted') || msg.includes('accepted')) {
+    return {
+      type: 'accepted',
+      icon: <CheckCircle2 className="h-4 w-4 shrink-0 notranslate text-teal-600 dark:text-teal-400" />,
+      bgCircle: 'bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/30 shadow-[0_0_10px_rgba(20,184,166,0.2)]',
+      badgeLabel: 'Accepted',
+      actionLabel: 'View',
+      isEmergency: false,
+    };
+  }
+
+  // 8. Offer
+  if (t === 'offer' || t === 'help_offered' || title.includes('offer') || title.includes('volunteer') || msg.includes('offered')) {
+    return {
+      type: 'offer',
+      icon: <UserCheck className="h-4 w-4 shrink-0 notranslate text-blue-600 dark:text-blue-400" />,
+      bgCircle: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.2)]',
+      badgeLabel: 'Offer',
+      actionLabel: 'View',
+      isEmergency: false,
+    };
+  }
+
+  // 9. Request
+  if (t === 'request' || Boolean(item.requestId) || title.includes('request') || msg.includes('request')) {
+    return {
+      type: 'request',
+      icon: <HeartHandshake className="h-4 w-4 shrink-0 notranslate text-amber-600 dark:text-amber-400" />,
+      bgCircle: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.2)]',
+      badgeLabel: 'Request',
+      actionLabel: 'View',
+      isEmergency: item.urgency === 'critical',
+    };
+  }
+
+  // 10. Default: Update
+  return {
+    type: 'update',
+    icon: <Sparkles className="h-4 w-4 shrink-0 notranslate text-emerald-600 dark:text-emerald-400" />,
+    bgCircle: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 shadow-xs',
+    badgeLabel: 'Update',
+    actionLabel: 'View',
+    isEmergency: false,
+  };
 }
 
-function isToday(item: NotificationItem): boolean {
-  if (item.timestamp) {
-    const itemDate = new Date(item.timestamp);
-    const now = new Date();
-    return (
-      itemDate.getDate() === now.getDate() &&
-      itemDate.getMonth() === now.getMonth() &&
-      itemDate.getFullYear() === now.getFullYear()
-    );
-  }
-  const time = (item.timeAgo || '').toLowerCase();
-  if (
-    time.includes('just now') ||
-    time.includes('min') ||
-    time.includes('hr') ||
-    time.includes('hour') ||
-    time.includes('sec')
-  ) {
-    return true;
-  }
-  if (
-    time.includes('yesterday') ||
-    time.includes('day') ||
-    time.includes('week') ||
-    time.includes('month') ||
-    time.includes('year')
-  ) {
-    return false;
-  }
-  return true;
-}
+const FILTER_ITEMS: Array<{
+  key: FilterType;
+  label: string;
+  activeColor: string;
+}> = [
+  { key: 'all', label: 'All', activeColor: 'bg-primary text-primary-foreground' },
+  { key: 'requests', label: 'Requests', activeColor: 'bg-amber-600 text-white' },
+  { key: 'offers', label: 'Offers', activeColor: 'bg-blue-600 text-white' },
+  { key: 'updates', label: 'Updates', activeColor: 'bg-emerald-600 text-white' },
+  { key: 'emergency', label: 'Emergency', activeColor: 'bg-rose-600 text-white' },
+];
 
 export function NotificationCenter({
   open,
   onClose,
   anchor = 'bell',
+  anchorRef,
 }: NotificationCenterProps) {
   const {
     notifications,
@@ -152,20 +358,152 @@ export function NotificationCenter({
     dismissNotification,
     setSelectedRequestId,
     setCurrentView,
+    fetchLiveNotifications,
   } = useKindLinkStore();
 
+  const [mounted, setMounted] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [showPushBanner, setShowPushBanner] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
+
+  useBodyScrollLock(open);
 
   // Swipe-to-dismiss states
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [swipedItemId, setSwipedItemId] = useState<string | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
 
+  // Popover positioning state for collision-aware desktop anchor
+  const [popoverCoords, setPopoverCoords] = useState<{
+    top: number;
+    left: number;
+    maxHeight: number;
+    width: number;
+  } | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Check browser push notification permission status
+  // Hydration guard
+  useEffect(() => {
+    setMounted(true);
+    setIsDesktop(window.innerWidth >= 640);
+  }, []);
+
+  // Monitor window resize to determine isDesktop
+  useEffect(() => {
+    function handleResize() {
+      setIsDesktop(window.innerWidth >= 640);
+    }
+    window.addEventListener('resize', handleResize, { passive: true });
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Calculate desktop popover position under bell icon with collision awareness
+  const updatePosition = useCallback(() => {
+    if (!open || anchor !== 'bell') return;
+    if (typeof window === 'undefined') return;
+
+    if (window.innerWidth < 640) {
+      setPopoverCoords(null);
+      return;
+    }
+
+    const bellEl =
+      anchorRef?.current ||
+      document.getElementById('header-notification-bell-btn') ||
+      document.querySelector('[data-notification-bell]');
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const popoverWidth = Math.min(viewportWidth - 24, 440);
+
+    if (!bellEl) {
+      setPopoverCoords({
+        top: 76,
+        left: Math.max(12, (viewportWidth - popoverWidth) / 2),
+        maxHeight: Math.min(viewportHeight - 96, 580),
+        width: popoverWidth,
+      });
+      return;
+    }
+
+    const rect = bellEl.getBoundingClientRect();
+
+    // Horizontal placement: align right edges with padding
+    let left = rect.right - popoverWidth;
+    if (left < 12) {
+      left = 12;
+    }
+    if (left + popoverWidth > viewportWidth - 12) {
+      left = Math.max(12, viewportWidth - popoverWidth - 12);
+    }
+
+    // Vertical placement & collision check
+    const spaceBelow = viewportHeight - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
+
+    let top: number;
+    let maxHeight: number;
+
+    if (spaceBelow < 300 && spaceAbove > spaceBelow) {
+      // Flip upwards
+      maxHeight = Math.min(spaceAbove - 16, 580);
+      top = Math.max(12, rect.top - maxHeight - 8);
+    } else {
+      // Normal downwards
+      top = rect.bottom + 8;
+      maxHeight = Math.min(spaceBelow - 16, 580);
+    }
+
+    setPopoverCoords({
+      top,
+      left,
+      maxHeight,
+      width: popoverWidth,
+    });
+  }, [open, anchor, anchorRef]);
+
+  useEffect(() => {
+    if (!open) return;
+    updatePosition();
+
+    window.addEventListener('resize', updatePosition, { passive: true });
+    window.addEventListener('scroll', updatePosition, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, { capture: true });
+    };
+  }, [open, updatePosition]);
+
+  // Initial fetch if notifications list is currently empty
+  useEffect(() => {
+    if (!open) return;
+    if (notifications.length === 0) {
+      setIsLoading(true);
+      setFetchError(false);
+      fetchLiveNotifications()
+        .catch(() => setFetchError(true))
+        .finally(() => setIsLoading(false));
+    }
+  }, [open, notifications.length, fetchLiveNotifications]);
+
+  const handleRetryFetch = async () => {
+    setIsLoading(true);
+    setFetchError(false);
+    try {
+      await fetchLiveNotifications();
+    } catch {
+      setFetchError(true);
+      toast.error('Could not refresh notifications');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Push notification permission check
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       const dismissed = sessionStorage.getItem('kindlink_push_dismissed');
@@ -177,7 +515,7 @@ export function NotificationCenter({
     }
   }, [open]);
 
-  // Handle outside click on desktop popover
+  // Handle outside click & Escape key
   useEffect(() => {
     if (!open) return;
 
@@ -226,22 +564,28 @@ export function NotificationCenter({
     return notifications.filter((item) => getItemCategory(item) === activeFilter);
   }, [notifications, activeFilter]);
 
-  // Group notifications into Today and Earlier
-  const { todayItems, earlierItems } = useMemo(() => {
+  // Group notifications into Today, Yesterday, and Earlier
+  const { todayItems, yesterdayItems, earlierItems } = useMemo(() => {
     const today: NotificationItem[] = [];
+    const yesterday: NotificationItem[] = [];
     const earlier: NotificationItem[] = [];
 
     for (const item of filteredNotifications) {
-      if (isToday(item)) {
+      const group = getItemDateGroup(item);
+      if (group === 'today') {
         today.push(item);
+      } else if (group === 'yesterday') {
+        yesterday.push(item);
       } else {
         earlier.push(item);
       }
     }
-    return { todayItems: today, earlierItems: earlier };
+    return {
+      todayItems: today,
+      yesterdayItems: yesterday,
+      earlierItems: earlier,
+    };
   }, [filteredNotifications]);
-
-  if (!open) return null;
 
   const handleEnablePush = async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
@@ -276,9 +620,57 @@ export function NotificationCenter({
     } catch {}
   };
 
-  const handleItemClick = (item: NotificationItem) => {
+  const handleItemClick = (item: NotificationItem, actionOverride?: string) => {
     markNotificationRead(item.id);
 
+    const visual = getItemVisual(item);
+
+    // If Rate action or review
+    if (actionOverride === 'Rate' || visual.type === 'rating') {
+      setCurrentView('profile');
+      onClose();
+      if (typeof window !== 'undefined' && window.location.pathname !== '/app') {
+        window.location.href = '/app';
+      }
+      return;
+    }
+
+    // If Open map action or on the way
+    if (actionOverride === 'Open map' || visual.type === 'on_the_way') {
+      if (item.requestId) setSelectedRequestId(item.requestId);
+      setCurrentView('map');
+      onClose();
+      if (typeof window !== 'undefined' && window.location.pathname !== '/app') {
+        window.location.href = '/app';
+      }
+      return;
+    }
+
+    // If SOS token
+    if (item.sosToken) {
+      onClose();
+      if (typeof window !== 'undefined') {
+        window.location.href = `/sos/${item.sosToken}`;
+      }
+      return;
+    }
+
+    // If profile / badge / verification
+    if (
+      visual.type === 'verification' ||
+      visual.type === 'badge' ||
+      item.title.toLowerCase().includes('verified') ||
+      item.title.toLowerCase().includes('profile')
+    ) {
+      setCurrentView('profile');
+      onClose();
+      if (typeof window !== 'undefined' && window.location.pathname !== '/app') {
+        window.location.href = '/app';
+      }
+      return;
+    }
+
+    // If request ID is attached
     if (item.requestId) {
       setSelectedRequestId(item.requestId);
       setCurrentView('requests');
@@ -289,35 +681,20 @@ export function NotificationCenter({
       return;
     }
 
-    if (item.sosToken) {
-      onClose();
-      if (typeof window !== 'undefined') {
-        window.location.href = `/sos/${item.sosToken}`;
-      }
-      return;
+    // Default to requests view
+    setCurrentView('requests');
+    onClose();
+    if (typeof window !== 'undefined' && window.location.pathname !== '/app') {
+      window.location.href = '/app';
     }
+  };
 
-    const cat = getItemCategory(item);
-    if (cat === 'emergency') {
-      setCurrentView('requests');
-      onClose();
-      if (typeof window !== 'undefined' && window.location.pathname !== '/app') {
-        window.location.href = '/app';
-      }
-      return;
-    }
-
-    if (
-      item.title.toLowerCase().includes('verified') ||
-      item.title.toLowerCase().includes('profile') ||
-      item.title.toLowerCase().includes('badge')
-    ) {
-      setCurrentView('profile');
-      onClose();
-      if (typeof window !== 'undefined' && window.location.pathname !== '/app') {
-        window.location.href = '/app';
-      }
-      return;
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      toast.success('All notifications marked as read');
+    } catch {
+      toast.error('Failed to mark all as read');
     }
   };
 
@@ -356,11 +733,11 @@ export function NotificationCenter({
   };
 
   const renderItemCard = (item: NotificationItem) => {
-    const cat = getItemCategory(item);
-    const visual = getCategoryVisual(cat);
+    const visual = getItemVisual(item);
     const isSwiped = swipedItemId === item.id;
     const offset = isSwiped ? swipeOffset : 0;
     const isHighlight = highlightedId === item.id;
+    const relativeTime = formatNotificationRelativeTime(item.timestamp, item.timeAgo);
 
     return (
       <div
@@ -373,32 +750,34 @@ export function NotificationCenter({
           transition: isSwiped ? 'none' : 'transform 0.2s ease-out',
         }}
         onClick={() => handleItemClick(item)}
-        className={`group relative p-3 sm:p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer text-left select-none overflow-hidden touch-manipulation ${
+        className={`group relative p-3 sm:p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer text-left select-none overflow-hidden touch-manipulation animate-in fade-in slide-in-from-top-1 duration-200 ${
           isHighlight
             ? 'ring-2 ring-primary animate-pulse'
             : ''
         } ${
-          item.unread
-            ? 'border-primary/40 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent dark:from-teal-500/15 dark:via-teal-500/5 dark:to-transparent shadow-xs ring-1 ring-primary/20 hover:border-primary/60'
+          visual.isEmergency
+            ? 'border-rose-500/60 bg-rose-500/10 dark:bg-rose-950/25 ring-1 ring-rose-500/30 shadow-[0_0_12px_rgba(244,63,94,0.15)] hover:border-rose-500/80'
+            : item.unread
+            ? 'border-primary/40 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent dark:from-teal-500/15 dark:via-teal-500/5 dark:to-transparent ring-1 ring-primary/20 hover:border-primary/60 shadow-xs'
             : 'border-border/70 bg-card/60 dark:bg-slate-900/40 hover:bg-muted/70 hover:border-border'
         }`}
       >
-        <div className="flex items-center gap-3 min-w-0">
-          {/* Category/Type icon in colored circle */}
+        <div className="flex items-start gap-3 min-w-0">
+          {/* Typed colored icon circle */}
           <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-transform duration-200 group-hover:scale-105 ${visual.bg}`}
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-transform duration-200 group-hover:scale-105 mt-0.5 ${visual.bgCircle}`}
             title={visual.badgeLabel}
           >
             {visual.icon}
           </div>
 
-          {/* Title and one-line body preview */}
+          {/* Title, descriptive body, and action */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-1.5">
               <div className="flex items-center gap-1.5 min-w-0">
                 {item.unread && (
                   <span
-                    className="h-2 w-2 rounded-full bg-rose-600 shrink-0 animate-pulse shadow-[0_0_6px_rgba(225,29,72,0.8)]"
+                    className="h-2 w-2 rounded-full bg-rose-600 dark:bg-rose-500 shrink-0 shadow-[0_0_6px_rgba(225,29,72,0.8)] animate-pulse"
                     title="Unread"
                   />
                 )}
@@ -408,14 +787,42 @@ export function NotificationCenter({
               </div>
               <span className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0 whitespace-nowrap">
                 <Clock className="h-3 w-3 notranslate" />
-                {item.timeAgo}
+                {relativeTime}
               </span>
             </div>
 
-            {/* One-line preview */}
-            <p className="text-xs text-muted-foreground truncate mt-0.5">
+            {/* 1-2 line descriptive body */}
+            <p className="text-xs text-muted-foreground line-clamp-2 mt-1 leading-relaxed">
               {item.message}
             </p>
+
+            {/* Action button if applicable */}
+            {visual.actionLabel && (
+              <div className="mt-2.5 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleItemClick(item, visual.actionLabel);
+                  }}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold transition-all shadow-xs touch-target active:scale-95 ${
+                    visual.isEmergency
+                      ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20'
+                      : 'bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/20'
+                  }`}
+                >
+                  <span>{visual.actionLabel}</span>
+                  <ChevronRight className="h-3 w-3 notranslate" />
+                </button>
+
+                {visual.isEmergency && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-600 animate-ping" />
+                    Urgent
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Dismiss button */}
@@ -435,31 +842,29 @@ export function NotificationCenter({
 
   const content = (
     <div className="flex flex-col h-full max-h-full overflow-hidden text-card-foreground">
-      {/* Mobile Swipe/Drag Handle */}
-      <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full mx-auto my-2 sm:hidden shrink-0" />
+      {/* Mobile Drag Handle */}
+      <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto my-2 sm:hidden shrink-0" />
 
-      {/* Header */}
-      <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-b border-border/80 bg-card/90 dark:bg-slate-950/90 shrink-0 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
+      {/* Header Row: Title, unread count pill, "Mark all as read" button, settings gear button */}
+      <div className="px-3.5 py-2.5 sm:px-4 sm:py-3 border-b border-border/80 bg-card/90 dark:bg-slate-950/90 shrink-0 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="relative flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
             <Bell className="h-4 w-4 notranslate" />
             {unreadNotificationCount > 0 && (
               <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white ring-2 ring-card shadow-[0_0_8px_rgba(225,29,72,0.5)] animate-pulse">
-                {unreadNotificationCount}
+                {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
               </span>
             )}
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-foreground truncate">
-                Notifications
-              </h2>
-              {unreadNotificationCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 shrink-0">
-                  {unreadNotificationCount} New
-                </span>
-              )}
-            </div>
+          <div className="min-w-0 flex items-center gap-1.5">
+            <h2 className="text-sm sm:text-base font-bold text-foreground truncate">
+              Notifications
+            </h2>
+            {unreadNotificationCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 shrink-0">
+                {unreadNotificationCount} New
+              </span>
+            )}
           </div>
         </div>
 
@@ -468,16 +873,16 @@ export function NotificationCenter({
           {unreadNotificationCount > 0 && (
             <button
               type="button"
-              onClick={markAllNotificationsRead}
-              className="px-2.5 py-1.5 rounded-xl border border-border/80 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-primary transition-all text-xs font-semibold flex items-center gap-1.5 touch-target active:scale-95 shadow-xs"
+              onClick={handleMarkAllRead}
+              className="px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl border border-border/80 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-primary transition-all text-xs font-semibold flex items-center gap-1.5 touch-target active:scale-95 shadow-xs"
               title="Mark all as read"
             >
               <CheckCheck className="h-3.5 w-3.5 notranslate text-primary" />
-              <span className="hidden sm:inline">Mark all as read</span>
+              <span className="hidden min-[380px]:inline">Mark all read</span>
             </button>
           )}
 
-          {/* Link to Notification Settings */}
+          {/* Link to Notification Settings in Settings tab */}
           <button
             type="button"
             onClick={() => {
@@ -495,7 +900,7 @@ export function NotificationCenter({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition-colors touch-target"
+            className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-colors touch-target"
             aria-label="Close notifications"
           >
             <X className="h-4 w-4 notranslate" />
@@ -503,76 +908,43 @@ export function NotificationCenter({
         </div>
       </div>
 
-      {/* Filter Chips Row: All, Requests, Offers, Updates, Emergency */}
-      <div className="px-4 py-2 border-b border-border/60 bg-muted/20 shrink-0 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-        <button
-          type="button"
-          onClick={() => setActiveFilter('all')}
-          className={`px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0 touch-target ${
-            activeFilter === 'all'
-              ? 'bg-primary text-white shadow-xs'
-              : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
-          }`}
-        >
-          All ({categoryCounts.all})
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveFilter('emergency')}
-          className={`px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0 touch-target flex items-center gap-1 ${
-            activeFilter === 'emergency'
-              ? 'bg-rose-600 text-white shadow-xs'
-              : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
-          }`}
-        >
-          <AlertTriangle className="h-3 w-3 notranslate" />
-          <span>Emergency ({categoryCounts.emergency})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveFilter('requests')}
-          className={`px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0 touch-target ${
-            activeFilter === 'requests'
-              ? 'bg-amber-600 text-white shadow-xs'
-              : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
-          }`}
-        >
-          Requests ({categoryCounts.requests})
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveFilter('offers')}
-          className={`px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0 touch-target ${
-            activeFilter === 'offers'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
-          }`}
-        >
-          Offers ({categoryCounts.offers})
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveFilter('updates')}
-          className={`px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0 touch-target ${
-            activeFilter === 'updates'
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
-          }`}
-        >
-          Updates ({categoryCounts.updates})
-        </button>
+      {/* Single-row Filter Chips: All, Requests, Offers, Updates, Emergency */}
+      <div className="px-3 py-2 border-b border-border/60 bg-muted/20 shrink-0 flex items-center gap-1.5 overflow-x-auto no-scrollbar whitespace-nowrap">
+        {FILTER_ITEMS.map((item) => {
+          const isActive = activeFilter === item.key;
+          const count = categoryCounts[item.key] || 0;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setActiveFilter(item.key)}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold transition-all shrink-0 touch-target ${
+                isActive
+                  ? `${item.activeColor} shadow-xs`
+                  : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+            >
+              <span>{item.label}</span>
+              <span
+                className={`ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                  isActive
+                    ? 'bg-black/20 text-white dark:bg-white/20'
+                    : 'bg-card text-muted-foreground border border-border/50'
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Push Notification Permission Banner */}
       {showPushBanner && (
-        <div className="mx-3 sm:mx-4 mt-2.5 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-primary/10 via-teal-500/10 to-transparent border border-primary/25 flex items-center justify-between gap-2.5 text-left shrink-0">
+        <div className="mx-3 mt-2.5 p-2.5 rounded-2xl bg-gradient-to-r from-primary/10 via-teal-500/10 to-transparent border border-primary/25 flex items-center justify-between gap-2.5 text-left shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-xs">
-              <Bell className="h-4 w-4 notranslate" />
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs">
+              <Bell className="h-3.5 w-3.5 notranslate" />
             </div>
             <div className="min-w-0">
               <h4 className="text-xs font-bold text-foreground truncate">
@@ -587,7 +959,7 @@ export function NotificationCenter({
             <button
               type="button"
               onClick={handleEnablePush}
-              className="px-2.5 py-1 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold transition shadow-xs touch-target"
+              className="px-2.5 py-1 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold transition shadow-xs touch-target"
             >
               Enable
             </button>
@@ -603,31 +975,73 @@ export function NotificationCenter({
         </div>
       )}
 
-      {/* Scrollable Notification List */}
+      {/* Scrollable Notification List / States */}
       <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
-        {filteredNotifications.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground text-sm flex flex-col items-center">
-            <div className="h-14 w-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-2xl mb-3 border border-primary/20">
-              <Bell className="h-6 w-6 notranslate" />
+        {isLoading && notifications.length === 0 ? (
+          /* Skeleton Loading State */
+          <div className="space-y-3 p-1">
+            {[1, 2, 3].map((idx) => (
+              <div
+                key={idx}
+                className="p-3.5 rounded-2xl border border-border/60 bg-muted/30 animate-pulse flex items-start gap-3"
+              >
+                <div className="h-10 w-10 rounded-full bg-muted-foreground/15 shrink-0" />
+                <div className="flex-1 space-y-2 min-w-0 pt-0.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="h-4 w-32 bg-muted-foreground/20 rounded-md" />
+                    <div className="h-3 w-16 bg-muted-foreground/15 rounded-md" />
+                  </div>
+                  <div className="h-3 w-4/5 bg-muted-foreground/15 rounded-md" />
+                  <div className="h-3 w-3/5 bg-muted-foreground/15 rounded-md" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : fetchError && filteredNotifications.length === 0 ? (
+          /* Error State with Retry Action */
+          <div className="text-center py-12 px-4 flex flex-col items-center">
+            <div className="h-14 w-14 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center mb-3 border border-rose-500/20">
+              <AlertTriangle className="h-6 w-6 notranslate" />
             </div>
-            <p className="font-bold text-foreground">
-              {activeFilter === 'all'
-                ? "You're all caught up!"
-                : `No ${activeFilter} notifications`}
+            <h3 className="text-sm font-bold text-foreground">
+              Couldn&apos;t load notifications
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1 mb-3.5 max-w-xs text-center leading-relaxed">
+              We had trouble connecting to the live notification feed.
             </p>
-            <p className="text-xs text-muted-foreground mt-1 max-w-xs text-center">
+            <button
+              type="button"
+              onClick={handleRetryFetch}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition shadow-xs touch-target"
+            >
+              <RotateCcw className="h-3.5 w-3.5 notranslate" />
+              <span>Retry</span>
+            </button>
+          </div>
+        ) : filteredNotifications.length === 0 ? (
+          /* Friendly Empty State */
+          <div className="text-center py-12 px-4 text-muted-foreground flex flex-col items-center">
+            <div className="h-16 w-16 rounded-3xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3.5 border border-emerald-500/20 shadow-xs">
+              <CheckCircle2 className="h-8 w-8 stroke-[1.75] notranslate" />
+            </div>
+            <h3 className="text-base font-bold text-foreground">
               {activeFilter === 'all'
-                ? 'No notifications right now. New emergency requests and volunteer offers will appear here live.'
-                : `There are currently no notifications matching the "${activeFilter}" filter.`}
+                ? "You're all caught up"
+                : `No ${activeFilter} notifications`}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1 max-w-xs text-center leading-relaxed">
+              {activeFilter === 'all'
+                ? 'No unread notifications right now. Live emergency alerts, offers, and community updates will appear here instantly.'
+                : `There are currently no notifications matching the "${activeFilter}" category.`}
             </p>
           </div>
         ) : (
           <>
-            {/* Group: Today */}
+            {/* Group 1: Today */}
             {todayItems.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
                     Today
                   </span>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/60">
@@ -638,11 +1052,26 @@ export function NotificationCenter({
               </div>
             )}
 
-            {/* Group: Earlier */}
+            {/* Group 2: Yesterday */}
+            {yesterdayItems.length > 0 && (
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+                    Yesterday
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/60">
+                    {yesterdayItems.length}
+                  </span>
+                </div>
+                {yesterdayItems.map(renderItemCard)}
+              </div>
+            )}
+
+            {/* Group 3: Earlier */}
             {earlierItems.length > 0 && (
               <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
                     Earlier
                   </span>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/60">
@@ -669,60 +1098,60 @@ export function NotificationCenter({
     </div>
   );
 
-  return (
-    <>
-      {/* 1. Mobile Bottom Sheet (<640px) */}
-      <div
-        className="sm:hidden fixed inset-0 z-50 flex items-end justify-center bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Notifications sheet"
-      >
-        <div
-          className="fixed inset-0 -z-10"
-          onClick={onClose}
-          aria-hidden="true"
-        />
-        <div className="w-full max-h-[85vh] rounded-t-3xl bg-card/98 dark:bg-slate-950/98 border-t border-x border-border/80 shadow-[0_-10px_40px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200">
-          {content}
-        </div>
-      </div>
+  if (!open || !mounted) return null;
 
-      {/* 2. Desktop Anchored Popover / Centered Dialog (>=640px) */}
-      {anchor === 'bell' ? (
-        <>
-          {/* Transparent Backdrop to detect click outside */}
-          <div
-            className="hidden sm:block fixed inset-0 z-40"
-            onClick={onClose}
-            aria-hidden="true"
-          />
-          <div
-            ref={popoverRef}
-            role="region"
-            aria-label="Notifications popover"
-            className="hidden sm:flex absolute right-0 top-full mt-2 w-[440px] max-h-[580px] z-50 rounded-3xl bg-card/98 dark:bg-slate-950/98 border border-border/80 shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
-          >
-            {content}
-          </div>
-        </>
-      ) : (
-        <div
-          className="hidden sm:flex fixed inset-0 z-50 items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Notifications dialog"
-        >
-          <div
-            className="fixed inset-0 -z-10"
-            onClick={onClose}
-            aria-hidden="true"
-          />
-          <div className="w-full max-w-lg max-h-[85vh] rounded-3xl bg-card/98 dark:bg-slate-950/98 border border-border/80 shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
-            {content}
-          </div>
-        </div>
-      )}
+  // Desktop popover anchored under bell icon with collision awareness
+  const isAnchoredDesktop = anchor === 'bell' && isDesktop && Boolean(popoverCoords);
+
+  const modalTree = isAnchoredDesktop ? (
+    <>
+      {/* Click-outside dismissal backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/10 dark:bg-black/30 animate-in fade-in duration-100"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div
+        ref={popoverRef}
+        role="region"
+        aria-label="Notifications popover"
+        style={{
+          position: 'fixed',
+          top: `${popoverCoords!.top}px`,
+          left: `${popoverCoords!.left}px`,
+          width: `${popoverCoords!.width}px`,
+          maxHeight: `${popoverCoords!.maxHeight}px`,
+        }}
+        className="z-50 rounded-3xl bg-card/98 dark:bg-slate-950/98 border border-border/80 shadow-[0_25px_60px_rgba(0,0,0,0.35)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-card-foreground"
+      >
+        {content}
+      </div>
     </>
+  ) : (
+    /* Phones / Dialog mode: Centered panel in the middle of the screen with dimmed, blurred backdrop */
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Notifications panel"
+    >
+      <div
+        className="fixed inset-0 -z-10"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div
+        ref={popoverRef}
+        style={{
+          maxHeight: '85dvh',
+          width: 'min(100% - 24px, 440px)',
+        }}
+        className="relative flex flex-col overflow-hidden rounded-3xl bg-card/98 dark:bg-slate-950/98 border border-border/80 shadow-[0_25px_50px_rgba(0,0,0,0.4)] animate-in zoom-in-95 duration-200 text-card-foreground"
+      >
+        {content}
+      </div>
+    </div>
   );
+
+  return createPortal(modalTree, document.body);
 }

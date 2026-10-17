@@ -1,10 +1,10 @@
 import { HelpRequest, UserProfile, NotificationItem } from './types';
 
-// Base coordinates for Asansol Engineering College / Asansol Center: 23.6889° N, 86.9661° E
+// Base coordinates for KindLink Community Initiative / Asansol Center: 23.6889° N, 86.9661° E
 export const ASANSOL_CENTER = {
   lat: 23.6889,
   lng: 86.9661,
-  name: 'Asansol Engineering College, Kalyanpur',
+  name: 'KindLink Community Initiative, Kalyanpur',
 };
 
 export const INITIAL_REQUESTS: HelpRequest[] = [
@@ -84,12 +84,12 @@ export const INITIAL_REQUESTS: HelpRequest[] = [
   {
     id: 'req-4',
     title: 'Urgent Insulin & BP Medicine Delivery',
-    description: 'Senior citizen living alone near AEC Kalyanpur road unable to step out due to knee pain. Prescription copy ready.',
+    description: 'Senior citizen living alone near Community Kalyanpur road unable to step out due to knee pain. Prescription copy ready.',
     category: 'elderly',
     urgency: 'high',
     waitingMinutes: 45,
     distanceKm: 1.5,
-    locationName: 'Kalyanpur Housing, Near AEC Gate 2',
+    locationName: 'Kalyanpur Housing, Near Community Gate 2',
     latitude: 23.6934,
     longitude: 86.9612,
     contactName: 'Demo User (Suniti)',
@@ -234,7 +234,7 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   {
     id: 'notif-2',
     title: 'Verification Approved',
-    message: 'Your Asansol Engineering College Student ID has been verified by the community moderators.',
+    message: 'Your KindLink Community Initiative Student ID has been verified by the community moderators.',
     timeAgo: '2 hrs ago',
     timestamp: Date.now() - 2 * 60 * 60 * 1000,
     unread: false,

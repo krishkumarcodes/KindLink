@@ -112,7 +112,7 @@ Major Release v2.0.0 introduces a comprehensive multi-agent UI/UX overhaul acros
 ## [v1.0.0] - 2026-10-13 - First Stable Production Release 🎉
 
 ### Summary
-The initial official, production-hardened release of **KindLink** — an ultra-resilient community mutual aid and emergency response platform built for Asansol Engineering College, West Bengal, and scalable to communities worldwide.
+The initial official, production-hardened release of **KindLink** — an ultra-resilient community mutual aid and emergency response platform built for KindLink Community Initiative, West Bengal, and scalable to communities worldwide.
 
 ### 🌟 Key Highlights & Systems
 

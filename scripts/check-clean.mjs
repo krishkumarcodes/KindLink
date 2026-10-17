@@ -32,7 +32,10 @@ const FORBIDDEN_RULES = [
   {
     name: 'Banned category weight / UI weight strings',
     regex: new RegExp('(category\\s*weight|weight\\s*\\d+\\s*/\\s*\\d+|weight\\s*\\d+\\b|urgency\\s*weight|category_weight|weight\\s*hint)', 'i')
-  }
+  },
+  { name: 'Asansol Engineering references', regex: new RegExp('\\b' + ['asansol', '\\s+', 'engineering'].join('') + '\\b', 'i') },
+  { name: 'AEC references', regex: new RegExp('\\b' + ['A', 'E', 'C'].join('') + '\\b') },
+  { name: 'MAKAUT references', regex: new RegExp('\\b' + ['mak', 'aut'].join('') + '\\b', 'i') }
 ];
 
 // Special checker for UI strings, category cards, and translations

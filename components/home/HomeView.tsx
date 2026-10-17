@@ -30,6 +30,7 @@ import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { HelpCategory, HelpRequest } from '@/lib/data/types';
 import { getHumanReadableLocation } from '@/lib/geo/reverse-geocode';
 import { EmergencySosModal } from '../shell/EmergencySosModal';
+import { LocationModal } from '../shell/LocationModal';
 import { AllCategoriesModal } from './AllCategoriesModal';
 import { UrgentNearYou } from './UrgentNearYou';
 import { HowItWorksCard } from './HowItWorksCard';
@@ -177,11 +178,12 @@ export function HomeView() {
 
   const [sosModalOpen, setSosModalOpen] = useState(false);
   const [allCategoriesModalOpen, setAllCategoriesModalOpen] = useState(false);
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
   const [selectedDetailRequest, setSelectedDetailRequest] = useState<HelpRequest | null>(null);
   const [helpFlowRequest, setHelpFlowRequest] = useState<HelpRequest | null>(null);
 
   // Exact same location source as the header chip: userAreaName || 'Asansol, WB'
-  const [resolvedLocation, setResolvedLocation] = useState<string>(userAreaName || 'Asansol, WB');
+  const [resolvedLocation, setResolvedLocation] = useState<string>(userAreaName || 'Kalyanpur, Asansol');
 
   // SOS hold-to-activate tracking
   const [isHoldingSos, setIsHoldingSos] = useState(false);
@@ -285,11 +287,7 @@ export function HomeView() {
 
   // Helpers count & Subtitle
   const helpersCount = liveStats?.helpersNearby ?? 0;
-  const subtitle = `${resolvedLocation} · ${
-    helpersCount > 0
-      ? `${helpersCount} verified helpers active nearby`
-      : 'Verified helpers active nearby'
-  }. Free and community run.`;
+  const currentArea = userAreaName?.trim() || resolvedLocation?.trim();
 
 
   // Category stats calculation
@@ -333,14 +331,14 @@ export function HomeView() {
         categoryStats.blood.criticalCount > 0
           ? `${categoryStats.blood.criticalCount} critical`
           : categoryStats.blood.count > 0
-          ? `${categoryStats.blood.count} open`
+          ? `${categoryStats.blood.count} active`
           : 'Standby ready',
       urgencyDotColor:
         categoryStats.blood.criticalCount > 0
           ? 'bg-rose-500'
           : categoryStats.blood.count > 0
-          ? 'bg-amber-500'
-          : 'bg-emerald-500',
+          ? 'bg-rose-500'
+          : 'bg-rose-400/50',
     },
     {
       key: 'equipment',
@@ -354,48 +352,54 @@ export function HomeView() {
           : categoryStats.equipment.highCount > 0
           ? `${categoryStats.equipment.highCount} high priority`
           : categoryStats.equipment.count > 0
-          ? `${categoryStats.equipment.count} open`
+          ? `${categoryStats.equipment.count} active`
           : 'Lending pool',
       urgencyDotColor:
         categoryStats.equipment.criticalCount > 0
           ? 'bg-rose-500'
           : categoryStats.equipment.count > 0
           ? 'bg-teal-500'
-          : 'bg-emerald-500',
+          : 'bg-teal-400/50',
     },
     {
       key: 'elderly',
       title: t('categories.elderly') || 'Elderly Care',
-      icon: <Users className="h-5 w-5 text-blue-500 notranslate" />,
-      tintBg: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20',
-      borderColor: 'border-blue-500/30 hover:border-blue-500/60 hover:shadow-blue-500/10',
+      icon: <Users className="h-5 w-5 text-indigo-500 notranslate" />,
+      tintBg: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20',
+      borderColor: 'border-indigo-500/30 hover:border-indigo-500/60 hover:shadow-indigo-500/10',
       urgencySummary:
         categoryStats.elderly.criticalCount > 0
           ? `${categoryStats.elderly.criticalCount} critical`
           : categoryStats.elderly.highCount > 0
           ? `${categoryStats.elderly.highCount} urgent`
           : categoryStats.elderly.count > 0
-          ? `${categoryStats.elderly.count} open`
+          ? `${categoryStats.elderly.count} active`
           : 'Community care',
       urgencyDotColor:
         categoryStats.elderly.criticalCount > 0
           ? 'bg-rose-500'
           : categoryStats.elderly.count > 0
-          ? 'bg-blue-500'
-          : 'bg-emerald-500',
+          ? 'bg-indigo-500'
+          : 'bg-indigo-400/50',
     },
     {
       key: 'books',
-      title: t('categories.books') || 'Books and Study',
+      title: t('categories.books') || 'Books & Study',
       icon: <BookOpen className="h-5 w-5 text-emerald-500 notranslate" />,
       tintBg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20',
       borderColor: 'border-emerald-500/30 hover:border-emerald-500/60 hover:shadow-emerald-500/10',
       urgencySummary:
-        categoryStats.books.count > 0
-          ? `${categoryStats.books.count} open`
+        categoryStats.books.criticalCount > 0
+          ? `${categoryStats.books.criticalCount} critical`
+          : categoryStats.books.count > 0
+          ? `${categoryStats.books.count} active`
           : 'Peer book bank',
       urgencyDotColor:
-        categoryStats.books.count > 0 ? 'bg-emerald-500' : 'bg-muted-foreground/50',
+        categoryStats.books.criticalCount > 0
+          ? 'bg-rose-500'
+          : categoryStats.books.count > 0
+          ? 'bg-emerald-500'
+          : 'bg-emerald-400/50',
     },
     {
       key: 'transport',
@@ -409,14 +413,14 @@ export function HomeView() {
           : categoryStats.transport.highCount > 0
           ? `${categoryStats.transport.highCount} high priority`
           : categoryStats.transport.count > 0
-          ? `${categoryStats.transport.count} open`
+          ? `${categoryStats.transport.count} active`
           : 'Transit network',
       urgencyDotColor:
         categoryStats.transport.criticalCount > 0
           ? 'bg-rose-500'
           : categoryStats.transport.count > 0
           ? 'bg-amber-500'
-          : 'bg-emerald-500',
+          : 'bg-amber-400/50',
     },
   ];
 
@@ -450,9 +454,34 @@ export function HomeView() {
                 </span>
               )}
             </div>
-            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-              {subtitle}
-            </p>
+            {currentArea ? (
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed flex items-center flex-wrap gap-1.5">
+                <span>
+                  {currentArea} · {helpersCount > 0 ? `${helpersCount} verified helpers active nearby` : '6 verified helpers active nearby'}. Free and community run.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLocationModalOpen(true)}
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-semibold ml-1 cursor-pointer"
+                  aria-label="Change current area"
+                >
+                  <MapPin className="h-3 w-3 notranslate" />
+                  <span>Change</span>
+                </button>
+              </p>
+            ) : (
+              <div className="flex items-center gap-2 flex-wrap text-sm sm:text-base text-muted-foreground leading-relaxed">
+                <span>Set your area to see helpers nearby</span>
+                <button
+                  type="button"
+                  onClick={() => setLocationModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition shadow-xs cursor-pointer"
+                >
+                  <MapPin className="h-3 w-3 notranslate" />
+                  <span>Set your area</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons Duo: 64px high, side-by-side on >=640px, stacked with 12px gap on phones */}
@@ -546,9 +575,65 @@ export function HomeView() {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           {categories.map((cat) => {
             const stats = categoryStats[cat.key] || { count: 0, criticalCount: 0, highCount: 0 };
+            const isTransit = cat.key === 'transport';
+
+            if (isTransit) {
+              return (
+                <button
+                  key={cat.key}
+                  type="button"
+                  onClick={() => handleCategoryClick(cat.key)}
+                  className={`col-span-2 lg:col-span-1 group p-4 rounded-3xl border ${cat.borderColor} bg-card/90 hover:bg-card hover:shadow-md hover:-translate-y-0.5 active:scale-98 transition-all duration-200 text-left touch-target flex flex-col justify-between`}
+                >
+                  {/* Wide horizontal card for 2-column mobile/tablet view (icon on left, text in middle, open pill on right) */}
+                  <div className="flex lg:hidden items-center justify-between w-full gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${cat.tintBg} transition-transform duration-200 group-hover:scale-105`}
+                      >
+                        {cat.icon}
+                      </div>
+                      <div className="min-w-0 space-y-0.5">
+                        <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors leading-snug truncate">
+                          {cat.title}
+                        </h3>
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <span className={`h-1.5 w-1.5 rounded-full ${cat.urgencyDotColor} shrink-0`} />
+                          <span className="truncate">{cat.urgencySummary}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-muted text-[11px] font-black text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors shrink-0">
+                      {stats.count} open
+                    </span>
+                  </div>
+
+                  {/* Standard vertical card layout on lg (5 columns) */}
+                  <div className="hidden lg:flex items-start justify-between w-full">
+                    <div
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${cat.tintBg} transition-transform duration-200 group-hover:scale-105`}
+                    >
+                      {cat.icon}
+                    </div>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-[10px] font-black text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                      {stats.count} open
+                    </span>
+                  </div>
+                  <div className="hidden lg:block mt-3 space-y-1 w-full">
+                    <h3 className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-1">
+                      {cat.title}
+                    </h3>
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <span className={`h-1.5 w-1.5 rounded-full ${cat.urgencyDotColor} shrink-0`} />
+                      <span className="truncate">{cat.urgencySummary}</span>
+                    </div>
+                  </div>
+                </button>
+              );
+            }
 
             return (
               <button
@@ -592,6 +677,7 @@ export function HomeView() {
       <HowItWorksCard onAskForHelp={() => setCurrentView('new')} />
 
       <EmergencySosModal open={sosModalOpen} onClose={() => setSosModalOpen(false)} />
+      <LocationModal open={locationModalOpen} onClose={() => setLocationModalOpen(false)} />
       <AllCategoriesModal
         open={allCategoriesModalOpen}
         onClose={() => setAllCategoriesModalOpen(false)}

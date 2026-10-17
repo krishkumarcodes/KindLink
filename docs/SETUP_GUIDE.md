@@ -303,8 +303,8 @@ For an extended regional simulation across Asansol, Durgapur, Dhanbad, and Kolka
    🚀 Starting KindLink Demo Seed Provisioning...
    👤 Processing user: priya_nurse (priya.nurse@kindlink.demo)...
       ✅ Profile synced: priya_nurse (Role: user, Status: verified)
-   👤 Processing user: rahul_aec (rahul.aec@kindlink.demo)...
-      ✅ Profile synced: rahul_aec (Role: user, Status: verified)
+   👤 Processing user: rahul_student (rahul.student@kindlink.demo)...
+      ✅ Profile synced: rahul_student (Role: user, Status: verified)
    ...
    📝 Provisioning Demo Requests...
       ✅ Created request: "O+ Blood Urgently Needed (2 Units)"
@@ -318,7 +318,7 @@ All CLI seed accounts share the universal password: **`KindLink#2026`**
 | Username | Email Address | Role | Status | Description / Location |
 | :--- | :--- | :--- | :--- | :--- |
 | `priya_nurse` | `priya.nurse@kindlink.demo` | `user` | Verified | Emergency ICU Nurse at Asansol District Hospital |
-| `rahul_aec` | `rahul.aec@kindlink.demo` | `user` | Verified | AEC College Student & Blood Donor, Kalyanpur |
+| `rahul_student` | `rahul.student@kindlink.demo` | `user` | Verified | Community College Student & Blood Donor, Kalyanpur |
 | `dr_sen` | `dr.sen@kindlink.demo` | `user` | Verified | Registered Medical Physician (MD), Asansol |
 | `amit_dhanbad` | `amit.dhanbad@kindlink.demo` | `user` | Unverified | Volunteer Blood Donor, Dhanbad |
 | `swati_durgapur` | `swati.durgapur@kindlink.demo` | `user` | Verified | NGO Community Coordinator, Durgapur |

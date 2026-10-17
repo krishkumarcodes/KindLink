@@ -66,6 +66,15 @@ DECLARE
   v_rating_self_blocked boolean := false;
   v_rating_id uuid;
   v_report_id uuid;
+  v_sp_id uuid;
+  v_sp_read_count integer;
+  v_sp_insert_blocked boolean := false;
+  v_sp_limit_error boolean := false;
+  v_notes_limit_error boolean := false;
+  v_sos_id uuid;
+  v_sos_token uuid := 'e0000000-0000-0000-0000-000000000001'::uuid;
+  v_sos_details jsonb;
+  u4 uuid := '44444444-4444-4444-4444-444444444444'::uuid;
 BEGIN
 
   -- --------------------------------------------------------------------------
@@ -641,7 +650,7 @@ BEGIN
   -- --------------------------------------------------------------------------
   UPDATE public.profiles
   SET bio = 'Dedicated community volunteer',
-      organisation = 'Asansol Engineering College',
+      organisation = 'KindLink Community Initiative',
       area_name = 'Kalyanpur',
       phone_e164 = '+919876543210',
       phone_national = '9876543210',
@@ -662,7 +671,7 @@ BEGIN
   v_member_self := public.get_member_profile('priya_test', u1);
 
   IF (v_member_anon->>'phone' IS NULL AND v_member_anon->>'email' IS NULL AND v_member_anon->>'organisation' IS NULL)
-     AND (v_member_auth->>'organisation' = 'Asansol Engineering College' AND v_member_auth->>'phone' IS NULL)
+     AND (v_member_auth->>'organisation' = 'KindLink Community Initiative' AND v_member_auth->>'phone' IS NULL)
      AND (v_member_self->>'phone' = '+919876543210' AND jsonb_array_length(v_member_self->'emergency_contacts') = 3) THEN
     PERFORM record_test(28, 'Member Profile View: Privacy enforcement across anonymous, member, and self views', true, 'Phone hidden when private, revealed to self; organisation revealed to members');
   ELSE
@@ -725,6 +734,174 @@ BEGIN
     PERFORM record_test(31, 'Trust Score & Breakdown: Star distribution dynamically aggregated', true, 'Trust score 5.0 and breakdown array correctly computed');
   ELSE
     PERFORM record_test(31, 'Trust Score & Breakdown', false, 'Breakdown or score calculation failure');
+  END IF;
+
+  -- --------------------------------------------------------------------------
+  -- TEST 32: Saved Places RLS (Owner-only isolation)
+  -- --------------------------------------------------------------------------
+  EXECUTE 'SET ROLE authenticated';
+  PERFORM auth.set_acting_user(u1, 'authenticated');
+
+  INSERT INTO public.saved_places (user_id, label, address_text, latitude, longitude, is_favorite)
+  VALUES (u1, 'Home Sweet Home', 'Kalyanpur Housing Estate, Asansol', 23.6845, 86.9740, true)
+  RETURNING id INTO v_sp_id;
+
+  -- User 1 can read own saved place
+  SELECT count(*) INTO v_sp_read_count FROM public.saved_places WHERE id = v_sp_id;
+
+  -- User 2 cannot read user 1's saved place
+  PERFORM auth.set_acting_user(u2, 'authenticated');
+  SELECT count(*) INTO v_sp_read_count FROM public.saved_places WHERE id = v_sp_id;
+
+  -- User 2 cannot insert a place for User 1 (WITH CHECK enforcement)
+  v_sp_insert_blocked := false;
+  BEGIN
+    INSERT INTO public.saved_places (user_id, label, address_text, latitude, longitude)
+    VALUES (u1, 'Fake Place', 'Hacked Address', 23.69, 86.98);
+  EXCEPTION WHEN others THEN
+    v_sp_insert_blocked := true;
+  END;
+
+  EXECUTE 'RESET ROLE';
+
+  IF (SELECT count(*) FROM public.saved_places WHERE id = v_sp_id) = 1
+     AND v_sp_read_count = 0
+     AND v_sp_insert_blocked THEN
+    PERFORM record_test(32, 'Saved Places RLS: Owner-only access & cross-user insertion blocking', true, 'Own place readable, foreign user read returns 0, spoofed insert blocked');
+  ELSE
+    PERFORM record_test(32, 'Saved Places RLS', false, 'RLS isolation failure on saved_places');
+  END IF;
+
+  -- --------------------------------------------------------------------------
+  -- TEST 33: Saved Places Maximum 10-Item Limit Trigger Constraint
+  -- --------------------------------------------------------------------------
+  -- User 1 currently has 1 saved place. Insert 9 more to reach the 10-place limit.
+  FOR i IN 2..10 LOOP
+    INSERT INTO public.saved_places (user_id, label, address_text, latitude, longitude)
+    VALUES (u1, 'Campus Spot ' || i, 'Asansol Landmark ' || i, 23.6800 + (i * 0.001), 86.9700 + (i * 0.001));
+  END LOOP;
+
+  -- 11th saved place must be blocked by the trigger
+  v_sp_limit_error := false;
+  BEGIN
+    INSERT INTO public.saved_places (user_id, label, address_text, latitude, longitude)
+    VALUES (u1, 'Excess Spot 11', 'Overflow Address', 23.6999, 86.9888);
+  EXCEPTION WHEN others THEN
+    v_sp_limit_error := true;
+  END;
+
+  IF v_sp_limit_error AND (SELECT count(*) FROM public.saved_places WHERE user_id = u1) = 10 THEN
+    PERFORM record_test(33, 'Saved Places Constraint: Maximum 10 saved places per user enforced by trigger', true, '10th place succeeded, 11th place rejected with exception');
+  ELSE
+    PERFORM record_test(33, 'Saved Places Limit', false, 'Failed to enforce max 10 saved places limit');
+  END IF;
+
+  -- --------------------------------------------------------------------------
+  -- TEST 34: Emergency Private Details on Profiles & Privacy Controls
+  -- --------------------------------------------------------------------------
+  -- Check length validation (<= 200 chars) on emergency_medical_notes
+  v_notes_limit_error := false;
+  BEGIN
+    UPDATE public.profiles
+    SET emergency_medical_notes = repeat('A', 205)
+    WHERE id = u1;
+  EXCEPTION WHEN check_violation THEN
+    v_notes_limit_error := true;
+  END;
+
+  -- Set valid emergency details and privacy sharing opt-ins on User 1
+  UPDATE public.profiles
+  SET emergency_blood_group = 'O+',
+      emergency_medical_notes = 'Severe asthma, carries inhaler. Penicillin allergy.',
+      emergency_share_phone = false,
+      emergency_share_blood_group = true,
+      emergency_share_medical_notes = true
+  WHERE id = u1;
+
+  -- Check get_member_profile privacy:
+  -- 1) Viewing as user 2 (another member): emergency fields must NOT be exposed
+  v_member_auth := public.get_member_profile('priya_test', u2);
+
+  -- 2) Viewing as user 1 (self): emergency fields MUST be exposed for settings/editing
+  v_member_self := public.get_member_profile('priya_test', u1);
+
+  IF v_notes_limit_error
+     AND (v_member_auth->>'emergency_blood_group' IS NULL)
+     AND (v_member_auth->>'emergency_medical_notes' IS NULL)
+     AND (v_member_self->>'emergency_blood_group' = 'O+')
+     AND (v_member_self->>'emergency_share_blood_group' = 'true')
+     AND (v_member_self->>'emergency_medical_notes' LIKE '%Severe asthma%') THEN
+    PERFORM record_test(34, 'Emergency Profile Privacy: 200-char note constraint & private fields hidden from other members', true, 'Exceeded note rejected, emergency fields hidden from members and visible to self');
+  ELSE
+    PERFORM record_test(34, 'Emergency Profile Privacy', false, 'Privacy leak or check constraint failure on emergency profile details');
+  END IF;
+
+  -- --------------------------------------------------------------------------
+  -- TEST 35: Active SOS Function (get_active_sos_details) Security & Expiry
+  -- --------------------------------------------------------------------------
+  -- 1. Create an active SOS event for user 1
+  DELETE FROM public.sos_events WHERE user_id = u1;
+  INSERT INTO public.sos_events (
+    user_id, token, status, address_text, location, created_at, expires_at
+  )
+  VALUES (
+    u1, v_sos_token, 'active', 'Near Asansol Bus Station',
+    ST_SetSRID(ST_MakePoint(86.9740, 23.6845), 4326)::geography,
+    now(), now() + interval '2 hours'
+  )
+  RETURNING id INTO v_sos_id;
+
+  -- Create an associated critical emergency request where u3 (verified) is the accepted helper
+  INSERT INTO public.requests (
+    id, requester_id, category, title, description, urgency, status, location, address_text, accepted_helper_id
+  )
+  VALUES (
+    'c0000000-0000-0000-0000-000000000001', u1, 'transport',
+    '🚨 CRITICAL EMERGENCY SOS BEACON',
+    'Immediate assistance requested near bus station',
+    'critical', 'accepted',
+    ST_SetSRID(ST_MakePoint(86.9740, 23.6845), 4326)::geography,
+    'Near Asansol Bus Station', u3
+  )
+  ON CONFLICT (id) DO UPDATE SET accepted_helper_id = u3, status = 'accepted';
+
+  UPDATE public.sos_events SET request_id = 'c0000000-0000-0000-0000-000000000001' WHERE id = v_sos_id;
+
+  -- Create user 4 (verified responder who received an emergency notification)
+  INSERT INTO auth.users (id, email, phone, raw_user_meta_data)
+  VALUES (u4, 'user4@test.kindlink', '+919876543213', '{"username":"sunita_verified","display_name":"Sunita Medic"}'::jsonb)
+  ON CONFLICT (id) DO NOTHING;
+  UPDATE public.profiles SET verification_status = 'verified' WHERE id = u4;
+
+  INSERT INTO public.notifications (user_id, type, title, body, request_id)
+  VALUES (u4, 'emergency_sos', 'Emergency SOS Alert', 'Nearby SOS beacon triggered', 'c0000000-0000-0000-0000-000000000001');
+
+  -- Verify Access Cases:
+  -- Case A: Live link holder (possesses secret token, anonymous viewer)
+  v_sos_details := public.get_active_sos_details(v_sos_token, NULL);
+  IF v_sos_details IS NULL OR (v_sos_details->>'is_live_link')::boolean IS NOT true
+     OR (v_sos_details->>'emergency_blood_group') <> 'O+'
+     OR (v_sos_details->>'phone') IS NOT NULL THEN
+    PERFORM record_test(35, 'Active SOS Function', false, 'Live link holder failed or phone privacy breached');
+  -- Case B: Accepted verified helper (u3)
+  ELSIF (public.get_active_sos_details(v_sos_id, u3))->>'emergency_blood_group' <> 'O+' THEN
+    PERFORM record_test(35, 'Active SOS Function', false, 'Accepted verified helper unable to access active SOS details');
+  -- Case C: Notified verified helper (u4)
+  ELSIF (public.get_active_sos_details(v_sos_id, u4))->>'emergency_medical_notes' NOT LIKE '%Severe asthma%' THEN
+    PERFORM record_test(35, 'Active SOS Function', false, 'Notified verified helper unable to access active SOS details');
+  -- Case D: Unauthorized unverified user (u2)
+  ELSIF public.get_active_sos_details(v_sos_id, u2) IS NOT NULL THEN
+    PERFORM record_test(35, 'Active SOS Function', false, 'Unauthorized unverified user was granted access');
+  ELSE
+    -- Case E: Once resolved, active SOS details are permanently revoked for all callers
+    UPDATE public.sos_events SET status = 'resolved', resolved_at = now() WHERE id = v_sos_id;
+
+    IF public.get_active_sos_details(v_sos_token, NULL) IS NULL
+       AND public.get_active_sos_details(v_sos_id, u3) IS NULL THEN
+      PERFORM record_test(35, 'Active SOS Function: Access restricted to active duration & authorized helpers/tokens', true, 'Accessible during active window to token/verified helpers with privacy redactions, completely revoked once resolved');
+    ELSE
+      PERFORM record_test(35, 'Active SOS Function', false, 'Details remained accessible after SOS was marked resolved');
+    END IF;
   END IF;
 
 END $$;

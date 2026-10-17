@@ -207,7 +207,7 @@ export function Select<T extends string = string>({
           aria-label={ariaLabel || placeholder}
           tabIndex={-1}
           className={`absolute left-0 mt-1.5 z-50 min-w-[210px] max-h-[300px] overflow-y-auto rounded-2xl border border-border bg-popover/95 backdrop-blur-md p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100 focus:outline-none ${
-            isPill ? 'w-max max-w-[320px]' : 'w-full'
+            isPill ? 'w-max max-w-[calc(100vw-32px)] sm:max-w-[320px]' : 'w-full'
           } ${menuClassName}`}
         >
           {options.map((option, index) => {

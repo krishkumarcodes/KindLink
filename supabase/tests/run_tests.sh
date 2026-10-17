@@ -23,7 +23,7 @@ psql -p "$PG_PORT" -h "$PG_HOST" -U "$USER" -d kindlink_test -f "$TEST_DIR/00_su
 
 MIGRATIONS=$(cd "$SQL_DIR" && ls [0-9][0-9]_*.sql 2>/dev/null | sort)
 
-echo "[2/4] First pass: Applying migration files 01 through 14 in order..."
+echo "[2/4] First pass: Applying migration files 01 through 16 in order..."
 for file in $MIGRATIONS; do
   echo "  -> Applying $file..."
   psql -p "$PG_PORT" -h "$PG_HOST" -U "$USER" -d kindlink_test -f "$SQL_DIR/$file" > /dev/null

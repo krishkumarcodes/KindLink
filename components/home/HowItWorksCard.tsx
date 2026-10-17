@@ -114,7 +114,7 @@ export function HowItWorksCard({
         aria-expanded={isOpen}
         aria-controls="how-it-works-content"
         onClick={handleToggle}
-        className="group flex w-full items-center justify-between gap-3 p-5 sm:p-6 text-left touch-target focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset transition-colors cursor-pointer select-none"
+        className="group flex w-full items-center justify-between gap-3 p-4 sm:p-5 text-left touch-target focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset transition-colors cursor-pointer select-none"
       >
         <div className="flex items-center gap-3 min-w-0">
           {/* Tinted icon chip */}
@@ -123,9 +123,9 @@ export function HowItWorksCard({
           </div>
 
           <div className="min-w-0">
-            {/* Title on ONE line with small pill */}
+            {/* Title on ONE line with inline "3 steps" pill on same row */}
             <div className="flex items-center gap-2 flex-nowrap">
-              <h3 className="text-base font-bold text-foreground">
+              <h3 className="text-sm sm:text-base font-bold text-foreground whitespace-nowrap">
                 How KindLink Works
               </h3>
               <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 shrink-0 whitespace-nowrap">
@@ -142,7 +142,7 @@ export function HowItWorksCard({
 
         {/* 44px round chevron button */}
         <div
-          className="h-11 w-11 shrink-0 rounded-full flex items-center justify-center bg-muted text-muted-foreground group-hover:bg-muted/80 transition-colors"
+          className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 rounded-full flex items-center justify-center bg-muted text-muted-foreground group-hover:bg-muted/80 transition-colors"
           aria-hidden="true"
         >
           <ChevronDown

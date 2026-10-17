@@ -29,10 +29,9 @@ const DEFAULT_COORDINATES: UserCoordinates = {
   isLive: false,
 };
 
-const DEFAULT_AREA_NAME = 'Kalyanpur, Asansol';
+const DEFAULT_AREA_NAME = 'Asansol Region';
 
 const INITIAL_SAVED_PLACES: SavedPlace[] = [];
-
 
 function geoDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Earth radius in km
@@ -98,6 +97,79 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  // Sync saved places with remote DB (/api/saved-places)
+  const syncSavedPlacesWithRemote = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const res = await fetch('/api/saved-places');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.authenticated) return;
+
+      const remotePlaces: SavedPlace[] = data.places || [];
+
+      // Read current local places
+      const localRaw = localStorage.getItem(SAVED_PLACES_STORAGE_KEY);
+      let localPlaces: SavedPlace[] = [];
+      if (localRaw) {
+        try {
+          const parsed = JSON.parse(localRaw);
+          if (Array.isArray(parsed)) localPlaces = parsed;
+        } catch {
+          // ignore
+        }
+      }
+
+      // Check if any local places need syncing to remote DB
+      const toSyncToRemote = localPlaces.filter(
+        (lp) =>
+          !remotePlaces.some(
+            (rp) =>
+              rp.id === lp.id ||
+              rp.name.toLowerCase() === lp.name.toLowerCase() ||
+              (Math.abs(rp.lat - lp.lat) < 0.0005 && Math.abs(rp.lng - lp.lng) < 0.0005)
+          )
+      );
+
+      if (toSyncToRemote.length > 0) {
+        try {
+          const syncRes = await fetch('/api/saved-places', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'sync', places: toSyncToRemote }),
+          });
+          if (syncRes.ok) {
+            const syncData = await syncRes.json();
+            if (syncData.places && Array.isArray(syncData.places)) {
+              setSavedPlaces(syncData.places);
+              localStorage.setItem(SAVED_PLACES_STORAGE_KEY, JSON.stringify(syncData.places));
+              return;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // Merge remote and local without duplicates (remote takes precedence)
+      const mergedMap = new Map<string, SavedPlace>();
+      for (const p of remotePlaces) {
+        mergedMap.set(p.name.toLowerCase(), p);
+      }
+      for (const p of localPlaces) {
+        if (!mergedMap.has(p.name.toLowerCase())) {
+          mergedMap.set(p.name.toLowerCase(), p);
+        }
+      }
+
+      const mergedList = Array.from(mergedMap.values()).slice(0, 10);
+      setSavedPlaces(mergedList);
+      localStorage.setItem(SAVED_PLACES_STORAGE_KEY, JSON.stringify(mergedList));
+    } catch {
+      // Ignore network errors
+    }
+  }, []);
+
   // 1. Initial hydration on mount from localStorage (without auto-requesting GPS)
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -123,6 +195,9 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       // Ignore
     }
 
+    // Trigger remote sync for logged-in users
+    syncSavedPlacesWithRemote();
+
     // Load last known location for instant app boot
     try {
       const rawLoc = localStorage.getItem(LAST_LOCATION_STORAGE_KEY);
@@ -147,7 +222,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }
 
     // Inspect permission status non-intrusively without asking or triggering dialog
-    if (navigator.permissions && navigator.permissions.query) {
+    if (typeof navigator !== 'undefined' && navigator.permissions && navigator.permissions.query) {
       navigator.permissions
         .query({ name: 'geolocation' as PermissionName })
         .then((permission) => {
@@ -159,10 +234,10 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         .catch(() => {
           setPermissionStatus('unknown');
         });
-    } else if (!navigator.geolocation) {
+    } else if (typeof navigator !== 'undefined' && !navigator.geolocation) {
       setPermissionStatus('unavailable');
     }
-  }, [syncWithStore]);
+  }, [syncWithStore, syncSavedPlacesWithRemote]);
 
   // Synchronize store updates back to LocationProvider if store was updated externally
   useEffect(() => {
@@ -234,7 +309,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     [userCoords, accuracy, persistLastLocation]
   );
 
-  // Reset to default AEC hub
+  // Reset to default hub
   const resetToDefaultHub = useCallback(() => {
     if (watchIdRef.current !== null && navigator.geolocation) {
       navigator.geolocation.clearWatch(watchIdRef.current);
@@ -272,7 +347,6 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         const distKm = geoDistanceKm(last.lat, last.lng, latitude, longitude);
         const elapsedMs = now - last.timestamp;
         if (distKm < 0.025 && elapsedMs < 15000) {
-          // Update accuracy if better, but skip store notification
           if (roundedAcc !== null) setAccuracy(roundedAcc);
           return;
         }
@@ -315,7 +389,6 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Clear existing watch if any
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
@@ -348,7 +421,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     watchIdRef.current = watchId;
   }, [handleWatchedPosition, stopLiveTracking]);
 
-  // Pause watchPosition when document is hidden (battery/data conservation) and resume when visible
+  // Pause watchPosition when document is hidden and resume when visible
   useEffect(() => {
     if (typeof document === 'undefined') return;
 
@@ -376,7 +449,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     };
   }, [startLiveTracking]);
 
-  // Request live location on explicit user action (e.g. tap)
+  // Request live location on explicit user action
   const requestLiveLocation = useCallback(async (): Promise<{
     lat: number;
     lng: number;
@@ -447,12 +520,12 @@ export function LocationProvider({ children }: { children: ReactNode }) {
             setPermissionStatus('denied');
             setError('Location permission was denied in your browser settings.');
             toast.error('Location permission denied', {
-              description: 'You can search an address or select a neighborhood preset.',
+              description: 'You can search an address or pick a city preset.',
             });
           } else {
             setError(err.message || 'Unable to retrieve your location');
             toast.warning('Unable to lock GPS location', {
-              description: 'Check location services or pick a landmark manually.',
+              description: 'Check location services or pick a city manually.',
             });
           }
           resolve(null);
@@ -466,61 +539,133 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     });
   }, [persistLastLocation, startLiveTracking, syncWithStore]);
 
-  // Save place
-  const savePlace = useCallback((place: Omit<SavedPlace, 'id'>) => {
-    const newPlace: SavedPlace = {
-      ...place,
-      id: `sp-${Date.now()}`,
-      createdAt: Date.now(),
-    };
-    setSavedPlaces((prev) => {
-      const updated = [newPlace, ...prev.filter((p) => p.name !== place.name)];
-      try {
-        localStorage.setItem(SAVED_PLACES_STORAGE_KEY, JSON.stringify(updated));
-      } catch {
-        // Ignore
+  // Save place (syncs both localStorage & DB)
+  const savePlace = useCallback(
+    async (place: Omit<SavedPlace, 'id'>) => {
+      if (savedPlaces.length >= 10) {
+        toast.error('Maximum limit reached', {
+          description: 'You can save up to 10 places. Remove one to add another.',
+        });
+        return;
       }
-      return updated;
-    });
-    toast.success(`Saved "${place.name}" to your places!`);
-  }, []);
 
-  // Update/rename saved place
+      const tempId = `sp-${Date.now()}`;
+      const newPlace: SavedPlace = {
+        ...place,
+        id: tempId,
+        createdAt: Date.now(),
+      };
+
+      // Optimistically update localStorage and React state
+      setSavedPlaces((prev) => {
+        const updated = [newPlace, ...prev.filter((p) => p.name.toLowerCase() !== place.name.toLowerCase())].slice(0, 10);
+        try {
+          localStorage.setItem(SAVED_PLACES_STORAGE_KEY, JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+        return updated;
+      });
+
+      toast.success(`Saved "${place.name}" to your places!`);
+
+      // Attempt DB sync
+      try {
+        const res = await fetch('/api/saved-places', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: place.name,
+            label: place.label || place.name,
+            lat: place.lat,
+            lng: place.lng,
+            type: place.type,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.place?.id) {
+            setSavedPlaces((prev) => {
+              const updated = prev.map((p) => (p.id === tempId ? { ...p, id: data.place.id } : p));
+              try {
+                localStorage.setItem(SAVED_PLACES_STORAGE_KEY, JSON.stringify(updated));
+              } catch {
+                // ignore
+              }
+              return updated;
+            });
+          }
+        }
+      } catch {
+        // Safe offline fallback in localStorage
+      }
+    },
+    [savedPlaces.length]
+  );
+
+  // Update/rename saved place (syncs both localStorage & DB)
   const updateSavedPlace = useCallback(
-    (id: string, updates: { name: string; type?: SavedPlace['type'] }) => {
+    async (id: string, updates: { name: string; type?: SavedPlace['type'] }) => {
+      const cleanName = updates.name.trim();
+
       setSavedPlaces((prev) => {
         const updated = prev.map((p) => {
           if (p.id !== id) return p;
           return {
             ...p,
-            name: updates.name.trim() || p.name,
+            name: cleanName || p.name,
             ...(updates.type ? { type: updates.type } : {}),
           };
         });
         try {
           localStorage.setItem(SAVED_PLACES_STORAGE_KEY, JSON.stringify(updated));
         } catch {
-          // Ignore
+          // ignore
         }
         return updated;
       });
+
       toast.success('Place updated successfully');
+
+      try {
+        await fetch('/api/saved-places', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id,
+            name: cleanName,
+            type: updates.type,
+          }),
+        });
+      } catch {
+        // Saved locally
+      }
     },
     []
   );
 
-  // Remove saved place
-  const removeSavedPlace = useCallback((id: string) => {
+  // Remove saved place (syncs both localStorage & DB)
+  const removeSavedPlace = useCallback(async (id: string) => {
     setSavedPlaces((prev) => {
       const updated = prev.filter((p) => p.id !== id);
       try {
         localStorage.setItem(SAVED_PLACES_STORAGE_KEY, JSON.stringify(updated));
       } catch {
-        // Ignore
+        // ignore
       }
       return updated;
     });
+
     toast.info('Place removed from saved list');
+
+    try {
+      await fetch(`/api/saved-places?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+    } catch {
+      // ignore
+    }
   }, []);
 
   const value: LocationContextValue = {
@@ -541,6 +686,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     savePlace,
     updateSavedPlace,
     removeSavedPlace,
+    syncSavedPlacesWithRemote,
   };
 
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;
