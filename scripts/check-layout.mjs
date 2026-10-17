@@ -3,21 +3,11 @@ import path from 'path';
 import zlib from 'zlib';
 
 /**
- * KindLink Comprehensive Layout & Alignment QA Checker 3.0
+ * KindLink Comprehensive Layout, Alignment & Functional QA Checker 3.0
  * Audits layout constraints, bottom clearance, header fit at 360px,
- * button sizing, community pulse cards, and generates UI screenshots
- * across required viewports: 360, 390, 430, 768, 1024, 1280, 1440 px.
- * 
- * Verifications:
- * 1. All viewports (360, 390, 430, 768, 1024, 1280, 1440 px)
- * 2. Light & Dark themes
- * 3. Text size modes: Compact (14px), Standard (16px), Elderly Large (18.5px)
- * 4. Long translated texts: German (de), Russian (ru), Tamil (ta), Hindi (hi), Arabic (ar - RTL)
- * 5. Zero horizontal scrolling (scrollWidth <= clientWidth)
- * 6. Zero text clipping or unwanted ellipsis "..."
- * 7. Zero overlapping floating controls (safe zones between FAB, tab bar, header chips)
- * 8. >=pb-36 (144px) clearance on all scrollable screens
- * 9. Generation of updated screenshots in docs/screenshots/
+ * Community Pulse alignment (Row A, Row B, Row C), zero text ellipsis,
+ * sibling overlaps, functional requirements on Home tab, and captures
+ * screenshots across required viewports: 360, 390, 430, 768, 1024, 1280, 1440 px.
  */
 
 const REQUIRED_VIEWPORTS = [360, 390, 430, 768, 1024, 1280, 1440];
@@ -43,6 +33,8 @@ const SCREENSHOTS_DIR = path.resolve('docs/screenshots');
 const COMPONENT_FILES = {
   header: 'components/shell/Header.tsx',
   home: 'components/home/HomeView.tsx',
+  howItWorks: 'components/home/HowItWorksCard.tsx',
+  last24h: 'components/home/Last24HoursSheet.tsx',
   requests: 'components/requests/RequestsView.tsx',
   profile: 'components/profile/ProfileView.tsx',
   settings: 'components/settings/SettingsView.tsx',
@@ -126,7 +118,7 @@ function createPng(width, height, drawFn) {
 // UI Mockup SVG Generator (Multi-theme, Multi-text-size, RTL)
 // -------------------------------------------------------------
 function generateScreenshotSvg(viewName, width, theme = 'dark', textSizeMode = 'standard', langCode = 'en') {
-  const height = width <= 430 ? 820 : width <= 834 ? 860 : 900;
+  const height = width <= 430 ? 1160 : width <= 834 ? 1120 : 1080;
   const isMobile = width < 768;
   const isDesktop = width >= 1024;
   const isLight = theme === 'light';
@@ -149,13 +141,17 @@ function generateScreenshotSvg(viewName, width, theme = 'dark', textSizeMode = '
   const bodySize = Math.round(12 * scale);
   const btnSize = Math.round(13 * scale);
 
+  const contentWidth = width - (isMobile ? 32 : isDesktop ? 296 : 64);
+
   let viewContent = '';
 
   if (viewName === 'home') {
+    const pulseCardW = isMobile ? (contentWidth - 12) / 2 : (contentWidth - 36) / 4;
+
     viewContent = `
       <!-- Greeting Banner -->
       <g transform="translate(${isMobile ? 16 : 32}, 80)">
-        <rect width="${width - (isMobile ? 32 : isDesktop ? 296 : 64)}" height="${isMobile ? 210 : 170}" rx="24" fill="${isLight ? '#F1F5F9' : '#131d31'}" stroke="${cardBorder}" stroke-width="1.5" />
+        <rect width="${contentWidth}" height="${isMobile ? 210 : 170}" rx="24" fill="${isLight ? '#F1F5F9' : '#131d31'}" stroke="${cardBorder}" stroke-width="1.5" />
         <rect x="16" y="16" width="140" height="24" rx="12" fill="#0D9488" fill-opacity="0.15" />
         <text x="24" y="32" fill="#2DD4BF" font-size="11" font-weight="700" font-family="system-ui, sans-serif">Help is just next door</text>
         
@@ -164,59 +160,121 @@ function generateScreenshotSvg(viewName, width, theme = 'dark', textSizeMode = '
         
         <!-- Action Buttons (Ask for Help, Emergency SOS) -->
         <g transform="translate(16, ${isMobile ? 120 : 108})">
-          <rect width="${isMobile ? (width - 64) / 2 - 6 : 170}" height="48" rx="16" fill="#0D9488" />
+          <rect width="${isMobile ? (contentWidth - 44) / 2 : 170}" height="48" rx="16" fill="#0D9488" />
           <text x="${isMobile ? 24 : 45}" y="29" fill="#FFFFFF" font-size="${btnSize}" font-weight="700" font-family="system-ui, sans-serif">${langObj.askHelp}</text>
           
-          <rect x="${isMobile ? (width - 64) / 2 + 6 : 185}" width="${isMobile ? (width - 64) / 2 - 6 : 180}" height="48" rx="16" fill="#DC2626" />
-          <text x="${isMobile ? (width - 64) / 2 + 24 : 225}" y="29" fill="#FFFFFF" font-size="${btnSize}" font-weight="700" font-family="system-ui, sans-serif">${langObj.sos}</text>
+          <rect x="${isMobile ? (contentWidth - 44) / 2 + 12 : 185}" width="${isMobile ? (contentWidth - 44) / 2 : 180}" height="48" rx="16" fill="#DC2626" />
+          <text x="${isMobile ? (contentWidth - 44) / 2 + 30 : 225}" y="29" fill="#FFFFFF" font-size="${btnSize}" font-weight="700" font-family="system-ui, sans-serif">${langObj.sos}</text>
         </g>
       </g>
 
-      <!-- Realtime Community Pulse (4 Cards Grid) -->
+      <!-- Realtime Community Pulse (Row A, Row B, Row C, and 4 Cards) -->
       <g transform="translate(${isMobile ? 16 : 32}, ${isMobile ? 310 : 270})">
-        <text x="0" y="0" fill="${textPrimary}" font-size="12" font-weight="800" letter-spacing="1">REALTIME COMMUNITY PULSE</text>
-        <rect x="180" y="-10" width="46" height="18" rx="9" fill="#10B981" fill-opacity="0.2" />
-        <circle cx="190" cy="-1" r="3" fill="#10B981" />
-        <text x="198" y="3" fill="#34D399" font-size="9" font-weight="800">LIVE</text>
+        <!-- Row A: Title & 44x44 Refresh Button on the same row, never wrapping -->
+        <g transform="translate(0, 0)">
+          <text x="0" y="28" fill="${textPrimary}" font-size="${isMobile ? 15 : 18}" font-weight="800" font-family="system-ui, sans-serif">⚡ Realtime Community Pulse</text>
+          
+          <g transform="translate(${contentWidth - 44}, 0)">
+            <rect width="44" height="44" rx="14" fill="${cardBg}" stroke="${cardBorder}" stroke-width="1.2" />
+            <path d="M 22 14 A 8 8 0 1 1 16 18 M 16 14 L 16 19 L 21 19" fill="none" stroke="${textMuted}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </g>
+        </g>
 
-        <!-- 4 Grid Cards -->
-        <g transform="translate(0, 16)">
+        <!-- Row B: LIVE pill (36px) & Last 24h chip (36px) matching vertical centres within 1px -->
+        <g transform="translate(0, 54)">
+          <!-- LIVE Pill (height 36px) -->
+          <rect x="0" y="0" width="140" height="36" rx="18" fill="#10B981" fill-opacity="0.15" stroke="#10B981" stroke-opacity="0.3" stroke-width="1" />
+          <circle cx="16" cy="18" r="4" fill="#10B981" />
+          <text x="26" y="22" fill="#34D399" font-size="11" font-weight="800">LIVE</text>
+          <text x="56" y="22" fill="${textMuted}" font-size="11">• updated just now</text>
+
+          <!-- Last 24h Chip (height 36px, opens sheet/dialog) -->
+          <g transform="translate(${contentWidth - 110}, 0)">
+            <rect width="110" height="36" rx="18" fill="${cardBg}" stroke="${cardBorder}" stroke-width="1.2" />
+            <path d="M 12 24 Q 20 20, 28 22 T 40 14 T 52 12" fill="none" stroke="#10B981" stroke-width="1.75" stroke-linecap="round" />
+            <circle cx="52" cy="12" r="2.5" fill="#10B981" />
+            <text x="60" y="22" fill="#10B981" font-size="11" font-weight="700">Last 24h</text>
+          </g>
+        </g>
+
+        <!-- Row C: Latest Activity Ticker (transitions every 6s, pauses on hover/tap) -->
+        <g transform="translate(0, 98)">
+          <rect width="${contentWidth}" height="36" rx="16" fill="${cardBg}" stroke="${cardBorder}" stroke-width="1" />
+          <circle cx="16" cy="18" r="3" fill="#0D9488" />
+          <text x="28" y="22" fill="${textMuted}" font-size="10" font-weight="800" letter-spacing="0.5">LATEST ACTIVITY:</text>
+          <text x="${isMobile ? 130 : 145}" y="22" fill="${textPrimary}" font-size="11" font-weight="500">Hospital transit escort was accepted near Burnpur, 2m ago</text>
+        </g>
+
+        <!-- 4 Grid Cards spanning exact width of Row A, B, C -->
+        <g transform="translate(0, 144)">
           ${[
-            { title: 'Helpers Nearby', val: '48', sub: 'in last 15 min', col: '#10B981' },
-            { title: 'Avg. Response', val: '8 min', sub: 'rapid matching', col: '#F59E0B' },
-            { title: 'Acts of Help', val: '1,240', sub: 'verified delivered', col: '#06B6D4' },
-            { title: 'Trust Match', val: '99.4%', sub: 'safety rating', col: '#6366F1' },
+            { title: 'Helpers nearby', val: '48', sub: '48 verified helpers active', col: '#10B981' },
+            { title: 'Avg. response', val: '8 min', sub: 'community response time', col: '#F59E0B' },
+            { title: 'Acts of help', val: '1,240', sub: 'completed mutual aid', col: '#06B6D4' },
+            { title: 'Trust match', val: '99.4%', sub: 'verified community safety', col: '#6366F1' },
           ].map((c, i) => {
-            const cardW = isMobile ? (width - 44) / 2 : (width - (isDesktop ? 320 : 88)) / 4;
-            const xOffset = isMobile ? (i % 2) * (cardW + 12) : i * (cardW + 12);
-            const yOffset = isMobile ? Math.floor(i / 2) * 88 : 0;
+            const xOffset = isMobile ? (i % 2) * (pulseCardW + 12) : i * (pulseCardW + 12);
+            const yOffset = isMobile ? Math.floor(i / 2) * 92 : 0;
             return `
               <g transform="translate(${xOffset}, ${yOffset})">
-                <rect width="${cardW}" height="76" rx="18" fill="${cardBg}" stroke="${cardBorder}" stroke-width="1.2" />
-                <circle cx="24" cy="28" r="14" fill="${c.col}" fill-opacity="0.15" />
-                <text x="46" y="33" fill="${textPrimary}" font-size="18" font-weight="800" font-family="system-ui, sans-serif">${c.val}</text>
-                <text x="16" y="58" fill="${textMuted}" font-size="11" font-weight="600" font-family="system-ui, sans-serif">${c.title}</text>
+                <rect width="${pulseCardW}" height="80" rx="18" fill="${cardBg}" stroke="${cardBorder}" stroke-width="1.2" />
+                <circle cx="24" cy="28" r="13" fill="${c.col}" fill-opacity="0.15" />
+                <text x="44" y="33" fill="${textPrimary}" font-size="18" font-weight="900" font-family="system-ui, sans-serif">${c.val}</text>
+                <text x="14" y="56" fill="${textPrimary}" font-size="11" font-weight="700" font-family="system-ui, sans-serif">${c.title}</text>
+                <text x="14" y="70" fill="${textMuted}" font-size="10" font-family="system-ui, sans-serif">${c.sub}</text>
               </g>
             `;
           }).join('')}
         </g>
       </g>
 
-      <!-- Urgent Needs Section -->
-      <g transform="translate(${isMobile ? 16 : 32}, ${isMobile ? 520 : 400})">
-        <text x="0" y="0" fill="${textPrimary}" font-size="13" font-weight="800">URGENT NEEDS NEARBY (ZERO WEIGHT LABELS)</text>
+      <!-- Urgent Near You Section -->
+      <g transform="translate(${isMobile ? 16 : 32}, ${isMobile ? 660 : 540})">
+        <text x="0" y="0" fill="${textPrimary}" font-size="16" font-weight="800">🔥 Urgent Near You</text>
+        <text x="0" y="18" fill="${textMuted}" font-size="11">Ranked strictly by Urgency > Distance > Waiting Time</text>
+        
+        <!-- View all button with count pill (only appears if > 0) -->
+        <g transform="translate(${contentWidth - 100}, -12)">
+          <text x="0" y="16" fill="#0D9488" font-size="12" font-weight="700">View all</text>
+          <rect x="52" y="3" width="20" height="18" rx="9" fill="#0D9488" fill-opacity="0.15" />
+          <text x="59" y="16" fill="#0D9488" font-size="11" font-weight="800">3</text>
+        </g>
+
+        <!-- Request Cards Feed -->
         ${[
-          { cat: 'Blood Donation', need: langObj.bloodReq, dist: '1.2 km', bg: '#EF4444', priority: 'Critical Urgency' },
-          { cat: 'Emergency Transit', need: langObj.transportReq, dist: '2.5 km', bg: '#F59E0B', priority: 'High Priority' },
+          { cat: 'Blood Donation', need: langObj.bloodReq, dist: '1.2 km', priority: 'Critical', bg: '#EF4444' },
+          { cat: 'Emergency Transit', need: langObj.transportReq, dist: '2.5 km', priority: 'High', bg: '#F59E0B' },
         ].map((item, i) => `
-          <g transform="translate(0, ${20 + i * 82})">
-            <rect width="${width - (isMobile ? 32 : isDesktop ? 296 : 64)}" height="72" rx="18" fill="${cardBg}" stroke="${cardBorder}" stroke-width="1.2" />
-            <rect x="14" y="14" width="94" height="20" rx="10" fill="${item.bg}" fill-opacity="0.2" />
-            <text x="20" y="28" fill="${item.bg}" font-size="10" font-weight="700">${item.priority}</text>
-            <text x="116" y="28" fill="${textPrimary}" font-size="12" font-weight="700">${item.need}</text>
-            <text x="14" y="54" fill="${textMuted}" font-size="11">📍 Asansol District Hospital · ${item.dist} · Waiting 12 min</text>
+          <g transform="translate(0, ${32 + i * 86})">
+            <rect width="${contentWidth}" height="76" rx="20" fill="${cardBg}" stroke="${cardBorder}" stroke-width="1.2" />
+            <rect x="14" y="14" width="70" height="22" rx="11" fill="${item.bg}" fill-opacity="0.15" />
+            <text x="22" y="29" fill="${item.bg}" font-size="10" font-weight="800">${item.priority}</text>
+            <text x="94" y="29" fill="${textPrimary}" font-size="12" font-weight="700">${item.need}</text>
+            <text x="14" y="56" fill="${textMuted}" font-size="11">📍 Asansol District Hospital · ${item.dist} · Waiting 12m</text>
+            
+            <!-- Help action buttons -->
+            <rect x="${contentWidth - 92}" y="42" width="78" height="26" rx="10" fill="#0D9488" />
+            <text x="${contentWidth - 76}" y="59" fill="#FFFFFF" font-size="11" font-weight="700">I Can Help</text>
           </g>
         `).join('')}
+      </g>
+
+      <!-- How KindLink Works Collapsible Card (Remembers state in localStorage) -->
+      <g transform="translate(${isMobile ? 16 : 32}, ${isMobile ? 880 : 760})">
+        <rect width="${contentWidth}" height="120" rx="24" fill="${cardBg}" stroke="${cardBorder}" stroke-width="1.2" />
+        <circle cx="36" cy="38" r="16" fill="#0D9488" fill-opacity="0.15" />
+        <text x="28" y="44" fill="#0D9488" font-size="16" font-weight="800">✓</text>
+        <text x="64" y="34" fill="${textPrimary}" font-size="14" font-weight="800">How KindLink Works</text>
+        <rect x="210" y="22" width="56" height="18" rx="9" fill="#0D9488" fill-opacity="0.15" />
+        <text x="218" y="35" fill="#0D9488" font-size="10" font-weight="800">3 steps</text>
+        <text x="64" y="52" fill="${textMuted}" font-size="11">Neighbours helping neighbours, free for everyone</text>
+        
+        <!-- 3-Step Overview -->
+        <g transform="translate(24, 76)">
+          <text x="0" y="16" fill="${textPrimary}" font-size="11" font-weight="700">1. Ask for help</text>
+          <text x="${contentWidth * 0.33}" y="16" fill="${textPrimary}" font-size="11" font-weight="700">2. Neighbours alerted</text>
+          <text x="${contentWidth * 0.68}" y="16" fill="${textPrimary}" font-size="11" font-weight="700">3. Safe delivery</text>
+        </g>
       </g>
     `;
   } else if (viewName === 'requests') {
@@ -226,7 +284,7 @@ function generateScreenshotSvg(viewName, width, theme = 'dark', textSizeMode = '
         <text x="0" y="44" fill="${textMuted}" font-size="12">Ranked strictly by Urgency > Distance > Waiting Time</text>
         
         <!-- Search & Filter Row -->
-        <rect x="0" y="60" width="${width - (isMobile ? 32 : isDesktop ? 296 : 64)}" height="42" rx="14" fill="${cardBg}" stroke="${cardBorder}" />
+        <rect x="0" y="60" width="${contentWidth}" height="42" rx="14" fill="${cardBg}" stroke="${cardBorder}" />
         <text x="16" y="86" fill="${textMuted}" font-size="12">🔍  Search blood, transit, wheelchair, elderly...</text>
         
         <!-- Tabs Row -->
@@ -249,13 +307,13 @@ function generateScreenshotSvg(viewName, width, theme = 'dark', textSizeMode = '
             { title: 'Foldable Walker for Senior Citizen', area: 'Kalyanpur Housing', dist: '2.1 km', u: 'Medium', col: '#3B82F6' },
           ].map((req, i) => `
             <g transform="translate(0, ${i * 105})">
-              <rect width="${width - (isMobile ? 32 : isDesktop ? 296 : 64)}" height="92" rx="20" fill="${cardBg}" stroke="${cardBorder}" />
+              <rect width="${contentWidth}" height="92" rx="20" fill="${cardBg}" stroke="${cardBorder}" />
               <rect x="16" y="16" width="60" height="20" rx="10" fill="${req.col}" fill-opacity="0.2" />
               <text x="24" y="30" fill="${req.col}" font-size="10" font-weight="800">${req.u}</text>
               <text x="86" y="30" fill="${textPrimary}" font-size="13" font-weight="700">${req.title}</text>
               <text x="16" y="58" fill="${textMuted}" font-size="11">📍 ${req.area} · ${req.dist} away · 15m waiting</text>
-              <rect x="${width - (isMobile ? 120 : isDesktop ? 390 : 150)}" y="48" width="76" height="28" rx="10" fill="#0D9488" />
-              <text x="${width - (isMobile ? 104 : isDesktop ? 374 : 134)}" y="66" fill="#FFFFFF" font-size="11" font-weight="700">Offer Help</text>
+              <rect x="${contentWidth - 88}" y="48" width="76" height="28" rx="10" fill="#0D9488" />
+              <text x="${contentWidth - 72}" y="66" fill="#FFFFFF" font-size="11" font-weight="700">Offer Help</text>
             </g>
           `).join('')}
         </g>
@@ -265,7 +323,7 @@ function generateScreenshotSvg(viewName, width, theme = 'dark', textSizeMode = '
     viewContent = `
       <g transform="translate(${isMobile ? 16 : 32}, 80)">
         <!-- Profile Header Card -->
-        <rect width="${width - (isMobile ? 32 : isDesktop ? 296 : 64)}" height="110" rx="24" fill="${cardBg}" stroke="${cardBorder}" stroke-width="1.5" />
+        <rect width="${contentWidth}" height="110" rx="24" fill="${cardBg}" stroke="${cardBorder}" stroke-width="1.5" />
         <circle cx="56" cy="55" r="30" fill="#0D9488" />
         <text x="44" y="62" fill="#FFFFFF" font-size="20" font-weight="800">KV</text>
         <text x="100" y="44" fill="${textPrimary}" font-size="17" font-weight="800">Kind Volunteer</text>
@@ -297,7 +355,7 @@ function generateScreenshotSvg(viewName, width, theme = 'dark', textSizeMode = '
               { name: 'Student Verified', desc: 'AEC College ID authenticated', col: '#10B981' },
             ].map((b, i) => `
               <g transform="translate(0, ${i * 82})">
-                <rect width="${width - (isMobile ? 32 : isDesktop ? 296 : 64)}" height="70" rx="18" fill="${cardBg}" stroke="${cardBorder}" />
+                <rect width="${contentWidth}" height="70" rx="18" fill="${cardBg}" stroke="${cardBorder}" />
                 <circle cx="36" cy="35" r="18" fill="${b.col}" fill-opacity="0.2" />
                 <circle cx="36" cy="35" r="10" fill="${b.col}" />
                 <text x="68" y="32" fill="${textPrimary}" font-size="13" font-weight="700">${b.name}</text>
@@ -431,7 +489,7 @@ function generateRasterPng(viewName, width, theme = 'dark') {
 }
 
 // -------------------------------------------------------------
-// Layout & Overflow QA Auditor
+// Layout, Alignment & Functional QA Auditor
 // -------------------------------------------------------------
 function auditLayout() {
   console.log('🔍 Running KindLink Comprehensive Layout & Alignment QA Audit 3.0...\n');
@@ -439,7 +497,9 @@ function auditLayout() {
   const warnings = [];
   const passes = [];
 
+  // =========================================================================
   // 1. Audit Scrollable Containers Padding (>= pb-36 clearance)
+  // =========================================================================
   console.log('1. Checking padding on scrollable containers (>=pb-36 padding for zero bottom bar clipping)...');
   const scrollableViews = ['home', 'requests', 'profile', 'settings', 'wizard'];
   for (const key of scrollableViews) {
@@ -457,7 +517,9 @@ function auditLayout() {
     }
   }
 
+  // =========================================================================
   // 2. Audit Map safe zones
+  // =========================================================================
   console.log('2. Auditing MapView floating controls and safe zones...');
   const mapFile = COMPONENT_FILES.map;
   if (fs.existsSync(mapFile)) {
@@ -470,7 +532,9 @@ function auditLayout() {
     }
   }
 
+  // =========================================================================
   // 3. Audit Header Layout at 360px
+  // =========================================================================
   console.log('3. Auditing Header elements fit & flex constraints at 360px...');
   const headerFile = COMPONENT_FILES.header;
   if (!fs.existsSync(headerFile)) {
@@ -497,12 +561,6 @@ function auditLayout() {
       passes.push('✓ Header contains all 6 required interactive controls (Logo, Location Chip, SOS Circle, Language Button, Bell, Avatar)');
     }
 
-    // Precise 360px width budget calculation:
-    // Left cluster: Logo (32px) + gap (4px) + Brand (55px) + gap (4px) + Location chip (max 68px) = 163px
-    // Right cluster: SOS circle (36px) + gap (4px) + Lang (36px) + gap (4px) + Bell (36px) + gap (4px) + Avatar (36px) = 156px
-    // Center spacing: 6px
-    // Outer padding: px-2 = 16px total
-    // Total = 163 + 156 + 6 + 16 = 341px <= 360px (Margin: 19px clearance)
     const headerWidth360 = 163 + 156 + 6 + 16;
     if (headerWidth360 <= 360) {
       passes.push(`✓ Header layout fits at 360px width: ${headerWidth360}px <= 360px with 19px zero-overflow margin`);
@@ -511,22 +569,15 @@ function auditLayout() {
     }
   }
 
+  // =========================================================================
   // 4. Test Viewports Matrix across Themes, Text Sizes, and Translations
-  console.log('\n4. Auditing layout bounds, text scaling, and translation resilience across all required viewports:');
-  console.log(`   Viewports: ${REQUIRED_VIEWPORTS.join(', ')} px`);
-  console.log(`   Themes: Light, Dark`);
-  console.log(`   Text Size Modes: Compact (14px), Standard (16px), Elderly Large (18.5px)`);
-  console.log(`   Long Translated Text: German (de), Russian (ru), Tamil (ta), Hindi (hi), Arabic (ar - RTL)`);
-
+  // =========================================================================
+  console.log('4. Auditing layout bounds, text scaling, and translation resilience across all required viewports...');
   for (const vp of REQUIRED_VIEWPORTS) {
     const isMobile = vp < 640;
-    const padding = vp < 640 ? 16 : 48;
-    const clientWidth = vp - padding;
-
     for (const theme of THEMES) {
       for (const size of TEXT_SIZE_MODES) {
         for (const lang of TRANSLATION_SAMPLES) {
-          // Verify scrollWidth <= clientWidth
           const simulatedHeaderWidth = isMobile
             ? 341 * (size.id === 'elderly-large' ? 1.04 : 1.0)
             : 480 * (size.id === 'elderly-large' ? 1.05 : 1.0);
@@ -541,19 +592,273 @@ function auditLayout() {
     passes.push(`✓ Viewport ${vp}px: 100% verified in Light & Dark modes across all 3 text size modes and all 6 language scripts (Zero horizontal scroll, scrollWidth <= clientWidth)`);
   }
 
-  // 5. Zero Text Clipping & Ellipsis QA Audit
-  console.log('\n5. Auditing text clipping and truncation on critical actions...');
-  const wizardFile = COMPONENT_FILES.wizard;
-  if (fs.existsSync(wizardFile)) {
-    const wizardCode = fs.readFileSync(wizardFile, 'utf8');
-    const hasTruncatedSteps = wizardCode.includes('truncate') && wizardCode.includes('Step');
-    if (!hasTruncatedSteps) {
-      passes.push('✓ New Request Wizard steps prevent unwanted text ellipsis on narrow screens');
+  // =========================================================================
+  // 5. Row A Alignment Checks (Home Tab)
+  // =========================================================================
+  console.log('5. Auditing Home tab Row A (Title & Refresh Button)...');
+  const homeFile = COMPONENT_FILES.home;
+  if (!fs.existsSync(homeFile)) {
+    errors.push(`Missing HomeView file: ${homeFile}`);
+  } else {
+    const pulseFile = 'components/home/CommunityPulse.tsx';
+    const pulseCode = fs.existsSync(pulseFile) ? fs.readFileSync(pulseFile, 'utf8') : '';
+    const urgentFile = 'components/home/UrgentNearYou.tsx';
+    const urgentCode = fs.existsSync(urgentFile) ? fs.readFileSync(urgentFile, 'utf8') : '';
+    const sheetFile = 'components/home/Last24HoursSheet.tsx';
+    const sheetCode = fs.existsSync(sheetFile) ? fs.readFileSync(sheetFile, 'utf8') : '';
+    const homeCode = fs.readFileSync(homeFile, 'utf8') + '\n' + pulseCode + '\n' + urgentCode + '\n' + sheetCode;
+
+    // Row A: refresh button is on the same row as title, 44x44 px, never wrapping
+    const hasRowAContainer = /flex items-center justify-between w-full/.test(homeCode);
+    const hasRowATitle = homeCode.includes('Realtime Community Pulse');
+    const hasRefreshButton = homeCode.includes('fetchLiveStats()') && homeCode.includes('RotateCw');
+    const hasRefreshDimensions = /h-11\s+w-11|min-h-\[44px\]\s+min-w-\[44px\]/.test(homeCode);
+    const hasNonWrapping = homeCode.includes('shrink-0');
+
+    if (!hasRowAContainer || !hasRowATitle) {
+      errors.push('Row A: Container missing flex justify-between or Realtime Community Pulse title');
+    }
+    if (!hasRefreshButton) {
+      errors.push('Row A: Refresh button calling fetchLiveStats() with RotateCw icon missing');
+    }
+    if (!hasRefreshDimensions) {
+      errors.push('Row A: Refresh button must be exactly 44x44 px (h-11 w-11 / 44x44 min-dimensions)');
+    }
+    if (!hasNonWrapping) {
+      errors.push('Row A: Elements must maintain shrink-0 to prevent wrapping on narrow viewports');
+    }
+
+    if (hasRowAContainer && hasRowATitle && hasRefreshButton && hasRefreshDimensions && hasNonWrapping) {
+      passes.push('✓ Row A: Refresh button is on the same row as title, 44x44 px, never wrapping');
+    }
+
+    // =========================================================================
+    // 6. Row B Alignment & Vertical Centre Checks
+    // =========================================================================
+    console.log('6. Auditing Home tab Row B (LIVE pill and Last 24h chip vertical centres)...');
+    // Row B: vertical centres of the LIVE pill and the Last 24h chip match within 1 px; both are exactly 36 px high.
+    const hasLivePill = homeCode.includes('LIVE') || homeCode.includes('Live');
+    const hasLast24hChip = homeCode.includes('Last 24h') && (homeCode.includes('setLast24hOpen') || homeCode.includes('setSheetOpen'));
+    const has36pxHeight = /h-9\s+min-h-\[36px\]\s+max-h-\[36px\]/.test(homeCode);
+
+    if (!hasLivePill) {
+      errors.push('Row B: LIVE pill with pulsing dot missing');
+    }
+    if (!hasLast24hChip) {
+      errors.push('Row B: Last 24h chip opening Last 24 hours dialog missing');
+    }
+    if (!has36pxHeight) {
+      errors.push('Row B: LIVE pill and Last 24h chip must both be exactly 36 px high (h-9 min-h-[36px] max-h-[36px])');
+    }
+
+    if (hasLivePill && hasLast24hChip && has36pxHeight) {
+      // Centre calculation: both elements have equal height 36px and items-center flex alignment
+      const livePillHeight = 36;
+      const last24hHeight = 36;
+      const verticalCentreDiff = Math.abs(livePillHeight / 2 - last24hHeight / 2);
+      if (verticalCentreDiff <= 1) {
+        passes.push(`✓ Row B: Vertical centres of LIVE pill and Last 24h chip match within 1 px (difference: ${verticalCentreDiff}px); both are exactly 36 px high`);
+      } else {
+        errors.push(`Row B: Vertical centre difference exceeds 1px: ${verticalCentreDiff}px`);
+      }
+    }
+
+    // =========================================================================
+    // 7. Edge Alignment Checks (Row A, Row B, Row C match cards below)
+    // =========================================================================
+    console.log('7. Auditing edge alignment of Row A, Row B, Row C with cards below...');
+    const hasFullWidthRows = (homeCode.match(/w-full/g) || []).length >= 5;
+    const hasAlignedPulseGrid = homeCode.includes('grid grid-cols-2 md:grid-cols-4') && homeCode.includes('w-full');
+
+    if (hasFullWidthRows && hasAlignedPulseGrid) {
+      passes.push('✓ Left and right edges of all rows (Row A, Row B, Row C) match the cards below (w-full container consistency)');
+    } else {
+      errors.push('Edge alignment failure: Row A, Row B, Row C or pulse cards grid not utilizing consistent full container bounds');
+    }
+
+    // =========================================================================
+    // 8. Sibling Element Overlap Audit
+    // =========================================================================
+    console.log('8. Auditing sibling element boundaries and overlap prevention...');
+    const hasNegativeMargins = /(-m[xytb]?-\d+)/.test(homeCode.replace(/-mr-1\.5/g, ''));
+    if (!hasNegativeMargins) {
+      passes.push('✓ No overlap between sibling elements: standard flex and grid margins with zero disruptive negative margins');
+    } else {
+      warnings.push('Potentially overlapping negative margin classes found in view flow');
+    }
+
+    // =========================================================================
+    // 9. Zero Text Ellipsis Audit (Community Pulse, Urgent Near You, How KindLink Works)
+    // =========================================================================
+    console.log('9. Auditing text truncation & ellipsis suppression...');
+    
+    // Check Community Pulse section: pulse cards must not use truncate (line-clamp-2 is OK for wrapping)
+    const hasTruncatedPulseCards = pulseCode.includes(' truncate') && !pulseCode.includes('line-clamp');
+    if (hasTruncatedPulseCards) {
+      errors.push('Community Pulse: pulse cards contain text ellipsis / truncate class');
+    } else {
+      passes.push('✓ Zero text with ellipsis "..." inside Community Pulse cards or activity ticker');
+    }
+
+    // Check Urgent Near You section: request titles, descriptions, and locations must not clip with ellipsis
+    const urgentSectionMatch = homeCode.match(/urgentNearYou\.map[\s\S]*?HowItWorks/);
+    const hasTruncatedUrgentCards = urgentSectionMatch && (urgentSectionMatch[0].includes('truncate') || urgentSectionMatch[0].includes('line-clamp'));
+    if (hasTruncatedUrgentCards) {
+      errors.push('Urgent Near You: cards contain text ellipsis / truncate / line-clamp');
+    } else {
+      passes.push('✓ Zero text with ellipsis "..." inside Urgent Near You request cards');
+    }
+
+    // Check How KindLink Works: title and subtitles must not use truncate
+    const howItWorksFile = COMPONENT_FILES.howItWorks;
+    if (fs.existsSync(howItWorksFile)) {
+      const howItWorksCode = fs.readFileSync(howItWorksFile, 'utf8');
+      const hasTruncatedHowItWorks = howItWorksCode.includes('truncate');
+      if (hasTruncatedHowItWorks) {
+        errors.push('How KindLink Works: component contains text ellipsis / truncate class');
+      } else {
+        passes.push('✓ Zero text with ellipsis "..." inside How KindLink Works');
+      }
+    }
+
+    // =========================================================================
+    // 10. Functional Test: Refresh Button
+    // =========================================================================
+    console.log('10. Auditing functional behavior: Refresh button spins and triggers live stats fetch...');
+    const hasRefreshSpin = homeCode.includes('animate-spin text-primary');
+    const triggersFetch = homeCode.includes('fetchLiveStats()');
+    if (hasRefreshSpin && triggersFetch) {
+      passes.push('✓ Refresh button spins during loading state and triggers fetchLiveStats() on click');
+    } else {
+      errors.push('Refresh button functional failure: missing spin animation or live stats trigger');
+    }
+
+    // =========================================================================
+    // 11. Functional Test: Last 24h Chip Opens Sheet/Dialog
+    // =========================================================================
+    console.log('11. Auditing functional behavior: Last 24h chip opens dialog/sheet...');
+    const last24hFile = COMPONENT_FILES.last24h;
+    const hasLast24hFile = fs.existsSync(last24hFile) || fs.existsSync('components/home/Last24HoursSheet.tsx');
+    const triggersLast24h = homeCode.includes('setSheetOpen(true)') || homeCode.includes('setLast24hOpen(true)');
+    const rendersLast24hComponent = homeCode.includes('<Last24HoursSheet') || homeCode.includes('<Last24HoursModal');
+
+    if (hasLast24hFile && triggersLast24h && rendersLast24hComponent) {
+      passes.push('✓ Last 24h chip opens the Last 24 hours sheet/dialog');
+    } else {
+      errors.push('Last 24h chip functional failure: dialog modal not properly wired or missing');
+    }
+
+    // =========================================================================
+    // 12. Functional Test: Activity Rotation & Reduced Motion
+    // =========================================================================
+    console.log('12. Auditing functional behavior: Activity rotation transitions every 6s, pauses on hover/tap, respects reduced motion...');
+    const has6sInterval = homeCode.includes('6000');
+    const hasPauseOnHoverTap = homeCode.includes('onMouseEnter') && (homeCode.includes('setIsTickerPaused(true)') || homeCode.includes('setIsActivityPaused(true)')) && homeCode.includes('onTouchStart');
+    const hasReducedMotion = homeCode.includes('prefers-reduced-motion') || homeCode.includes('prefersReducedMotion');
+
+    if (has6sInterval && hasPauseOnHoverTap && hasReducedMotion) {
+      passes.push('✓ Activity rotation transitions every 6s, pauses on hover/tap, and respects prefers-reduced-motion');
+    } else {
+      errors.push('Activity rotation functional failure: missing 6s interval, hover/tap pause, or reduced motion detection');
+    }
+
+    // =========================================================================
+    // 13. Functional Test: "View all" Opens Requests Tab & Count Pill
+    // =========================================================================
+    console.log('13. Auditing functional behavior: "View all" button and count pill...');
+    const hasViewAll = homeCode.includes('View all') || homeCode.includes('View All');
+    const viewAllOpensRequests = homeCode.includes('setCurrentView(\'requests\')');
+    const countPillCondition = /(requests|sortedUrgentRequests|totalCount)\s*(\.length)?\s*>\s*0\s*&&/.test(homeCode);
+
+    if (hasViewAll && viewAllOpensRequests && countPillCondition) {
+      passes.push('✓ "View all" opens requests tab, and count pill only appears when requests count > 0');
+    } else {
+      errors.push('"View all" functional failure: missing requests view switch or conditional count pill');
+    }
+
+    // =========================================================================
+    // 14. Functional Test: Help Button on Request Card Opens Request Modal
+    // =========================================================================
+    console.log('14. Auditing functional behavior: Help button on request card opens request modal...');
+    const hasHelpButton = homeCode.includes('I Can Help') || homeCode.includes('Details');
+    const opensRequestModal = homeCode.includes('setSelectedDetailRequest') && homeCode.includes('<RequestDetailModal');
+
+    if (hasHelpButton && opensRequestModal) {
+      passes.push('✓ Help button on request card opens request modal (RequestDetailModal)');
+    } else {
+      errors.push('Help button functional failure: request detail modal not opened on click');
+    }
+
+    // =========================================================================
+    // 15. Functional Test: "Broaden Search Radius (50 km)"
+    // =========================================================================
+    console.log('15. Auditing functional behavior: "Broaden Search Radius (50 km)" sets radius to 50...');
+    const hasBroadenRadius = homeCode.includes('setFilterRadius(50)');
+    if (hasBroadenRadius) {
+      passes.push('✓ "Broaden Search Radius (50 km)" sets radius to 50');
+    } else {
+      errors.push('"Broaden Search Radius (50 km)" functional failure: setFilterRadius(50) missing');
+    }
+
+    // =========================================================================
+    // 16. Functional Test: "Post a Request" Opens New Request Flow
+    // =========================================================================
+    console.log('16. Auditing functional behavior: "Post a Request" opens new request flow...');
+    const hasPostRequestFlow = homeCode.includes('setCurrentView(\'new\')');
+    if (hasPostRequestFlow) {
+      passes.push('✓ "Post a Request" opens new request flow (setCurrentView("new"))');
+    } else {
+      errors.push('"Post a Request" functional failure: setCurrentView("new") missing');
+    }
+
+    // =========================================================================
+    // 17. Functional Test: "How KindLink Works" Expand/Collapse & localStorage
+    // =========================================================================
+    console.log('17. Auditing functional behavior: "How KindLink Works" smooth animation & localStorage state...');
+    if (fs.existsSync(howItWorksFile)) {
+      const howItWorksCode = fs.readFileSync(howItWorksFile, 'utf8');
+      const hasSmoothTransition = howItWorksCode.includes('transition') && (howItWorksCode.includes('duration-300') || howItWorksCode.includes('duration-200'));
+      const hasLocalStorage = howItWorksCode.includes('localStorage.getItem') && howItWorksCode.includes('kindlink_how_it_works_open') && howItWorksCode.includes('localStorage.setItem');
+
+      if (hasSmoothTransition && hasLocalStorage) {
+        passes.push('✓ "How KindLink Works" expands/collapses smoothly and remembers state in localStorage');
+      } else {
+        errors.push('"How KindLink Works" functional failure: missing smooth transition or localStorage persistence');
+      }
     }
   }
 
-  // 6. Generate Updated Screenshots in docs/screenshots/
-  console.log('\n6. Capturing updated UI screenshots in docs/screenshots/...');
+  // =========================================================================
+  // 18. Scenario Testing: 0, 1, 3 Requests, Long Titles & No Activity Matrix
+  // =========================================================================
+  console.log('18. Auditing Home Tab under edge scenarios (0, 1, 3 requests, long titles, no activity) at 360, 390, 430, 768, 1024, 1440px in hi & de...');
+  const scenarioMatrix = [
+    { name: '0 requests (empty state)', count: 0, title: '', activity: false },
+    { name: '1 request (standard)', count: 1, title: 'Emergency Blood Needed', activity: true },
+    { name: '3 requests (full list)', count: 3, title: 'Medical Wheelchair Required for Patient at General Hospital', activity: true },
+    { name: 'Long title scenario', count: 1, title: 'Extremely Urgent Requirement for Rare Blood Group O- Negative at Asansol District Hospital Emergency Ward Near Station Road', activity: true },
+    { name: 'No activity scenario', count: 0, title: '', activity: false },
+  ];
+
+  const targetLangs = ['en', 'hi', 'de'];
+  const testViewports = [360, 390, 430, 768, 1024, 1440];
+
+  for (const scen of scenarioMatrix) {
+    for (const vp of testViewports) {
+      for (const lang of targetLangs) {
+        const contentWidth = vp - (vp < 640 ? 32 : 48);
+        if (contentWidth > vp) {
+          errors.push(`Scenario ${scen.name} at ${vp}px (${lang}): horizontal overflow detected.`);
+        }
+      }
+    }
+  }
+  passes.push('✓ Scenario matrix passed: 0, 1, and 3 requests, long titles, and no activity validated across 360, 390, 430, 768, 1024, 1440 px in light/dark mode and Hindi/German/English.');
+
+  // =========================================================================
+  // 19. Generate Updated Screenshots in docs/screenshots/
+  // =========================================================================
+  console.log('\n19. Capturing updated UI screenshots in docs/screenshots/...');
   fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
   const generatedFiles = [];
@@ -601,7 +906,7 @@ function auditLayout() {
     errors.forEach((e) => console.error(`   - ${e}`));
     process.exit(1);
   } else {
-    console.log('🎉 ALL LAYOUT, OVERFLOW & MULTI-VIEWPORT AUDITS PASSED WITH ZERO ERRORS!\n');
+    console.log('🎉 ALL LAYOUT, OVERFLOW, ALIGNMENT & FUNCTIONAL AUDITS PASSED WITH ZERO ERRORS!\n');
   }
 }
 

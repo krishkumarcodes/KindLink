@@ -31,6 +31,11 @@ import { HelpCategory, HelpRequest } from '@/lib/data/types';
 import { getHumanReadableLocation } from '@/lib/geo/reverse-geocode';
 import { EmergencySosModal } from '../shell/EmergencySosModal';
 import { AllCategoriesModal } from './AllCategoriesModal';
+import { UrgentNearYou } from './UrgentNearYou';
+import { HowItWorksCard } from './HowItWorksCard';
+import { CommunityPulse } from './CommunityPulse';
+import { RequestDetailModal } from '../requests/RequestDetailModal';
+import { HelpFlowModal } from '../requests/HelpFlowModal';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
 import { useTranslation } from '@/lib/i18n';
 
@@ -170,10 +175,10 @@ export function HomeView() {
 
   const { locale, t } = useTranslation();
 
-  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   const [sosModalOpen, setSosModalOpen] = useState(false);
   const [allCategoriesModalOpen, setAllCategoriesModalOpen] = useState(false);
-  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const [selectedDetailRequest, setSelectedDetailRequest] = useState<HelpRequest | null>(null);
+  const [helpFlowRequest, setHelpFlowRequest] = useState<HelpRequest | null>(null);
 
   // Exact same location source as the header chip: userAreaName || 'Asansol, WB'
   const [resolvedLocation, setResolvedLocation] = useState<string>(userAreaName || 'Asansol, WB');
@@ -183,79 +188,6 @@ export function HomeView() {
   const [sosHoldProgress, setSosHoldProgress] = useState(0);
   const sosStartTimeRef = useRef<number>(0);
   const sosAnimFrameRef = useRef<number | null>(null);
-
-  // Ticking "updated Xs ago" relative timestamp
-  const [lastUpdatedTime, setLastUpdatedTime] = useState<number>(Date.now());
-  const [secondsSinceUpdate, setSecondsSinceUpdate] = useState<number>(0);
-
-  useEffect(() => {
-    setLastUpdatedTime(Date.now());
-    setSecondsSinceUpdate(0);
-  }, [liveStats]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setSecondsSinceUpdate(Math.floor((Date.now() - lastUpdatedTime) / 1000));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [lastUpdatedTime]);
-
-  const relativeUpdateTimeText = useMemo(() => {
-    if (secondsSinceUpdate < 5) return 'updated just now';
-    if (secondsSinceUpdate < 60) return `updated ${secondsSinceUpdate}s ago`;
-    const mins = Math.floor(secondsSinceUpdate / 60);
-    return `updated ${mins}m ago`;
-  }, [secondsSinceUpdate]);
-
-  // Real anonymized live events for latest activity ticker
-  const anonymizedEvents = useMemo(() => {
-    if (!requests || requests.length === 0) {
-      return [
-        'KindLink verified community aid network active near Asansol & Coalfield region',
-        'Direct emergency blood & transit dispatch standing by in West Bengal & Jharkhand',
-        'Verified local volunteers ready to respond across your neighborhood',
-      ];
-    }
-
-    const events: string[] = [];
-    requests.forEach((req) => {
-      const rawLoc = req.locationName || 'Asansol';
-      const cleanLoc = rawLoc.split(',')[0].replace(/\(.*?\)/g, '').trim() || 'Asansol';
-      const timeStr = req.waitingMinutes > 0 ? `${req.waitingMinutes}m ago` : 'just now';
-
-      if (req.category === 'blood') {
-        if (req.status === 'accepted' || req.status === 'completed') {
-          events.push(`A blood request was accepted near ${cleanLoc}, ${timeStr}`);
-        } else {
-          events.push(`A blood donation request (${req.bloodGroup || 'urgent'}) was posted near ${cleanLoc}, ${timeStr}`);
-        }
-      } else if (req.category === 'transport') {
-        if (req.status === 'accepted' || req.status === 'completed') {
-          events.push(`Emergency transit escort was accepted near ${cleanLoc}, ${timeStr}`);
-        } else {
-          events.push(`Emergency transit needed near ${cleanLoc}, ${timeStr}`);
-        }
-      } else if (req.category === 'equipment') {
-        events.push(`Medical gear (${req.itemType || 'wheelchair'}) requested near ${cleanLoc}, ${timeStr}`);
-      } else if (req.category === 'elderly') {
-        events.push(`Elderly care assistance requested near ${cleanLoc}, ${timeStr}`);
-      } else if (req.category === 'books') {
-        events.push(`Academic textbook exchange requested near ${cleanLoc}, ${timeStr}`);
-      }
-    });
-
-    return events.length > 0 ? events.slice(0, 6) : ['Verified volunteers active nearby'];
-  }, [requests]);
-
-  const [currentEventIndex, setCurrentEventIndex] = useState(0);
-
-  useEffect(() => {
-    if (anonymizedEvents.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentEventIndex((prev) => (prev + 1) % anonymizedEvents.length);
-    }, 4500);
-    return () => clearInterval(interval);
-  }, [anonymizedEvents.length]);
 
   const startSosHold = useCallback(() => {
     setIsHoldingSos(true);
@@ -301,14 +233,6 @@ export function HomeView() {
       }
     };
   }, []);
-
-  // Close active tooltip when tapping outside
-  useEffect(() => {
-    if (!activeTooltip) return;
-    const handleClickOutside = () => setActiveTooltip(null);
-    window.addEventListener('click', handleClickOutside);
-    return () => window.removeEventListener('click', handleClickOutside);
-  }, [activeTooltip]);
 
   // Sync resolved location when userAreaName changes
   useEffect(() => {
@@ -367,23 +291,6 @@ export function HomeView() {
       : 'Verified helpers active nearby'
   }. Free and community run.`;
 
-  // Top 3 urgent requests sorted strictly by urgency, distance, and waiting time
-  const URGENCY_PRIORITY: Record<string, number> = {
-    critical: 1,
-    high: 2,
-    medium: 3,
-    low: 4,
-  };
-
-  const urgentNearYou = [...requests]
-    .sort((a, b) => {
-      const urgA = URGENCY_PRIORITY[a.urgency] ?? 5;
-      const urgB = URGENCY_PRIORITY[b.urgency] ?? 5;
-      if (urgA !== urgB) return urgA - urgB;
-      if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
-      return b.waitingMinutes - a.waitingMinutes;
-    })
-    .slice(0, 3);
 
   // Category stats calculation
   const categoryStats = useMemo(() => {
@@ -523,76 +430,8 @@ export function HomeView() {
     setCurrentView('requests');
   };
 
-  // Trust match and live stats values
-  // Honest data: Trust match must display "—" with caption "Not enough ratings yet" until at least 5 ratings exist in database!
-  const rawTrust = liveStats?.trustMatchPercentage ?? liveStats?.trustMatchPercent;
-  const avgResp = liveStats?.avgResponseMinutes;
-  const helpersNearby = liveStats?.helpersNearby;
-  const actsOfHelp = liveStats?.actsOfHelp;
-
-  // 4 Identically Sized Community Pulse Cards
-  const pulseCards = [
-    {
-      id: 'helpers',
-      label: 'Helpers nearby',
-      icon: <Users className="h-4 w-4 notranslate" />,
-      iconBg: 'bg-emerald-500/15',
-      iconColor: 'text-emerald-600 dark:text-emerald-400',
-      iconBorder: 'border-emerald-500/20',
-      cardBorder: 'border-emerald-500/30 hover:border-emerald-500/60',
-      value: helpersNearby !== undefined && helpersNearby !== null ? String(helpersNearby) : '—',
-      caption:
-        helpersNearby !== undefined && helpersNearby !== null
-          ? helpersNearby === 1
-            ? '1 verified helper active'
-            : `${helpersNearby} verified helpers active`
-          : 'Not enough data yet',
-      tooltipTitle: 'Helpers nearby',
-      tooltipText: `Verified local responders active in the last 15 min or registered within ${filterRadius} km. Updated in real-time.`,
-    },
-    {
-      id: 'response',
-      label: 'Avg. response',
-      icon: <Clock className="h-4 w-4 notranslate" />,
-      iconBg: 'bg-amber-500/15',
-      iconColor: 'text-amber-600 dark:text-amber-400',
-      iconBorder: 'border-amber-500/20',
-      cardBorder: 'border-amber-500/30 hover:border-amber-500/60',
-      value: avgResp !== null && avgResp !== undefined ? `${avgResp} min` : '—',
-      caption: avgResp !== null && avgResp !== undefined ? 'community response time' : 'Not enough data yet',
-      tooltipTitle: 'Avg. response',
-      tooltipText: 'Median time from request creation to first offer of assistance in the last 30 days.',
-    },
-    {
-      id: 'acts',
-      label: 'Acts of help',
-      icon: <Heart className="h-4 w-4 notranslate" />,
-      iconBg: 'bg-rose-500/15',
-      iconColor: 'text-rose-600 dark:text-rose-400',
-      iconBorder: 'border-rose-500/20',
-      cardBorder: 'border-rose-500/30 hover:border-rose-500/60',
-      value: actsOfHelp !== undefined && actsOfHelp !== null ? String(actsOfHelp) : '—',
-      caption: actsOfHelp !== undefined && actsOfHelp !== null ? 'completed mutual aid' : 'Not enough data yet',
-      tooltipTitle: 'Acts of help',
-      tooltipText: 'Total completed mutual aid acts delivered safely across our local community.',
-    },
-    {
-      id: 'trust',
-      label: 'Trust match',
-      icon: <ShieldCheck className="h-4 w-4 notranslate" />,
-      iconBg: 'bg-blue-500/15',
-      iconColor: 'text-blue-600 dark:text-blue-400',
-      iconBorder: 'border-blue-500/20',
-      cardBorder: 'border-blue-500/30 hover:border-blue-500/60',
-      value: rawTrust !== null && rawTrust !== undefined ? `${rawTrust}%` : '—',
-      caption: rawTrust !== null && rawTrust !== undefined ? 'verified community safety' : 'Not enough ratings yet',
-      tooltipTitle: 'Trust match',
-      tooltipText: 'Percentage of verified volunteer deliveries with trusted 4+ star community safety ratings (requires at least 5 ratings).',
-    },
-  ];
-
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-36 sm:pb-32">
+    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-36 sm:pb-36 lg:pb-36">
       {/* 1. Hero Greeting Banner */}
       <div className="rounded-3xl bg-gradient-to-br from-card via-card to-primary/5 p-5 sm:p-7 lg:p-8 border border-border shadow-soft">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -674,7 +513,7 @@ export function HomeView() {
                 </span>
                 <span className="text-xs text-white/80 font-normal leading-tight whitespace-nowrap">
                   {isHoldingSos
-                    ? `Hold (${Math.max(0, (2000 - (sosHoldProgress / 100) * 2000) / 1000).toFixed(1)}s)...`
+                    ? `Hold (${Math.max(0, (2000 - (sosHoldProgress / 100) * 2000) / 1000).toFixed(1)}s)`
                     : 'Hold for 2 seconds'}
                 </span>
               </div>
@@ -683,162 +522,7 @@ export function HomeView() {
         </div>
 
         {/* 2. Realtime Community Pulse */}
-        <div className="mt-8 pt-6 border-t border-border/80 space-y-4">
-          {/* Header Row */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center flex-wrap gap-2.5 min-w-0">
-              <h2 className="text-base sm:text-lg font-extrabold text-foreground tracking-tight flex items-center gap-2">
-                <Activity className="h-4 w-4 text-primary notranslate" />
-                <span>Realtime Community Pulse</span>
-              </h2>
-
-              {/* Small pulsing Live pill with ticking relative timestamp */}
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-xs font-medium">
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                </span>
-                <span className="font-bold text-[11px] uppercase tracking-wider">Live</span>
-                <span className="text-muted-foreground/60">•</span>
-                <span className="text-[11px] text-muted-foreground tabular-nums">{relativeUpdateTimeText}</span>
-              </div>
-            </div>
-
-            {/* Sparkline & Refresh trigger */}
-            <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
-              {/* Tiny inline SVG sparkline for 24h trend */}
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-muted/60 border border-border/80" title="24-hour community activity trend">
-                <svg
-                  className="w-14 h-4 text-emerald-500 overflow-visible"
-                  viewBox="0 0 56 16"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                >
-                  <defs>
-                    <linearGradient id="pulseSparkGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="currentColor" stopOpacity="0.3" />
-                      <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  <path
-                    d="M 2 13 Q 12 11, 20 12 T 34 7 T 46 5 T 54 2 L 54 16 L 2 16 Z"
-                    fill="url(#pulseSparkGrad)"
-                  />
-                  <path
-                    d="M 2 13 Q 12 11, 20 12 T 34 7 T 46 5 T 54 2"
-                    stroke="currentColor"
-                    strokeWidth="1.75"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <circle cx="54" cy="2" r="2" fill="currentColor" />
-                </svg>
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                  24h trend
-                </span>
-              </div>
-
-              {/* 44px refresh button */}
-              <button
-                type="button"
-                onClick={() => fetchLiveStats()}
-                title="Refresh live stats"
-                aria-label="Refresh live stats"
-                className="h-10 w-10 min-h-[40px] min-w-[40px] shrink-0 rounded-2xl border border-border/80 bg-background/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-all shadow-xs flex items-center justify-center touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <RotateCw className={`h-4 w-4 notranslate ${isLoadingStats ? 'animate-spin text-primary' : ''}`} />
-              </button>
-            </div>
-          </div>
-
-          {/* Latest Activity Ticker (Anonymized real events, no private names or exact coordinates) */}
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-muted/40 border border-border/70 text-xs text-foreground overflow-hidden">
-            <span className="flex h-2 w-2 shrink-0 rounded-full bg-primary animate-pulse" />
-            <span className="font-bold text-muted-foreground shrink-0 text-[10px] sm:text-[11px] uppercase tracking-wider">
-              Latest Activity:
-            </span>
-            <span className="truncate text-foreground font-medium transition-all duration-300 text-xs">
-              {anonymizedEvents[currentEventIndex] || anonymizedEvents[0]}
-            </span>
-          </div>
-
-          {/* 4 Equal Cards: 2 by 2 on phones, 4 across on tablets and desktops */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-            {pulseCards.map((card, index) => {
-              const tooltipAlignClass =
-                index === 0
-                  ? 'left-0 md:left-0'
-                  : index === 1
-                  ? 'right-0 md:left-0'
-                  : index === 2
-                  ? 'left-0 md:right-0'
-                  : 'right-0 md:right-0';
-
-              return (
-                <div
-                  key={card.id}
-                  className={`relative flex flex-col justify-between p-4 rounded-2xl bg-card/90 dark:bg-card/75 border ${card.cardBorder} shadow-xs hover:shadow-md transition-all duration-200 h-[154px] min-h-[154px] backdrop-blur-xs`}
-                >
-                  {/* Top Row: Icon chip on left, Info button on right */}
-                  <div className="flex h-9 items-center justify-between gap-2">
-                    <div
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${card.iconBg} ${card.iconColor} border ${card.iconBorder}`}
-                    >
-                      {card.icon}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveTooltip(activeTooltip === card.id ? null : card.id);
-                      }}
-                      aria-label={`Information about ${card.label}`}
-                      title={`Information about ${card.label}`}
-                      className="h-8 w-8 rounded-xl flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    >
-                      <Info className="h-3.5 w-3.5 notranslate" />
-                    </button>
-                  </div>
-
-                  {/* Bottom Content: Number, Full Label, Caption */}
-                  {isLoadingStats && !liveStats ? (
-                    <div className="space-y-2 py-1 animate-pulse" aria-busy="true">
-                      <div className="h-7 w-16 bg-muted/80 rounded-lg" />
-                      <div className="h-4 w-24 bg-muted/60 rounded-md" />
-                      <div className="h-3 w-28 bg-muted/40 rounded-md" />
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <p className="h-8 flex items-baseline gap-1 text-2xl sm:text-3xl font-black text-foreground tabular-nums tracking-tight leading-none">
-                        <AnimatedNumber value={card.value} />
-                      </p>
-                      <p className="text-xs sm:text-sm font-bold text-foreground leading-tight truncate">
-                        {card.label}
-                      </p>
-                      <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight truncate">
-                        {card.caption}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Tooltip kept fully inside the screen */}
-                  {activeTooltip === card.id && (
-                    <div
-                      role="tooltip"
-                      onClick={(e) => e.stopPropagation()}
-                      className={`absolute bottom-full mb-2.5 z-30 w-56 sm:w-64 max-w-[calc(100vw-2.5rem)] p-3 rounded-2xl bg-popover/95 backdrop-blur-md text-popover-foreground text-xs shadow-xl border border-border animate-in fade-in zoom-in-95 duration-150 ${tooltipAlignClass}`}
-                    >
-                      <p className="font-semibold text-foreground mb-1">{card.tooltipTitle}</p>
-                      <p className="text-muted-foreground text-xs leading-relaxed">{card.tooltipText}</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <CommunityPulse />
       </div>
 
       {/* 3. Browse Aid by Category (Responsive Grid - 2 cols on phones, 3 on sm/md, 5 on desktop; no cut-off horizontal scroll) */}
@@ -900,224 +584,12 @@ export function HomeView() {
       </div>
 
       {/* 4. Urgent Near You Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-urgency-critical/10 text-urgency-critical">
-              <Flame className="h-4 w-4 notranslate" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-foreground">Urgent Near You</h2>
-              <p className="text-xs text-muted-foreground">Ranked by urgency level, distance, and waiting time</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setCurrentView('requests')}
-            className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
-          >
-            <span>View All ({requests.length})</span>
-            <ArrowRight className="h-3.5 w-3.5 notranslate" />
-          </button>
-        </div>
-
-        {urgentNearYou.length === 0 ? (
-          /* Friendly Empty State */
-          <div className="rounded-3xl border border-dashed border-border bg-card/60 p-8 sm:p-12 text-center space-y-4 shadow-soft">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <HeartHandshake className="h-8 w-8 notranslate" />
-            </div>
-            <div className="max-w-md mx-auto space-y-2">
-              <h3 className="text-lg sm:text-xl font-bold text-foreground">
-                All Quiet &amp; Peaceful Nearby
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                No urgent requests near you right now. You are all set to help when a neighbor in need calls!
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-              <button
-                onClick={() => {
-                  setFilterRadius(50);
-                  setCurrentView('requests');
-                }}
-                className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground hover:bg-muted transition shadow-sm w-full sm:w-auto touch-target"
-              >
-                <Compass className="h-4 w-4 text-primary notranslate" />
-                <span>Broaden Search Radius (50 km)</span>
-              </button>
-              <button
-                onClick={() => setCurrentView('new')}
-                className="flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-white hover:bg-primary/90 transition shadow-sm w-full sm:w-auto touch-target"
-              >
-                <PlusCircle className="h-4 w-4 notranslate" />
-                <span>Post a Request</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {urgentNearYou.map((req) => (
-              <div
-                key={req.id}
-                onClick={() => handleRequestClick(req)}
-                className="group rounded-3xl border border-border/80 dark:border-white/10 bg-card/95 backdrop-blur-xs p-5 shadow-soft hover:-translate-y-0.5 hover:shadow-xl hover:shadow-teal-950/25 hover:border-primary/50 dark:hover:border-primary/60 transition-all duration-200 cursor-pointer flex flex-col justify-between text-left"
-              >
-                <div>
-                  {/* Header row with badges */}
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider border shadow-xs ${
-                        req.urgency === 'critical'
-                          ? 'bg-gradient-to-r from-rose-500/15 to-red-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30'
-                          : req.urgency === 'high'
-                          ? 'bg-gradient-to-r from-amber-500/15 to-orange-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
-                          : req.urgency === 'medium'
-                          ? 'bg-gradient-to-r from-blue-500/15 to-sky-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30'
-                          : 'bg-gradient-to-r from-slate-500/15 to-zinc-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30'
-                      }`}
-                    >
-                      <AlertTriangle className="h-3 w-3 notranslate" />
-                      <span>{req.urgency}</span>
-                    </span>
-
-                    <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground bg-muted/60 border border-border/80 px-2.5 py-0.5 rounded-full">
-                      <span>{req.distanceKm} km away</span>
-                    </div>
-                  </div>
-
-                  <h3 className="text-base font-bold text-foreground group-hover:text-primary transition line-clamp-2">
-                    {req.title}
-                  </h3>
-
-                  <p className="text-xs text-muted-foreground mt-2 line-clamp-2 leading-relaxed">
-                    {req.description}
-                  </p>
-
-                  {/* Specific category details */}
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                    {req.bloodGroup && (
-                      <span className="px-2.5 py-1 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-bold border border-rose-500/20">
-                        🩸 {req.bloodGroup} ({req.unitsNeeded || 1} units)
-                      </span>
-                    )}
-                    {req.itemType && (
-                      <span className="px-2.5 py-1 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 text-xs font-bold border border-teal-500/20">
-                        🩺 {req.itemType}
-                      </span>
-                    )}
-                    {req.verified && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] border border-emerald-500/20">
-                        <ShieldCheck className="h-3.5 w-3.5 notranslate" />
-                        <span>{req.verificationBadge}</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Footer with distance & high-contrast buttons */}
-                <div className="mt-5 pt-4 border-t border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                  <div className="space-y-1 text-muted-foreground">
-                    <span className="flex items-center gap-1 font-medium">
-                      <MapPin className="h-3.5 w-3.5 text-primary notranslate shrink-0" />
-                      <span className="truncate max-w-[130px] sm:max-w-[160px]">{req.locationName}</span>
-                    </span>
-                    <div className="flex items-center gap-2 text-[11px] flex-wrap">
-                      <span className="font-semibold text-foreground">
-                        {req.distanceKm} km away
-                      </span>
-                      <span className="text-muted-foreground/60">•</span>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-muted/80 text-[10px] font-bold text-foreground/80 border border-border/60">
-                        <Clock className="h-3 w-3 text-primary notranslate" />
-                        <span>waiting {req.waitingMinutes}m</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRequestClick(req);
-                      }}
-                      className="rounded-xl border border-border/80 bg-background/80 hover:bg-muted px-3 py-2 text-xs font-semibold text-foreground hover:text-primary transition active:scale-95 touch-target shadow-xs"
-                    >
-                      Details
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRequestClick(req);
-                      }}
-                      className="rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-primary/25 hover:bg-primary/90 transition active:scale-95 touch-target flex items-center gap-1.5"
-                    >
-                      <HeartHandshake className="h-3.5 w-3.5 notranslate" />
-                      <span>I Can Help</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <UrgentNearYou
+        onRequestClick={(req) => setSelectedDetailRequest(req)}
+      />
 
       {/* 5. Collapsible 'How KindLink Works' (3 Steps) */}
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-soft transition-all">
-        <button
-          type="button"
-          onClick={() => setHowItWorksOpen(!howItWorksOpen)}
-          className="flex w-full items-center justify-between text-left touch-target"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <ShieldCheck className="h-5 w-5 notranslate" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-foreground">How KindLink Works in 3 Steps</h3>
-              <p className="text-xs text-muted-foreground">Community mutual aid with zero middleman and full transparency</p>
-            </div>
-          </div>
-          <div className="p-2 rounded-xl bg-muted text-muted-foreground">
-            {howItWorksOpen ? <ChevronUp className="h-4 w-4 notranslate" /> : <ChevronDown className="h-4 w-4 notranslate" />}
-          </div>
-        </button>
-
-        {howItWorksOpen && (
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-border animate-in fade-in duration-200">
-            <div className="p-4 rounded-2xl bg-background border border-border space-y-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-white text-xs font-black">
-                1
-              </span>
-              <h4 className="text-sm font-bold text-foreground">Post Request in 30s</h4>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Describe the urgent requirement (blood, wheelchair, medication, books, transport). No complex signups required.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-background border border-border space-y-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-white text-xs font-black">
-                2
-              </span>
-              <h4 className="text-sm font-bold text-foreground">Rapid Urgency Match</h4>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Prioritizes nearest and most time-critical needs, alerting verified local student and citizen helpers.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-background border border-border space-y-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-white text-xs font-black">
-                3
-              </span>
-              <h4 className="text-sm font-bold text-foreground">Safe &amp; Dignified Delivery</h4>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Direct hand-off with OTP and volunteer badges. 100% free with strict anti-exploitation checks.
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+      <HowItWorksCard onAskForHelp={() => setCurrentView('new')} />
 
       <EmergencySosModal open={sosModalOpen} onClose={() => setSosModalOpen(false)} />
       <AllCategoriesModal
@@ -1125,6 +597,17 @@ export function HomeView() {
         onClose={() => setAllCategoriesModalOpen(false)}
         categoryStats={categoryStats}
         onSelectCategory={handleCategoryClick}
+      />
+      <RequestDetailModal
+        request={selectedDetailRequest}
+        open={Boolean(selectedDetailRequest)}
+        onClose={() => setSelectedDetailRequest(null)}
+      />
+      <HelpFlowModal
+        request={helpFlowRequest}
+        open={Boolean(helpFlowRequest)}
+        onClose={() => setHelpFlowRequest(null)}
+        onHelpSubmitted={() => fetchLiveStats()}
       />
     </div>
   );

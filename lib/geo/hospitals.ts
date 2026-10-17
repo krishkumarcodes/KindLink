@@ -1,7 +1,7 @@
 /**
  * KindLink Nearest Hospitals, Clinics, Pharmacies & Blood Banks Engine
- * Queries OpenStreetMap Overpass API for emergency healthcare amenities
- * with strict rate limiting, in-memory & localStorage caching,
+ * Rewired to query /api/maps/places (with Geoapify Places + Overpass mirror cascade)
+ * with strict rate limiting, in-memory & localStorage caching, in-flight deduplication,
  * and reliable fallback to curated Asansol-Dhanbad-Durgapur medical centers.
  */
 
@@ -21,6 +21,9 @@ export interface MedicalFacility {
   emergency?: boolean;
   openingHours?: string;
   isCuratedFallback?: boolean;
+  sourceProvider?: string;
+  isFallback?: boolean;
+  isDegraded?: boolean;
 }
 
 interface CacheEntry {
@@ -31,14 +34,13 @@ interface CacheEntry {
 // Memory cache and rate limiting guards
 const MEMORY_CACHE = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour TTL
-const STORAGE_PREFIX = 'kindlink_medical_cache_';
+const STORAGE_PREFIX = 'kindlink_maps_medical_cache_';
+const LEGACY_STORAGE_PREFIX = 'kindlink_medical_cache_';
 const IN_FLIGHT_REQUESTS = new Map<string, Promise<MedicalFacility[]>>();
-let lastOverpassCallTimestamp = 0;
-const MIN_OVERPASS_INTERVAL_MS = 2000; // Polite rate limiting between Overpass calls
 
 /**
  * Curated reference database of major medical hubs in Asansol and adjoining regions
- * Ensures zero-downtime medical assistance even if Overpass API is rate limited or offline.
+ * Ensures zero-downtime medical assistance even if external APIs are rate limited or offline.
  */
 export const ASANSOL_CURATED_MEDICAL_HUBS: Omit<MedicalFacility, 'distanceKm'>[] = [
   {
@@ -52,6 +54,7 @@ export const ASANSOL_CURATED_MEDICAL_HUBS: Omit<MedicalFacility, 'distanceKm'>[]
     emergency: true,
     openingHours: '24/7 Emergency & Trauma',
     isCuratedFallback: true,
+    sourceProvider: 'curated-database',
   },
   {
     id: 'hosp-hlg-memorial',
@@ -64,6 +67,7 @@ export const ASANSOL_CURATED_MEDICAL_HUBS: Omit<MedicalFacility, 'distanceKm'>[]
     emergency: true,
     openingHours: '24/7 Critical Care & ICU',
     isCuratedFallback: true,
+    sourceProvider: 'curated-database',
   },
   {
     id: 'hosp-burnpur-sail',
@@ -76,6 +80,7 @@ export const ASANSOL_CURATED_MEDICAL_HUBS: Omit<MedicalFacility, 'distanceKm'>[]
     emergency: true,
     openingHours: '24/7',
     isCuratedFallback: true,
+    sourceProvider: 'curated-database',
   },
   {
     id: 'hosp-ecl-kalla',
@@ -88,6 +93,7 @@ export const ASANSOL_CURATED_MEDICAL_HUBS: Omit<MedicalFacility, 'distanceKm'>[]
     emergency: true,
     openingHours: '24/7 Super Speciality & Emergency',
     isCuratedFallback: true,
+    sourceProvider: 'curated-database',
   },
   {
     id: 'blood-asansol-subdiv',
@@ -100,6 +106,7 @@ export const ASANSOL_CURATED_MEDICAL_HUBS: Omit<MedicalFacility, 'distanceKm'>[]
     emergency: true,
     openingHours: '24/7 Blood Storage & Component Separation',
     isCuratedFallback: true,
+    sourceProvider: 'curated-database',
   },
   {
     id: 'blood-lifeline-asansol',
@@ -112,6 +119,7 @@ export const ASANSOL_CURATED_MEDICAL_HUBS: Omit<MedicalFacility, 'distanceKm'>[]
     emergency: true,
     openingHours: '24/7',
     isCuratedFallback: true,
+    sourceProvider: 'curated-database',
   },
   {
     id: 'clinic-sanjeevani-asansol',
@@ -124,6 +132,7 @@ export const ASANSOL_CURATED_MEDICAL_HUBS: Omit<MedicalFacility, 'distanceKm'>[]
     emergency: false,
     openingHours: '08:00 - 21:00',
     isCuratedFallback: true,
+    sourceProvider: 'curated-database',
   },
   {
     id: 'pharm-apollo-ushagram',
@@ -136,6 +145,7 @@ export const ASANSOL_CURATED_MEDICAL_HUBS: Omit<MedicalFacility, 'distanceKm'>[]
     emergency: false,
     openingHours: '24/7 Medicine Delivery',
     isCuratedFallback: true,
+    sourceProvider: 'curated-database',
   },
   {
     id: 'pharm-medplus-kalyanpur',
@@ -148,6 +158,7 @@ export const ASANSOL_CURATED_MEDICAL_HUBS: Omit<MedicalFacility, 'distanceKm'>[]
     emergency: false,
     openingHours: '07:00 - 23:00',
     isCuratedFallback: true,
+    sourceProvider: 'curated-database',
   },
   {
     id: 'clinic-mission-outreach',
@@ -160,6 +171,7 @@ export const ASANSOL_CURATED_MEDICAL_HUBS: Omit<MedicalFacility, 'distanceKm'>[]
     emergency: false,
     openingHours: '09:00 - 20:00',
     isCuratedFallback: true,
+    sourceProvider: 'curated-database',
   },
   {
     id: 'hosp-snmmch-dhanbad',
@@ -172,6 +184,7 @@ export const ASANSOL_CURATED_MEDICAL_HUBS: Omit<MedicalFacility, 'distanceKm'>[]
     emergency: true,
     openingHours: '24/7 Trauma & Emergency',
     isCuratedFallback: true,
+    sourceProvider: 'curated-database',
   },
   {
     id: 'hosp-mission-durgapur',
@@ -184,11 +197,12 @@ export const ASANSOL_CURATED_MEDICAL_HUBS: Omit<MedicalFacility, 'distanceKm'>[]
     emergency: true,
     openingHours: '24/7 Super Speciality',
     isCuratedFallback: true,
+    sourceProvider: 'curated-database',
   },
 ];
 
-function getCacheKey(lat: number, lng: number, radiusMeters: number): string {
-  return `${lat.toFixed(2)},${lng.toFixed(2)}:${radiusMeters}`;
+function getCacheKey(lat: number, lng: number, radiusMeters: number, category?: string): string {
+  return `${lat.toFixed(2)},${lng.toFixed(2)}:${radiusMeters}:${category || 'all'}`;
 }
 
 function getFromCache(key: string): MedicalFacility[] | null {
@@ -206,6 +220,16 @@ function getFromCache(key: string): MedicalFacility[] | null {
         if (now - parsed.timestamp < CACHE_TTL_MS) {
           MEMORY_CACHE.set(key, parsed);
           return parsed.data;
+        }
+      }
+
+      // Check legacy cache
+      const legacyRaw = localStorage.getItem(`${LEGACY_STORAGE_PREFIX}${key}`);
+      if (legacyRaw) {
+        const parsedLegacy: CacheEntry = JSON.parse(legacyRaw);
+        if (now - parsedLegacy.timestamp < CACHE_TTL_MS) {
+          MEMORY_CACHE.set(key, parsedLegacy);
+          return parsedLegacy.data;
         }
       }
     } catch {
@@ -241,12 +265,15 @@ export function getCuratedMedicalFacilities(
     .map((h) => ({
       ...h,
       distanceKm: calculateDistance(lat, lng, h.latitude, h.longitude),
+      isCuratedFallback: true,
+      sourceProvider: 'curated-database',
+      isFallback: true,
     }))
     .sort((a, b) => a.distanceKm - b.distanceKm);
 }
 
 /**
- * Queries Overpass API for nearest hospitals, clinics, pharmacies, and blood banks
+ * Queries /api/maps/places for nearest hospitals, clinics, pharmacies, and blood banks
  * with timeout, polite rate limiting, in-flight deduplication, and curated fallback.
  */
 export async function getNearestMedicalFacilities(options: {
@@ -262,7 +289,7 @@ export async function getNearestMedicalFacilities(options: {
     return getCuratedMedicalFacilities(23.6889, 86.9661, typeFilter).slice(0, limit);
   }
 
-  const cacheKey = getCacheKey(lat, lng, radiusMeters);
+  const cacheKey = getCacheKey(lat, lng, radiusMeters, typeFilter);
   const cached = getFromCache(cacheKey);
   if (cached) {
     const filtered = typeFilter ? cached.filter((f) => f.type === typeFilter) : cached;
@@ -278,116 +305,83 @@ export async function getNearestMedicalFacilities(options: {
   }
 
   const fetchPromise = (async (): Promise<MedicalFacility[]> => {
-    // Enforce polite rate limit: wait if another call was made recently
-    const elapsed = Date.now() - lastOverpassCallTimestamp;
-    if (elapsed < MIN_OVERPASS_INTERVAL_MS) {
-      await new Promise((r) => setTimeout(r, MIN_OVERPASS_INTERVAL_MS - elapsed));
-    }
-    lastOverpassCallTimestamp = Date.now();
-
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 6000);
 
     try {
-      const overpassQuery = `
-        [out:json][timeout:8];
-        (
-          node["amenity"~"hospital|clinic|pharmacy|blood_bank"](around:${radiusMeters},${lat},${lng});
-          way["amenity"~"hospital|clinic|pharmacy|blood_bank"](around:${radiusMeters},${lat},${lng});
-        );
-        out center 35;
-      `;
+      const params = new URLSearchParams({
+        lat: lat.toFixed(5),
+        lng: lng.toFixed(5),
+        radiusMeters: String(radiusMeters),
+        categories: typeFilter || 'all',
+        limit: String(limit),
+      });
 
-      const endpoint = 'https://overpass-api.de/api/interpreter';
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'KindLink-Mutual-Aid/1.0 (https://kindlink.org)',
-        },
-        body: `data=${encodeURIComponent(overpassQuery)}`,
+      const res = await fetch(`/api/maps/places?${params.toString()}`, {
         signal: controller.signal,
+        headers: {
+          Accept: 'application/json',
+        },
       });
 
       clearTimeout(timeoutId);
 
       if (!res.ok) {
-        throw new Error(`Overpass HTTP ${res.status}`);
+        throw new Error(`Places API HTTP ${res.status}`);
       }
 
-      const data = await res.json();
-      const elements: any[] = data.elements || [];
+      const payload = await res.json();
+      const rawPlaces = Array.isArray(payload)
+        ? payload
+        : payload.places || payload.data || [];
 
-      if (!elements.length) {
-        throw new Error('No Overpass elements returned');
+      if (!rawPlaces.length) {
+        throw new Error('No places returned from API');
       }
 
       const results: MedicalFacility[] = [];
 
-      for (const el of elements) {
-        const itemLat = el.lat || (el.center && el.center.lat);
-        const itemLng = el.lon || (el.center && el.center.lon);
-        if (!itemLat || !itemLng) continue;
+      for (const p of rawPlaces) {
+        const itemLat = Number(p.lat || p.latitude);
+        const itemLng = Number(p.lng || p.lon || p.longitude);
+        if (isNaN(itemLat) || isNaN(itemLng)) continue;
 
-        const tags = el.tags || {};
         let amenityType: MedicalAmenityType = 'clinic';
-
-        if (
-          tags.amenity === 'hospital' ||
-          tags.healthcare === 'hospital'
-        ) {
+        const rawCat = (p.category || p.type || '').toLowerCase();
+        if (rawCat.includes('hospital')) {
           amenityType = 'hospital';
-        } else if (
-          tags.amenity === 'blood_bank' ||
-          tags.healthcare === 'blood_bank' ||
-          (tags.name && tags.name.toLowerCase().includes('blood'))
-        ) {
+        } else if (rawCat.includes('blood')) {
           amenityType = 'blood_bank';
-        } else if (
-          tags.amenity === 'pharmacy' ||
-          tags.healthcare === 'pharmacy'
-        ) {
+        } else if (rawCat.includes('pharmacy')) {
           amenityType = 'pharmacy';
         } else {
           amenityType = 'clinic';
         }
 
-        const name =
-          tags.name ||
-          tags['name:en'] ||
-          tags['name:hi'] ||
-          tags['name:bn'] ||
-          `Local ${amenityType.replace('_', ' ')}`;
-
-        const phone =
-          tags.phone ||
-          tags['contact:phone'] ||
-          tags['contact:mobile'] ||
-          tags.mobile;
-
-        const addressParts = [
-          tags['addr:street'],
-          tags['addr:suburb'] || tags['addr:neighbourhood'],
-          tags['addr:city'],
-        ].filter(Boolean);
-
-        const address =
-          addressParts.length > 0 ? addressParts.join(', ') : tags['addr:full'];
-
-        const distanceKm = calculateDistance(lat, lng, itemLat, itemLng);
+        const distanceKm =
+          typeof p.distanceKm === 'number'
+            ? p.distanceKm
+            : calculateDistance(lat, lng, itemLat, itemLng);
 
         results.push({
-          id: `osm-${el.type}-${el.id}`,
-          name,
+          id: String(p.id || `place-${itemLat}-${itemLng}`),
+          name: p.name || `Local ${amenityType.replace('_', ' ')}`,
           type: amenityType,
           latitude: itemLat,
           longitude: itemLng,
-          distanceKm,
-          address,
-          phone,
-          emergency: tags.emergency === 'yes' || amenityType === 'hospital' || amenityType === 'blood_bank',
-          openingHours: tags.opening_hours,
-          isCuratedFallback: false,
+          distanceKm: Math.round(distanceKm * 10) / 10,
+          address: p.address,
+          phone: p.phone,
+          emergency: Boolean(
+            p.emergency ||
+            amenityType === 'hospital' ||
+            amenityType === 'blood_bank'
+          ),
+          openingHours: p.openingHours,
+          isCuratedFallback: Boolean(p.isCuratedFallback || p.isFallback),
+          sourceProvider: p.sourceProvider || 'api-maps-places',
+          isFallback: p.isFallback,
+          isDegraded: p.isDegraded,
         });
       }
 
@@ -399,7 +393,7 @@ export async function getNearestMedicalFacilities(options: {
     } catch {
       clearTimeout(timeoutId);
       // Fallback gracefully to curated local healthcare facilities
-      const curated = getCuratedMedicalFacilities(lat, lng);
+      const curated = getCuratedMedicalFacilities(lat, lng, typeFilter);
       saveToCache(cacheKey, curated);
       return curated;
     } finally {

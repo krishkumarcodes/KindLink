@@ -225,6 +225,27 @@ html[data-reduce-motion="true"] *::after {
   animation: beacon-pulse 2s infinite;
 }
 
+/* Slide in animation with soft highlight for urgent requests */
+@keyframes urgent-slide-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px);
+    box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.35);
+  }
+  60% {
+    box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.2);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    box-shadow: none;
+  }
+}
+
+.animate-urgent-slide-in {
+  animation: urgent-slide-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* Leaflet map fix inside container */
 .leaflet-container {
   width: 100%;
@@ -280,4 +301,17 @@ html[data-reduce-motion="true"] *::after {
 .dark .leaflet-popup-close-button {
   color: #94a3b8 !important;
 }
+
+/* OpenStreetMap Dark Filter (when MapTiler circuit trips in dark mode) */
+.osm-dark-tiles {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%) !important;
+}
+
+/* Ensure Leaflet controls in full-screen maps are never obscured by KindLink mobile bottom nav & center + button */
+@media (max-width: 639px) {
+  .kindlink-map-has-bottom-nav .leaflet-bottom {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 76px) !important;
+  }
+}
+
 

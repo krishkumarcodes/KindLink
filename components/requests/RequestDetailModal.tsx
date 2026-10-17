@@ -629,8 +629,14 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                     <span>Routing...</span>
                   </span>
                 ) : (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                    {routeResult?.source === 'osrm' ? 'OSRM Road Route' : 'Direct Line'}
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    routeResult?.isFallback || routeResult?.source === 'straight-line'
+                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                      : 'bg-primary/10 text-primary border border-primary/20'
+                  }`}>
+                    {routeResult?.isFallback || routeResult?.source === 'straight-line'
+                      ? 'Straight Line (Fallback)'
+                      : `${routeResult?.sourceProvider ? routeResult.sourceProvider.toUpperCase() : 'Road'} Route`}
                   </span>
                 )}
               </div>
@@ -648,7 +654,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                           [request.latitude, request.longitude],
                         ]
                   }
-                  isStraightLine={routeResult?.source === 'straight-line'}
+                  isStraightLine={Boolean(routeResult?.isFallback || routeResult?.source === 'straight-line')}
                   urgency={request.urgency}
                   destinationLabel={request.title}
                 />

@@ -1,4 +1,12 @@
+/**
+ * KindLink Location & Address Search Utility
+ * Rewired to proxy through /api/maps/geocode and /api/maps/reverse
+ * with multi-provider fallbacks, in-memory caching, offline curated landmarks,
+ * and seamless backwards compatibility for LocationModal and NewRequestWizard.
+ */
+
 import { LocationSearchResult } from './types';
+import { reverseGeocode } from '@/lib/geo/reverse-geocode';
 
 export interface SuggestedArea {
   id: string;
@@ -78,7 +86,7 @@ export const SUGGESTED_AREAS: SuggestedArea[] = [
 ];
 
 // Built-in verified landmarks in Asansol and neighboring region for instant offline search
-const KNOWN_LANDMARKS: LocationSearchResult[] = [
+export const KNOWN_LANDMARKS: LocationSearchResult[] = [
   {
     id: 'lm-aec',
     displayName: 'Asansol Engineering College, Kalyanpur, Asansol, West Bengal',
@@ -161,7 +169,7 @@ const KNOWN_LANDMARKS: LocationSearchResult[] = [
   },
 ];
 
-// In-memory cache for Nominatim search queries (10 minute TTL)
+// In-memory cache for search queries (10 minute TTL)
 interface SearchCacheEntry {
   data: LocationSearchResult[];
   timestamp: number;
@@ -170,8 +178,9 @@ const searchCache = new Map<string, SearchCacheEntry>();
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
 /**
- * Searches OSM Nominatim for address suggestions, falling back to or augmenting with local landmarks.
- * Results are cached in memory to minimize external network requests and respect rate limits.
+ * Searches /api/maps/geocode for address suggestions, falling back to or augmenting with local landmarks.
+ * Maintained with legacy function name searchAddressNominatim for 100% backwards compatibility
+ * while fully routing through /api/maps/geocode without direct external calls.
  */
 export async function searchAddressNominatim(
   query: string,
@@ -195,48 +204,56 @@ export async function searchAddressNominatim(
       lm.shortLabel.toLowerCase().includes(cacheKey)
   );
 
-  // 2. Fetch from OSM Nominatim with 4-second timeout
-  const nominatimResults: LocationSearchResult[] = [];
+  // 2. Fetch from /api/maps/geocode (autocomplete mode)
+  const serverResults: LocationSearchResult[] = [];
 
   try {
-    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
-      cleanQuery
-    )}&limit=6&addressdetails=1&countrycodes=in`;
+    const params = new URLSearchParams({
+      query: cleanQuery,
+      type: 'autocomplete',
+      limit: '6',
+    });
 
-    const res = await fetch(url, {
+    const res = await fetch(`/api/maps/geocode?${params.toString()}`, {
       signal,
       headers: {
-        'Accept-Language': 'en, hi, bn',
-        'User-Agent': 'KindLink-Mutual-Aid/1.0 (https://kindlink.org)',
+        Accept: 'application/json',
       },
     });
 
     if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        for (const item of data) {
-          const lat = parseFloat(item.lat);
-          const lng = parseFloat(item.lon);
-          if (isNaN(lat) || isNaN(lng)) continue;
+      const payload = await res.json();
+      const items: any[] = Array.isArray(payload)
+        ? payload
+        : payload.results || payload.data || [];
 
-          const addr = item.address || {};
-          const primary =
-            addr.suburb ||
-            addr.neighbourhood ||
-            addr.residential ||
-            addr.village ||
-            addr.road ||
-            item.name ||
-            '';
-          const secondary =
-            addr.city ||
-            addr.town ||
-            addr.municipality ||
-            addr.county ||
-            addr.state ||
-            '';
+      for (const item of items) {
+        const lat = parseFloat(item.lat);
+        const lng = parseFloat(item.lng || item.lon);
+        if (isNaN(lat) || isNaN(lng)) continue;
 
-          let shortLabel = '';
+        const addr = item.address || {};
+        const primary =
+          item.name ||
+          item.shortLabel ||
+          addr.suburb ||
+          addr.neighbourhood ||
+          addr.residential ||
+          addr.village ||
+          addr.road ||
+          '';
+
+        const secondary =
+          addr.city ||
+          addr.town ||
+          addr.municipality ||
+          addr.county ||
+          addr.state ||
+          item.city ||
+          '';
+
+        let shortLabel = item.shortLabel || '';
+        if (!shortLabel) {
           if (primary && secondary && primary !== secondary) {
             shortLabel = `${primary}, ${secondary}`;
           } else if (primary) {
@@ -244,31 +261,33 @@ export async function searchAddressNominatim(
           } else if (secondary) {
             shortLabel = secondary;
           } else {
-            const parts = (item.display_name || '').split(',');
+            const parts = (item.displayName || item.display_name || '').split(',');
             shortLabel = parts.slice(0, 2).join(',').trim() || 'Selected Location';
           }
-
-          nominatimResults.push({
-            id: `osm-${item.place_id || `${lat}-${lng}`}`,
-            displayName: item.display_name || shortLabel,
-            shortLabel,
-            lat,
-            lng,
-            type: item.type || item.category || 'address',
-          });
         }
+
+        serverResults.push({
+          id: String(item.id || item.placeId || item.place_id || `place-${lat}-${lng}`),
+          displayName: item.displayName || item.display_name || shortLabel,
+          shortLabel,
+          lat,
+          lng,
+          type: item.type || item.category || 'address',
+          sourceProvider: item.sourceProvider,
+          isFallback: item.isFallback,
+        });
       }
     }
-  } catch (err) {
-    // If request was aborted by newer search, let it throw or handle gracefully
-    if (signal?.aborted) {
+  } catch (err: unknown) {
+    // If request was aborted by newer search, let caller handle
+    if (signal?.aborted || (err as Error)?.name === 'AbortError') {
       throw err;
     }
     // Network or rate limit failure: rely on local matches
   }
 
   // Deduplicate results based on ~200m proximity
-  const combined = [...localMatches, ...nominatimResults];
+  const combined = [...localMatches, ...serverResults];
   const uniqueResults: LocationSearchResult[] = [];
 
   for (const item of combined) {
@@ -289,4 +308,34 @@ export async function searchAddressNominatim(
   });
 
   return uniqueResults;
+}
+
+/**
+ * Modern alias for address search routing through /api/maps/geocode
+ */
+export async function searchAddress(
+  query: string,
+  signal?: AbortSignal
+): Promise<LocationSearchResult[]> {
+  return searchAddressNominatim(query, signal);
+}
+
+/**
+ * Reverse geocode coordinates through /api/maps/reverse
+ */
+export async function reverseGeocodeAddress(
+  lat: number,
+  lng: number
+): Promise<LocationSearchResult> {
+  const result = await reverseGeocode(lat, lng);
+  return {
+    id: `rev-${lat.toFixed(4)}-${lng.toFixed(4)}`,
+    displayName: result.displayName,
+    shortLabel: result.shortLabel,
+    lat,
+    lng,
+    type: 'address',
+    sourceProvider: result.sourceProvider,
+    isFallback: result.isFallback,
+  };
 }

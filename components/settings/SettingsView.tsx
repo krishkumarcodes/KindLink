@@ -25,7 +25,11 @@ import {
   Zap,
   Info,
   X,
+  MapPin,
+  ExternalLink,
+  Layers,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { LanguageModal } from '../shell/LanguageModal';
@@ -526,7 +530,141 @@ export function SettingsView() {
         </div>
 
         {/* =========================================================================
-            7. SESSION CONTROL & DANGER ZONE
+            7. MAP DATA & CREDITS
+           ========================================================================= */}
+        <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
+              <Layers className="h-5 w-5 notranslate" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-foreground">Map Data &amp; Credits</h2>
+              <p className="text-xs text-muted-foreground">
+                Geospatial basemaps, address geocoding, and routing services powering KindLink
+              </p>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            All interactive maps and spatial calculations strictly comply with provider licenses and intellectual property guidelines. Coordinates are rounded and queries are proxied server-side to safeguard user privacy.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            {/* MapTiler */}
+            <div className="p-3.5 rounded-2xl bg-background border border-border space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 notranslate" />
+                  MapTiler
+                </span>
+                <a
+                  href="https://www.maptiler.com/copyright/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-0.5"
+                >
+                  <span>License</span>
+                  <ExternalLink className="h-2.5 w-2.5 notranslate" />
+                </a>
+              </div>
+              <div className="text-[11px] font-mono font-medium text-foreground bg-muted/60 px-2 py-1 rounded-lg">
+                &copy; MapTiler &copy; OpenStreetMap contributors
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                High-definition vector and raster basemap tiles in light &amp; dark themes.
+              </p>
+            </div>
+
+            {/* Geoapify */}
+            <div className="p-3.5 rounded-2xl bg-background border border-border space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 notranslate" />
+                  Geoapify
+                </span>
+                <a
+                  href="https://www.geoapify.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-0.5"
+                >
+                  <span>Website</span>
+                  <ExternalLink className="h-2.5 w-2.5 notranslate" />
+                </a>
+              </div>
+              <div className="text-[11px] font-mono font-medium text-foreground bg-muted/60 px-2 py-1 rounded-lg">
+                Powered by Geoapify
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Forward address search, geocoding, and emergency healthcare facilities lookup.
+              </p>
+            </div>
+
+            {/* OpenRouteService */}
+            <div className="p-3.5 rounded-2xl bg-background border border-border space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 notranslate" />
+                  OpenRouteService
+                </span>
+                <a
+                  href="https://openrouteservice.org/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-0.5"
+                >
+                  <span>Website</span>
+                  <ExternalLink className="h-2.5 w-2.5 notranslate" />
+                </a>
+              </div>
+              <div className="text-[11px] font-mono font-medium text-foreground bg-muted/60 px-2 py-1 rounded-lg">
+                openrouteservice.org | &copy; OpenStreetMap contributors
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Walking, cycling, and driving route computations and estimated travel times.
+              </p>
+            </div>
+
+            {/* OpenStreetMap */}
+            <div className="p-3.5 rounded-2xl bg-background border border-border space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 notranslate" />
+                  OpenStreetMap
+                </span>
+                <a
+                  href="https://www.openstreetmap.org/copyright"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-0.5"
+                >
+                  <span>Copyright</span>
+                  <ExternalLink className="h-2.5 w-2.5 notranslate" />
+                </a>
+              </div>
+              <div className="text-[11px] font-mono font-medium text-foreground bg-muted/60 px-2 py-1 rounded-lg">
+                &copy; OpenStreetMap contributors
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Global crowd-sourced geographic data and open tile server fallback.
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-2 flex items-center justify-between text-xs border-t border-border">
+            <span className="text-muted-foreground">Need complete license texts &amp; open source credits?</span>
+            <Link
+              href="/credits"
+              className="text-teal-600 dark:text-teal-400 font-semibold hover:underline inline-flex items-center gap-1"
+            >
+              <span>View Full Credits &amp; Attributions</span>
+              <ExternalLink className="h-3 w-3 notranslate" />
+            </Link>
+          </div>
+        </div>
+
+        {/* =========================================================================
+            8. SESSION CONTROL & DANGER ZONE
            ========================================================================= */}
         <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-4">
           <h2 className="text-sm sm:text-base font-bold text-foreground">Session Control & Danger Zone</h2>

@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import { useTheme } from 'next-themes';
+import { MapTileLayer } from '@/components/map/MapTileLayer';
 
 interface PinDropMapInnerProps {
   lat: number;
@@ -12,42 +12,7 @@ interface PinDropMapInnerProps {
   className?: string;
 }
 
-function CartoTileLayer() {
-  const { resolvedTheme } = useTheme();
-  const map = useMap();
-  const tileLayerRef = useRef<L.TileLayer | null>(null);
 
-  const isDark = resolvedTheme === 'dark';
-  const url = isDark
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-
-  const attribution =
-    '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>';
-
-  useEffect(() => {
-    if (!tileLayerRef.current) {
-      tileLayerRef.current = L.tileLayer(url, {
-        attribution,
-        subdomains: 'abcd',
-        maxZoom: 20,
-      }).addTo(map);
-    } else {
-      tileLayerRef.current.setUrl(url);
-    }
-  }, [url, map, attribution]);
-
-  useEffect(() => {
-    return () => {
-      if (tileLayerRef.current) {
-        map.removeLayer(tileLayerRef.current);
-        tileLayerRef.current = null;
-      }
-    };
-  }, [map]);
-
-  return null;
-}
 
 // Controller to smoothly pan to center when modified externally
 function MapRecenter({ lat, lng }: { lat: number; lng: number }) {
@@ -118,7 +83,7 @@ export default function PinDropMapInner({
         className="h-full w-full z-0 notranslate"
         attributionControl={false}
       >
-        <CartoTileLayer />
+        <MapTileLayer />
         <MapRecenter lat={lat} lng={lng} />
         <MapClickHandler onPositionChange={onPositionChange} />
         <Marker

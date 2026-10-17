@@ -1,5 +1,5 @@
 
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 820" width="360" height="820" dir="ltr" fill="none">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 1160" width="360" height="1160" dir="ltr" fill="none">
       <defs>
         <linearGradient id="headerGrad" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stop-color="#0F766E" />
@@ -8,7 +8,7 @@
       </defs>
 
       <!-- Canvas Background -->
-      <rect width="360" height="820" fill="#070c17" />
+      <rect width="360" height="1160" fill="#070c17" />
 
       <!-- Desktop Sidebar (>=1024px) -->
       
@@ -74,74 +74,144 @@
         </g>
       </g>
 
-      <!-- Realtime Community Pulse (4 Cards Grid) -->
+      <!-- Realtime Community Pulse (Row A, Row B, Row C, and 4 Cards) -->
       <g transform="translate(16, 310)">
-        <text x="0" y="0" fill="#F8FAFC" font-size="12" font-weight="800" letter-spacing="1">REALTIME COMMUNITY PULSE</text>
-        <rect x="180" y="-10" width="46" height="18" rx="9" fill="#10B981" fill-opacity="0.2" />
-        <circle cx="190" cy="-1" r="3" fill="#10B981" />
-        <text x="198" y="3" fill="#34D399" font-size="9" font-weight="800">LIVE</text>
+        <!-- Row A: Title & 44x44 Refresh Button on the same row, never wrapping -->
+        <g transform="translate(0, 0)">
+          <text x="0" y="28" fill="#F8FAFC" font-size="15" font-weight="800" font-family="system-ui, sans-serif">⚡ Realtime Community Pulse</text>
+          
+          <g transform="translate(284, 0)">
+            <rect width="44" height="44" rx="14" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
+            <path d="M 22 14 A 8 8 0 1 1 16 18 M 16 14 L 16 19 L 21 19" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </g>
+        </g>
 
-        <!-- 4 Grid Cards -->
-        <g transform="translate(0, 16)">
+        <!-- Row B: LIVE pill (36px) & Last 24h chip (36px) matching vertical centres within 1px -->
+        <g transform="translate(0, 54)">
+          <!-- LIVE Pill (height 36px) -->
+          <rect x="0" y="0" width="140" height="36" rx="18" fill="#10B981" fill-opacity="0.15" stroke="#10B981" stroke-opacity="0.3" stroke-width="1" />
+          <circle cx="16" cy="18" r="4" fill="#10B981" />
+          <text x="26" y="22" fill="#34D399" font-size="11" font-weight="800">LIVE</text>
+          <text x="56" y="22" fill="#94A3B8" font-size="11">• updated just now</text>
+
+          <!-- Last 24h Chip (height 36px, opens sheet/dialog) -->
+          <g transform="translate(218, 0)">
+            <rect width="110" height="36" rx="18" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
+            <path d="M 12 24 Q 20 20, 28 22 T 40 14 T 52 12" fill="none" stroke="#10B981" stroke-width="1.75" stroke-linecap="round" />
+            <circle cx="52" cy="12" r="2.5" fill="#10B981" />
+            <text x="60" y="22" fill="#10B981" font-size="11" font-weight="700">Last 24h</text>
+          </g>
+        </g>
+
+        <!-- Row C: Latest Activity Ticker (transitions every 6s, pauses on hover/tap) -->
+        <g transform="translate(0, 98)">
+          <rect width="328" height="36" rx="16" fill="#111c30" stroke="#1f2d48" stroke-width="1" />
+          <circle cx="16" cy="18" r="3" fill="#0D9488" />
+          <text x="28" y="22" fill="#94A3B8" font-size="10" font-weight="800" letter-spacing="0.5">LATEST ACTIVITY:</text>
+          <text x="130" y="22" fill="#F8FAFC" font-size="11" font-weight="500">Hospital transit escort was accepted near Burnpur, 2m ago</text>
+        </g>
+
+        <!-- 4 Grid Cards spanning exact width of Row A, B, C -->
+        <g transform="translate(0, 144)">
           
               <g transform="translate(0, 0)">
-                <rect width="158" height="76" rx="18" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
-                <circle cx="24" cy="28" r="14" fill="#10B981" fill-opacity="0.15" />
-                <text x="46" y="33" fill="#F8FAFC" font-size="18" font-weight="800" font-family="system-ui, sans-serif">48</text>
-                <text x="16" y="58" fill="#94A3B8" font-size="11" font-weight="600" font-family="system-ui, sans-serif">Helpers Nearby</text>
+                <rect width="158" height="80" rx="18" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
+                <circle cx="24" cy="28" r="13" fill="#10B981" fill-opacity="0.15" />
+                <text x="44" y="33" fill="#F8FAFC" font-size="18" font-weight="900" font-family="system-ui, sans-serif">48</text>
+                <text x="14" y="56" fill="#F8FAFC" font-size="11" font-weight="700" font-family="system-ui, sans-serif">Helpers nearby</text>
+                <text x="14" y="70" fill="#94A3B8" font-size="10" font-family="system-ui, sans-serif">48 verified helpers active</text>
               </g>
             
               <g transform="translate(170, 0)">
-                <rect width="158" height="76" rx="18" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
-                <circle cx="24" cy="28" r="14" fill="#F59E0B" fill-opacity="0.15" />
-                <text x="46" y="33" fill="#F8FAFC" font-size="18" font-weight="800" font-family="system-ui, sans-serif">8 min</text>
-                <text x="16" y="58" fill="#94A3B8" font-size="11" font-weight="600" font-family="system-ui, sans-serif">Avg. Response</text>
+                <rect width="158" height="80" rx="18" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
+                <circle cx="24" cy="28" r="13" fill="#F59E0B" fill-opacity="0.15" />
+                <text x="44" y="33" fill="#F8FAFC" font-size="18" font-weight="900" font-family="system-ui, sans-serif">8 min</text>
+                <text x="14" y="56" fill="#F8FAFC" font-size="11" font-weight="700" font-family="system-ui, sans-serif">Avg. response</text>
+                <text x="14" y="70" fill="#94A3B8" font-size="10" font-family="system-ui, sans-serif">community response time</text>
               </g>
             
-              <g transform="translate(0, 88)">
-                <rect width="158" height="76" rx="18" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
-                <circle cx="24" cy="28" r="14" fill="#06B6D4" fill-opacity="0.15" />
-                <text x="46" y="33" fill="#F8FAFC" font-size="18" font-weight="800" font-family="system-ui, sans-serif">1,240</text>
-                <text x="16" y="58" fill="#94A3B8" font-size="11" font-weight="600" font-family="system-ui, sans-serif">Acts of Help</text>
+              <g transform="translate(0, 92)">
+                <rect width="158" height="80" rx="18" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
+                <circle cx="24" cy="28" r="13" fill="#06B6D4" fill-opacity="0.15" />
+                <text x="44" y="33" fill="#F8FAFC" font-size="18" font-weight="900" font-family="system-ui, sans-serif">1,240</text>
+                <text x="14" y="56" fill="#F8FAFC" font-size="11" font-weight="700" font-family="system-ui, sans-serif">Acts of help</text>
+                <text x="14" y="70" fill="#94A3B8" font-size="10" font-family="system-ui, sans-serif">completed mutual aid</text>
               </g>
             
-              <g transform="translate(170, 88)">
-                <rect width="158" height="76" rx="18" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
-                <circle cx="24" cy="28" r="14" fill="#6366F1" fill-opacity="0.15" />
-                <text x="46" y="33" fill="#F8FAFC" font-size="18" font-weight="800" font-family="system-ui, sans-serif">99.4%</text>
-                <text x="16" y="58" fill="#94A3B8" font-size="11" font-weight="600" font-family="system-ui, sans-serif">Trust Match</text>
+              <g transform="translate(170, 92)">
+                <rect width="158" height="80" rx="18" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
+                <circle cx="24" cy="28" r="13" fill="#6366F1" fill-opacity="0.15" />
+                <text x="44" y="33" fill="#F8FAFC" font-size="18" font-weight="900" font-family="system-ui, sans-serif">99.4%</text>
+                <text x="14" y="56" fill="#F8FAFC" font-size="11" font-weight="700" font-family="system-ui, sans-serif">Trust match</text>
+                <text x="14" y="70" fill="#94A3B8" font-size="10" font-family="system-ui, sans-serif">verified community safety</text>
               </g>
             
         </g>
       </g>
 
-      <!-- Urgent Needs Section -->
-      <g transform="translate(16, 520)">
-        <text x="0" y="0" fill="#F8FAFC" font-size="13" font-weight="800">URGENT NEEDS NEARBY (ZERO WEIGHT LABELS)</text>
+      <!-- Urgent Near You Section -->
+      <g transform="translate(16, 660)">
+        <text x="0" y="0" fill="#F8FAFC" font-size="16" font-weight="800">🔥 Urgent Near You</text>
+        <text x="0" y="18" fill="#94A3B8" font-size="11">Ranked strictly by Urgency > Distance > Waiting Time</text>
         
-          <g transform="translate(0, 20)">
-            <rect width="328" height="72" rx="18" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
-            <rect x="14" y="14" width="94" height="20" rx="10" fill="#EF4444" fill-opacity="0.2" />
-            <text x="20" y="28" fill="#EF4444" font-size="10" font-weight="700">Critical Urgency</text>
-            <text x="116" y="28" fill="#F8FAFC" font-size="12" font-weight="700">अत्यंत आवश्यक रक्तदान सहायता</text>
-            <text x="14" y="54" fill="#94A3B8" font-size="11">📍 Asansol District Hospital · 1.2 km · Waiting 12 min</text>
+        <!-- View all button with count pill (only appears if > 0) -->
+        <g transform="translate(228, -12)">
+          <text x="0" y="16" fill="#0D9488" font-size="12" font-weight="700">View all</text>
+          <rect x="52" y="3" width="20" height="18" rx="9" fill="#0D9488" fill-opacity="0.15" />
+          <text x="59" y="16" fill="#0D9488" font-size="11" font-weight="800">3</text>
+        </g>
+
+        <!-- Request Cards Feed -->
+        
+          <g transform="translate(0, 32)">
+            <rect width="328" height="76" rx="20" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
+            <rect x="14" y="14" width="70" height="22" rx="11" fill="#EF4444" fill-opacity="0.15" />
+            <text x="22" y="29" fill="#EF4444" font-size="10" font-weight="800">Critical</text>
+            <text x="94" y="29" fill="#F8FAFC" font-size="12" font-weight="700">अत्यंत आवश्यक रक्तदान सहायता</text>
+            <text x="14" y="56" fill="#94A3B8" font-size="11">📍 Asansol District Hospital · 1.2 km · Waiting 12m</text>
+            
+            <!-- Help action buttons -->
+            <rect x="236" y="42" width="78" height="26" rx="10" fill="#0D9488" />
+            <text x="252" y="59" fill="#FFFFFF" font-size="11" font-weight="700">I Can Help</text>
           </g>
         
-          <g transform="translate(0, 102)">
-            <rect width="328" height="72" rx="18" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
-            <rect x="14" y="14" width="94" height="20" rx="10" fill="#F59E0B" fill-opacity="0.2" />
-            <text x="20" y="28" fill="#F59E0B" font-size="10" font-weight="700">High Priority</text>
-            <text x="116" y="28" fill="#F8FAFC" font-size="12" font-weight="700">अस्पताल आवागमन सहायता</text>
-            <text x="14" y="54" fill="#94A3B8" font-size="11">📍 Asansol District Hospital · 2.5 km · Waiting 12 min</text>
+          <g transform="translate(0, 118)">
+            <rect width="328" height="76" rx="20" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
+            <rect x="14" y="14" width="70" height="22" rx="11" fill="#F59E0B" fill-opacity="0.15" />
+            <text x="22" y="29" fill="#F59E0B" font-size="10" font-weight="800">High</text>
+            <text x="94" y="29" fill="#F8FAFC" font-size="12" font-weight="700">अस्पताल आवागमन सहायता</text>
+            <text x="14" y="56" fill="#94A3B8" font-size="11">📍 Asansol District Hospital · 2.5 km · Waiting 12m</text>
+            
+            <!-- Help action buttons -->
+            <rect x="236" y="42" width="78" height="26" rx="10" fill="#0D9488" />
+            <text x="252" y="59" fill="#FFFFFF" font-size="11" font-weight="700">I Can Help</text>
           </g>
         
+      </g>
+
+      <!-- How KindLink Works Collapsible Card (Remembers state in localStorage) -->
+      <g transform="translate(16, 880)">
+        <rect width="328" height="120" rx="24" fill="#111c30" stroke="#1f2d48" stroke-width="1.2" />
+        <circle cx="36" cy="38" r="16" fill="#0D9488" fill-opacity="0.15" />
+        <text x="28" y="44" fill="#0D9488" font-size="16" font-weight="800">✓</text>
+        <text x="64" y="34" fill="#F8FAFC" font-size="14" font-weight="800">How KindLink Works</text>
+        <rect x="210" y="22" width="56" height="18" rx="9" fill="#0D9488" fill-opacity="0.15" />
+        <text x="218" y="35" fill="#0D9488" font-size="10" font-weight="800">3 steps</text>
+        <text x="64" y="52" fill="#94A3B8" font-size="11">Neighbours helping neighbours, free for everyone</text>
+        
+        <!-- 3-Step Overview -->
+        <g transform="translate(24, 76)">
+          <text x="0" y="16" fill="#F8FAFC" font-size="11" font-weight="700">1. Ask for help</text>
+          <text x="108.24000000000001" y="16" fill="#F8FAFC" font-size="11" font-weight="700">2. Neighbours alerted</text>
+          <text x="223.04000000000002" y="16" fill="#F8FAFC" font-size="11" font-weight="700">3. Safe delivery</text>
+        </g>
       </g>
     
       </g>
 
       <!-- Mobile Bottom Tab Bar (<768px) with pb-36 clearance buffer -->
       
-        <g transform="translate(0, 752)">
+        <g transform="translate(0, 1092)">
           <rect width="360" height="68" fill="#0a101f" stroke="#1e293b" stroke-width="1" />
           
           <text x="36" y="42" fill="#2DD4BF" font-size="10" font-weight="700">Home</text>

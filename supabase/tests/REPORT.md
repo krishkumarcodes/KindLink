@@ -1,20 +1,20 @@
 # KindLink - PostgreSQL & PostGIS Test Verification Report
 
-**Date of Execution**: 2026-10-12  
+**Date of Execution**: 2026-10-17  
 **Target Database**: PostgreSQL 18.6 with PostGIS 3.6.4 (emulating Supabase Free Tier)  
 **Author**: KindLink Engineering Team (`krishkumarcodes@gmail.com`)  
-**Status**: **100% PASSED (18 / 18 Test Suites Succeeded)**
+**Status**: **100% PASSED (22 / 22 Test Suites Succeeded)**
 
 ---
 
 ## 1. Executive Summary
 
 Every migration script in `/supabase/sql/` was subjected to three rigorous validation passes:
-1. **Initial Deployment**: Executed migrations `01_extensions.sql` through `09_realtime.sql` in sequence on a clean database.
+1. **Initial Deployment**: Executed migrations `01_extensions.sql` through `13_map_cache_and_usage.sql` in sequence on a clean database.
 2. **Idempotency Verification**: Re-executed all migrations on the same schema to ensure all `CREATE IF NOT EXISTS`, `CREATE OR REPLACE`, and `DROP POLICY IF EXISTS` constructs run without breaking.
 3. **All-in-One Deployment**: Applied `all_in_one.sql` to a fresh database (`kindlink_fresh`) and ran the complete test harness against it.
 
-All 18 comprehensive automated tests passed on both independent runs.
+All 22 comprehensive automated tests passed on both independent runs.
 
 ---
 
@@ -40,6 +40,10 @@ All 18 comprehensive automated tests passed on both independent runs.
 | **16** | Admin Verification Security | RLS policy on `public.verification_requests` | **PASS** | Regular users blocked from approving verification requests |
 | **17** | Admin Approval Workflow | Role-based verification workflow | **PASS** | Platform Admin successfully verified submitted identity document |
 | **18** | Storage Security: Users strictly restricted to their own folder | Storage RLS on `verification-docs` bucket | **PASS** | User confined to `{user_id}/` folder; folder traversal blocked |
+| **19** | Map Schema & Indexes | `map_cache` & `map_daily_usage` tables with TTL & provider indexes | **PASS** | Tables, indexes, and primary keys verified |
+| **20** | Atomic Map Usage Counter | `increment_map_usage(p_provider, p_date, p_count, p_credits)` | **PASS** | Concurrently-safe upsert accumulated to (7 req, 3 cred) |
+| **21** | Cache TTL Cleanup Function | `cleanup_expired_map_cache()` stored procedure | **PASS** | Stale records purged (2 rows), fresh entries preserved |
+| **22** | Maps Security & Role Isolation | RLS policy and permission grants (`service_role` only) | **PASS** | Blocked unauthenticated/authenticated users, permitted `service_role` |
 
 ---
 

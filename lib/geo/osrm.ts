@@ -1,9 +1,9 @@
 /**
- * KindLink OSRM Road Routing & Distance Engine
- * Computes actual road geometry, driving/cycling/walking distances and durations
- * using the public Open Source Routing Machine (OSRM) API.
+ * KindLink Road Routing & Distance Engine
+ * Rewired to call /api/maps/route proxy with cascade through OpenRouteService,
+ * Geoapify, OSRM, and straight-line geodesic fallback.
  * Includes in-memory & localStorage caching, in-flight deduplication, and
- * graceful straight-line geodesic fallback.
+ * fallback/degraded straight-line labeling ("about X km, straight line").
  */
 
 import { calculateDistance, calculateETA, formatETA } from '@/lib/data/distance';
@@ -17,10 +17,13 @@ export interface LatLng {
 export interface RoadRouteResult {
   distanceKm: number;
   durationMinutes: number;
-  formattedText: string; // e.g. "3.2 km, about 9 min by bike"
+  formattedText: string; // e.g. "3.2 km, about 9 min by bike" or "about 4.5 km, straight line"
   coordinates: [number, number][]; // [lat, lng] array ready for Leaflet Polyline
-  source: 'osrm' | 'straight-line';
+  source: 'osrm' | 'straight-line' | 'ors' | 'geoapify' | 'road';
   mode: TravelMode;
+  sourceProvider?: string;
+  isFallback?: boolean;
+  isDegraded?: boolean;
 }
 
 interface CacheEntry {
@@ -30,7 +33,8 @@ interface CacheEntry {
 
 const MEMORY_CACHE = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour TTL
-const STORAGE_PREFIX = 'kindlink_osrm_cache_';
+const STORAGE_PREFIX = 'kindlink_maps_route_';
+const LEGACY_STORAGE_PREFIX = 'kindlink_osrm_cache_';
 const IN_FLIGHT_REQUESTS = new Map<string, Promise<RoadRouteResult>>();
 
 function getCacheKey(origin: LatLng, destination: LatLng, mode: TravelMode): string {
@@ -59,6 +63,16 @@ function getFromCache(key: string): RoadRouteResult | null {
           return parsed.data;
         }
       }
+
+      // Check legacy cache
+      const legacyRaw = localStorage.getItem(`${LEGACY_STORAGE_PREFIX}${key}`);
+      if (legacyRaw) {
+        const parsedLegacy: CacheEntry = JSON.parse(legacyRaw);
+        if (now - parsedLegacy.timestamp < CACHE_TTL_MS) {
+          MEMORY_CACHE.set(key, parsedLegacy);
+          return parsedLegacy.data;
+        }
+      }
     } catch {
       // Ignore localStorage errors
     }
@@ -81,7 +95,7 @@ function saveToCache(key: string, data: RoadRouteResult): void {
 }
 
 /**
- * Creates straight-line fallback route when OSRM is offline or unreachable
+ * Creates straight-line fallback route when route calculation is degraded or offline
  */
 export function getStraightLineFallback(
   origin: LatLng,
@@ -90,23 +104,27 @@ export function getStraightLineFallback(
 ): RoadRouteResult {
   const dist = calculateDistance(origin.lat, origin.lng, destination.lat, destination.lng);
   const duration = calculateETA(dist, mode);
-  const modeLabel = mode === 'walking' ? 'foot' : mode;
+  const roundedDist = Math.round(dist * 10) / 10;
 
   return {
-    distanceKm: dist,
-    durationMinutes: duration,
-    formattedText: `${dist.toFixed(1)} km (direct), about ${formatETA(duration)} by ${modeLabel}`,
+    distanceKm: roundedDist,
+    durationMinutes: Math.max(1, duration),
+    formattedText: `about ${roundedDist.toFixed(1)} km, straight line`,
     coordinates: [
       [origin.lat, origin.lng],
       [destination.lat, destination.lng],
     ],
     source: 'straight-line',
     mode,
+    sourceProvider: 'straight-line',
+    isFallback: true,
+    isDegraded: true,
   };
 }
 
 /**
- * Fetch road route from OSRM API or fall back to straight line
+ * Fetch road route from /api/maps/route or fall back gracefully to straight line.
+ * If fallback or degraded, returns the standardized "about X km, straight line" label.
  */
 export async function getRoadRoute(
   origin: LatLng,
@@ -129,11 +147,11 @@ export async function getRoadRoute(
     );
   }
 
-  // Quick return if origin and destination are virtually identical
+  // Quick return if origin and destination are virtually identical (< 50m)
   const directDist = calculateDistance(origin.lat, origin.lng, destination.lat, destination.lng);
   if (directDist < 0.05) {
     return {
-      distanceKm: directDist,
+      distanceKm: Math.round(directDist * 10) / 10,
       durationMinutes: 1,
       formattedText: 'At location (< 50m)',
       coordinates: [
@@ -142,6 +160,9 @@ export async function getRoadRoute(
       ],
       source: 'straight-line',
       mode,
+      sourceProvider: 'immediate',
+      isFallback: false,
+      isDegraded: false,
     };
   }
 
@@ -157,16 +178,20 @@ export async function getRoadRoute(
     return existingInFlight;
   }
 
-  const fetchPromise = (async () => {
+  const fetchPromise = (async (): Promise<RoadRouteResult> => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
 
     try {
-      // The public project-osrm.org router provides standard driving network.
-      // We calculate realistic mode durations (bike: 15 km/h, walk: 5 km/h, car: OSRM duration).
-      const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng.toFixed(6)},${origin.lat.toFixed(6)};${destination.lng.toFixed(6)},${destination.lat.toFixed(6)}?overview=full&geometries=geojson`;
+      const params = new URLSearchParams({
+        originLat: origin.lat.toFixed(5),
+        originLng: origin.lng.toFixed(5),
+        destLat: destination.lat.toFixed(5),
+        destLng: destination.lng.toFixed(5),
+        mode,
+      });
 
-      const res = await fetch(url, {
+      const res = await fetch(`/api/maps/route?${params.toString()}`, {
         signal: controller.signal,
         headers: {
           Accept: 'application/json',
@@ -176,45 +201,57 @@ export async function getRoadRoute(
       clearTimeout(timeoutId);
 
       if (!res.ok) {
-        throw new Error(`OSRM HTTP ${res.status}`);
+        throw new Error(`Route API returned HTTP ${res.status}`);
       }
 
-      const data = await res.json();
-      if (data.code !== 'Ok' || !data.routes || !data.routes.length) {
-        throw new Error('OSRM No route found');
-      }
+      const payload = await res.json();
+      const routeData = payload.route || payload.data || payload;
 
-      const primaryRoute = data.routes[0];
-      const roadDistanceKm = Math.round((primaryRoute.distance / 1000) * 10) / 10;
+      const isFallback = Boolean(routeData.isFallback);
+      const isDegraded = Boolean(routeData.isDegraded);
+      const distanceKm =
+        typeof routeData.distanceKm === 'number'
+          ? Math.round(routeData.distanceKm * 10) / 10
+          : Math.round(directDist * 10) / 10;
 
-      // Calculate duration according to travel mode
-      let durationMinutes = 1;
-      if (mode === 'car') {
-        durationMinutes = Math.max(1, Math.round(primaryRoute.duration / 60));
-      } else {
-        durationMinutes = calculateETA(roadDistanceKm, mode);
-      }
+      const durationMinutes =
+        typeof routeData.durationMinutes === 'number'
+          ? Math.max(1, Math.round(routeData.durationMinutes))
+          : calculateETA(distanceKm, mode);
 
-      // GeoJSON coordinates in OSRM are [lng, lat], convert to Leaflet's [lat, lng]
-      const rawCoords: [number, number][] = primaryRoute.geometry.coordinates || [];
-      const coordinates: [number, number][] = rawCoords.map(([lng, lat]) => [lat, lng]);
+      const rawCoords: [number, number][] = Array.isArray(routeData.coordinates)
+        ? routeData.coordinates
+        : [];
 
-      // If OSRM returned too few points, ensure origin and destination are present
-      if (coordinates.length < 2) {
-        coordinates.unshift([origin.lat, origin.lng]);
-        coordinates.push([destination.lat, destination.lng]);
-      }
+      // Ensure at least origin and destination are present
+      const coordinates: [number, number][] =
+        rawCoords.length >= 2
+          ? rawCoords
+          : [
+              [origin.lat, origin.lng],
+              [destination.lat, destination.lng],
+            ];
+
+      const sourceProvider = routeData.sourceProvider || 'road';
+      const isStraight = isFallback || isDegraded || sourceProvider === 'straight-line';
 
       const modeLabel = mode === 'walking' ? 'foot' : mode;
-      const formattedText = `${roadDistanceKm.toFixed(1)} km, about ${formatETA(durationMinutes)} by ${modeLabel}`;
+      // If fallback or degraded, show straight-line label ("about X km, straight line")
+      const formattedText = isStraight
+        ? `about ${distanceKm.toFixed(1)} km, straight line`
+        : routeData.formattedText ||
+          `${distanceKm.toFixed(1)} km, about ${formatETA(durationMinutes)} by ${modeLabel}`;
 
       const result: RoadRouteResult = {
-        distanceKm: roadDistanceKm,
+        distanceKm,
         durationMinutes,
         formattedText,
         coordinates,
-        source: 'osrm',
+        source: isStraight ? 'straight-line' : 'osrm',
         mode,
+        sourceProvider,
+        isFallback,
+        isDegraded,
       };
 
       saveToCache(cacheKey, result);
@@ -222,7 +259,6 @@ export async function getRoadRoute(
     } catch {
       clearTimeout(timeoutId);
       const fallback = getStraightLineFallback(origin, destination, mode);
-      // Cache fallback with short-lived TTL to avoid spamming failed endpoint
       saveToCache(cacheKey, fallback);
       return fallback;
     } finally {

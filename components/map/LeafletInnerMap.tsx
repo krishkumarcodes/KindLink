@@ -11,7 +11,7 @@ import {
   useMapEvents,
 } from 'react-leaflet';
 import L from 'leaflet';
-import { useTheme } from 'next-themes';
+import { MapTileLayer } from './MapTileLayer';
 import { HelpRequest } from '@/lib/data/types';
 import { MedicalFacility, MedicalAmenityType } from '@/lib/geo/hospitals';
 import { RoadRouteResult } from '@/lib/geo/osrm';
@@ -46,46 +46,6 @@ interface LeafletInnerMapProps {
   transportTripRoute?: RoadRouteResult | null;
 }
 
-/**
- * Dynamic CARTO Positron (light) & CARTO Dark Matter (dark) Tile Layer
- * Switches smoothly without unmounting or crashing Leaflet
- */
-function CartoTileLayer() {
-  const { resolvedTheme } = useTheme();
-  const map = useMap();
-  const tileLayerRef = useRef<L.TileLayer | null>(null);
-
-  const isDark = resolvedTheme === 'dark';
-  const url = isDark
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-
-  const attribution =
-    '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>';
-
-  useEffect(() => {
-    if (!tileLayerRef.current) {
-      tileLayerRef.current = L.tileLayer(url, {
-        attribution,
-        subdomains: 'abcd',
-        maxZoom: 20,
-      }).addTo(map);
-    } else {
-      tileLayerRef.current.setUrl(url);
-    }
-  }, [url, map, attribution]);
-
-  useEffect(() => {
-    return () => {
-      if (tileLayerRef.current) {
-        map.removeLayer(tileLayerRef.current);
-        tileLayerRef.current = null;
-      }
-    };
-  }, [map]);
-
-  return null;
-}
 
 /**
  * Controller component to smoothly pan and call map.invalidateSize()
@@ -808,11 +768,11 @@ export default function LeafletInnerMap({
       scrollWheelZoom={true}
       zoomControl={false}
       attributionControl={true}
-      className="h-full w-full notranslate"
+      className="h-full w-full notranslate kindlink-map-has-bottom-nav"
       style={{ height: '100%', width: '100%' }}
     >
-      {/* Dynamic CARTO Light (Positron) / Dark (Dark Matter) Layer */}
-      <CartoTileLayer />
+      {/* MapTiler Raster Layer with Smart OSM Fallback & Attribution */}
+      <MapTileLayer hasBottomNav={true} />
 
       {/* Camera Position & Size Controller */}
       <MapController center={center} zoom={zoom} />
@@ -855,17 +815,17 @@ export default function LeafletInnerMap({
         }}
       />
 
-      {/* Active Navigation Road Route Polyline (OSRM) */}
+      {/* Active Navigation Road Route Polyline (Proxy / Straight line) */}
       {activeRoute && activeRoute.coordinates && activeRoute.coordinates.length > 0 && (
         <Polyline
           positions={activeRoute.coordinates}
           pathOptions={{
-            color: activeRoute.source === 'osrm' ? '#2563EB' : '#0D9488',
+            color: activeRoute.isFallback || activeRoute.source === 'straight-line' ? '#0D9488' : '#2563EB',
             weight: 5,
             opacity: 0.9,
             lineCap: 'round',
             lineJoin: 'round',
-            dashArray: activeRoute.source === 'straight-line' ? '6, 8' : undefined,
+            dashArray: activeRoute.isFallback || activeRoute.source === 'straight-line' ? '6, 8' : undefined,
           }}
         />
       )}

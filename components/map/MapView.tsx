@@ -119,9 +119,10 @@ export function MapView() {
   const [loadingRoute, setLoadingRoute] = useState(false);
   const [transportRouteMode, setTransportRouteMode] = useState<'to_pickup' | 'trip'>('to_pickup');
 
-  // Address search state (Nominatim debounced 300ms)
+  // Address search state (Proxy debounced 300ms)
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<PlaceSearchResult[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -160,28 +161,43 @@ export function MapView() {
     }
   }, [selectedRequestId, requests]);
 
-  // Debounced Place & Address Search (300ms)
+  // Debounced Place & Address Search (300ms, triggers after 3 chars, user location biased)
   useEffect(() => {
-    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+    const trimmed = searchQuery.trim();
+    if (!trimmed || trimmed.length < 3) {
       setSearchResults([]);
+      setSearchError(null);
+      setSearchDropdownOpen(false);
       return;
     }
 
     const timer = setTimeout(async () => {
       setIsSearching(true);
+      setSearchError(null);
       try {
-        const results = await searchPlaces(searchQuery);
+        const results = await searchPlaces(trimmed, {
+          biasLat: userCoords.lat,
+          biasLng: userCoords.lng,
+          type: 'autocomplete',
+        });
         setSearchResults(results);
         setSearchDropdownOpen(true);
-      } catch {
+      } catch (err: unknown) {
+        const msg = (err as Error)?.message || '';
+        if (msg.includes('busy')) {
+          setSearchError('Search is busy. Try again in a minute.');
+        } else {
+          setSearchError(null);
+        }
         setSearchResults([]);
+        setSearchDropdownOpen(true);
       } finally {
         setIsSearching(false);
       }
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, userCoords.lat, userCoords.lng]);
 
   // Close search dropdown on click outside
   useEffect(() => {
@@ -363,9 +379,15 @@ export function MapView() {
       setActiveRoute(result);
       setTransportTripRoute(null);
       setTransportRouteMode('to_pickup');
-      toast.success(
-        `Route calculated: ${result.distanceKm} km (~${result.durationMinutes} min via ${result.source === 'osrm' ? 'OSRM' : 'direct'})`
-      );
+      if (result.isFallback || result.source === 'straight-line') {
+        toast.info(result.formattedText, {
+          description: 'Road routing degraded; estimated straight-line distance displayed.',
+        });
+      } else {
+        toast.success(
+          `Route calculated: ${result.distanceKm} km (~${result.durationMinutes} min via ${result.sourceProvider || 'road'})`
+        );
+      }
     } catch {
       toast.error('Could not compute road route');
     } finally {
@@ -393,9 +415,15 @@ export function MapView() {
       setTransportTripRoute(result);
       setActiveRoute(null);
       setTransportRouteMode('trip');
-      toast.success(
-        `Trip Route (Pickup → Dropoff): ${result.distanceKm} km (~${result.durationMinutes} min via OSRM)`
-      );
+      if (result.isFallback || result.source === 'straight-line') {
+        toast.info(result.formattedText, {
+          description: 'Road routing degraded; estimated straight-line distance displayed.',
+        });
+      } else {
+        toast.success(
+          `Trip Route (Pickup → Dropoff): ${result.distanceKm} km (~${result.durationMinutes} min)`
+        );
+      }
     } catch {
       toast.error('Could not compute transport trip route');
     } finally {
@@ -507,28 +535,45 @@ export function MapView() {
             </div>
 
             {/* Search Suggestions Dropdown */}
-            {searchDropdownOpen && searchResults.length > 0 && (
+            {searchDropdownOpen && (searchResults.length > 0 || searchError || (searchQuery.trim().length >= 3 && !isSearching)) && (
               <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-slate-900 rounded-xl border-2 border-slate-300 dark:border-slate-700 shadow-2xl overflow-hidden z-40 max-h-60 overflow-y-auto animate-in fade-in duration-150">
-                <div className="p-1.5 space-y-1">
-                  {searchResults.map((item) => (
-                    <button
-                      key={item.placeId}
-                      type="button"
-                      onClick={() => handleSelectPlace(item)}
-                      className="w-full text-left p-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-start gap-2.5 text-xs group"
-                    >
-                      <MapPin className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5 group-hover:scale-110 transition-transform notranslate" />
-                      <div className="flex-1 min-w-0">
-                        <span className="font-bold text-slate-900 dark:text-slate-100 block truncate">
-                          {item.name}
-                        </span>
-                        <span className="text-[11px] text-slate-600 dark:text-slate-400 block truncate">
-                          {item.displayName}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                {searchResults.length > 0 ? (
+                  <div className="p-1.5 space-y-1">
+                    {searchResults.map((item) => (
+                      <button
+                        key={item.placeId}
+                        type="button"
+                        onClick={() => handleSelectPlace(item)}
+                        className="w-full text-left p-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-start gap-2.5 text-xs group"
+                      >
+                        <MapPin className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5 group-hover:scale-110 transition-transform notranslate" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span className="font-bold text-slate-900 dark:text-slate-100 block truncate">
+                              {item.name}
+                            </span>
+                            {item.isFallback && (
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0 font-medium">
+                                Local Hub
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-slate-600 dark:text-slate-400 block truncate">
+                            {item.displayName}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : searchError ? (
+                  <div className="p-3 text-center text-xs text-amber-600 dark:text-amber-400 font-semibold bg-amber-50/50 dark:bg-amber-950/20">
+                    {searchError}
+                  </div>
+                ) : (
+                  <div className="p-3 text-center text-xs text-slate-500 dark:text-slate-400">
+                    No places found. Try another query or drop a pin.
+                  </div>
+                )}
               </div>
             )}
           </div>

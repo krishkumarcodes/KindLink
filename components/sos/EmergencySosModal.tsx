@@ -832,7 +832,7 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
                             ],
                           ]
                     }
-                    isStraightLine={!routeData || routeData.source === 'straight-line'}
+                    isStraightLine={!routeData || routeData.source === 'straight-line' || Boolean(routeData.isFallback)}
                     urgency="critical"
                     destinationLabel="Your Location"
                   />

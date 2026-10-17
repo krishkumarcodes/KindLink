@@ -204,7 +204,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       let areaName = explicitAreaName;
       if (!areaName) {
         try {
-          const geocoded = await reverseGeocode(newCoords.lat, newCoords.lng);
+          const geocoded = await reverseGeocode(newCoords.lat, newCoords.lng, { force: true });
           areaName = geocoded.shortLabel;
         } catch {
           areaName = `${newCoords.lat.toFixed(2)}°N, ${newCoords.lng.toFixed(2)}°E`;
@@ -421,7 +421,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
           let areaName = 'Live GPS Location';
           try {
-            const geocoded = await reverseGeocode(coords.lat, coords.lng);
+            const geocoded = await reverseGeocode(coords.lat, coords.lng, { force: true });
             areaName = geocoded.shortLabel;
           } catch {
             areaName = `GPS (${coords.lat.toFixed(3)}°N, ${coords.lng.toFixed(3)}°E)`;

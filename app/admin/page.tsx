@@ -14,6 +14,7 @@ import {
   Loader2,
   ArrowLeft,
   RefreshCw,
+  MapPin,
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -177,6 +178,13 @@ export default function AdminPage() {
             <AlertTriangle className="w-4 h-4" />
             <span>Community Reports ({reports.length})</span>
           </button>
+          <Link
+            href="/admin/maps"
+            className="pb-3 px-3 text-sm font-semibold flex items-center gap-2 transition-colors border-b-2 border-transparent text-slate-500 hover:text-teal-600 dark:hover:text-teal-400 ml-auto"
+          >
+            <MapPin className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <span>Maps Diagnostics & Quotas</span>
+          </Link>
         </div>
 
         {/* Tab 1: Verifications */}

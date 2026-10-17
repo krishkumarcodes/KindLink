@@ -28,6 +28,8 @@ export interface LocationSearchResult {
   lat: number;
   lng: number;
   type?: string;
+  sourceProvider?: string;
+  isFallback?: boolean;
 }
 
 export interface LocationContextValue {

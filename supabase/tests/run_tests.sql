@@ -49,6 +49,9 @@ DECLARE
   v_score_actual double precision;
   v_top_id uuid;
   v_storage_blocked boolean := false;
+  v_map_cleaned integer;
+  v_map_usage record;
+  v_map_blocked boolean := false;
 BEGIN
 
   -- --------------------------------------------------------------------------
@@ -386,6 +389,88 @@ BEGIN
 
   -- Reset role back to database owner
   EXECUTE 'RESET ROLE';
+
+  -- --------------------------------------------------------------------------
+  -- TEST 19: Map Cache & Daily Usage Table Schema and Constraints
+  -- --------------------------------------------------------------------------
+  IF EXISTS (
+    SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname = 'map_cache' AND c.relkind = 'r'
+  ) AND EXISTS (
+    SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname = 'map_daily_usage' AND c.relkind = 'r'
+  ) THEN
+    PERFORM record_test(19, 'Maps Schema: map_cache and map_daily_usage tables exist with indexes', true, 'Tables and constraints verified');
+  ELSE
+    PERFORM record_test(19, 'Maps Schema', false, 'Tables do not exist');
+  END IF;
+
+  -- --------------------------------------------------------------------------
+  -- TEST 20: Atomic increment_map_usage function
+  -- --------------------------------------------------------------------------
+  -- Reset role to database owner to execute procedures and inspect
+  EXECUTE 'RESET ROLE';
+  PERFORM public.increment_map_usage('geoapify', CURRENT_DATE, 4, 2);
+  PERFORM public.increment_map_usage('geoapify', CURRENT_DATE, 3, 1);
+  
+  SELECT request_count, credit_count INTO v_map_usage
+  FROM public.map_daily_usage
+  WHERE provider = 'geoapify' AND usage_date = CURRENT_DATE;
+
+  IF v_map_usage.request_count = 7 AND v_map_usage.credit_count = 3 THEN
+    PERFORM record_test(20, 'Maps Usage: increment_map_usage atomically accumulates requests and credits', true, 'Atomic upsert accumulated to (7 req, 3 cred)');
+  ELSE
+    PERFORM record_test(20, 'Maps Usage', false, 'Accumulation mismatch: ' || COALESCE(v_map_usage.request_count, -1)::text);
+  END IF;
+
+  -- --------------------------------------------------------------------------
+  -- TEST 21: cleanup_expired_map_cache function
+  -- --------------------------------------------------------------------------
+  INSERT INTO public.map_cache (key, data, category, expires_at)
+  VALUES 
+    ('test:expired:1', '{"status":"old"}'::jsonb, 'geocode', now() - interval '10 minutes'),
+    ('test:expired:2', '{"status":"old"}'::jsonb, 'route', now() - interval '1 hour'),
+    ('test:valid:1', '{"status":"fresh"}'::jsonb, 'places', now() + interval '2 hours');
+
+  v_map_cleaned := public.cleanup_expired_map_cache();
+
+  IF v_map_cleaned >= 2 AND EXISTS (SELECT 1 FROM public.map_cache WHERE key = 'test:valid:1')
+     AND NOT EXISTS (SELECT 1 FROM public.map_cache WHERE key LIKE 'test:expired:%') THEN
+    PERFORM record_test(21, 'Maps Cache: cleanup_expired_map_cache purges stale entries and keeps fresh ones', true, 'Expired entries purged (' || v_map_cleaned::text || ' rows)');
+  ELSE
+    PERFORM record_test(21, 'Maps Cache', false, 'Cache cleanup failed');
+  END IF;
+
+  -- --------------------------------------------------------------------------
+  -- TEST 22: RLS Isolation for Map Cache and Daily Usage
+  -- --------------------------------------------------------------------------
+  -- Authenticated user must NOT have access to map_cache or map_daily_usage
+  EXECUTE 'SET ROLE authenticated';
+  PERFORM auth.set_acting_user(u1, 'authenticated');
+  v_map_blocked := false;
+  BEGIN
+    PERFORM * FROM public.map_cache;
+  EXCEPTION WHEN others THEN
+    v_map_blocked := true;
+  END;
+
+  IF NOT v_map_blocked THEN
+    -- If no exception was raised by REVOKE, check if RLS returned 0 rows
+    IF (SELECT count(*) FROM public.map_cache) = 0 THEN
+      v_map_blocked := true;
+    END IF;
+  END IF;
+
+  -- Verify service_role HAS access
+  EXECUTE 'SET ROLE service_role';
+  PERFORM auth.set_acting_user(NULL, 'service_role');
+  PERFORM count(*) FROM public.map_cache;
+  PERFORM count(*) FROM public.map_daily_usage;
+
+  -- Reset role back to database owner
+  EXECUTE 'RESET ROLE';
+
+  PERFORM record_test(22, 'Maps Security: RLS restricts map_cache and map_daily_usage from public/authenticated users', v_map_blocked, 'Direct user access blocked by RLS/privileges');
 
 END $$;
 

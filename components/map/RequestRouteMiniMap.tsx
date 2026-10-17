@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { MapContainer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { useTheme } from 'next-themes';
+import { MapTileLayer } from './MapTileLayer';
 import { UrgencyLevel } from '@/lib/data/types';
 
 interface RequestRouteMiniMapProps {
@@ -15,38 +15,7 @@ interface RequestRouteMiniMapProps {
   destinationLabel: string;
 }
 
-function MiniMapCartoTileLayer() {
-  const { resolvedTheme } = useTheme();
-  const map = useMap();
-  const tileLayerRef = useRef<L.TileLayer | null>(null);
 
-  const isDark = resolvedTheme === 'dark';
-  const url = isDark
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-
-  useEffect(() => {
-    if (!tileLayerRef.current) {
-      tileLayerRef.current = L.tileLayer(url, {
-        subdomains: 'abcd',
-        maxZoom: 20,
-      }).addTo(map);
-    } else {
-      tileLayerRef.current.setUrl(url);
-    }
-  }, [url, map]);
-
-  useEffect(() => {
-    return () => {
-      if (tileLayerRef.current) {
-        map.removeLayer(tileLayerRef.current);
-        tileLayerRef.current = null;
-      }
-    };
-  }, [map]);
-
-  return null;
-}
 
 function BoundsController({
   origin,
@@ -141,7 +110,7 @@ export default function RequestRouteMiniMap({
         className="h-full w-full"
         style={{ height: '100%', width: '100%' }}
       >
-        <MiniMapCartoTileLayer />
+        <MapTileLayer />
         <BoundsController
           origin={origin}
           destination={destination}

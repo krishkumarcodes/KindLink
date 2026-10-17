@@ -231,6 +231,14 @@ export function PublicFooter() {
               </li>
               <li>
                 <Link
+                  href="/credits"
+                  className="text-muted-foreground transition-colors hover:text-teal-600 dark:hover:text-teal-400"
+                >
+                  Credits &amp; Map Data
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/login"
                   className="text-muted-foreground transition-colors hover:text-teal-600 dark:hover:text-teal-400"
                 >
@@ -254,6 +262,10 @@ export function PublicFooter() {
             <span className="text-border">&bull;</span>
             <Link href="/terms" className="hover:text-foreground transition-colors">
               Terms
+            </Link>
+            <span className="text-border">&bull;</span>
+            <Link href="/credits" className="hover:text-foreground transition-colors">
+              Credits
             </Link>
             <span className="text-border">&bull;</span>
             <Link href="/contact" className="hover:text-foreground transition-colors">

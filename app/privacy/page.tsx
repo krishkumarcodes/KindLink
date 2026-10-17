@@ -151,6 +151,49 @@ export default function PrivacyPage() {
             </p>
           </section>
 
+          {/* SECTION 6: MAP PROXIES & GEOLOCATION PRIVACY */}
+          <section className="mt-12">
+            <h2 className="font-heading text-xl font-bold text-foreground">
+              6. Server-Side Map Proxies &amp; Anonymized Geospatial Routing
+            </h2>
+            <div className="mt-4 rounded-2xl border border-border bg-card p-5 text-xs sm:text-sm leading-relaxed text-muted-foreground space-y-3">
+              <p>
+                When searching for neighborhood addresses, calculating walking/cycling routes, or locating nearby
+                emergency facilities (hospitals, blood banks, pharmacies), your device <strong>never connects directly
+                to third-party commercial mapping endpoints</strong>.
+              </p>
+              <ul className="space-y-2 pl-4 list-disc">
+                <li>
+                  <strong>Server-Mediated Proxies:</strong> All geospatial queries pass through KindLink&apos;s hardened
+                  backend proxies (<code className="font-mono text-teal-600 dark:text-teal-400">/api/maps/*</code>). Map
+                  providers (MapTiler, Geoapify, OpenRouteService) only see KindLink&apos;s server IP address—never your
+                  client IP address or device telemetry.
+                </li>
+                <li>
+                  <strong>Mathematical Coordinate Rounding:</strong> Coordinates transmitted for route geometry or distance
+                  calculations are truncated to approximate decimal degrees, preventing external services from discerning
+                  building-level or exact room positions.
+                </li>
+                <li>
+                  <strong>Zero Personal Identification:</strong> Queries dispatched to upstream map services are strictly
+                  anonymized. User profile records, phone numbers, auth tokens, session cookies, and usernames are completely
+                  stripped prior to proxy relay.
+                </li>
+                <li>
+                  <strong>Aggressive Server Caching:</strong> Frequently computed routes and static address geocodes are
+                  cached in-memory, eliminating redundant transmissions to external servers.
+                </li>
+              </ul>
+              <p className="pt-1 text-[11px] text-muted-foreground">
+                For detailed attribution of third-party geospatial datasets and providers, visit our{' '}
+                <Link href="/credits" className="text-teal-600 dark:text-teal-400 font-semibold underline underline-offset-2">
+                  Credits &amp; Map Data Attributions
+                </Link>{' '}
+                page.
+              </p>
+            </div>
+          </section>
+
           {/* BOTTOM CTA */}
           <div className="mt-12 pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
             <Link

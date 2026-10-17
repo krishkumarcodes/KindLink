@@ -26,3 +26,44 @@ services:
         sync: false
       - key: SUPABASE_SECRET_KEY
         sync: false
+      - key: GEOAPIFY_API_KEY
+        sync: false
+      - key: ORS_API_KEY
+        sync: false
+      - key: MAPTILER_API_KEY
+        sync: false
+      - key: NEXT_PUBLIC_MAPTILER_API_KEY
+        sync: false
+      - key: MAPS_CONTACT_EMAIL
+        value: maps-admin@kindlink.app
+      - key: MAPTILER_STYLE_LIGHT
+        value: streets-v2
+      - key: MAPTILER_STYLE_DARK
+        value: dataviz-dark
+      - key: MAP_BOUNDS
+        value: "23.50,86.70,23.85,87.20"
+      - key: MAP_TILE_PROVIDERS
+        value: maptiler,osm
+      - key: GEOCODE_PROVIDERS
+        value: geoapify,photon,nominatim
+      - key: ROUTE_PROVIDERS
+        value: ors,geoapify,osrm
+      - key: PLACES_PROVIDERS
+        value: geoapify,overpass
+      - key: MAPTILER_MONTHLY_LIMIT
+        value: "100000"
+      - key: GEOAPIFY_DAILY_LIMIT
+        value: "3000"
+      - key: ORS_DAILY_LIMIT
+        value: "2000"
+      - key: MAPS_SOFT_LIMIT_ALERT_PERCENT
+        value: "80"
+      - key: MAPS_CACHE_GEOCODE_TTL
+        value: "86400"
+      - key: MAPS_CACHE_ROUTE_TTL
+        value: "3600"
+      - key: MAPS_CACHE_PLACES_TTL
+        value: "43200"
+      - key: MAPS_CACHE_TILES_TTL
+        value: "604800"
+
