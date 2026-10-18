@@ -223,6 +223,12 @@ class MockDataAdapter implements DataAdapter {
         r.acceptedHelperRating = offer.helperRating;
         r.acceptedHelperDistanceKm = offer.helperDistanceKm;
         r.acceptedHelperEtaMinutes = offer.helperEtaMinutes;
+        if (r.requiresHandoverPin ?? (r.category === 'equipment' || r.category === 'books')) {
+          r.requiresHandoverPin = true;
+          if (!r.handoverPin) {
+            r.handoverPin = Math.floor(1000 + Math.random() * 9000).toString();
+          }
+        }
       }
     }
     return { success: true };
