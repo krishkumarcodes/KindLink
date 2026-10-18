@@ -17,6 +17,10 @@ import {
   UserPlus,
   LogIn,
   Phone,
+  KeyRound,
+  UserCheck,
+  HelpCircle,
+  Shield,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
@@ -94,20 +98,60 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
     }
   };
 
-  // Demo showcase accounts quick fill
-  const handleSelectDemo = (username: string, pass: string, autoSubmit = false) => {
+  // Demo account profiles
+  const DEMO_ACCOUNTS = [
+    {
+      role: 'Verified Volunteer',
+      badge: 'Responder',
+      badgeColor: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/30',
+      username: 'kind_volunteer',
+      email: 'volunteer@kindlink.demo',
+      fallbackEmail: 'kind_volunteer@kindlink.demo',
+      password: 'KindLink#Volunteer2026',
+      fallbackPassword: 'KindLink#2026',
+      desc: 'Dr. Ananya Roy • Emergency medical aid responder',
+      icon: UserCheck,
+    },
+    {
+      role: 'Citizen Requester',
+      badge: 'Need Aid',
+      badgeColor: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30',
+      username: 'need_aid',
+      email: 'requester@kindlink.demo',
+      fallbackEmail: 'need_aid@kindlink.demo',
+      password: 'KindLink#Requester2026',
+      fallbackPassword: 'KindLink#2026',
+      desc: 'Sourav Mukherjee • Critical blood & medicine requests',
+      icon: HelpCircle,
+    },
+    {
+      role: 'Platform Admin',
+      badge: 'Super Admin',
+      badgeColor: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30',
+      username: 'admin_kindlink',
+      email: 'admin@kindlink.demo',
+      fallbackEmail: 'admin_kindlink@kindlink.demo',
+      password: 'KindLink#Admin2026',
+      fallbackPassword: 'KindLink#2026',
+      desc: 'Full administrative moderation & verification access',
+      icon: Shield,
+    },
+  ];
+
+  // Quick fill demo credentials
+  const handleSelectDemo = (acc: (typeof DEMO_ACCOUNTS)[0], autoSubmit = false) => {
     setActiveTab('login');
-    setLoginIdentifier(username);
-    setLoginPassword(pass);
+    setLoginIdentifier(acc.username);
+    setLoginPassword(acc.password);
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    toast.info(`Loaded demo account: @${username}`, {
-      description: `Populated credentials (${pass}). ${autoSubmit ? 'Signing in...' : 'Click Sign In or Quick Sign In.'}`,
+    toast.info(`Loaded demo account: @${acc.username}`, {
+      description: `Populated credentials (${acc.role}). ${autoSubmit ? 'Signing in...' : 'Click Sign In or Quick Sign In.'}`,
     });
 
     if (autoSubmit) {
-      executeLogin(username, pass);
+      executeLogin(acc.username, acc.password);
     }
   };
 
@@ -444,34 +488,43 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
     <div className="w-full max-w-lg mx-auto">
       {/* Brand Header */}
       <div className="text-center mb-6 space-y-2">
-        <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20 mb-1">
-          <Heart className="h-7 w-7 fill-white" />
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-600 dark:text-teal-400 text-xs font-semibold mb-1 shadow-sm">
+          <Sparkles className="h-3.5 w-3.5" />
+          <span>Realtime Community Trust Network</span>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
-          Kind<span className="text-primary">Link</span>
-        </h2>
+        <div className="flex items-center justify-center gap-2.5">
+          <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-600 text-white shadow-lg shadow-teal-900/30">
+            <Heart className="h-6 w-6 fill-white" />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+            Kind<span className="text-teal-500 dark:text-teal-400">Link</span>
+          </h2>
+        </div>
         <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto">
           Community-powered mutual aid & emergency response. Free, peer-to-peer, verified.
         </p>
       </div>
 
       {/* Main Auth Container Card */}
-      <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-soft space-y-6">
+      <div className="rounded-3xl border border-border/80 dark:border-slate-800 bg-card dark:bg-slate-900/90 p-6 sm:p-8 shadow-soft space-y-6 relative overflow-hidden backdrop-blur-xl">
+        {/* Subtle top edge glow highlight */}
+        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-teal-500/40 to-transparent pointer-events-none" />
+
         {/* Tab Switcher */}
-        <div className="grid grid-cols-2 p-1.5 rounded-2xl bg-muted/60 border border-border/80">
+        <div className="grid grid-cols-2 p-1.5 rounded-2xl bg-muted/60 dark:bg-slate-950/80 border border-border/80 dark:border-slate-800/80 gap-1">
           <button
             type="button"
             onClick={() => {
               setActiveTab('login');
               setErrorMsg(null);
             }}
-            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
+            className={`min-h-[44px] flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 active:scale-[0.98] ${
               activeTab === 'login'
-                ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-lg shadow-teal-900/30 hover:-translate-y-0.5 active:scale-[0.98]'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-lg shadow-teal-900/30 hover:-translate-y-0.5'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
             }`}
           >
-            <LogIn className="h-4 w-4" />
+            <LogIn className="h-4 w-4 shrink-0" />
             <span>Sign In</span>
           </button>
           <button
@@ -480,13 +533,13 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
               setActiveTab('signup');
               setErrorMsg(null);
             }}
-            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
+            className={`min-h-[44px] flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 active:scale-[0.98] ${
               activeTab === 'signup'
-                ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-lg shadow-teal-900/30 hover:-translate-y-0.5 active:scale-[0.98]'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-lg shadow-teal-900/30 hover:-translate-y-0.5'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
             }`}
           >
-            <UserPlus className="h-4 w-4" />
+            <UserPlus className="h-4 w-4 shrink-0" />
             <span>Create Account</span>
           </button>
         </div>
@@ -514,7 +567,7 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
                 Email or Username
               </label>
               <div className="relative group">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-teal-500 transition-colors duration-200" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-teal-500 transition-colors duration-200 pointer-events-none" />
                 <input
                   type="text"
                   required
@@ -522,7 +575,7 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
                   value={loginIdentifier}
                   onChange={(e) => setLoginIdentifier(e.target.value)}
                   placeholder="name@example.com or username"
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl border border-border bg-background text-foreground placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-border/80 dark:border-slate-800 bg-background dark:bg-slate-950/70 text-foreground placeholder-muted-foreground/60 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200 min-h-[44px]"
                 />
               </div>
             </div>
@@ -532,7 +585,7 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
                 Password
               </label>
               <div className="relative group">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-teal-500 transition-colors duration-200" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-teal-500 transition-colors duration-200 pointer-events-none" />
                 <input
                   type={showLoginPassword ? 'text' : 'password'}
                   required
@@ -540,12 +593,12 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-10 py-3 rounded-2xl border border-border bg-background text-foreground placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200"
+                  className="w-full pl-10 pr-11 py-3 rounded-xl border border-border/80 dark:border-slate-800 bg-background dark:bg-slate-950/70 text-foreground placeholder-muted-foreground/60 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200 min-h-[44px]"
                 />
                 <button
                   type="button"
                   onClick={() => setShowLoginPassword(!showLoginPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 transition-colors"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/40 rounded-lg transition-colors"
                   aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
                 >
                   {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -556,7 +609,7 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 hover:-translate-y-0.5 active:scale-[0.98] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-teal-900/30 transition-all duration-200 disabled:opacity-50 touch-target"
+              className="w-full min-h-[48px] h-12 py-3.5 px-4 rounded-xl bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 hover:-translate-y-0.5 active:scale-[0.98] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-teal-900/30 transition-all duration-200 disabled:opacity-50 touch-target cursor-pointer"
             >
               {loading ? (
                 <>
@@ -582,14 +635,14 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
                   Full Name
                 </label>
                 <div className="relative group">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-teal-500 transition-colors duration-200" />
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-teal-500 transition-colors duration-200 pointer-events-none" />
                   <input
                     type="text"
                     required
                     value={signupDisplayName}
                     onChange={(e) => setSignupDisplayName(e.target.value)}
                     placeholder="e.g. Ananya Roy"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-border bg-background text-foreground placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border/80 dark:border-slate-800 bg-background dark:bg-slate-950/70 text-foreground placeholder-muted-foreground/60 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200 min-h-[44px]"
                   />
                 </div>
               </div>
@@ -604,7 +657,7 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
                   value={signupUsername}
                   onChange={(e) => setSignupUsername(e.target.value)}
                   placeholder="ananya_roy"
-                  className="w-full px-4 py-2.5 rounded-2xl border border-border bg-background text-foreground placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200"
+                  className="w-full px-4 py-2.5 rounded-xl border border-border/80 dark:border-slate-800 bg-background dark:bg-slate-950/70 text-foreground placeholder-muted-foreground/60 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200 min-h-[44px]"
                 />
               </div>
             </div>
@@ -614,7 +667,7 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
                 Email Address
               </label>
               <div className="relative group">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-teal-500 transition-colors duration-200" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-teal-500 transition-colors duration-200 pointer-events-none" />
                 <input
                   type="email"
                   required
@@ -622,7 +675,7 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
                   value={signupEmail}
                   onChange={(e) => setSignupEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-border bg-background text-foreground placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border/80 dark:border-slate-800 bg-background dark:bg-slate-950/70 text-foreground placeholder-muted-foreground/60 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200 min-h-[44px]"
                 />
               </div>
             </div>
@@ -633,22 +686,22 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
                   Password (min 8)
                 </label>
                 <div className="relative group">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-teal-500 transition-colors duration-200" />
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-teal-500 transition-colors duration-200 pointer-events-none" />
                   <input
                     type={showSignupPassword ? 'text' : 'password'}
                     required
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-8 py-2.5 rounded-2xl border border-border bg-background text-foreground placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200"
+                    className="w-full pl-10 pr-11 py-2.5 rounded-xl border border-border/80 dark:border-slate-800 bg-background dark:bg-slate-950/70 text-foreground placeholder-muted-foreground/60 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200 min-h-[44px]"
                   />
                   <button
                     type="button"
                     onClick={() => setShowSignupPassword(!showSignupPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/40 rounded-lg transition-colors"
                     aria-label="Toggle password view"
                   >
-                    {showSignupPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
@@ -663,7 +716,7 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
                   value={signupConfirmPassword}
                   onChange={(e) => setSignupConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-4 py-2.5 rounded-2xl border border-border bg-background text-foreground placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200"
+                  className="w-full px-4 py-2.5 rounded-xl border border-border/80 dark:border-slate-800 bg-background dark:bg-slate-950/70 text-foreground placeholder-muted-foreground/60 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200 min-h-[44px]"
                 />
               </div>
             </div>
@@ -673,13 +726,13 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
                 Phone Number (Optional)
               </label>
               <div className="relative group">
-                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-teal-500 transition-colors duration-200" />
+                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-teal-500 transition-colors duration-200 pointer-events-none" />
                 <input
                   type="tel"
                   value={signupPhone}
                   onChange={(e) => setSignupPhone(e.target.value)}
                   placeholder="+91 98765 43210"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-border bg-background text-foreground placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border/80 dark:border-slate-800 bg-background dark:bg-slate-950/70 text-foreground placeholder-muted-foreground/60 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/80 transition-all duration-200 min-h-[44px]"
                 />
               </div>
             </div>
@@ -687,7 +740,7 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 hover:-translate-y-0.5 active:scale-[0.98] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-teal-900/30 transition-all duration-200 disabled:opacity-50 touch-target"
+              className="w-full min-h-[48px] h-12 py-3.5 px-4 rounded-xl bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 hover:-translate-y-0.5 active:scale-[0.98] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-teal-900/30 transition-all duration-200 disabled:opacity-50 touch-target cursor-pointer"
             >
               {loading ? (
                 <>
@@ -704,111 +757,91 @@ export function InlineAuthCard({ onAuthSuccess }: InlineAuthCardProps) {
           </form>
         )}
 
-        {/* Demo Showcase Accounts Quick Access */}
-        <div className="pt-5 border-t border-border space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              <Sparkles className="h-3.5 w-3.5 text-teal-500" />
-              <span>Showcase Demo Accounts</span>
+        {/* Showcase Demo Credentials Quick Access */}
+        <div className="pt-6 border-t border-border/80 dark:border-slate-800 space-y-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-teal-600 dark:text-teal-400 shadow-sm shrink-0">
+                <KeyRound className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-foreground truncate">
+                  Showcase Demo Credentials
+                </h3>
+              </div>
             </div>
-            <span className="text-[10px] font-semibold text-teal-400 bg-teal-500/10 border border-teal-500/20 px-2 py-0.5 rounded-full">
-              1-Click Quick Sign In
+            <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold text-teal-600 dark:text-teal-300 bg-teal-500/10 border border-teal-500/30 px-3 py-1 rounded-full shadow-sm shrink-0">
+              <Sparkles className="w-3 h-3 text-teal-500 dark:text-teal-400" />
+              <span>1-Tap Instant Sign-In</span>
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            {/* Volunteer */}
-            <div className="p-3.5 rounded-2xl backdrop-blur-md bg-slate-900/80 border border-slate-800 hover:border-teal-500/50 hover:bg-slate-900/95 transition-all duration-200 text-left text-xs group flex flex-col justify-between shadow-sm hover:shadow-md hover:shadow-teal-950/40">
-              <button
-                type="button"
-                onClick={() => handleSelectDemo('kind_volunteer', 'KindLink#Volunteer2026')}
-                className="text-left w-full"
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-bold text-white group-hover:text-teal-300 transition truncate">
-                    Volunteer
-                  </span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/30">
-                    Responder
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-300 font-mono">@kind_volunteer</p>
-                <p className="text-[10px] text-slate-400 mt-1 font-mono">
-                  Pass: <span className="text-teal-300 font-semibold bg-teal-950/60 px-1 py-0.5 rounded border border-teal-800/40">Volunteer2026</span>
-                </p>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectDemo('kind_volunteer', 'KindLink#Volunteer2026', true)}
-                className="mt-2.5 w-full py-1.5 text-[11px] font-bold rounded-xl bg-teal-500/15 text-teal-300 hover:bg-gradient-to-r hover:from-teal-600 hover:to-emerald-600 hover:text-white hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 border border-teal-500/30 hover:border-transparent flex items-center justify-center gap-1 shadow-sm"
-              >
-                <span>Quick Sign In</span>
-                <ArrowRight className="h-3 w-3" />
-              </button>
-            </div>
+          <div className="space-y-3">
+            {DEMO_ACCOUNTS.map((acc) => {
+              const Icon = acc.icon;
+              return (
+                <div
+                  key={acc.username}
+                  className="group rounded-2xl border border-border/80 dark:border-slate-800/90 hover:border-teal-500/60 dark:hover:border-teal-500/60 bg-muted/30 dark:bg-slate-900/80 hover:bg-muted/60 dark:hover:bg-slate-900/95 p-3.5 sm:p-4 backdrop-blur-md transition-all duration-200 flex flex-col min-[380px]:flex-row min-[380px]:items-center justify-between gap-3 text-left shadow-sm hover:shadow-lg hover:shadow-teal-950/30"
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleSelectDemo(acc, false)}
+                    className="flex-1 flex items-start gap-3 min-w-0 text-left min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 rounded-lg cursor-pointer"
+                    title={`Click to fill credentials for @${acc.username}`}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-muted/80 dark:bg-slate-800/90 border border-border/90 dark:border-slate-700/70 flex items-center justify-center shrink-0 text-teal-600 dark:text-teal-400 group-hover:bg-gradient-to-br group-hover:from-teal-600 group-hover:to-emerald-600 group-hover:text-white group-hover:border-teal-500/40 transition-all duration-200 shadow-sm mt-0.5 min-[380px]:mt-0">
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs sm:text-sm font-bold text-foreground group-hover:text-teal-600 dark:group-hover:text-teal-300 transition-colors">
+                          @{acc.username}
+                        </span>
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shadow-sm ${acc.badgeColor}`}>
+                          {acc.role}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground font-medium truncate mt-0.5">
+                        {acc.desc}
+                      </p>
+                      <div className="text-[10px] text-muted-foreground mt-1 font-mono flex items-center gap-1.5 flex-wrap">
+                        <span>Password:</span>
+                        <code className="text-teal-600 dark:text-teal-300 font-semibold bg-teal-500/10 dark:bg-teal-950/70 px-2 py-0.5 rounded-md border border-teal-500/30 dark:border-teal-800/60 shadow-inner">
+                          {acc.password}
+                        </code>
+                        <span className="text-muted-foreground/80 text-[9px]">(or {acc.fallbackPassword})</span>
+                      </div>
+                    </div>
+                  </button>
 
-            {/* Aid Requester */}
-            <div className="p-3.5 rounded-2xl backdrop-blur-md bg-slate-900/80 border border-slate-800 hover:border-teal-500/50 hover:bg-slate-900/95 transition-all duration-200 text-left text-xs group flex flex-col justify-between shadow-sm hover:shadow-md hover:shadow-teal-950/40">
-              <button
-                type="button"
-                onClick={() => handleSelectDemo('need_aid', 'KindLink#Requester2026')}
-                className="text-left w-full"
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-bold text-white group-hover:text-teal-300 transition truncate">
-                    Aid Requester
-                  </span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                    Need Aid
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectDemo(acc, true)}
+                    disabled={loading}
+                    className="shrink-0 min-h-[44px] h-11 w-full min-[380px]:w-auto text-xs font-bold px-4 py-2.5 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-300 hover:bg-gradient-to-r hover:from-teal-600 hover:to-emerald-600 hover:text-white hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 border border-teal-500/30 hover:border-transparent shadow-sm hover:shadow-teal-900/40 flex items-center justify-center gap-1.5 disabled:opacity-50 touch-target cursor-pointer"
+                    title={`Sign in immediately as @${acc.username}`}
+                  >
+                    <span>Quick Sign In</span>
+                    <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+                  </button>
                 </div>
-                <p className="text-[11px] text-slate-300 font-mono">@need_aid</p>
-                <p className="text-[10px] text-slate-400 mt-1 font-mono">
-                  Pass: <span className="text-amber-300 font-semibold bg-amber-950/60 px-1 py-0.5 rounded border border-amber-800/40">Requester2026</span>
-                </p>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectDemo('need_aid', 'KindLink#Requester2026', true)}
-                className="mt-2.5 w-full py-1.5 text-[11px] font-bold rounded-xl bg-amber-500/15 text-amber-300 hover:bg-gradient-to-r hover:from-teal-600 hover:to-emerald-600 hover:text-white hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 border border-amber-500/30 hover:border-transparent flex items-center justify-center gap-1 shadow-sm"
-              >
-                <span>Quick Sign In</span>
-                <ArrowRight className="h-3 w-3" />
-              </button>
-            </div>
-
-            {/* Admin */}
-            <div className="p-3.5 rounded-2xl backdrop-blur-md bg-slate-900/80 border border-slate-800 hover:border-teal-500/50 hover:bg-slate-900/95 transition-all duration-200 text-left text-xs group flex flex-col justify-between shadow-sm hover:shadow-md hover:shadow-teal-950/40">
-              <button
-                type="button"
-                onClick={() => handleSelectDemo('admin_kindlink', 'KindLink#Admin2026')}
-                className="text-left w-full"
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-bold text-white group-hover:text-teal-300 transition truncate">
-                    Platform Admin
-                  </span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/30">
-                    Super Admin
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-300 font-mono">@admin_kindlink</p>
-                <p className="text-[10px] text-slate-400 mt-1 font-mono">
-                  Pass: <span className="text-purple-300 font-semibold bg-purple-950/60 px-1 py-0.5 rounded border border-purple-800/40">Admin2026</span>
-                </p>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectDemo('admin_kindlink', 'KindLink#Admin2026', true)}
-                className="mt-2.5 w-full py-1.5 text-[11px] font-bold rounded-xl bg-purple-500/15 text-purple-300 hover:bg-gradient-to-r hover:from-teal-600 hover:to-emerald-600 hover:text-white hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 border border-purple-500/30 hover:border-transparent flex items-center justify-center gap-1 shadow-sm"
-              >
-                <span>Quick Sign In</span>
-                <ArrowRight className="h-3 w-3" />
-              </button>
-            </div>
+              );
+            })}
           </div>
-          <div className="pt-1 text-[11px] text-muted-foreground text-center">
-            Secondary universal password: <span className="font-mono text-foreground font-semibold">KindLink#2026</span>
+
+          {/* Universal Demo Password Reminder */}
+          <div className="pt-3.5 border-t border-border/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5 font-medium">
+              <CheckCircle2 className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+              <span>Live Supabase Auth &amp; SSR</span>
+            </span>
+            <div className="inline-flex items-center gap-1.5 font-mono text-[11px]">
+              <span>Universal Key:</span>
+              <code className="text-teal-600 dark:text-teal-300 font-semibold bg-teal-500/10 dark:bg-teal-950/70 px-2 py-0.5 rounded-md border border-teal-500/30 dark:border-teal-800/60 shadow-inner">
+                KindLink#2026
+              </code>
+            </div>
           </div>
         </div>
       </div>
