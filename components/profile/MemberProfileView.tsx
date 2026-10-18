@@ -29,6 +29,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Select } from '@/components/ui/Select';
+import { OrganizationType } from '@/lib/data/types';
+import { OrganizationBadge } from './OrganizationBadge';
 import { BadgeMedalIcon } from './BadgeMedalIcon';
 
 export interface PublicMemberProfile {
@@ -59,6 +61,11 @@ export interface PublicMemberProfile {
   visibility_organisation?: string;
   visibility_area?: string;
   isSelf: boolean;
+  isOrganization?: boolean;
+  organizationName?: string | null;
+  organizationType?: OrganizationType | null;
+  organizationVerified?: boolean;
+  organizationRegistrationNumber?: string | null;
 }
 
 interface MemberProfileViewProps {
@@ -334,6 +341,15 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
 
             {/* Chips */}
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 pt-1">
+              {Boolean(member.isOrganization || member.organizationVerified) && (
+                <OrganizationBadge
+                  organizationName={member.organizationName || member.displayName}
+                  organizationType={member.organizationType}
+                  organizationVerified={member.organizationVerified}
+                  organizationRegistrationNumber={member.organizationRegistrationNumber}
+                />
+              )}
+
               {member.role === 'admin' && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
                   <ShieldCheck className="h-3 w-3 notranslate" />

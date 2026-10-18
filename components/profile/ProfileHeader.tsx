@@ -21,6 +21,7 @@ import { calculateBadgesForUser, UserBadgeProgress } from '@/lib/data/badges';
 import { BadgeMedalIcon } from './BadgeMedalIcon';
 import { BadgeDetailSheet } from './BadgeDetailSheet';
 import { BadgePinningModal } from './BadgePinningModal';
+import { OrganizationBadge } from './OrganizationBadge';
 
 export type ProfileTab = 'overview' | 'activity' | 'badges' | 'impact' | 'verification' | 'settings';
 
@@ -247,8 +248,17 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
           </div>
         </div>
 
-        {/* ONE Small Verification Chip Only (Verified / Pending / Not verified) */}
-        <div className="flex items-center justify-center pt-0.5">
+        {/* Verification & Organization Chips Row */}
+        <div className="flex flex-wrap items-center justify-center gap-2 pt-0.5">
+          {Boolean(userProfile.isOrganization || userProfile.organizationVerified) && (
+            <OrganizationBadge
+              organizationName={userProfile.organizationName || userProfile.displayName || userProfile.name}
+              organizationType={userProfile.organizationType}
+              organizationVerified={userProfile.organizationVerified}
+              organizationRegistrationNumber={userProfile.organizationRegistrationNumber}
+            />
+          )}
+
           <span
             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide border shadow-2xs ${
               userProfile.verificationState === 'verified'

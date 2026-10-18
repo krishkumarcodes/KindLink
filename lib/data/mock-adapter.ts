@@ -133,6 +133,12 @@ class MockDataAdapter implements DataAdapter {
       createdAt: 'Just now',
       status: 'open',
       helpersOffered: 0,
+      requiresHandoverPin: req.requiresHandoverPin ?? (req.category === 'equipment' || req.category === 'books'),
+      handoverPin:
+        req.handoverPin ||
+        ((req.requiresHandoverPin ?? (req.category === 'equipment' || req.category === 'books'))
+          ? Math.floor(1000 + Math.random() * 9000).toString()
+          : undefined),
     };
     this.requests.unshift(newReq);
     return { success: true, id: newId };
@@ -290,6 +296,25 @@ class MockDataAdapter implements DataAdapter {
   async completeRequest(requestId: string): Promise<{ success: boolean }> {
     const r = this.requests.find((x) => x.id === requestId);
     if (r) r.status = 'completed';
+    return { success: true };
+  }
+
+  async verifyHandoverPin(
+    requestId: string,
+    pin: string
+  ): Promise<{ success: boolean; error?: string }> {
+    const r = this.requests.find((x) => x.id === requestId);
+    if (!r) return { success: false, error: 'Request not found' };
+
+    // If request requires PIN, verify it
+    if (r.requiresHandoverPin) {
+      if (!r.handoverPin || r.handoverPin !== pin.trim()) {
+        return { success: false, error: 'Incorrect 4-digit PIN. Please ask the requester for the PIN on their screen.' };
+      }
+    }
+
+    r.status = 'completed';
+    r.handoverConfirmedAt = new Date().toISOString();
     return { success: true };
   }
 
@@ -461,6 +486,47 @@ class MockDataAdapter implements DataAdapter {
 
   async updatePreferredLanguage(locale: string): Promise<void> {
     this.user.preferred_language = locale;
+  }
+
+  async endorseRequest(requestId: string): Promise<{ success: boolean; error?: string }> {
+    const req = this.requests.find((r) => r.id === requestId);
+    if (!req) return { success: false, error: 'Request not found' };
+
+    const orgName =
+      this.user.organizationName ||
+      this.user.displayName ||
+      this.user.name ||
+      'KindLink Community Partner';
+
+    if (!req.endorsedByOrgNames) {
+      req.endorsedByOrgNames = [];
+    }
+    if (!req.endorsedByOrgNames.includes(orgName)) {
+      req.endorsedByOrgNames.push(orgName);
+    }
+    req.endorsementsCount = req.endorsedByOrgNames.length;
+    req.isOrganizationEndorsed = req.endorsementsCount > 0;
+
+    return { success: true };
+  }
+
+  async removeEndorsement(requestId: string): Promise<{ success: boolean; error?: string }> {
+    const req = this.requests.find((r) => r.id === requestId);
+    if (!req) return { success: false, error: 'Request not found' };
+
+    const orgName =
+      this.user.organizationName ||
+      this.user.displayName ||
+      this.user.name ||
+      'KindLink Community Partner';
+
+    if (req.endorsedByOrgNames) {
+      req.endorsedByOrgNames = req.endorsedByOrgNames.filter((n) => n !== orgName);
+      req.endorsementsCount = req.endorsedByOrgNames.length;
+      req.isOrganizationEndorsed = req.endorsementsCount > 0;
+    }
+
+    return { success: true };
   }
 }
 

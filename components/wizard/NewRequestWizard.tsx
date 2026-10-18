@@ -28,6 +28,7 @@ import {
   Crosshair,
   Compass,
   Search,
+  Share2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
@@ -36,7 +37,8 @@ import { searchAddressNominatim } from '@/lib/location/search';
 import { LocationSearchResult } from '@/lib/location/types';
 import { reverseGeocode } from '@/lib/geo/reverse-geocode';
 import { PinDropMap } from '@/components/location/PinDropMap';
-import { HelpCategory, UrgencyLevel, DraftRequest } from '@/lib/data/types';
+import { HelpCategory, UrgencyLevel, DraftRequest, HelpRequest } from '@/lib/data/types';
+import { EmergencyStoryCardModal } from '@/components/requests/EmergencyStoryCardModal';
 import { dataAdapter } from '@/lib/data';
 
 const DRAFT_STORAGE_KEY = 'kindlink_new_request_draft_v2';
@@ -54,6 +56,8 @@ export function NewRequestWizard() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDraftRestored, setIsDraftRestored] = useState(false);
+  const [createdRequest, setCreatedRequest] = useState<HelpRequest | null>(null);
+  const [storyModalOpen, setStoryModalOpen] = useState(false);
 
   // Form State
   const [category, setCategory] = useState<HelpCategory>('blood');
@@ -442,13 +446,15 @@ export function NewRequestWizard() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
+      const locationFinal = category === 'transport' ? `${pickupAddress} → ${dropAddress}` : locationName;
+
       await addRequest({
         title,
         description,
         category,
         urgency,
         waitingMinutes: 1,
-        locationName: category === 'transport' ? `${pickupAddress} → ${dropAddress}` : locationName,
+        locationName: locationFinal,
         latitude,
         longitude,
         contactName,
@@ -475,6 +481,46 @@ export function NewRequestWizard() {
         verificationBadge: 'Requester Verified',
       });
 
+      const createdObj: HelpRequest = {
+        id: `req-${Date.now()}`,
+        title,
+        description,
+        category,
+        urgency,
+        waitingMinutes: 0,
+        distanceKm: 0.1,
+        locationName: locationFinal,
+        latitude,
+        longitude,
+        contactName,
+        contactRole,
+        phone,
+        bloodGroup: category === 'blood' ? bloodGroup : undefined,
+        unitsNeeded: category === 'blood' ? unitsNeeded : undefined,
+        hospitalName: category === 'blood' ? hospitalName : undefined,
+        neededByTime: category === 'blood' ? bloodNeededBy : neededByTime,
+        itemType: category === 'equipment' ? itemType : undefined,
+        itemDuration: category === 'equipment' ? itemDuration : undefined,
+        elderlyAidType: category === 'elderly' ? elderlyAidType : undefined,
+        elderlyDuration: category === 'elderly' ? elderlyDuration : undefined,
+        scheduledTime: category === 'elderly' ? scheduledTime : undefined,
+        booksClassSubject: category === 'books' ? booksClassSubject : undefined,
+        bookTitle: category === 'books' ? bookTitle : undefined,
+        bookCondition: category === 'books' ? bookCondition : undefined,
+        pickupAddress: category === 'transport' ? pickupAddress : undefined,
+        dropAddress: category === 'transport' ? dropAddress : undefined,
+        passengerCount: category === 'transport' ? passengerCount : undefined,
+        hasLuggage: category === 'transport' ? hasLuggage : undefined,
+        wheelchairAccessible: category === 'transport' ? wheelchairAccessible : undefined,
+        verified: true,
+        verificationBadge: 'Requester Verified',
+        createdAt: 'Just now',
+        status: 'open',
+        helpersOffered: 0,
+      };
+
+      setCreatedRequest(createdObj);
+
       // Clear draft on success
       try {
         localStorage.removeItem(DRAFT_STORAGE_KEY);
@@ -484,10 +530,6 @@ export function NewRequestWizard() {
       toast.success('Help Request Broadcasted Successfully!', {
         description: 'Nearby verified volunteers in the area are being notified immediately.',
       });
-
-      setTimeout(() => {
-        setCurrentView('requests');
-      }, 2400);
     } catch (err: any) {
       toast.error('Could not send request', {
         description: err.message || 'Please check network connection and try again.',
@@ -499,23 +541,59 @@ export function NewRequestWizard() {
 
   if (isSuccess) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-lg mx-auto min-h-[60vh]">
-        <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-emerald-500/15 text-emerald-600 mb-5 animate-in zoom-in-75 duration-300 ring-8 ring-emerald-500/10">
-          <CheckCircle2 className="h-14 w-14 notranslate" />
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 text-center max-w-lg mx-auto min-h-[60vh] space-y-4">
+        <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-emerald-500/15 text-emerald-600 animate-in zoom-in-75 duration-300 ring-8 ring-emerald-500/10 mx-auto">
+          <CheckCircle2 className="h-12 w-12 notranslate" />
         </div>
-        <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-          Request Broadcasted!
-        </h2>
-        <p className="text-sm text-muted-foreground mt-2 max-w-sm leading-relaxed">
-          Your request is now live in the community feed. Verified volunteers within 10 km are being notified.
-        </p>
-        <div className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-primary/10 text-primary text-xs font-bold border border-primary/20">
+        <div className="space-y-1">
+          <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+            Request Broadcasted!
+          </h2>
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
+            Your request is now live in the community feed. Verified volunteers within 10 km are being notified.
+          </p>
+        </div>
+
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-primary/10 text-primary text-xs font-bold border border-primary/20">
           <ShieldCheck className="h-4 w-4 notranslate text-emerald-500" />
           <span>Priority Level: {urgency.toUpperCase()}</span>
         </div>
-        <p className="text-[11px] text-muted-foreground mt-4">
-          Redirecting to Live Requests feed...
-        </p>
+
+        {/* 1-Tap Emergency Story Card Callout */}
+        <div className="w-full p-4 rounded-2xl bg-muted/50 border border-border/80 text-left space-y-3 shadow-xs">
+          <div className="flex items-center gap-2 text-foreground font-bold text-xs sm:text-sm">
+            <Sparkles className="h-4 w-4 notranslate text-primary" />
+            <span>Multiply your reach with a Story Card</span>
+          </div>
+          <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
+            Post to WhatsApp Status &amp; Instagram Stories with a live QR code so nearby friends and volunteers can scan and respond instantly.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setStoryModalOpen(true)}
+            className="w-full py-3.5 px-4 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs sm:text-sm shadow-md transition-all active:scale-95 touch-target flex items-center justify-center gap-2"
+          >
+            <Share2 className="h-4 w-4 notranslate shrink-0" />
+            <span>Generate &amp; Share Story Card</span>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setCurrentView('requests')}
+          className="w-full py-3 px-5 rounded-xl border border-border/80 hover:bg-muted text-foreground font-bold text-xs sm:text-sm transition-all active:scale-95"
+        >
+          View in Live Requests Feed
+        </button>
+
+        {createdRequest && (
+          <EmergencyStoryCardModal
+            request={createdRequest}
+            open={storyModalOpen}
+            onClose={() => setStoryModalOpen(false)}
+          />
+        )}
       </div>
     );
   }

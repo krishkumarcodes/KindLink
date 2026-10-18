@@ -103,6 +103,20 @@ class SupabaseDataAdapter implements DataAdapter {
       status: r.status as RequestLifecycleStatus,
       helpersOffered: Number(r.offer_count ?? r.helpers_offered ?? 0),
       acceptedHelperId: r.accepted_helper_id,
+      handoverPin: r.handover_pin || details.handover_pin,
+      requiresHandoverPin: Boolean(
+        r.requires_handover_pin ??
+        details.requires_handover_pin ??
+        (category === 'equipment' || category === 'books')
+      ),
+      handoverConfirmedAt: r.handover_confirmed_at || details.handover_confirmed_at,
+      isOrganizationEndorsed: Boolean(
+        r.is_organization_endorsed ??
+        details.is_organization_endorsed ??
+        (r.endorsements_count && r.endorsements_count > 0)
+      ),
+      endorsementsCount: Number(r.endorsements_count ?? details.endorsements_count ?? 0),
+      endorsedByOrgNames: r.endorsed_by_org_names || details.endorsed_by_org_names || [],
     };
   }
 
@@ -165,21 +179,35 @@ class SupabaseDataAdapter implements DataAdapter {
     if (req.contactPhone) details.contact_phone = req.contactPhone;
     if (req.contactRole) details.contact_role = req.contactRole;
 
+    const requiresPin =
+      req.requiresHandoverPin ?? (req.category === 'equipment' || req.category === 'books');
+    const pin =
+      req.handoverPin ||
+      (requiresPin ? Math.floor(1000 + Math.random() * 9000).toString() : undefined);
+    if (requiresPin) {
+      details.requires_handover_pin = true;
+      if (pin) details.handover_pin = pin;
+    }
+
     const dbCategory = req.category === 'elderly' ? 'elderly_help' : req.category;
+
+    const insertPayload: Record<string, any> = {
+      requester_id: user.id,
+      category: dbCategory,
+      title: req.title,
+      description: req.description,
+      urgency: req.urgency,
+      location: `POINT(${req.longitude} ${req.latitude})`,
+      address_text: req.addressText,
+      details,
+      status: 'open',
+    };
+    if (requiresPin) insertPayload.requires_handover_pin = true;
+    if (pin) insertPayload.handover_pin = pin;
 
     const { data, error } = await supabase
       .from('requests')
-      .insert({
-        requester_id: user.id,
-        category: dbCategory,
-        title: req.title,
-        description: req.description,
-        urgency: req.urgency,
-        location: `POINT(${req.longitude} ${req.latitude})`,
-        address_text: req.addressText,
-        details,
-        status: 'open',
-      })
+      .insert(insertPayload)
       .select('id')
       .single();
 
@@ -396,6 +424,64 @@ class SupabaseDataAdapter implements DataAdapter {
     if (error) {
       return { success: false, error: error.message };
     }
+    return { success: true };
+  }
+
+  async verifyHandoverPin(
+    requestId: string,
+    pin: string
+  ): Promise<{ success: boolean; error?: string }> {
+    const supabase = this.getSupabase();
+    try {
+      const { data: rpcRes, error: rpcError } = await supabase.rpc('verify_handover_pin', {
+        p_request_id: requestId,
+        p_pin: pin.trim(),
+      });
+      if (!rpcError && rpcRes && typeof rpcRes === 'object') {
+        if (rpcRes.success) return { success: true };
+        return { success: false, error: rpcRes.error || 'Incorrect PIN.' };
+      }
+    } catch {
+      // Fallback to table query below
+    }
+
+    const { data: reqData, error: fetchErr } = await supabase
+      .from('requests')
+      .select('handover_pin, requires_handover_pin, details, category')
+      .eq('id', requestId)
+      .single();
+
+    if (fetchErr || !reqData) {
+      return { success: false, error: fetchErr?.message || 'Request not found' };
+    }
+
+    const requiresPin =
+      reqData.requires_handover_pin ??
+      reqData.details?.requires_handover_pin ??
+      (reqData.category === 'equipment' || reqData.category === 'books');
+    const expectedPin = reqData.handover_pin ?? reqData.details?.handover_pin;
+
+    if (requiresPin && expectedPin && expectedPin !== pin.trim()) {
+      return {
+        success: false,
+        error: 'Incorrect 4-digit PIN. Please ask the requester for the PIN on their screen.',
+      };
+    }
+
+    const now = new Date().toISOString();
+    const { error: updateErr } = await supabase
+      .from('requests')
+      .update({
+        status: 'completed',
+        completed_at: now,
+        handover_confirmed_at: now,
+      })
+      .eq('id', requestId);
+
+    if (updateErr) {
+      return { success: false, error: updateErr.message };
+    }
+
     return { success: true };
   }
 
@@ -683,6 +769,11 @@ class SupabaseDataAdapter implements DataAdapter {
       requestsCount: 0,
       verificationState: profile.verification_status || 'unverified',
       badges: profile.verification_status === 'verified' ? ['Identity Verified'] : [],
+      isOrganization: Boolean(profile.is_organization),
+      organizationName: profile.organization_name || '',
+      organizationType: profile.organization_type || undefined,
+      organizationVerified: Boolean(profile.organization_verified),
+      organizationRegistrationNumber: profile.organization_registration_number || '',
       createdAt: profile.created_at || user.created_at || '',
     };
   }
@@ -979,6 +1070,53 @@ class SupabaseDataAdapter implements DataAdapter {
         .eq('id', user.id);
     } catch {
       // Ignored if offline or unauthenticated
+    }
+  }
+
+  async endorseRequest(requestId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const supabase = this.getSupabase();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { success: false, error: 'Sign in required' };
+
+      const { error } = await supabase
+        .from('request_endorsements')
+        .insert({
+          request_id: requestId,
+          endorser_id: user.id,
+        });
+
+      if (error) {
+        if (error.code === '23505') {
+          // Already endorsed
+          return { success: true };
+        }
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to endorse' };
+    }
+  }
+
+  async removeEndorsement(requestId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const supabase = this.getSupabase();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { success: false, error: 'Sign in required' };
+
+      const { error } = await supabase
+        .from('request_endorsements')
+        .delete()
+        .eq('request_id', requestId)
+        .eq('endorser_id', user.id);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to remove endorsement' };
     }
   }
 }

@@ -26,6 +26,7 @@ import {
   ArrowLeft,
   RotateCcw,
   Sparkles,
+  Share2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { HelpRequest, TravelMode, HelpCategory, UrgencyLevel } from '@/lib/data/types';
@@ -34,6 +35,7 @@ import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { calculateETA, formatETA } from '@/lib/data/distance';
 import { OverlayPortal, useBodyScrollLock } from '@/components/ui/OverlayPortal';
 import { getCategoryToken } from '@/lib/data/categoryColors';
+import { EmergencyStoryCardModal } from './EmergencyStoryCardModal';
 
 interface HelpFlowModalProps {
   request: HelpRequest | null;
@@ -149,6 +151,7 @@ export function HelpFlowModal({
   const [isSuccess, setIsSuccess] = useState(false);
   const [submittedOfferId, setSubmittedOfferId] = useState<string | null>(null);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [storyModalOpen, setStoryModalOpen] = useState(false);
 
   // Mobile visual viewport keyboard tracking
   const [viewportHeight, setViewportHeight] = useState<number | null>(null);
@@ -550,28 +553,40 @@ export function HelpFlowModal({
                 </div>
 
                 {/* Actions */}
-                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
+                <div className="pt-2 flex flex-col gap-2.5 max-w-md mx-auto w-full">
                   <button
                     type="button"
-                    onClick={onClose}
-                    className="w-full sm:flex-1 py-3 px-5 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold text-xs sm:text-sm shadow-md transition-all active:scale-95 touch-target"
+                    onClick={() => setStoryModalOpen(true)}
+                    style={{ backgroundColor: categoryToken.primary }}
+                    className="w-full py-3.5 px-5 rounded-2xl text-white font-bold text-xs sm:text-sm shadow-md hover:brightness-105 transition-all active:scale-95 touch-target flex items-center justify-center gap-2"
                   >
-                    Back to Request
+                    <Share2 className="h-4 w-4 notranslate shrink-0" />
+                    <span>Share Emergency Story Card (Status &amp; Stories)</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={handleWithdrawOffer}
-                    disabled={isWithdrawing}
-                    className="w-full sm:w-auto py-3 px-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/15 font-bold text-xs transition-all active:scale-95 touch-target flex items-center justify-center gap-1.5 disabled:opacity-50"
-                  >
-                    {isWithdrawing ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin notranslate" />
-                    ) : (
-                      <RotateCcw className="h-3.5 w-3.5 notranslate" />
-                    )}
-                    <span>Withdraw offer</span>
-                  </button>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 w-full">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="w-full sm:flex-1 py-3 px-5 rounded-2xl bg-muted hover:bg-muted/80 text-foreground font-bold text-xs sm:text-sm border border-border/80 transition-all active:scale-95 touch-target"
+                    >
+                      Back to Request
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleWithdrawOffer}
+                      disabled={isWithdrawing}
+                      className="w-full sm:w-auto py-3 px-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/15 font-bold text-xs transition-all active:scale-95 touch-target flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    >
+                      {isWithdrawing ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin notranslate" />
+                      ) : (
+                        <RotateCcw className="h-3.5 w-3.5 notranslate" />
+                      )}
+                      <span>Withdraw offer</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -942,6 +957,13 @@ export function HelpFlowModal({
           )}
         </div>
       </div>
+
+      {/* Emergency Story Card Modal */}
+      <EmergencyStoryCardModal
+        request={request}
+        open={storyModalOpen}
+        onClose={() => setStoryModalOpen(false)}
+      />
     </OverlayPortal>
   );
 }

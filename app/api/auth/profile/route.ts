@@ -38,6 +38,11 @@ export async function GET(req: NextRequest) {
         visibility_organisation: visibility.organisation,
         visibility_area: visibility.area,
         visibility,
+        isOrganization: Boolean(profile.is_organization),
+        organizationName: profile.organization_name || '',
+        organizationType: profile.organization_type || null,
+        organizationVerified: Boolean(profile.organization_verified),
+        organizationRegistrationNumber: profile.organization_registration_number || '',
       },
     });
   } catch (err: any) {
@@ -149,6 +154,20 @@ export async function PATCH(req: NextRequest) {
 
     const vArea = normalizeVisibility(visibility_area ?? visibility?.area);
     if (vArea) updateData.visibility_area = vArea;
+
+    // Organization fields
+    const {
+      isOrganization,
+      organizationName,
+      organizationType,
+      organizationVerified,
+      organizationRegistrationNumber,
+    } = body;
+    if (isOrganization !== undefined) updateData.is_organization = Boolean(isOrganization);
+    if (organizationName !== undefined) updateData.organization_name = organizationName;
+    if (organizationType !== undefined) updateData.organization_type = organizationType;
+    if (organizationVerified !== undefined) updateData.organization_verified = Boolean(organizationVerified);
+    if (organizationRegistrationNumber !== undefined) updateData.organization_registration_number = organizationRegistrationNumber;
 
     let updateRes = await admin
       .from('profiles')

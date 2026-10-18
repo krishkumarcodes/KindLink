@@ -17,7 +17,7 @@ Imagine you are playing a team video game. Here are the 10 big upgrades we built
 
 ```
 +---------------------------------------------------------------------------------+
-|                         THE 10 KINDLINK SUPERPOWERS                             |
+|                         THE 14 KINDLINK SUPERPOWERS                             |
 +---------------------------------------------------------------------------------+
 | 1. No Helping Yourself (Own-Request Rule across UI, API, and Database)          |
 | 2. The Mysterious Blank Grey Map Card is Solved Forever                         |
@@ -27,8 +27,12 @@ Imagine you are playing a team video game. Here are the 10 big upgrades we built
 | 6. Live Transit Location Sharing (Safe GPS sharing with explicit consent)       |
 | 7. Six-Step Journey Tracker (Open -> Offered -> Accepted -> Arrived -> Done)    |
 | 8. 5-Star Mutual High-Fives (Trust ratings & shiny badges)                      |
-| 9. Super High-Contrast Colors (Easy to read for everyone, day or night)        |
+| 9. Super High-Contrast Colors (Easy to read for everyone, day or night)         |
 | 10. Perfect Round Coin Medals (No cut-off corners on any phone screen)          |
+| 11. Offline SOS via Cellular SMS (Dispatches GPS without data/internet)         |
+| 12. 4-Digit Handover PIN (Physical exchange verification for medical gear)      |
+| 13. Verified NGO Badges (Institutional trust shields and 1-tap endorsements)    |
+| 14. Social Story Cards (1-Tap WhatsApp Status and Instagram Story generator)    |
 +---------------------------------------------------------------------------------+
 ```
 
@@ -140,6 +144,45 @@ No one is ever left guessing what to do next!
 
 ---
 
+### 11. Offline SOS via Cellular SMS Fallback
+* **What is it?** When someone triggers an emergency SOS in an area with zero mobile data or flaky 2G coverage, KindLink doesn't get stuck.
+* **How it works:**
+  * If network connection drops or cloud dispatch takes more than 2.5 seconds, the SOS screen switches to **Offline SMS Mode**.
+  * A pulsing red/amber banner alerts the user: *"No Internet / Low Connectivity - Offline Mode Active"*.
+  * With **1 tap**, the user can dispatch their exact GPS coordinates, Google Maps link, and live tracking URL to all their saved emergency contacts using carrier SMS.
+  * Handles both Android (`sms:num?body=`) and iOS (`sms:num&body=`) phone schemes automatically.
+
+---
+
+### 12. 4-Digit Handover Confirmation PIN
+* **What is it?** When neighbors lend valuable medical gear (like oxygen concentrators, nebulizers, wheelchairs) or textbooks, both sides need proof that the item was safely delivered into the right hands.
+* **How it works:**
+  * **Requester:** Sees a prominent 4-digit PIN card (e.g. `[ 4 ] [ 8 ] [ 2 ] [ 1 ]`) with delivery instructions.
+  * **Helper:** When the helper arrives, they tap **"Confirm Handover & Complete"**, which opens a friendly modal to type in the 4-digit PIN.
+  * Correct PIN entry immediately verifies the physical handover, marks the request completed, and triggers reciprocal 5-star ratings.
+
+---
+
+### 13. Verified Community Organization & NGO Badges
+* **What is it?** Community groups, local NGOs (like Red Cross Society Asansol), student unions, and blood banks can hold officially verified institutional accounts.
+* **How it works:**
+  * Organization profiles feature a prestigious violet shield badge, organization type, and government/trust registration number.
+  * Verified organizations can tap **"Endorse this Request"** on urgent aid posts.
+  * Endorsed requests display a prominent `★ NGO Endorsed` badge that boosts community trust and mobilizes volunteers even faster.
+
+---
+
+### 14. 1-Tap Instagram Story & WhatsApp Status Cards
+* **What is it?** When urgent help is needed (like B+ blood for a surgery), neighbors can share a gorgeous visual emergency card across social media in seconds.
+* **How it works:**
+  * Tapping **"Share Story Card"** opens an instant Canvas generator rendering two crisp formats:
+    * **9:16 Vertical Story**: Perfect for Instagram Stories, WhatsApp Status, and Snapchat.
+    * **1:1 Square Card**: Perfect for WhatsApp chats, Telegram, Twitter, and Facebook feeds.
+  * Features category accent colors, high-contrast urgency badges, key facts, and an **embedded QR code** that links directly to the live request.
+  * Includes a **"Share to WhatsApp"** button, **"Download PNG"**, and native mobile **Share Sheet** integration.
+
+---
+
 ## 🛠️ Exact SQL Migrations & Execution Order
 
 If you are setting up the KindLink PostgreSQL database from scratch, run the migration files in `supabase/sql/` in this exact numerical sequence:
@@ -163,6 +206,7 @@ If you are setting up the KindLink PostgreSQL database from scratch, run the mig
 | **15** | `15_ratings_and_reviews_enhancements.sql` | Adds review reporting, moderation hiding, and trust score distribution. |
 | **16** | `16_saved_places_and_emergency_privacy.sql` | Adds saved places with 10-item cap and emergency profile privacy protections. |
 | **17** | `17_own_request_rules_and_data_cleanup.sql` | Prevents own-request offers via trigger and functions, excludes author requests from helper feeds. |
+| **18** | `18_handover_pin_and_org_endorsements.sql` | **New in v4.5.0**: Handover Confirmation PIN, auto-PIN generator trigger, `request_endorsements` table, and NGO verified profile badges. |
 
 > [!TIP]
 > To apply and test all migrations in one automated sweep, simply run:
@@ -301,7 +345,10 @@ npm run test:ip-lang
 # 5. Specialized Request Details, Route Maps & Accessibility QA Suite
 npm run test:requests
 
-# 6. Database Migrations & Idempotency Test Runner
+# 6. Offline SOS SMS Payload & URI Test Suite
+npm run test:sms
+
+# 7. Database Migrations & Idempotency Test Runner
 bash supabase/tests/run_tests.sh
 ```
 

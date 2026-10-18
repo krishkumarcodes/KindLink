@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/krishkumarcodes/KindLink/releases/tag/v4.4.0"><img src="https://img.shields.io/badge/Release-v4.4.0-0D9488?style=for-the-badge&logo=github&logoColor=white" alt="Release v4.4.0" /></a>
+  <a href="https://github.com/krishkumarcodes/KindLink/releases/tag/v4.5.0"><img src="https://img.shields.io/badge/Release-v4.5.0-0D9488?style=for-the-badge&logo=github&logoColor=white" alt="Release v4.5.0" /></a>
   <a href="https://kindlink-gd8e.onrender.com"><img src="https://img.shields.io/badge/Live_Site-kindlink--gd8e.onrender.com-0D9488?style=for-the-badge&logo=render&logoColor=white" alt="Live Production Site" /></a>
   <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js-14.2%20App%20Router-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js 14" /></a>
   <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5.6-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
@@ -54,8 +54,12 @@ KindLink was conceptualized, designed, and engineered from the ground up by:
 </p>
 
 ### 🌟 Key Contributions by Krish Kumar:
-- 🚀 **End-to-End System Architecture**: Engineered KindLink through iterations v1.0 through v4.4.0, integrating Next.js 14 App Router, TypeScript, and Supabase.
+- 🚀 **End-to-End System Architecture**: Engineered KindLink through iterations v1.0 through v4.5.0, integrating Next.js 14 App Router, TypeScript, and Supabase.
 - ⚡ **Three-Key Community Urgency Engine**: Formulated and implemented the deterministic three-key dispatch model (Urgency Level > Proximity > Waiting Time).
+- 📶 **Offline SOS & SMS Fallback Engine**: Engineered cellular carrier SMS dispatch with standardized coordinates, Google Maps deep-links, live tracking URLs, and dual iOS/Android URL schemes.
+- 🔐 **4-Digit Handover Confirmation PIN**: Designed secure physical exchange verification for medical equipment loans and educational handovers with requester PIN cards and auto-focus helper modals.
+- 🏛️ **Verified Organization / NGO Endorsement Badges**: Built institutional profile tiers, verification shields, and 1-tap request endorsements for community welfare societies and blood banks.
+- 📱 **1-Tap Social Story Card Generator**: Created high-resolution HTML5 Canvas rendering for 9:16 vertical Stories and 1:1 Square cards with instant WhatsApp sharing, native mobile share sheets, and auto-generated QR codes.
 - 🗺️ **High-Performance Map & Road Routing**: Engineered Leaflet GIS radar, multi-tier tile fallbacks (MapTiler -> Carto -> OSM), and dynamic travel modes (Bike, Walking, Car).
 - 🛡️ **Four-Tier Own-Request Rule**: Enforced strict self-offer prevention across UI cards, state adapters, Next.js server endpoints, and PostgreSQL triggers.
 - 🌐 **Intelligent Language Detection Engine**: Integrated IPinfo Lite with zero-delay fallback, 29 verified languages, in-memory caching, and crawler immunity.
@@ -66,7 +70,11 @@ KindLink was conceptualized, designed, and engineered from the ground up by:
 ## 📌 Table of Contents
 
 - [🌟 Project Overview](#-project-overview)
-- [✨ What's New in v4.4.0](#-whats-new-in-v440)
+- [✨ What's New in v4.5.0](#-whats-new-in-v450)
+- [📶 Offline SOS & SMS Fallback Engine](#-offline-sos--sms-fallback-engine)
+- [🔐 4-Digit Handover Confirmation PIN](#-4-digit-handover-confirmation-pin)
+- [🏛️ Verified Organization / NGO Badges](#️-verified-organization--ngo-badges)
+- [📱 1-Tap Social Story Card Generator](#-1-tap-social-story-card-generator)
 - [⚡ Three-Key Community Urgency Ranking](#-three-key-community-urgency-ranking)
 - [🛡️ Four-Layer Own-Request Protection](#️-four-layer-own-request-protection)
 - [🗺️ Route Mini-Map & Live Road Routing](#️-route-mini-map--live-road-routing)
@@ -112,11 +120,17 @@ Conceived for industrial and urban communities across **Asansol, Burnpur, Durgap
                   ▼
      ┌────────────────────────┐
      │ Verified Helper Offers │ (Auto-growing notes, travel ETA, location)
+     │ NGO Endorsements (★)   │ (Institutional credibility & trust shields)
      └────────────────────────┘
                   │
                   ▼
      ┌────────────────────────┐
      │     Mutual Match       │ ──► Direct Phone/WhatsApp Reveal
+     └────────────────────────┘
+                  │
+                  ▼
+     ┌────────────────────────┐
+     │  Handover Security PIN │ ──► 4-Digit physical exchange verification
      └────────────────────────┘
 ```
 
@@ -129,21 +143,85 @@ Conceived for industrial and urban communities across **Asansol, Burnpur, Durgap
 
 ---
 
-## ✨ What's New in v4.4.0
+## ✨ What's New in v4.5.0
 
-The **v4.4.0** release delivers a major overhaul of the request and help lifecycle:
+The **v4.5.0** release delivers four landmark community resilience and emergency security capabilities:
 
-| Feature Area | Enhancement in v4.4.0 |
+| Feature Area | Superpower in v4.5.0 |
 | :--- | :--- |
-| **Request Details Sheet** | Redesigned portal bottom sheet with sticky top and bottom bars, 6-step Realtime progress tracker, 3 equal info tiles (Waiting, Needed by, Distance), category detail chips, and requested-by privacy card. |
-| **Route Mini-Map** | Fixed blank grey canvas root cause using `ResizeObserver` + delayed `invalidateSize()`; multi-tier fallback (MapTiler -> Carto Voyager/Dark -> OSM); teal 6px route polyline; Bike/Walk/Car speed modes. |
-| **Nearby Places** | Real coordinates querying up to 3 nearby healthcare facilities (<35 km) with conditional Call buttons (rendered only when phone number is available). |
-| **Own-Request Prevention** | 4-layer enforcement preventing authors from helping their own requests across UI, Client Stores, Server API (`403 Forbidden`), and PostgreSQL trigger `trg_prevent_self_offer`. |
-| **Offer Help Sheet** | Visual viewport virtual keyboard handling, "You are offering as" card, category quick-reply chips, arrival time selector, and optional live location sharing. |
-| **Offers Received Section** | Requester owner controls with offer count pill, action needed tag, quote blocks, 48px Decline/Accept actions, accept confirmation sheet, and decline reason selector. |
-| **Circular Badge Medals** | Rebuilt medals with strict 1:1 aspect ratio (`border-radius: 50%`, `overflow: hidden`), transparent corners, zero yellow halo, and distinct artwork for all 18 badges. |
-| **Requests Page & Filters** | Shortened search placeholder (`"Search requests"`), filter panel moved to portal bottom sheet with sticky header/footer, simplified distance slider labels, and coloured urgency dots. |
-| **First-Visit Language** | IPinfo Lite country-to-language detector with in-memory caching, bot immunity, and zero-delay English fallback. |
+| 📶 **Offline SOS & SMS Fallback** *(Feature B)* | Automatic detection of low-signal or zero-connectivity states with a 2.5s network dispatch race; standardized SMS body with 5-decimal GPS coordinates, Google Maps deep-link, and tracking URL; cross-platform Android (`?body=`) & iOS (`&body=`) SMS URI builder with 1-tap "Send to All Emergency Contacts". |
+| 🔐 **4-Digit Handover PIN** *(Feature E)* | Anti-fraud handover confirmation for medical gear loans and study books; requester sees prominent 4-digit PIN card; helper inputs PIN via accessible `HandoverPinModal` with auto-focus and paste support to verify physical delivery and complete request. |
+| 🏛️ **Verified Organization / NGO Endorsements** *(Feature F)* | Institutional profile credentials (name, type, registration number, verification shield); prominent `★ NGO Endorsed` badge on cards and details sheets; 1-tap endorsement actions for verified NGOs, hospitals, and community welfare societies. |
+| 📱 **1-Tap Social Story Card Generator** *(Feature H)* | High-resolution HTML5 Canvas engine exporting 9:16 vertical Instagram Stories / WhatsApp Status cards and 1:1 Square feed cards; category accent themes, urgency badges, live QR code linking directly to the request, and native mobile share sheet integration. |
+| 📋 **Request Details Overhaul** | Redesigned portal bottom sheet with sticky top/bottom bars, 6-step Realtime tracker, 3 equal info tiles (Waiting, Needed by, Distance), category detail chips, and requested-by privacy card. |
+| 🗺️ **Route Mini-Map** | Fixed 0x0 container size using `ResizeObserver` + delayed `invalidateSize()`; multi-tier fallback (MapTiler -> Carto Voyager/Dark -> OSM); Bike/Walk/Car speed modes. |
+| 🛡️ **Own-Request Prevention** | 4-layer enforcement preventing authors from helping their own requests across UI, Client Stores, Server API (`403 Forbidden`), and PostgreSQL trigger `trg_prevent_self_offer`. |
+| 🏅 **Circular Badge Medals** | True circular medals (`border-radius: 50%`, `overflow: hidden`), transparent corners, zero yellow halo, and distinct artwork for all 18 badges. |
+| 🌐 **First-Visit Language** | IPinfo Lite country-to-language detector with in-memory caching, bot immunity, and zero-delay English fallback. |
+
+---
+
+## 📶 Offline SOS & SMS Fallback Engine
+
+When accidents, medical crises, or natural disasters occur, cellular data towers are often congested or unavailable. KindLink v4.5.0 introduces **Carrier-Level Offline SOS**:
+
+```
+[Emergency SOS Activated]
+         │
+         ├── Online (>2.5s signal)? ────► Cloud Dispatch to Supabase Realtime
+         │
+         └── Offline or Timeout (>2.5s)? ──► Pulsing Offline SMS Mode
+                                                  │
+                ┌─────────────────────────────────┴─────────────────────────────────┐
+                ▼                                                                   ▼
+    [Send to All Contacts]                                              [Single Contact 1-Tap]
+   sms:+9198...,+9198...?body=...                                      sms:+9198...?body=...
+```
+
+- **Zero Data Required**: Dispatches emergency coordinates via standard cellular SMS over GSM/CDMA networks.
+- **Cross-Platform Compatibility**: Automatically detects iOS vs Android to format proper URI query parameters (`sms:+91...?body=` vs `sms:+91...&body=`).
+- **Standardized Emergency Payload**:
+  ```text
+  EMERGENCY SOS: Sneha Roy needs urgent help!
+  Location: Asansol Court Area (Lat: 23.68886, Lng: 86.96606)
+  Google Maps: https://www.google.com/maps/search/?api=1&query=23.68886,86.96606
+  Live Tracking: https://kindlink-gd8e.onrender.com/sos/active
+  Blood Group: B+
+  Sent via KindLink Offline SOS.
+  ```
+
+---
+
+## 🔐 4-Digit Handover Confirmation PIN
+
+To ensure community medical equipment (wheelchairs, nebulizers, oxygen cylinders) and textbooks are safely returned and verified upon physical delivery:
+
+1. **Requester Security View**: When a helper is accepted, the requester is shown a high-contrast 4-digit PIN card (e.g. `[ 4 ] [ 8 ] [ 2 ] [ 1 ]`).
+2. **Physical Delivery Verification**: When the helper arrives, they request the PIN from the requester and enter it into the `HandoverPinModal`.
+3. **Automated Status Progression**: Correct PIN entry instantly updates the database status to `completed`, stores `handover_confirmed_at`, and triggers prompt rating dialogs for both parties.
+
+---
+
+## 🏛️ Verified Organization / NGO Badges
+
+Local community institutions—such as Red Cross Society Asansol, Blood Donors Forum, and Resident Welfare Associations—can now formally verify and endorse high-priority requests:
+
+- **Organization Profiles**: Verified profile badge with organization registration number and authority type (`ngo`, `blood_bank`, `hospital`, `resident_welfare`, `student_union`).
+- **`★ NGO Endorsed` Badge**: Requests endorsed by registered institutions display an unmistakable violet badge on cards and map popovers.
+- **1-Tap Endorse Action**: Verified organization accounts can endorse requests in real-time to mobilize community volunteers rapidly.
+
+---
+
+## 📱 1-Tap Social Story Card Generator
+
+Mobilize volunteers across social networks in seconds without manual typing or screenshots:
+
+- **Two Formats**:
+  - **Story Format (9:16 - 1080 × 1920)**: Formatted for Instagram Stories, WhatsApp Status, and Snapchat.
+  - **Square Format (1:1 - 1080 × 1080)**: Formatted for WhatsApp Chats, Facebook feeds, and Twitter / X.
+- **Embedded QR Code**: Automatically renders a high-contrast QR code pointing directly to the live request URL.
+- **Native Web Share**: Invokes `navigator.share()` with direct file attachment support on mobile devices.
+
 
 ---
 
@@ -306,29 +384,35 @@ KindLink/
 ├── components/                       # Modular React UI Components
 │   ├── home/                         # Home Hero, Active Strip & Urgent Feeds
 │   ├── map/                          # Leaflet GIS Radar, Mini-Map & Tile Layer
-│   ├── profile/                      # Circular Badge Medals, Header & Tabs
-│   ├── requests/                     # Request Details, Offer Sheet & Action Buttons
+│   ├── profile/                      # Circular Badge Medals, Header & OrganizationBadge
+│   ├── requests/                     # Request Details, HandoverPinModal & EmergencyStoryCardModal
 │   ├── shell/                        # Header, Navigation & Modals
+│   ├── sos/                          # Emergency SOS Modal & Offline SMS Fallback
 │   └── ui/                           # Shared Radix Portal Overlays & Switches
 ├── lib/                              # Business Logic, Adapters & Services
 │   ├── data/                         # Adapters, Ownership Logic & Category Colors
 │   ├── geo/                          # OSRM Road Routing & Hospital Finder
 │   ├── locale/                       # IPinfo Lookup & Country-Language Rules
+│   ├── sos/                          # Emergency SMS Payload & Dual OS URI Generator
 │   ├── store/                        # Zustand Global State Management
-│   └── supabase/                     # Supabase Client, Server & Realtime
+│   ├── supabase/                     # Supabase Client, Server & Realtime
+│   └── utils/                        # HTML5 Canvas Story Generator & QR Code Engine
 ├── supabase/                         # Database Schema, Migrations & Tests
-│   ├── sql/                          # Migrations 01 through 17
+│   ├── sql/                          # Migrations 01 through 18
 │   │   ├── 17_own_request_rules.sql  # Self-Offer Guard & Feed Cleanups
+│   │   ├── 18_handover_pin_and_org_endorsements.sql # Handover PIN & NGO Endorsements
 │   │   └── all_in_one.sql            # Consolidated Single-Run Schema
 │   └── tests/                        # 35 PostgreSQL Assertion Test Cases
 ├── scripts/                          # Automated QA & Audit Scripts
 │   ├── check-clean.mjs               # Clean Architecture & Zero-Forbidden Words Audit
 │   ├── check-layout.mjs              # 47-Point Viewport & Alignment Audit
+│   ├── test-emergency-sms.mjs        # Offline Emergency SMS URI & Payload Test
 │   └── test-request-details.mjs      # Request Details & Mini-Map Test Suite
 ├── backup/                           # Standalone Versioned Project Backups
 │   ├── KinLinkv4.2.zip
 │   ├── KinLinkv4.3.zip
-│   └── KinLinkv4.4.zip               # Current Release Archive (1.33 MB)
+│   ├── KinLinkv4.4.zip
+│   └── KinLinkv4.5.zip               # Current Release Archive
 ├── docs/                             # Guides, Architectural Specs & Screenshots
 ├── package.json                      # Project Manifest & Test Scripts
 └── tailwind.config.ts                # Design Tokens & Category Colors
@@ -358,7 +442,8 @@ KindLink database migrations are ordered, idempotent, and tested:
 | **14** | `14_profile_enhancements.sql` | Emergency profile privacy, proofs audit, and account deletion. |
 | **15** | `15_ratings_enhancements.sql` | Self-rating prevention and dynamic trust score breakdown. |
 | **16** | `16_saved_places.sql` | Saved places RLS, 10-place user constraint, and SOS privacy redactions. |
-| **17** | `17_own_request_rules.sql` | **New in v4.4.0**: Trigger `trg_prevent_self_offer`, `can_offer_help`, and feed filtering. |
+| **17** | `17_own_request_rules.sql` | Trigger `trg_prevent_self_offer`, `can_offer_help`, and feed filtering. |
+| **18** | `18_handover_pin_and_org_endorsements.sql` | **New in v4.5.0**: Handover Confirmation PIN, auto-PIN generator trigger, `request_endorsements` table, and NGO verified profile badges. |
 
 > [!TIP]
 > For a fresh database setup, you can execute the single consolidated file [`supabase/sql/all_in_one.sql`](file:///data/data/com.termux/files/home/storage/downloads/KindLink/supabase/sql/all_in_one.sql).
@@ -415,10 +500,13 @@ npm run check:layout
 # 4. Request Details, Route Maps & Category Buttons Suite
 npm run test:requests
 
-# 5. IPinfo Country-to-Language & Crawler Guard Suite (59 checks)
+# 5. Offline Emergency SMS Payload & Dual OS URI Suite
+node scripts/test-emergency-sms.mjs
+
+# 6. IPinfo Country-to-Language & Crawler Guard Suite (59 checks)
 npm run test:ip-lang
 
-# 6. PostgreSQL Database Migrations & RLS Suite (35 tests)
+# 7. PostgreSQL Database Migrations & RLS Suite (35 tests)
 bash supabase/tests/run_tests.sh
 ```
 

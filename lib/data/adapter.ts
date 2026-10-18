@@ -48,6 +48,10 @@ export interface CreateRequestInput {
   contactName?: string;
   contactPhone?: string;
   contactRole?: string;
+
+  // Handover confirmation PIN
+  requiresHandoverPin?: boolean;
+  handoverPin?: string;
 }
 
 export interface TransitLocation {
@@ -87,6 +91,11 @@ export interface DataAdapter {
   withdrawOffer(offerId: string): Promise<{ success: boolean; error?: string }>;
 
   completeRequest(requestId: string): Promise<{ success: boolean; error?: string }>;
+
+  verifyHandoverPin(
+    requestId: string,
+    pin: string
+  ): Promise<{ success: boolean; error?: string }>;
 
   cancelRequest(requestId: string): Promise<{ success: boolean; error?: string }>;
 
@@ -169,5 +178,11 @@ export interface DataAdapter {
   updateSosDetails?(token: string, notes: string): Promise<{ success: boolean }>;
 
   updatePreferredLanguage?: (locale: string) => Promise<void>;
+
+  endorseRequest(requestId: string): Promise<{ success: boolean; error?: string }>;
+
+  removeEndorsement(requestId: string): Promise<{ success: boolean; error?: string }>;
 }
+
+export type IKindLinkAdapter = DataAdapter;
 

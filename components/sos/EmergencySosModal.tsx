@@ -24,6 +24,7 @@ import {
   Navigation,
   Share2,
   MessageCircle,
+  MessageSquare,
   Plus,
   Send,
   Loader2,
@@ -33,6 +34,8 @@ import {
   Eye,
   Lock,
   Shield,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -46,6 +49,7 @@ import { ASANSOL_CENTER } from '@/lib/data/mock-requests';
 import { calculateDistance, calculateETA, formatETA } from '@/lib/data/distance';
 import { EmergencyContact } from '@/lib/data/types';
 import { EditProfileModal } from '@/components/profile/EditProfileModal';
+import { generateEmergencySmsBody, buildEmergencySmsUri } from '@/lib/sos/emergency-sms';
 
 const RequestRouteMiniMap = dynamic(
   () => import('@/components/map/RequestRouteMiniMap'),
@@ -147,6 +151,44 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
   const [isLoadingHospitals, setIsLoadingHospitals] = useState(false);
   const [routeData, setRouteData] = useState<RoadRouteResult | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
+
+  // Offline & low-signal detection state
+  const [isOnline, setIsOnline] = useState<boolean>(() => {
+    if (typeof navigator !== 'undefined') {
+      return navigator.onLine;
+    }
+    return true;
+  });
+  const [isLowSignal, setIsLowSignal] = useState<boolean>(false);
+  const [isManualOffline, setIsManualOffline] = useState<boolean>(false);
+
+  // Monitor online / offline connectivity
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleOnline = () => {
+      setIsOnline(true);
+      setIsLowSignal(false);
+      toast.success('Internet connection restored', {
+        description: 'You are back online.',
+      });
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast.warning('No Internet Connection', {
+        description: 'Switched to Offline SOS mode. Emergency SMS fallback is active.',
+      });
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Auth checking
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
@@ -259,6 +301,7 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
     setIsRippling(false);
     setIsSubmitting(false);
     setKeyboardConfirmOpen(false);
+    setIsLowSignal(false);
   }, []);
 
   // Desktop detection
@@ -283,6 +326,8 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
       setDetailsModalOpen(false);
       setEditProfileModalOpen(false);
       setPreviewOpen(false);
+      setIsManualOffline(false);
+      setIsLowSignal(false);
     }
   }, [open, resetAll]);
 
@@ -349,16 +394,44 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
         : `[Medical: ${emergencyPrivacy.medicalNote}]`;
     }
 
+    // If offline before dispatch, activate local beacon & switch to offline mode
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setIsOnline(false);
+      setSosToken(generatedToken);
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+      const fullUrl = `${siteUrl}/sos/${generatedToken}`;
+      setTrackingUrl(fullUrl);
+      setIsSubmitting(false);
+      toast.warning('Offline Mode Active', {
+        description: 'SOS alert saved locally. Send SOS via SMS below to alert your contacts directly.',
+        duration: 9000,
+      });
+      return;
+    }
+
+    let timeoutId: NodeJS.Timeout | null = null;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        const timeoutError = new Error('TIMEOUT_2500MS');
+        timeoutError.name = 'TimeoutError';
+        reject(timeoutError);
+      }, 2500);
+    });
+
     try {
-      const res = await dataAdapter.submitSos(
-        bestLat,
-        bestLng,
-        currentArea,
-        {
-          notes: combinedNotes || undefined,
-          category: 'transport',
-        }
-      );
+      const res = await Promise.race([
+        dataAdapter.submitSos(
+          bestLat,
+          bestLng,
+          currentArea,
+          {
+            notes: combinedNotes || undefined,
+            category: 'transport',
+          }
+        ),
+        timeoutPromise,
+      ]);
+      if (timeoutId) clearTimeout(timeoutId);
 
       const finalToken = res?.token || generatedToken;
       setSosToken(finalToken);
@@ -383,11 +456,25 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
         description: `Verified volunteers and emergency responders in ${currentArea} are alerted.`,
         duration: 9000,
       });
-    } catch {
+    } catch (err: unknown) {
+      if (timeoutId) clearTimeout(timeoutId);
+
+      // Trigger low-signal/offline state if fetch fails or exceeds 2.5s
+      setIsLowSignal(true);
       setSosToken(generatedToken);
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
       setTrackingUrl(`${siteUrl}/sos/${generatedToken}`);
-      toast.error('Emergency SOS alert active locally');
+
+      const isTimeout =
+        err instanceof Error && (err.message === 'TIMEOUT_2500MS' || err.name === 'TimeoutError');
+      toast.error(
+        isTimeout ? 'Network Timeout (>2.5s) - Low Signal' : 'Network Alert Failed - Offline',
+        {
+          description:
+            'Switched to Offline Mode. Please use "Send SOS via SMS" below to alert your emergency contacts immediately.',
+          duration: 10000,
+        }
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -540,6 +627,23 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
     Boolean(userProfile?.reduceMotion) ||
     (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
+  const isOfflineMode = !isOnline || isLowSignal || isManualOffline;
+
+  // Build standardized emergency SMS payload
+  const emergencySmsBody = generateEmergencySmsBody({
+    userName: userProfile?.name,
+    areaName: currentArea,
+    lat: userCoords?.lat || ASANSOL_CENTER.lat,
+    lng: userCoords?.lng || ASANSOL_CENTER.lng,
+    siteUrl: process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : ''),
+    token: sosToken || 'active',
+    bloodGroup: emergencyPrivacy.shareBloodGroup && bloodGroup ? bloodGroup : (bloodGroup || null),
+  });
+
+  const allContactsPhoneList = savedContacts.map((c) => c.phone);
+  const smsAllUri = buildEmergencySmsUri(allContactsPhoneList, emergencySmsBody);
+  const smsFallbackUri = buildEmergencySmsUri([], emergencySmsBody);
+
   const getInitials = (name: string) => {
     if (!name || !name.trim()) return 'KL';
     const parts = name.trim().split(/\s+/);
@@ -580,9 +684,22 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
                 Emergency SOS
               </h2>
             </div>
-            <p className="text-xs font-semibold text-rose-600/90 dark:text-rose-400/90 leading-tight mt-1 truncate">
-              {currentArea}
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-xs font-semibold text-rose-600/90 dark:text-rose-400/90 leading-tight truncate">
+                {currentArea}
+              </p>
+              {isOfflineMode ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 shrink-0">
+                  <WifiOff className="h-3 w-3 notranslate" />
+                  <span>Offline</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 shrink-0">
+                  <Wifi className="h-3 w-3 notranslate" />
+                  <span>Online</span>
+                </span>
+              )}
+            </div>
           </div>
 
           <button
@@ -618,6 +735,211 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
                 <span>Log In to Send Community SOS</span>
               </Link>
             </div>
+          )}
+
+          {/* OFFLINE / LOW-SIGNAL BANNER & FALLBACK SMS ACTIONS (Requirements 1 & 2) */}
+          {(status === 'idle' || status === 'holding' || status === 'sending') && (
+            isOfflineMode ? (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-rose-500/15 to-amber-500/15 border-2 border-amber-500/40 dark:border-amber-400/50 space-y-3.5 shadow-md animate-in fade-in">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 text-amber-700 dark:text-amber-300">
+                    <span className="relative flex h-3 w-3 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500" />
+                    </span>
+                    <h3 className="text-xs sm:text-sm font-black uppercase tracking-wide">
+                      No Internet / Low Connectivity - Offline Mode Active
+                    </h3>
+                  </div>
+
+                  {isOnline && !isLowSignal && (
+                    <button
+                      type="button"
+                      onClick={() => setIsManualOffline(false)}
+                      className="text-[11px] font-bold text-primary hover:underline shrink-0"
+                    >
+                      Switch to Online
+                    </button>
+                  )}
+                </div>
+
+                <p className="text-xs text-muted-foreground leading-relaxed break-words whitespace-normal">
+                  Web alerts require data connectivity. KindLink has enabled direct Offline SMS mode with your live GPS location so you can dispatch emergency alerts through your carrier network without internet.
+                </p>
+
+                {/* PROMINENT PRIMARY ACTION BUTTON (48-52px touch target) */}
+                <a
+                  href={savedContacts.length > 0 ? smsAllUri : smsFallbackUri}
+                  className="w-full min-h-[50px] h-[50px] sm:h-[52px] px-4 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white font-black text-sm tracking-wide shadow-lg active:scale-[0.98] transition flex items-center justify-center gap-2.5 touch-target ring-2 ring-rose-500/30"
+                >
+                  <MessageSquare className="h-5 w-5 shrink-0 notranslate" />
+                  <span>Send SOS via SMS (Works Offline)</span>
+                </a>
+
+                {/* Saved Contacts or Fallback SMS Composer */}
+                {savedContacts.length > 0 ? (
+                  <div className="space-y-2 pt-1 border-t border-amber-500/20">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-muted-foreground">
+                        Direct Contact SMS ({savedContacts.length}):
+                      </span>
+                      <a
+                        href={smsAllUri}
+                        className="text-[11px] font-bold text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        <Send className="h-3 w-3 notranslate" />
+                        <span>Send to All Contacts</span>
+                      </a>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {savedContacts.map((c) => {
+                        const contactSmsUri = buildEmergencySmsUri(c.phone, emergencySmsBody);
+                        return (
+                          <a
+                            key={c.id}
+                            href={contactSmsUri}
+                            className="p-2.5 rounded-xl bg-card border border-border hover:border-primary/40 flex items-center justify-between gap-2 text-xs transition active:scale-95 touch-target"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <span className="font-bold text-foreground block truncate">
+                                {c.name}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground font-mono block">
+                                {c.phone}
+                              </span>
+                            </div>
+                            <span className="px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-bold text-[11px] shrink-0 flex items-center gap-1">
+                              <Send className="h-3 w-3 notranslate" />
+                              <span>SMS</span>
+                            </span>
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-card/60 border border-border/80 space-y-2">
+                    <p className="text-[11px] text-muted-foreground">
+                      No emergency contacts saved yet. Tapping the button above opens your phone&apos;s SMS composer with pre-filled emergency GPS details so you can select any contact.
+                    </p>
+                    {!isAddingContact ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingContact(true)}
+                        className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        <Plus className="h-3.5 w-3.5 notranslate" />
+                        <span>Save an emergency contact</span>
+                      </button>
+                    ) : (
+                      <form
+                        onSubmit={handleAddEmergencyContact}
+                        className="p-3 rounded-xl bg-card border border-border space-y-2"
+                      >
+                        <input
+                          type="text"
+                          placeholder="Contact name (e.g. Brother / Sneha)"
+                          value={newContactName}
+                          onChange={(e) => setNewContactName(e.target.value)}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none"
+                          required
+                        />
+                        <input
+                          type="tel"
+                          placeholder="Phone number (+91 98320...)"
+                          value={newContactPhone}
+                          onChange={(e) => setNewContactPhone(e.target.value)}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none"
+                          required
+                        />
+                        <input
+                          type="text"
+                          placeholder="Relationship (e.g. Sister, Doctor, Friend)"
+                          value={newContactRelation}
+                          onChange={(e) => setNewContactRelation(e.target.value)}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none"
+                        />
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            type="submit"
+                            className="flex-1 py-1.5 rounded-lg bg-primary text-primary-foreground font-bold text-xs"
+                          >
+                            Save Contact
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsAddingContact(false)}
+                            className="px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
+                )}
+
+                {/* Copy SMS Text button */}
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(emergencySmsBody);
+                      setCopiedPreparedMsg(true);
+                      toast.success('Emergency SMS text copied!');
+                      setTimeout(() => setCopiedPreparedMsg(false), 2000);
+                    }}
+                    className="text-xs font-semibold text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 py-1"
+                  >
+                    {copiedPreparedMsg ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-emerald-500 notranslate" />
+                        <span>SMS copied to clipboard!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5 notranslate" />
+                        <span>Copy Emergency SMS text</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* NORMAL ONLINE MODE: Secondary Card with Backup SMS & Offline Mode switch */
+              <div className="p-3.5 rounded-2xl bg-muted/40 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                    <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
+                    <span>Online SOS Active</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Web alerts notify verified community volunteers. You can also dispatch backup SMS directly to your emergency contacts.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href={savedContacts.length > 0 ? smsAllUri : smsFallbackUri}
+                    className="min-h-[44px] px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-bold text-xs flex items-center gap-1.5 transition active:scale-95 touch-target whitespace-nowrap"
+                    title="Send backup SMS to emergency contacts"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 notranslate" />
+                    <span>Send backup SMS</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsManualOffline(true)}
+                    className="min-h-[44px] px-3 py-2 rounded-xl border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground font-semibold text-xs transition active:scale-95 touch-target whitespace-nowrap"
+                    title="Switch to Offline / SMS Mode"
+                  >
+                    Offline / SMS Mode
+                  </button>
+                </div>
+              </div>
+            )
           )}
 
           {/* 2. USER DETAILS CARD (Logged-in only) */}
@@ -999,6 +1321,31 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
           {/* 4. ACTIVE SOS SCREEN */}
           {status === 'activated' && (
             <div className="space-y-4 animate-in fade-in duration-200">
+              {/* Active Screen Offline Fallback Alert */}
+              {isOfflineMode && (
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-rose-500/15 to-amber-500/15 border-2 border-amber-500/40 dark:border-amber-400/50 space-y-3 shadow-md animate-in fade-in">
+                  <div className="flex items-center gap-2.5 text-amber-700 dark:text-amber-300">
+                    <span className="relative flex h-3 w-3 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500" />
+                    </span>
+                    <h3 className="text-xs sm:text-sm font-black uppercase tracking-wide">
+                      No Internet / Low Connectivity - Offline Mode Active
+                    </h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Cellular internet is unavailable or delayed. Please tap below to dispatch your emergency alert directly via SMS to your emergency contacts.
+                  </p>
+                  <a
+                    href={savedContacts.length > 0 ? smsAllUri : smsFallbackUri}
+                    className="w-full min-h-[50px] h-[50px] sm:h-[52px] px-4 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white font-black text-sm tracking-wide shadow-lg active:scale-[0.98] transition flex items-center justify-center gap-2.5 touch-target ring-2 ring-rose-500/30"
+                  >
+                    <MessageSquare className="h-5 w-5 shrink-0 notranslate" />
+                    <span>Send SOS via SMS (Works Offline)</span>
+                  </a>
+                </div>
+              )}
+
               {/* Active Beacon Banner with Running Elapsed Timer */}
               <div className="p-4 rounded-2xl bg-rose-500/15 border-2 border-rose-500/40 text-rose-600 dark:text-rose-400 space-y-3 shadow-md">
                 <div className="flex items-center justify-between">
@@ -1206,38 +1553,17 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
 
                 {/* Prepared Message Preview Box with 1-tap Copy */}
                 {(() => {
-                  const bestLat = userCoords?.lat || ASANSOL_CENTER.lat;
-                  const bestLng = userCoords?.lng || ASANSOL_CENTER.lng;
-                  const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${bestLat},${bestLng}`;
-                  const liveSosUrl =
-                    trackingUrl ||
-                    `${process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/sos/${sosToken || 'live'}`;
-                  const sentTimeStr = activatedAt
-                    ? new Date(activatedAt).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
-                    : new Date().toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      });
-                  const contactPhoneNum =
-                    emergencyPrivacy.sharePhone && displayPhone
-                      ? displayPhone
-                      : displayPhone || 'Not shared';
-                  const preparedContactMessage = `SOS from ${fullName}. Phone: ${contactPhoneNum}. Location: ${gmapsUrl}. Live: ${liveSosUrl}. Sent at ${sentTimeStr} from KindLink.`;
-
                   return (
                     <div className="space-y-3">
                       <div className="p-3 rounded-xl bg-background border border-border space-y-1.5">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
-                            Prepared Contact Message
+                            Standardized Emergency SOS Message
                           </span>
                           <button
                             type="button"
                             onClick={() => {
-                              navigator.clipboard.writeText(preparedContactMessage);
+                              navigator.clipboard.writeText(emergencySmsBody);
                               setCopiedPreparedMsg(true);
                               toast.success('SOS message copied to clipboard!');
                               setTimeout(() => setCopiedPreparedMsg(false), 2000);
@@ -1257,92 +1583,119 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
                             )}
                           </button>
                         </div>
-                        <p className="text-xs font-mono text-foreground break-words select-all bg-muted/40 p-2 rounded-lg border border-border/60">
-                          {preparedContactMessage}
+                        <p className="text-xs font-mono text-foreground break-words select-all bg-muted/40 p-2.5 rounded-lg border border-border/60 whitespace-pre-line">
+                          {emergencySmsBody}
                         </p>
                       </div>
 
                       {/* Saved Emergency Contacts list */}
                       {savedContacts.length > 0 ? (
-                        <div className="space-y-2 pt-1">
-                          <span className="text-[11px] font-bold text-muted-foreground block">
-                            Saved Emergency Contacts:
-                          </span>
-                          {savedContacts.map((c) => {
-                            const cleanPhone = c.phone.replace(/[^0-9]/g, '');
-                            const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(
-                              preparedContactMessage
-                            )}`;
-                            const smsUrl = `sms:${c.phone}?body=${encodeURIComponent(
-                              preparedContactMessage
-                            )}`;
+                        <div className="space-y-2.5 pt-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-muted-foreground block">
+                              Emergency Contacts ({savedContacts.length}):
+                            </span>
+                            <a
+                              href={smsAllUri}
+                              className="text-[11px] font-bold text-primary hover:underline inline-flex items-center gap-1"
+                            >
+                              <Send className="h-3 w-3 notranslate" />
+                              <span>Send to All Contacts</span>
+                            </a>
+                          </div>
 
-                            return (
-                              <div
-                                key={c.id}
-                                className="p-3 rounded-xl bg-card border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <span className="text-xs font-bold text-foreground block truncate">
-                                    {c.name} ({c.relationship})
-                                  </span>
-                                  <span className="text-[11px] text-muted-foreground font-mono block">
-                                    {c.phone}
-                                  </span>
+                          {/* Prominent Send to All Contacts Button */}
+                          <a
+                            href={smsAllUri}
+                            className="w-full min-h-[46px] py-2.5 px-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs flex items-center justify-center gap-2 transition active:scale-95 touch-target shadow-xs"
+                            title="Send Emergency SMS to all contacts"
+                          >
+                            <Send className="h-4 w-4 notranslate" />
+                            <span>Send Emergency SMS to All Contacts ({savedContacts.length})</span>
+                          </a>
+
+                          <div className="space-y-2">
+                            {savedContacts.map((c) => {
+                              const cleanPhone = c.phone.replace(/[^0-9]/g, '');
+                              const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+                                emergencySmsBody
+                              )}`;
+                              const contactSmsUrl = buildEmergencySmsUri(c.phone, emergencySmsBody);
+
+                              return (
+                                <div
+                                  key={c.id}
+                                  className="p-3 rounded-xl bg-card border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <span className="text-xs font-bold text-foreground block truncate">
+                                      {c.name} ({c.relationship})
+                                    </span>
+                                    <span className="text-[11px] text-muted-foreground font-mono block">
+                                      {c.phone}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                                    {/* WhatsApp button */}
+                                    <a
+                                      href={waUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 transition active:scale-95 touch-target"
+                                      title={`Share with ${c.name} via WhatsApp`}
+                                    >
+                                      <MessageCircle className="h-3.5 w-3.5 notranslate" />
+                                      <span>WhatsApp</span>
+                                    </a>
+
+                                    {/* SMS button */}
+                                    <a
+                                      href={contactSmsUrl}
+                                      className="px-2.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs flex items-center gap-1 transition active:scale-95 touch-target"
+                                      title={`Send SMS to ${c.name}`}
+                                    >
+                                      <Send className="h-3.5 w-3.5 notranslate" />
+                                      <span>SMS</span>
+                                    </a>
+
+                                    {/* Copy button */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(emergencySmsBody);
+                                        setCopiedContactId(c.id);
+                                        toast.success(`SOS message copied for ${c.name}!`);
+                                        setTimeout(() => setCopiedContactId(null), 2000);
+                                      }}
+                                      className="px-2.5 py-1.5 rounded-lg border border-border bg-background hover:bg-muted text-foreground font-bold text-xs flex items-center gap-1 transition active:scale-95 touch-target"
+                                      title={`Copy message for ${c.name}`}
+                                    >
+                                      {copiedContactId === c.id ? (
+                                        <Check className="h-3.5 w-3.5 text-emerald-500 notranslate" />
+                                      ) : (
+                                        <Copy className="h-3.5 w-3.5 notranslate" />
+                                      )}
+                                      <span>Copy</span>
+                                    </button>
+                                  </div>
                                 </div>
-
-                                <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                                  {/* WhatsApp button */}
-                                  <a
-                                    href={waUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 transition active:scale-95 touch-target"
-                                    title={`Share with ${c.name} via WhatsApp`}
-                                  >
-                                    <MessageCircle className="h-3.5 w-3.5 notranslate" />
-                                    <span>WhatsApp</span>
-                                  </a>
-
-                                  {/* SMS button */}
-                                  <a
-                                    href={smsUrl}
-                                    className="px-2.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs flex items-center gap-1 transition active:scale-95 touch-target"
-                                    title={`Send SMS to ${c.name}`}
-                                  >
-                                    <Send className="h-3.5 w-3.5 notranslate" />
-                                    <span>SMS</span>
-                                  </a>
-
-                                  {/* Copy button */}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      navigator.clipboard.writeText(preparedContactMessage);
-                                      setCopiedContactId(c.id);
-                                      toast.success(`SOS message copied for ${c.name}!`);
-                                      setTimeout(() => setCopiedContactId(null), 2000);
-                                    }}
-                                    className="px-2.5 py-1.5 rounded-lg border border-border bg-background hover:bg-muted text-foreground font-bold text-xs flex items-center gap-1 transition active:scale-95 touch-target"
-                                    title={`Copy message for ${c.name}`}
-                                  >
-                                    {copiedContactId === c.id ? (
-                                      <Check className="h-3.5 w-3.5 text-emerald-500 notranslate" />
-                                    ) : (
-                                      <Copy className="h-3.5 w-3.5 notranslate" />
-                                    )}
-                                    <span>Copy</span>
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
                         </div>
                       ) : (
                         <div className="pt-1 space-y-2">
                           <p className="text-xs text-muted-foreground">
                             No emergency contacts saved yet.
                           </p>
+                          <a
+                            href={smsFallbackUri}
+                            className="w-full py-2.5 px-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs flex items-center justify-center gap-2 transition active:scale-95 touch-target shadow-xs"
+                          >
+                            <Send className="h-4 w-4 notranslate" />
+                            <span>Open SMS Composer (Pick Recipient)</span>
+                          </a>
                           {!isAddingContact ? (
                             <button
                               type="button"

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   MapPin,
   Clock,
@@ -10,6 +10,7 @@ import {
   User,
   XCircle,
   CheckCircle2,
+  Share2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { HelpRequest, TravelMode } from '@/lib/data/types';
@@ -20,6 +21,8 @@ import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { dataAdapter } from '@/lib/data';
 import { getCategoryToken } from '@/lib/data/categoryColors';
 import { PrimaryHelpButton, SecondaryButton } from './ActionButtons';
+import { EmergencyStoryCardModal } from './EmergencyStoryCardModal';
+import { EndorsementChip } from './EndorsementChip';
 
 export interface RequestCardProps {
   request: HelpRequest;
@@ -40,6 +43,7 @@ export function RequestCard({
   isOwner: isOwnerProp,
 }: RequestCardProps) {
   const { userProfile, fetchLiveRequests, completeRequest } = useKindLinkStore();
+  const [storyModalOpen, setStoryModalOpen] = useState(false);
   const etaMinutes = calculateETA(request.distanceKm, travelMode);
   const categoryToken = getCategoryToken(request.category);
   const CategoryIcon = categoryToken.icon;
@@ -114,13 +118,28 @@ export function RequestCard({
             </span>
           </div>
 
-          {/* Owner Badge */}
-          {isUserOwner && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/25 shadow-xs shrink-0">
-              <User className="h-3 w-3 notranslate" />
-              <span>Your request</span>
-            </span>
-          )}
+          {/* Header Actions: Owner Badge & Story Card Share */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {isUserOwner && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/25 shadow-xs shrink-0">
+                <User className="h-3 w-3 notranslate" />
+                <span>Your request</span>
+              </span>
+            )}
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setStoryModalOpen(true);
+              }}
+              className="h-8 w-8 rounded-xl flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/80 transition-all active:scale-95 border border-border/60 bg-background/50 shadow-2xs"
+              title="Share Story Card (WhatsApp Status / Instagram Story)"
+              aria-label="Share Story Card"
+            >
+              <Share2 className="h-4 w-4 notranslate" />
+            </button>
+          </div>
         </div>
 
         {/* Title & Description */}
@@ -149,6 +168,7 @@ export function RequestCard({
               <span>{request.verificationBadge}</span>
             </span>
           )}
+          <EndorsementChip request={request} />
         </div>
       </div>
 
@@ -256,6 +276,13 @@ export function RequestCard({
           )}
         </div>
       </div>
+
+      {/* Emergency Story Card Modal */}
+      <EmergencyStoryCardModal
+        request={request}
+        open={storyModalOpen}
+        onClose={() => setStoryModalOpen(false)}
+      />
     </div>
   );
 }

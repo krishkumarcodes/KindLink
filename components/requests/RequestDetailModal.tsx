@@ -35,6 +35,10 @@ import {
   Calendar,
   ChevronDown,
   RotateCw,
+  ThumbsUp,
+  Building2,
+  KeyRound,
+  Copy,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -58,6 +62,9 @@ import { formatTimeAgo, formatMinutesAgo } from '@/lib/utils/formatTime';
 import { OffersReceivedSection } from './OffersReceivedSection';
 import { StickyActionBar } from './StickyActionBar';
 import { getCategoryToken } from '@/lib/data/categoryColors';
+import { EmergencyStoryCardModal } from './EmergencyStoryCardModal';
+import { EndorsementChip } from './EndorsementChip';
+import { HandoverPinModal } from './HandoverPinModal';
 
 const RequestRouteMiniMap = dynamic(
   () => import('@/components/map/RequestRouteMiniMap'),
@@ -201,6 +208,8 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     setCurrentView,
     setProfileActiveTab,
     addNotification,
+    endorseRequest,
+    removeEndorsement,
   } = useKindLinkStore();
 
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -210,6 +219,57 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
 
   const [helpFlowOpen, setHelpFlowOpen] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
+  const [isEndorsing, setIsEndorsing] = useState(false);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+
+  const isOrgAccount = Boolean(
+    userProfile?.isOrganization || userProfile?.organizationVerified
+  );
+
+  const myOrgName =
+    userProfile?.organizationName ||
+    userProfile?.displayName ||
+    userProfile?.name ||
+    'Verified Organization';
+
+  const isAlreadyEndorsedByMe = Boolean(
+    request?.endorsedByOrgNames?.some(
+      (name) => name.toLowerCase() === myOrgName.toLowerCase()
+    )
+  );
+
+  const handleToggleEndorsement = async () => {
+    if (!request) return;
+    setIsEndorsing(true);
+    try {
+      if (isAlreadyEndorsedByMe) {
+        const res = await removeEndorsement(request.id);
+        if (res.success) {
+          toast.info('Endorsement withdrawn', {
+            description: 'Your organization endorsement has been removed.',
+          });
+          if (fetchLiveRequests) fetchLiveRequests();
+        } else {
+          toast.error(res.error || 'Failed to remove endorsement');
+        }
+      } else {
+        const res = await endorseRequest(request.id);
+        if (res.success) {
+          toast.success('Request endorsed!', {
+            description: `${myOrgName} has verified and endorsed this emergency request.`,
+          });
+          if (fetchLiveRequests) fetchLiveRequests();
+        } else {
+          toast.error(res.error || 'Failed to endorse request');
+        }
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Error updating endorsement');
+    } finally {
+      setIsEndorsing(false);
+    }
+  };
+
   const [contactInfo, setContactInfo] = useState<{
     name: string;
     phone: string;
@@ -233,6 +293,9 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
   // Reporting
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
+
+  // Story Card Share Modal
+  const [storyModalOpen, setStoryModalOpen] = useState(false);
 
   // Rating Modal
   const [ratingModalOpen, setRatingModalOpen] = useState(false);
@@ -575,6 +638,12 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
 
   // Transition Lifecycle Status
   const handleAdvanceStatus = async (newStatus: RequestLifecycleStatus) => {
+    // If equipment/books requires handover confirmation PIN and viewer is helper, prompt PIN modal
+    if (newStatus === 'completed' && request.requiresHandoverPin && !isRequester) {
+      setPinModalOpen(true);
+      return;
+    }
+
     setActionInProgress(newStatus);
     try {
       await updateRequestStatus(request.id, newStatus);
@@ -626,26 +695,9 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     }
   };
 
-  // Share Request
-  const handleShare = async () => {
-    const shareData = {
-      title: `KindLink Alert: ${request.title}`,
-      text: `${request.title} at ${request.locationName}. Urgency: ${request.urgency}. Can you help?`,
-      url: process.env.NEXT_PUBLIC_SITE_URL
-        ? `${process.env.NEXT_PUBLIC_SITE_URL}/requests/${request.id}`
-        : typeof window !== 'undefined'
-        ? window.location.href
-        : '',
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch {}
-    } else {
-      await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
-      toast.success('Link copied to clipboard!');
-    }
+  // Share Request & Story Card
+  const handleShare = () => {
+    setStoryModalOpen(true);
   };
 
   // Report Request
@@ -845,17 +897,32 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                     <span>Your request</span>
                   </span>
                 )}
+
+                {/* NGO Endorsed Chip */}
+                {request && <EndorsementChip request={request} />}
               </div>
 
-              {/* Accessible Close Button (44px tap target aligned and centered) */}
-              <button
-                type="button"
-                onClick={onClose}
-                className="min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
-                aria-label="Close request details sheet"
-              >
-                <X className="h-5 w-5 notranslate" />
-              </button>
+              {/* Top Bar Actions: Share Story Card & Accessible Close Button */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setStoryModalOpen(true)}
+                  className="min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-xl text-primary hover:bg-primary/10 transition-all active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  title="Share Emergency Story Card"
+                  aria-label="Share Emergency Story Card"
+                >
+                  <Share2 className="h-5 w-5 notranslate" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
+                  aria-label="Close request details sheet"
+                >
+                  <X className="h-5 w-5 notranslate" />
+                </button>
+              </div>
             </div>
 
             {/* Title Below: up to 3 lines, balanced wrapping, 22-24px, strong contrast */}
@@ -1163,6 +1230,79 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                 </>
               )}
             </div>
+
+            {/* =====================================================================
+                COMMUNITY ORGANIZATION ENDORSEMENTS & ACTION
+               ===================================================================== */}
+            {(isOrgAccount || Boolean(request.isOrganizationEndorsed || (request.endorsementsCount && request.endorsementsCount > 0))) && (
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-500/10 via-violet-500/5 to-purple-500/10 border border-indigo-500/25 shadow-xs space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <ShieldCheck className="h-5 w-5 notranslate text-emerald-300" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <span>Community Organization Endorsement</span>
+                        {Boolean(request.isOrganizationEndorsed || (request.endorsementsCount && request.endorsementsCount > 0)) && (
+                          <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded-md bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30">
+                            Verified Need
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">
+                        {Boolean(request.isOrganizationEndorsed || (request.endorsementsCount && request.endorsementsCount > 0))
+                          ? `Endorsed by: ${(request.endorsedByOrgNames && request.endorsedByOrgNames.length > 0) ? request.endorsedByOrgNames.join(', ') : 'Accredited Community Partner'}`
+                          : 'No organizations have endorsed this request yet.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {Boolean(request.isOrganizationEndorsed || (request.endorsementsCount && request.endorsementsCount > 0)) && (
+                    <EndorsementChip request={request} size="sm" />
+                  )}
+                </div>
+
+                {/* For verified organization accounts: Render an "Endorse this Request" action button */}
+                {isOrgAccount && (
+                  <div className="pt-2 border-t border-indigo-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Building2 className="h-3.5 w-3.5 text-indigo-500 notranslate shrink-0" />
+                      <span>
+                        Organization: <strong className="text-foreground">{myOrgName}</strong>
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isEndorsing}
+                      onClick={handleToggleEndorsement}
+                      className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold shadow-soft transition-all active:scale-[0.98] touch-target ${
+                        isAlreadyEndorsedByMe
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500/30'
+                          : 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-indigo-500/20'
+                      }`}
+                      title={isAlreadyEndorsedByMe ? 'Click to withdraw endorsement' : 'Click to endorse this emergency request'}
+                    >
+                      {isEndorsing ? (
+                        <Loader2 className="h-4 w-4 animate-spin notranslate" />
+                      ) : isAlreadyEndorsedByMe ? (
+                        <>
+                          <Check className="h-4 w-4 stroke-[2.5] notranslate" />
+                          <span>Endorsed by your organization</span>
+                        </>
+                      ) : (
+                        <>
+                          <ThumbsUp className="h-4 w-4 notranslate" />
+                          <ShieldCheck className="h-4 w-4 notranslate" />
+                          <span>Endorse this Request</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* =====================================================================
                 DESCRIPTION: Clean text block, preserved line breaks, "Read more" toggle
@@ -1505,6 +1645,83 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
             )}
 
             {/* =====================================================================
+                HANDOVER CONFIRMATION PIN SECURITY CARD
+               ===================================================================== */}
+            {request.requiresHandoverPin && (
+              <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent border-2 border-indigo-500/30 shadow-soft space-y-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-xs">
+                      <KeyRound className="h-5 w-5 notranslate" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-black text-foreground">
+                        Handover Confirmation PIN
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">
+                        {isRequester
+                          ? 'Share this PIN with your helper when item is delivered'
+                          : 'Ask requester for their 4-digit PIN to confirm handover'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {currentStatus === 'completed' ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                      <CheckCircle2 className="h-3.5 w-3.5 notranslate" />
+                      <span>Handover verified ✓</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                      <Clock className="h-3.5 w-3.5 notranslate" />
+                      <span>Awaiting delivery</span>
+                    </span>
+                  )}
+                </div>
+
+                {isRequester ? (
+                  <div className="p-3.5 rounded-2xl bg-card border border-border/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      {(request.handoverPin || '4821').split('').map((digit, idx) => (
+                        <div
+                          key={idx}
+                          className="w-11 h-13 sm:w-12 sm:h-14 rounded-xl border-2 border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-mono font-black text-2xl flex items-center justify-center shadow-xs"
+                        >
+                          {digit}
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(request.handoverPin || '4821');
+                        toast.success('Handover PIN copied to clipboard');
+                      }}
+                      className="px-3.5 py-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition flex items-center gap-1.5 touch-target"
+                    >
+                      <Copy className="h-3.5 w-3.5 notranslate" />
+                      <span>Copy PIN</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-card/80 border border-border/60 text-xs text-muted-foreground flex items-center justify-between gap-2">
+                    <span>Physical item handover is secured with a 4-digit security code.</span>
+                    {isAcceptedHelper && currentStatus !== 'completed' && (
+                      <button
+                        type="button"
+                        onClick={() => setPinModalOpen(true)}
+                        className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shrink-0 shadow-xs transition active:scale-95 touch-target"
+                      >
+                        Enter PIN
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* =====================================================================
                 LIVE TRANSIT LOCATION SHARING SECTION
                ===================================================================== */}
             {isMatched && currentStatus !== 'completed' && (
@@ -1790,6 +2007,31 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
         onHelpSubmitted={() => {
           loadOffers();
           fetchLiveRequests();
+        }}
+      />
+
+      {/* =====================================================================
+          EMERGENCY STORY CARD MODAL (WhatsApp Status & Instagram Stories)
+         ===================================================================== */}
+      <EmergencyStoryCardModal
+        request={request}
+        open={storyModalOpen}
+        onClose={() => setStoryModalOpen(false)}
+      />
+
+      {/* =====================================================================
+          HANDOVER PIN VERIFICATION MODAL
+         ===================================================================== */}
+      <HandoverPinModal
+        open={pinModalOpen}
+        onClose={() => setPinModalOpen(false)}
+        requestId={request.id}
+        requestTitle={request.title}
+        category={request.category}
+        requesterName={request.contactName}
+        onSuccess={() => {
+          setPinModalOpen(false);
+          setRatingModalOpen(true);
         }}
       />
     </OverlayPortal>

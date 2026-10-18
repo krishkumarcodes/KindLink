@@ -54,6 +54,11 @@ export const DEFAULT_USER: UserProfile = {
   hoursVolunteered: 0,
   kilometersTraveled: 0,
   verificationState: 'unverified',
+  isOrganization: false,
+  organizationName: '',
+  organizationType: undefined,
+  organizationVerified: false,
+  organizationRegistrationNumber: '',
   idDocumentName: '',
   idDocumentType: '',
   badges: [],
@@ -112,7 +117,10 @@ interface KindLinkState {
   declineOffer: (offerId: string, requestId: string, reason?: string) => Promise<void>;
   cancelRequest: (requestId: string) => Promise<void>;
   completeRequest: (requestId: string) => Promise<void>;
+  verifyHandoverPin: (requestId: string, pin: string) => Promise<{ success: boolean; error?: string }>;
   updateRequestStatus: (requestId: string, status: RequestLifecycleStatus) => Promise<void>;
+  endorseRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
+  removeEndorsement: (requestId: string) => Promise<{ success: boolean; error?: string }>;
   updateUserProfile: (patch: Partial<UserProfile>) => void;
   addEmergencyContact: (contact: { name: string; phone: string; relationship: string }) => void;
   updateEmergencyContact: (contact: { id: string; name: string; phone: string; relationship: string }) => void;
@@ -409,6 +417,19 @@ export const useKindLinkStore = create<KindLinkState>()(
         }
       },
 
+      verifyHandoverPin: async (requestId: string, pin: string) => {
+        try {
+          const res = await dataAdapter.verifyHandoverPin(requestId, pin);
+          if (res.success) {
+            get().fetchLiveRequests();
+            get().fetchLiveStats();
+          }
+          return res;
+        } catch (err: any) {
+          return { success: false, error: err?.message || 'Verification failed' };
+        }
+      },
+
       updateRequestStatus: async (requestId, status) => {
         const { requests } = get();
         try {
@@ -425,6 +446,77 @@ export const useKindLinkStore = create<KindLinkState>()(
         });
 
         set({ requests: updated });
+      },
+
+      endorseRequest: async (requestId: string) => {
+        const { userProfile, requests } = get();
+        try {
+          const res = await dataAdapter.endorseRequest(requestId);
+          if (res && res.success === false) {
+            return res;
+          }
+
+          const orgName =
+            userProfile.organizationName ||
+            userProfile.displayName ||
+            userProfile.name ||
+            'Verified Organization';
+
+          const updated = requests.map((req) => {
+            if (req.id === requestId) {
+              const currentNames = [...(req.endorsedByOrgNames || [])];
+              if (!currentNames.includes(orgName)) {
+                currentNames.push(orgName);
+              }
+              return {
+                ...req,
+                isOrganizationEndorsed: true,
+                endorsementsCount: currentNames.length,
+                endorsedByOrgNames: currentNames,
+              };
+            }
+            return req;
+          });
+
+          set({ requests: updated });
+          return { success: true };
+        } catch (err: any) {
+          return { success: false, error: err.message || 'Failed to endorse request' };
+        }
+      },
+
+      removeEndorsement: async (requestId: string) => {
+        const { userProfile, requests } = get();
+        try {
+          const res = await dataAdapter.removeEndorsement(requestId);
+          if (res && res.success === false) {
+            return res;
+          }
+
+          const orgName =
+            userProfile.organizationName ||
+            userProfile.displayName ||
+            userProfile.name ||
+            'Verified Organization';
+
+          const updated = requests.map((req) => {
+            if (req.id === requestId) {
+              const currentNames = (req.endorsedByOrgNames || []).filter((n) => n !== orgName);
+              return {
+                ...req,
+                isOrganizationEndorsed: currentNames.length > 0,
+                endorsementsCount: currentNames.length,
+                endorsedByOrgNames: currentNames,
+              };
+            }
+            return req;
+          });
+
+          set({ requests: updated });
+          return { success: true };
+        } catch (err: any) {
+          return { success: false, error: err.message || 'Failed to remove endorsement' };
+        }
       },
 
       updateUserProfile: (patch) => {

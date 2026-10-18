@@ -38,6 +38,7 @@ export default async function MemberPage({ params }: MemberPageProps) {
 
   if (!user) {
     redirect(`/login?redirect=${encodeURIComponent(`/u/${username}`)}`);
+    return null;
   }
 
   // 2. Rate-limiting to prevent scraping member data
@@ -184,6 +185,11 @@ export default async function MemberPage({ params }: MemberPageProps) {
     visibility_organisation: visOrg,
     visibility_area: visArea,
     isSelf,
+    isOrganization: Boolean(profile.is_organization),
+    organizationName: profile.organization_name || null,
+    organizationType: profile.organization_type || null,
+    organizationVerified: Boolean(profile.organization_verified),
+    organizationRegistrationNumber: profile.organization_registration_number || null,
   };
 
   return (

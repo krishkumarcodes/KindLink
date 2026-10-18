@@ -83,6 +83,11 @@ export interface HelpRequest {
   status: RequestLifecycleStatus;
   helpersOffered?: number;
 
+  // Handover confirmation PIN fields
+  handoverPin?: string;
+  requiresHandoverPin?: boolean;
+  handoverConfirmedAt?: string;
+
   // Matched helper & live transit fields
   acceptedHelperId?: string;
   acceptedHelperName?: string;
@@ -94,6 +99,11 @@ export interface HelpRequest {
   transitLatitude?: number;
   transitLongitude?: number;
   transitUpdatedAt?: string;
+
+  // NGO & Organization endorsement fields
+  isOrganizationEndorsed?: boolean;
+  endorsementsCount?: number;
+  endorsedByOrgNames?: string[];
 }
 
 export interface EmergencyContact {
@@ -119,6 +129,14 @@ export interface EmergencyPrivacySettings {
   shareMedicalNote?: boolean;
   medicalNote?: string;
 }
+
+export type OrganizationType =
+  | 'ngo'
+  | 'blood_bank'
+  | 'hospital'
+  | 'resident_welfare'
+  | 'student_union'
+  | 'community_group';
 
 export interface UserProfile {
   id: string;
@@ -148,6 +166,14 @@ export interface UserProfile {
   hoursVolunteered?: number;
   kilometersTraveled?: number;
   verificationState: VerificationState;
+
+  // Organization fields
+  isOrganization?: boolean;
+  organizationName?: string;
+  organizationType?: OrganizationType;
+  organizationVerified?: boolean;
+  organizationRegistrationNumber?: string;
+
   idDocumentName?: string;
   idDocumentType?: string;
   badges: string[];
