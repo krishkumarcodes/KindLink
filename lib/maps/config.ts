@@ -82,6 +82,8 @@ export function getOrsKey(): string {
 export function hasRequiredApiKey(providerId: string): boolean {
   const normalized = providerId.toLowerCase().trim();
   switch (normalized) {
+    case 'openfreemap':
+      return true;
     case 'maptiler':
       return getMapTilerKey().length > 0;
     case 'geoapify':
@@ -106,7 +108,7 @@ export function hasRequiredApiKey(providerId: string): boolean {
 // Provider Order Parsing & Filtering
 // ============================================================================
 const DEFAULT_PROVIDER_ORDER: Record<ProviderCategory, string[]> = {
-  tile: ['maptiler', 'osm'],
+  tile: ['openfreemap', 'maptiler', 'osm'],
   geocode: ['geoapify', 'photon', 'nominatim'],
   route: ['ors', 'geoapify', 'osrm', 'straight-line'],
   places: ['geoapify', 'overpass'],
@@ -158,11 +160,19 @@ export function getPublicMapConfig() {
   const hasMaptiler = maptilerKey.length > 0;
 
   return {
-    provider: hasMaptiler ? 'maptiler' : 'osm',
+    provider: 'openfreemap',
+    openfreemap: {
+      lightStyle: 'https://tiles.openfreemap.org/styles/liberty',
+      darkStyle: 'https://tiles.openfreemap.org/styles/dark',
+      brightStyle: 'https://tiles.openfreemap.org/styles/bright',
+      positronStyle: 'https://tiles.openfreemap.org/styles/positron',
+    },
     maptilerApiKey: maptilerKey || null,
+    hasMaptiler,
     styleLight: process.env.MAPTILER_STYLE_LIGHT || 'streets-v2',
     styleDark: process.env.MAPTILER_STYLE_DARK || 'dataviz-dark',
     attribution: {
+      openfreemap: '© OpenStreetMap contributors, OpenFreeMap',
       maptiler: '© MapTiler © OpenStreetMap contributors',
       osm: '© OpenStreetMap contributors',
     },

@@ -12,7 +12,6 @@ import {
   Edit3,
   XCircle,
   Loader2,
-  LucideIcon,
 } from 'lucide-react';
 import { HelpRequest, RequestLifecycleStatus, VolunteerOffer, UserProfile } from '@/lib/data/types';
 import { getCategoryToken } from '@/lib/data/categoryColors';
@@ -67,18 +66,19 @@ export function StickyActionBar({
   );
 
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [confirmWithdrawOpen, setConfirmWithdrawOpen] = useState(false);
 
   // 1. COMPLETED STATUS VIEW
   if (currentStatus === 'completed') {
     return (
-      <div className="sticky bottom-0 left-0 right-0 p-4 sm:px-6 bg-card/95 backdrop-blur-md border-t border-border z-30 shrink-0">
-        <div className="flex items-center gap-3 max-w-2xl mx-auto">
+      <div className="sticky bottom-0 left-0 right-0 p-3.5 sm:px-6 bg-card border-t border-border z-30 shrink-0">
+        <div className="flex items-center gap-2.5 max-w-2xl mx-auto">
           {isRequester ? (
             <button
               type="button"
               onClick={onOpenRating}
               style={{ backgroundColor: categoryToken.primary }}
-              className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap"
+              className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap min-w-0"
             >
               <Star className="h-5 w-5 fill-white notranslate shrink-0" />
               <span>Rate helper</span>
@@ -88,15 +88,15 @@ export function StickyActionBar({
               type="button"
               onClick={onOpenRating}
               style={{ backgroundColor: categoryToken.primary }}
-              className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap"
+              className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap min-w-0"
             >
               <Star className="h-5 w-5 fill-white notranslate shrink-0" />
               <span>Rate requester</span>
             </button>
           ) : (
-            <div className="flex-1 h-[52px] rounded-[16px] bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-300 font-bold text-sm flex items-center justify-center gap-2 whitespace-nowrap">
-              <CheckCircle2 className="h-5 w-5 notranslate text-emerald-600" />
-              <span>Task successfully completed</span>
+            <div className="flex-1 h-[52px] rounded-[16px] bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-300 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 whitespace-nowrap min-w-0 px-3">
+              <CheckCircle2 className="h-5 w-5 notranslate text-emerald-600 shrink-0" />
+              <span className="truncate">Task successfully completed</span>
             </div>
           )}
 
@@ -107,7 +107,7 @@ export function StickyActionBar({
     );
   }
 
-  // 2. REQUEST OWNER CONTROLS
+  // 2. REQUEST OWNER CONTROLS (Never see help buttons on own request)
   if (isRequester) {
     const isProgressing =
       currentStatus === 'accepted' ||
@@ -115,8 +115,8 @@ export function StickyActionBar({
       currentStatus === 'arrived';
 
     return (
-      <div className="sticky bottom-0 left-0 right-0 p-4 sm:px-6 bg-card/95 backdrop-blur-md border-t border-border z-30 shrink-0">
-        <div className="flex items-center gap-3 max-w-2xl mx-auto">
+      <div className="sticky bottom-0 left-0 right-0 p-3.5 sm:px-6 bg-card border-t border-border z-30 shrink-0">
+        <div className="flex items-center gap-2.5 max-w-2xl mx-auto">
           {isProgressing ? (
             <>
               {/* Mark completed button */}
@@ -125,7 +125,7 @@ export function StickyActionBar({
                 disabled={Boolean(actionInProgress)}
                 onClick={() => onAdvanceStatus('completed')}
                 style={{ backgroundColor: categoryToken.primary }}
-                className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-60"
+                className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-60 min-w-0"
               >
                 {actionInProgress === 'completed' ? (
                   <Loader2 className="h-5 w-5 animate-spin notranslate" />
@@ -152,7 +152,7 @@ export function StickyActionBar({
                 variant="outline"
                 icon={Edit3}
                 onClick={onEditRequest}
-                className="flex-1"
+                className="flex-1 min-w-0"
               >
                 Edit request
               </SecondaryButton>
@@ -162,7 +162,7 @@ export function StickyActionBar({
                 variant="destructive-outline"
                 icon={XCircle}
                 onClick={() => setConfirmCancelOpen(true)}
-                className="flex-1"
+                className="flex-1 min-w-0"
               >
                 Cancel request
               </SecondaryButton>
@@ -177,14 +177,14 @@ export function StickyActionBar({
           <div className="fixed inset-0 z-80 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
             <div className="w-full max-w-sm rounded-3xl bg-card border border-border p-6 shadow-2xl space-y-4">
               <h3 className="text-base font-bold text-foreground">Cancel this request?</h3>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 This will withdraw the request from community feeds and inform volunteers.
               </p>
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setConfirmCancelOpen(false)}
-                  className="flex-1 h-[48px] rounded-[16px] border border-border text-xs font-semibold hover:bg-muted"
+                  className="flex-1 h-[48px] rounded-[16px] border border-border text-xs font-semibold hover:bg-muted transition touch-target"
                 >
                   Keep Request
                 </button>
@@ -194,7 +194,7 @@ export function StickyActionBar({
                     setConfirmCancelOpen(false);
                     await onCancelRequest();
                   }}
-                  className="flex-1 h-[48px] rounded-[16px] bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold"
+                  className="flex-1 h-[48px] rounded-[16px] bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs touch-target"
                 >
                   Confirm Cancel
                 </button>
@@ -209,15 +209,15 @@ export function StickyActionBar({
   // 3. ACCEPTED HELPER ACTIONS ("On the way", "Arrived", "Mark completed")
   if (isAcceptedHelper) {
     return (
-      <div className="sticky bottom-0 left-0 right-0 p-4 sm:px-6 bg-card/95 backdrop-blur-md border-t border-border z-30 shrink-0">
-        <div className="flex items-center gap-3 max-w-2xl mx-auto">
+      <div className="sticky bottom-0 left-0 right-0 p-3.5 sm:px-6 bg-card border-t border-border z-30 shrink-0">
+        <div className="flex items-center gap-2.5 max-w-2xl mx-auto">
           {currentStatus === 'accepted' && (
             <button
               type="button"
               disabled={Boolean(actionInProgress)}
               onClick={() => onAdvanceStatus('on_the_way')}
               style={{ backgroundColor: categoryToken.primary }}
-              className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-60"
+              className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-60 min-w-0"
             >
               {actionInProgress === 'on_the_way' ? (
                 <Loader2 className="h-5 w-5 animate-spin notranslate" />
@@ -234,7 +234,7 @@ export function StickyActionBar({
               disabled={Boolean(actionInProgress)}
               onClick={() => onAdvanceStatus('arrived')}
               style={{ backgroundColor: categoryToken.primary }}
-              className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-60"
+              className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-60 min-w-0"
             >
               {actionInProgress === 'arrived' ? (
                 <Loader2 className="h-5 w-5 animate-spin notranslate" />
@@ -251,7 +251,7 @@ export function StickyActionBar({
               disabled={Boolean(actionInProgress)}
               onClick={() => onAdvanceStatus('completed')}
               style={{ backgroundColor: categoryToken.primary }}
-              className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-60"
+              className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-60 min-w-0"
             >
               {actionInProgress === 'completed' ? (
                 <Loader2 className="h-5 w-5 animate-spin notranslate" />
@@ -268,32 +268,65 @@ export function StickyActionBar({
     );
   }
 
-  // 4. HELPER WITH PENDING OFFER ("Offer sent" status badge + "Withdraw offer" button)
+  // 4. HELPER WITH PENDING OFFER ("Offer sent" banner row + clearly labelled "Withdraw offer" button + confirmation modal)
   if (myPendingOffer) {
     return (
-      <div className="sticky bottom-0 left-0 right-0 p-4 sm:px-6 bg-card/95 backdrop-blur-md border-t border-border z-30 shrink-0">
-        <div className="flex items-center gap-3 max-w-2xl mx-auto">
-          {/* "Offer sent" status badge */}
-          <div className="flex-1 h-[52px] px-3.5 rounded-[16px] bg-amber-500/10 border border-amber-500/25 flex items-center justify-center gap-2 text-amber-700 dark:text-amber-400 font-bold text-xs sm:text-sm whitespace-nowrap">
+      <div className="sticky bottom-0 left-0 right-0 p-3.5 sm:px-6 bg-card border-t border-border z-30 shrink-0">
+        <div className="space-y-2.5 max-w-2xl mx-auto">
+          {/* Banner row: "Offer sent · waiting for a reply" */}
+          <div className="w-full py-2 px-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center gap-2 text-amber-700 dark:text-amber-300 font-bold text-xs sm:text-sm">
             <Clock className="h-4 w-4 shrink-0 notranslate text-amber-500" />
-            <span className="truncate">Offer sent</span>
+            <span className="truncate">Offer sent · waiting for a reply</span>
           </div>
 
-          {/* "Withdraw offer" button */}
-          <SecondaryButton
-            size="details"
-            variant="outline"
-            icon={RotateCcw}
-            isLoading={actionInProgress === myPendingOffer.id}
-            onClick={() => onWithdrawOffer(myPendingOffer.id)}
-            className="flex-1"
-          >
-            Withdraw offer
-          </SecondaryButton>
+          {/* Action buttons row: "Withdraw offer" clearly labelled + Share + Report */}
+          <div className="flex items-center gap-2.5">
+            <SecondaryButton
+              size="details"
+              variant="outline"
+              icon={RotateCcw}
+              isLoading={actionInProgress === myPendingOffer.id}
+              onClick={() => setConfirmWithdrawOpen(true)}
+              className="flex-1 min-w-0"
+            >
+              Withdraw offer
+            </SecondaryButton>
 
-          <ShareButton onShare={onShare} />
-          <ReportButton onReport={onReport} />
+            <ShareButton onShare={onShare} />
+            <ReportButton onReport={onReport} />
+          </div>
         </div>
+
+        {/* Confirmation modal before withdrawing */}
+        {confirmWithdrawOpen && (
+          <div className="fixed inset-0 z-80 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+            <div className="w-full max-w-sm rounded-3xl bg-card border border-border p-6 shadow-2xl space-y-4">
+              <h3 className="text-base font-bold text-foreground">Withdraw your offer?</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                This will remove your offer from this request and notify the requester. You can offer help again later if needed.
+              </p>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmWithdrawOpen(false)}
+                  className="flex-1 h-[48px] rounded-[16px] border border-border text-xs font-semibold hover:bg-muted transition touch-target"
+                >
+                  Keep Offer
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setConfirmWithdrawOpen(false);
+                    await onWithdrawOffer(myPendingOffer.id);
+                  }}
+                  className="flex-1 h-[48px] rounded-[16px] bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs touch-target"
+                >
+                  Confirm Withdraw
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -301,16 +334,16 @@ export function StickyActionBar({
   // 5. UNVERIFIED VIEWER ("Get verified to help")
   if (!isVerified) {
     return (
-      <div className="sticky bottom-0 left-0 right-0 p-4 sm:px-6 bg-card/95 backdrop-blur-md border-t border-border z-30 shrink-0">
-        <div className="flex items-center gap-3 max-w-2xl mx-auto">
+      <div className="sticky bottom-0 left-0 right-0 p-3.5 sm:px-6 bg-card border-t border-border z-30 shrink-0">
+        <div className="flex items-center gap-2.5 max-w-2xl mx-auto">
           <button
             type="button"
             onClick={onGetVerified}
             style={{ backgroundColor: categoryToken.primary }}
-            className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap"
+            className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap min-w-0"
           >
             <ShieldAlert className="h-5 w-5 notranslate shrink-0" />
-            <span>Get verified to help</span>
+            <span className="truncate">Get verified to help</span>
           </button>
 
           <ShareButton onShare={onShare} />
@@ -322,18 +355,18 @@ export function StickyActionBar({
 
   // 6. GENERAL VERIFIED HELPER ("Offer help", Share, Report)
   return (
-    <div className="sticky bottom-0 left-0 right-0 p-4 sm:px-6 bg-card/95 backdrop-blur-md border-t border-border z-30 shrink-0">
-      <div className="flex items-center gap-3 max-w-2xl mx-auto">
+    <div className="sticky bottom-0 left-0 right-0 p-3.5 sm:px-6 bg-card border-t border-border z-30 shrink-0">
+      <div className="flex items-center gap-2.5 max-w-2xl mx-auto">
         {/* Primary help button: "Offer help", category icon on left, 52px high, radius 16, category colour, soft pressed, single line */}
         <PrimaryHelpButton
           category={request.category}
           size="details"
           label="Offer help"
           onClick={onOfferHelp}
-          className="flex-1"
+          className="flex-1 min-w-0"
         />
 
-        {/* Share and Report: 48px icon buttons aligned on same row as main button */}
+        {/* Share and Report icon buttons aligned on same row as main button */}
         <ShareButton onShare={onShare} />
         <ReportButton onReport={onReport} />
       </div>

@@ -4,9 +4,13 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
 // -------------------------------------------------------------
-// 1. Zero-Shift Body Scroll Lock
+// 1. Strict iOS Safari Fixed-Position Body Scroll Lock
 // -------------------------------------------------------------
 let lockCount = 0;
+let savedScrollY = 0;
+let originalPosition = '';
+let originalTop = '';
+let originalWidth = '';
 let originalOverflow = '';
 let originalPaddingRight = '';
 
@@ -16,10 +20,17 @@ export function useBodyScrollLock(locked: boolean) {
 
     lockCount++;
     if (lockCount === 1) {
+      savedScrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+      originalPosition = document.body.style.position;
+      originalTop = document.body.style.top;
+      originalWidth = document.body.style.width;
       originalOverflow = document.body.style.overflow;
       originalPaddingRight = document.body.style.paddingRight;
 
       const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${savedScrollY}px`;
+      document.body.style.width = '100%';
       document.body.style.overflow = 'hidden';
       if (scrollBarWidth > 0) {
         document.body.style.paddingRight = `${scrollBarWidth}px`;
@@ -29,8 +40,12 @@ export function useBodyScrollLock(locked: boolean) {
     return () => {
       lockCount = Math.max(0, lockCount - 1);
       if (lockCount === 0) {
+        document.body.style.position = originalPosition;
+        document.body.style.top = originalTop;
+        document.body.style.width = originalWidth;
         document.body.style.overflow = originalOverflow;
         document.body.style.paddingRight = originalPaddingRight;
+        window.scrollTo(0, savedScrollY);
       }
     };
   }, [locked]);
@@ -307,11 +322,11 @@ export function ModalOverlay({
           aria-hidden="true"
         />
 
-        {/* Modal / Sheet Surface with Frosted Glass Styling */}
+        {/* Modal / Sheet Surface with Single Uniform Solid Surface */}
         <div
           ref={containerRef}
           tabIndex={-1}
-          className={`relative w-full ${maxWidthClass} max-h-[85dvh] flex flex-col overflow-hidden outline-none bg-card supports-[backdrop-filter]:bg-card/90 dark:supports-[backdrop-filter]:bg-slate-950/90 supports-[backdrop-filter]:backdrop-blur-[16px] border border-border/80 shadow-2xl text-card-foreground ${
+          className={`relative w-full ${maxWidthClass} max-h-[85dvh] flex flex-col overflow-hidden outline-none bg-card border border-border/80 shadow-2xl text-card-foreground ${
             mobileVariant === 'sheet'
               ? 'rounded-t-3xl sm:rounded-3xl pb-[env(safe-area-inset-bottom,0px)] animate-in slide-in-from-bottom duration-200 sm:slide-in-from-bottom-0 sm:zoom-in-95'
               : 'rounded-3xl animate-in zoom-in-95 duration-200'
@@ -371,7 +386,7 @@ export function AnchoredPopover({
         aria-hidden="true"
       />
 
-      {/* Popover container with Frosted Glass & collision detection */}
+      {/* Popover container with collision detection */}
       <div
         ref={popoverRef}
         role={role}
@@ -386,7 +401,7 @@ export function AnchoredPopover({
           maxHeight: `${position.maxHeight}px`,
           ...style,
         }}
-        className={`z-50 overflow-y-auto outline-none rounded-3xl border border-border/80 bg-card supports-[backdrop-filter]:bg-card/90 dark:supports-[backdrop-filter]:bg-slate-950/90 supports-[backdrop-filter]:backdrop-blur-[16px] shadow-2xl text-card-foreground animate-in fade-in zoom-in-95 duration-150 motion-reduce:transition-none motion-reduce:animate-none ${className}`}
+        className={`z-50 overflow-y-auto overscroll-contain outline-none rounded-3xl border border-border/80 bg-card shadow-2xl text-card-foreground animate-in fade-in zoom-in-95 duration-150 motion-reduce:transition-none motion-reduce:animate-none ${className}`}
       >
         {children}
       </div>

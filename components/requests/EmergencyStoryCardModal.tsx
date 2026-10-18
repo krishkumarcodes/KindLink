@@ -210,7 +210,7 @@ export function EmergencyStoryCardModal({
       {/* =========================================================
           1. STICKY HEADER
          ========================================================= */}
-      <div className="sticky top-0 z-20 shrink-0 bg-card/95 backdrop-blur-md border-b border-border/80 px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3">
+      <div className="sticky top-0 z-20 shrink-0 bg-card border-b border-border/80 px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <div
             className="flex h-9 w-9 items-center justify-center rounded-xl shrink-0 shadow-xs text-white"

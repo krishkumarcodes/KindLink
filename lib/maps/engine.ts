@@ -25,6 +25,7 @@ import {
   TravelMode,
 } from './types';
 import { circuitBreaker } from './circuit-breaker';
+import { openFreeMapTileProvider } from './adapters/openfreemap-tile';
 import { mapTilerTileProvider } from './adapters/maptiler-tile';
 import { osmTileProvider } from './adapters/osm-tile';
 import { geoapifyGeocodeProvider } from './adapters/geoapify-geocode';
@@ -36,8 +37,6 @@ import { orsRouteProvider } from './adapters/ors-route';
 import { geoapifyRouteProvider } from './adapters/geoapify-route';
 import { osrmRouteProvider } from './adapters/osrm-route';
 import { straightLineRouteProvider } from './adapters/straight-line-route';
-import { ASANSOL_CURATED_MEDICAL_HUBS } from '@/lib/geo/hospitals';
-import { calculateDistance } from '@/lib/data/distance';
 
 export const DEFAULT_TIMEOUT_MS = 5000; // 5-second short timeout per attempt
 export const MAX_RETRIES_PER_PROVIDER = 1; // at most 1 retry (2 attempts total)
@@ -52,7 +51,7 @@ interface ProviderTask<T> {
 export class MapsFallbackEngine {
   /**
    * 1. Tile Provider Cascade:
-   * MapTiler (if configured) -> OSM Standard Tile Provider
+   * OpenFreeMap -> MapTiler (if configured) -> OSM Standard Tile Provider
    */
   public getTileConfig(options?: { style?: string; theme?: 'light' | 'dark' }): {
     config: TileProviderConfig;
@@ -60,14 +59,14 @@ export class MapsFallbackEngine {
   } {
     const attempted: string[] = [];
 
-    // Check MapTiler
-    if (mapTilerTileProvider.isConfigured()) {
-      attempted.push('maptiler');
-      if (circuitBreaker.canExecute('maptiler', 'tile')) {
+    // 1. Primary: OpenFreeMap
+    if (openFreeMapTileProvider.isConfigured()) {
+      attempted.push('openfreemap');
+      if (circuitBreaker.canExecute('openfreemap', 'tile')) {
         return {
-          config: mapTilerTileProvider.getTileConfig(options),
+          config: openFreeMapTileProvider.getTileConfig(options),
           meta: {
-            sourceProvider: 'maptiler',
+            sourceProvider: 'openfreemap',
             isFallback: false,
             isDegraded: false,
             attemptedProviders: attempted,
@@ -76,16 +75,33 @@ export class MapsFallbackEngine {
       }
     }
 
-    // Fallback to OSM
+    // 2. Secondary: MapTiler (if configured)
+    if (mapTilerTileProvider.isConfigured()) {
+      attempted.push('maptiler');
+      if (circuitBreaker.canExecute('maptiler', 'tile')) {
+        return {
+          config: mapTilerTileProvider.getTileConfig(options),
+          meta: {
+            sourceProvider: 'maptiler',
+            isFallback: true,
+            isDegraded: false,
+            attemptedProviders: attempted,
+            fallbackReason: 'OpenFreeMap circuit breaker open',
+          },
+        };
+      }
+    }
+
+    // 3. Last Resort: OSM
     attempted.push('osm');
     return {
       config: osmTileProvider.getTileConfig(options),
       meta: {
         sourceProvider: 'osm',
-        isFallback: attempted.length > 1 || !mapTilerTileProvider.isConfigured(),
+        isFallback: true,
         isDegraded: false,
         attemptedProviders: attempted,
-        fallbackReason: 'MapTiler not configured or circuit breaker open',
+        fallbackReason: 'Primary tile providers unavailable or unconfigured',
       },
     };
   }
@@ -426,34 +442,8 @@ export class MapsFallbackEngine {
     category: PlaceCategory,
     limit: number
   ): PlaceResult[] {
-    const filtered = ASANSOL_CURATED_MEDICAL_HUBS.filter((h) => {
-      // Only return curated offline fallback if coordinates are actually near the curated area (within 35 km)
-      const dist = calculateDistance(lat, lng, h.latitude, h.longitude);
-      if (dist > 35) return false;
-
-      if (category === 'all' || category === 'healthcare') return true;
-      if (category === 'emergency') return h.emergency || h.type === 'hospital';
-      return h.type === category;
-    });
-
-    return filtered
-      .map((h, idx) => ({
-        id: `curated-${h.id || idx}`,
-        name: h.name,
-        category: h.type,
-        lat: h.latitude,
-        lng: h.longitude,
-        address: h.address,
-        phone: h.phone,
-        distanceKm: calculateDistance(lat, lng, h.latitude, h.longitude),
-        openingHours: h.openingHours,
-        emergency: h.emergency,
-        sourceProvider: 'curated-offline',
-        isFallback: true,
-        isDegraded: true,
-      }))
-      .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0))
-      .slice(0, limit);
+    // Pure live places engine: no hardcoded sample place arrays
+    return [];
   }
 }
 

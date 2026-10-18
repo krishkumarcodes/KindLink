@@ -244,7 +244,7 @@ export default function PrivacyPage() {
                 <li>
                   <strong>Server-Mediated Proxies:</strong> All geospatial queries pass through KindLink&apos;s hardened
                   backend proxies (<code className="font-mono text-teal-600 dark:text-teal-400">/api/maps/*</code>). Map
-                  providers (MapTiler, Geoapify, OpenRouteService) only see KindLink&apos;s server IP address—never your
+                  providers (OpenFreeMap, MapTiler, Geoapify, OpenRouteService) only see KindLink&apos;s server IP address—never your
                   client IP address or device telemetry.
                 </li>
                 <li>

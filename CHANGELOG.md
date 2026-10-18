@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v4.6.0] - 2026-10-18 - Big Fix & Redesign: OpenFreeMap Vector Engine, Single-Surface Overlays, 15 Data-Driven Categories, Location Purge & Production Hardening 🚀
+
+### Summary
+Release v4.6.0 represents a monumental upgrade across KindLink's architecture: OpenFreeMap vector tile engine with key-free resilience, complete redesign of the Map page to Google Maps standard, single-surface overlay architecture with zero see-through artifacts and iOS Safari scroll locking, 15 data-driven categories and tags with custom "Other" labels, automated legacy location storage migration, full language picker, de-duplicated emergency SOS hospitals, live Community Pulse & Last 24 Hours charts, and idempotent Supabase database migrations (19, 20, 21).
+
+### 🌟 Key Highlights & Enhancements
+- **OpenFreeMap Vector Engine & Blank Map Root-Cause Fix**: Integrated key-free OpenFreeMap vector/raster tiles with client-side dark theme restyling, automatic 4-second failover cascade (OpenFreeMap -> MapTiler -> OpenStreetMap), and ResizeObserver container sizing.
+- **Map Page Redesign**: Complete redesign featuring 48px floating search bar, single-row filter chips with live counts, compact 44px round map controls, draggable bottom sheet / 380px desktop side panel, teardrop SVG pins with soft pulse, and deep linking (`/map?request=ID&route=1`).
+- **Shared Single-Surface Overlays**: Fixed see-through header bands by unifying all sheets, modals, and drawers into single solid `bg-card` surfaces with rigid iOS Safari fixed-position body scroll locking and visual viewport keyboard handling.
+- **15 Data-Driven Categories & Tags System**: Database-backed `request_categories` table, custom "Other: <label>" flow with moderation filters, up to 5 searchable request tags, and category-themed Urgent Near You cards.
+- **Legacy Location Purge & Storage Migration**: Versioned migration purging legacy hardcoded campus defaults from local/session storage, cookies, and database saved places.
+- **Emergency SOS & Helpline Hardening**: De-duplicated nearest hospital cards (max 3) with Google Maps fallback button, 1px-centered helpline Call/Copy buttons, untruncated subtitles, and smooth SVG circular progress ring during hold.
+- **Language & Profile Enhancements**: 48px centered search in language modal, full native + English language names picker sheet, international phone input with country dial codes, and zero truncated form labels.
+- **Community Pulse & Last 24 Hours**: Animated refresh buttons with 360-degree spin and toast feedback, mathematically aligned Pulse cards, and live dual-bar hourly activity chart.
+
+---
+
 ## [v4.4.0] - 2026-10-18 - Request Details Overhaul, Route Map Fix, Offer Help Redesign, Own-Request Rules, Circular Badges & Filter Sheet 🚀
 
 ### Summary

@@ -46,6 +46,8 @@ interface LeafletInnerMapProps {
   activeRoute?: RoadRouteResult | null;
   transportTripRoute?: RoadRouteResult | null;
   userProfile?: UserProfile | null;
+  baseMapMode?: 'auto' | 'light' | 'dark' | 'satellite' | 'outdoor';
+  onTimeToFirstTile?: (latencyMs: number) => void;
 }
 
 
@@ -126,106 +128,104 @@ function getPrivacyPreservingCoords(req: HelpRequest): [number, number] {
 }
 
 /**
- * Urgency marker icons with WCAG AA compliant colors:
- * - Critical: Red (#DC2626) with pulsing beacon
- * - High: Orange (#EA580C)
- * - Medium: Amber (#D97706)
- * - Low: Slate (#475569)
+ * Returns Category SVG icon path for request teardrop pin
  */
-function createUrgencyMarkerIcon(urgency: string, isSelected: boolean) {
-  let color = '#475569'; // low = slate
-  let shadow = 'rgba(71, 85, 105, 0.4)';
-
-  if (urgency === 'critical') {
-    color = '#DC2626'; // red
-    shadow = 'rgba(220, 38, 38, 0.55)';
-  } else if (urgency === 'high') {
-    color = '#EA580C'; // orange
-    shadow = 'rgba(234, 88, 12, 0.55)';
-  } else if (urgency === 'medium') {
-    color = '#D97706'; // amber
-    shadow = 'rgba(217, 119, 6, 0.55)';
+function getCategoryIconSvg(category?: string): string {
+  const cat = (category || '').toLowerCase();
+  if (cat.includes('blood')) {
+    return `<path d="M18 10a4 4 0 0 0 4 4c0 1.2-.5 2.2-1.6 3A3.9 3.9 0 0 1 18 18a3.9 3.9 0 0 1-2.4-1c-1.1-.8-1.6-1.8-1.6-3a4 4 0 0 0 4-4z" fill="#FFFFFF"/>`;
   }
+  if (cat.includes('medic') || cat.includes('pharm') || cat.includes('health') || cat.includes('hospital')) {
+    return `<path d="M18 10v12M12 16h12" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>`;
+  }
+  if (cat.includes('food') || cat.includes('grocer') || cat.includes('meal')) {
+    return `<path d="M13 13h10v7a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-7zm2-3a3 3 0 0 1 6 0v3h-6v-3z" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" fill="none"/>`;
+  }
+  if (cat.includes('shelter') || cat.includes('disaster') || cat.includes('flood') || cat.includes('repair')) {
+    return `<path d="M12 15 18 10l6 5v6a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-6z" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
+  }
+  if (cat.includes('transit') || cat.includes('transport') || cat.includes('ride')) {
+    return `<path d="M12 17h12M13 13l2-3h6l2 3M14 17a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm8 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" fill="none"/>`;
+  }
+  if (cat.includes('book') || cat.includes('study') || cat.includes('edu')) {
+    return `<path d="M12 11 18 8l6 3-6 3-6-3zm0 4 6 3 6-3" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
+  }
+  if (cat.includes('elder') || cat.includes('companion') || cat.includes('care')) {
+    return `<circle cx="18" cy="12" r="3" stroke="#FFFFFF" stroke-width="2" fill="none"/><path d="M13 21v-2a5 5 0 0 1 10 0v2" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" fill="none"/>`;
+  }
+  // Default aid heart icon
+  return `<path d="M18 11.5a3 3 0 0 0-4.2 0 3 3 0 0 0 0 4.2l4.2 4.3 4.2-4.3a3 3 0 0 0 0-4.2 3 3 0 0 0-4.2 0z" fill="#FFFFFF"/>`;
+}
 
-  const size = isSelected ? 42 : 32;
+/**
+ * High-contrast category colors matching design system
+ */
+function getCategoryPinColor(category?: string, urgency?: string): string {
+  const cat = (category || '').toLowerCase();
+  if (cat.includes('blood')) return '#DC2626'; // Red
+  if (cat.includes('food')) return '#059669'; // Emerald
+  if (cat.includes('medic') || cat.includes('health') || cat.includes('hospital')) return '#2563EB'; // Blue
+  if (cat.includes('shelter') || cat.includes('disaster')) return '#D97706'; // Amber
+  if (cat.includes('book') || cat.includes('study') || cat.includes('edu')) return '#7C3AED'; // Violet
+  if (cat.includes('transit') || cat.includes('transport')) return '#F59E0B'; // Amber
+  if (cat.includes('elder') || cat.includes('companion')) return '#0284C7'; // Sky
+  if (cat.includes('repair')) return '#EA580C'; // Orange
+  if (cat.includes('clothes')) return '#0D9488'; // Teal
+
+  if (urgency === 'critical') return '#DC2626';
+  if (urgency === 'high') return '#EA580C';
+  if (urgency === 'medium') return '#D97706';
+  return '#0D9488';
+}
+
+/**
+ * Redesigned SVG Teardrop Request Pin:
+ * - Category color + icon inside
+ * - High-contrast crisp white outline (2.5px)
+ * - Critical requests get soft pulsing beacon (reduced motion respected)
+ * - Selected state scales up
+ */
+function createRequestMarkerIcon(req: HelpRequest, isSelected: boolean, isOwner: boolean) {
+  const color = isOwner ? '#6366F1' : getCategoryPinColor(req.category, req.urgency);
+  const isCritical = req.urgency === 'critical';
+  const width = isSelected ? 44 : 36;
+  const height = isSelected ? 56 : 46;
+
   const pulseHtml =
-    urgency === 'critical'
-      ? `<span style="position: absolute; inset: -4px; border-radius: 50%; background: rgba(220, 38, 38, 0.4); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>`
+    isCritical && !isOwner
+      ? `<span class="kindlink-pin-pulse" style="position: absolute; bottom: 0; left: 50%; transform: translate(-50%, 50%); width: 28px; height: 28px; border-radius: 50%; background: rgba(220, 38, 38, 0.45); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; pointer-events: none;"></span>`
       : '';
 
+  const ownerBadge = isOwner
+    ? `<div style="position: absolute; top: -6px; right: -6px; background: #4F46E5; color: #FFF; font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 6px; border: 1.5px solid #FFF; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">YOU</div>`
+    : '';
+
+  const svgIcon = isOwner
+    ? `<path d="M18 9.5l2.4 4.8 5.3.8-3.8 3.7.9 5.3-4.8-2.5-4.8 2.5.9-5.3-3.8-3.7 5.3-.8z" fill="#FFFFFF"/>`
+    : getCategoryIconSvg(req.category);
+
   const html = `
-    <div style="position: relative; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center;">
+    <div style="position: relative; width: ${width}px; height: ${height}px; transform: translate(-50%, -100%); cursor: pointer; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35)); transition: transform 0.2s ease;">
       ${pulseHtml}
-      <div style="
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: ${size}px;
-        height: ${size}px;
-        background: ${color};
-        border: ${isSelected ? '3.5px' : '2.5px'} solid #ffffff;
-        border-radius: 50%;
-        box-shadow: 0 4px 14px ${shadow};
-        cursor: pointer;
-        position: relative;
-        z-index: 2;
-        transform: translate(-50%, -50%);
-      ">
-        <div style="width: ${isSelected ? 12 : 8}px; height: ${isSelected ? 12 : 8}px; background: #ffffff; border-radius: 50%;"></div>
-      </div>
+      ${ownerBadge}
+      <svg width="${width}" height="${height}" viewBox="0 0 36 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 0C8.06 0 0 8.06 0 18C0 31.5 18 46 18 46C18 46 36 31.5 36 18C36 8.06 27.94 0 18 0Z" fill="${color}" stroke="#FFFFFF" stroke-width="${isSelected ? 3.5 : 2.5}"/>
+        <circle cx="18" cy="18" r="11" fill="rgba(255,255,255,0.18)"/>
+        ${svgIcon}
+      </svg>
     </div>
   `;
 
   return L.divIcon({
     html,
-    className: 'custom-urgency-pin',
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
+    className: `custom-request-pin ${isSelected ? 'pin-selected' : ''}`,
+    iconSize: [width, height],
+    iconAnchor: [width / 2, height],
   });
 }
 
 /**
- * Distinct "Your request" pin style with custom indigo-violet gradient & YOU label
- */
-function createYourRequestMarkerIcon(isSelected: boolean) {
-  const size = isSelected ? 44 : 36;
-  const html = `
-    <div style="position: relative; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center;">
-      <span style="position: absolute; inset: -4px; border-radius: 50%; background: rgba(99, 102, 241, 0.45); animation: ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>
-      <div style="
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: ${size}px;
-        height: ${size}px;
-        background: linear-gradient(135deg, #6366F1, #8B5CF6);
-        border: ${isSelected ? '3.5px' : '2.5px'} solid #ffffff;
-        border-radius: 50%;
-        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.6);
-        cursor: pointer;
-        position: relative;
-        z-index: 2;
-        transform: translate(-50%, -50%);
-        color: #ffffff;
-        font-size: 11px;
-        font-weight: 900;
-        letter-spacing: -0.5px;
-      ">
-        YOU
-      </div>
-    </div>
-  `;
-
-  return L.divIcon({
-    html,
-    className: 'custom-your-request-pin',
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-  });
-}
-
-/**
- * User location cyan-teal pulsing pin
+ * User location cyan-teal pulsing pin with accuracy circle
  */
 function createUserMarkerIcon() {
   const html = `
@@ -255,54 +255,52 @@ function createUserMarkerIcon() {
 }
 
 /**
- * Medical Facility pin icons:
- * - Hospital: Red (#DC2626) with 'H'
- * - Clinic: Blue (#2563EB) with 'C'
- * - Pharmacy: Emerald (#059669) with 'Rx'
- * - Blood bank: Crimson (#991B1B) with '🩸'
+ * Proper SVG Facility Badges (No Letters! Cross, Stethoscope, Pill, Blood Drop):
+ * - Hospital: Red (#DC2626) with cross
+ * - Clinic: Blue (#2563EB) with stethoscope
+ * - Pharmacy: Emerald (#059669) with pill
+ * - Blood bank: Crimson (#991B1B) with blood drop
  */
 function createMedicalMarkerIcon(type: MedicalAmenityType, isSelected: boolean = false) {
   let bg = '#DC2626'; // hospital (red)
-  let symbol = 'H';
+  let svgIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
 
   if (type === 'clinic') {
     bg = '#2563EB'; // blue
-    symbol = 'C';
+    svgIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>`;
   } else if (type === 'pharmacy') {
     bg = '#059669'; // emerald
-    symbol = 'Rx';
+    svgIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>`;
   } else if (type === 'blood_bank') {
     bg = '#991B1B'; // crimson
-    symbol = '🩸';
+    svgIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>`;
   }
 
-  const size = isSelected ? 34 : 28;
+  const size = isSelected ? 42 : 36;
 
   const html = `
     <div style="
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
       width: ${size}px;
       height: ${size}px;
       background: ${bg};
-      border: ${isSelected ? '3px' : '2.5px'} solid #ffffff;
+      border: ${isSelected ? '3.5px' : '2.5px'} solid #FFFFFF;
       border-radius: 50%;
-      box-shadow: 0 3px 12px rgba(0,0,0,0.35);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
       cursor: pointer;
-      font-size: ${symbol === '🩸' ? '12px' : '11px'};
-      font-weight: 900;
-      color: #ffffff;
       transform: translate(-50%, -50%);
-      font-family: system-ui, -apple-system, sans-serif;
+      transition: all 0.2s ease;
     ">
-      ${symbol}
+      ${svgIcon}
     </div>
   `;
 
   return L.divIcon({
     html,
-    className: `custom-medical-${type}`,
+    className: `custom-facility-${type} ${isSelected ? 'pin-selected' : ''}`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
@@ -602,11 +600,7 @@ function ClusteredMarkers({
               <Marker
                 key={req.id}
                 position={single.position}
-                icon={
-                  isOwner
-                    ? createYourRequestMarkerIcon(isSelected)
-                    : createUrgencyMarkerIcon(req.urgency, isSelected)
-                }
+                icon={createRequestMarkerIcon(req, isSelected, isOwner)}
                 eventHandlers={{
                   click: () => onSelectRequest(req),
                 }}
@@ -802,6 +796,8 @@ export default function LeafletInnerMap({
   activeRoute,
   transportTripRoute,
   userProfile,
+  baseMapMode = 'auto',
+  onTimeToFirstTile,
 }: LeafletInnerMapProps) {
   // Filter visible medical facilities according to active layers
   const visibleFacilities = useMemo(() => {
@@ -829,8 +825,12 @@ export default function LeafletInnerMap({
       className="h-full w-full notranslate kindlink-map-has-bottom-nav"
       style={{ height: '100%', width: '100%' }}
     >
-      {/* MapTiler Raster Layer with Smart OSM Fallback & Attribution */}
-      <MapTileLayer hasBottomNav={true} />
+      {/* Primary OpenFreeMap Layer with 4s Failover to MapTiler & OSM */}
+      <MapTileLayer
+        hasBottomNav={true}
+        baseMapMode={baseMapMode}
+        onTimeToFirstTile={onTimeToFirstTile}
+      />
 
       {/* Camera Position & Size Controller */}
       <MapController center={center} zoom={zoom} />

@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isLegacyPlaceObject } from '@/lib/utils/storage-migration';
 
 export const dynamic = 'force-dynamic';
+const MAX_SAVED_PLACES = 10;
+
 
 const VALID_TYPES = ['home', 'work', 'clinic', 'campus', 'custom'] as const;
 
@@ -48,7 +51,9 @@ export async function GET() {
       return NextResponse.json({ places: [], authenticated: true, error: error.message }, { status: 200 });
     }
 
-    const formatted = (places || []).map(formatPlaceRecord);
+    const formatted = (places || [])
+      .map(formatPlaceRecord)
+      .filter((p) => !isLegacyPlaceObject(p));
     return NextResponse.json({ places: formatted, authenticated: true });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal error fetching saved places';
@@ -70,6 +75,28 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
+    // 0. Dedicated legacy cleanup action
+    if (body.action === 'cleanup_legacy') {
+      const admin = createAdminClient();
+      const { data: userPlaces } = await admin
+        .from('saved_places')
+        .select('id, name, label, address_text')
+        .eq('user_id', user.id);
+
+      const toDeleteIds: string[] = [];
+      for (const p of userPlaces || []) {
+        if (isLegacyPlaceObject(p)) {
+          toDeleteIds.push(String(p.id));
+        }
+      }
+
+      if (toDeleteIds.length > 0) {
+        await admin.from('saved_places').delete().in('id', toDeleteIds);
+      }
+
+      return NextResponse.json({ success: true, deleted: toDeleteIds.length });
+    }
+
     // 1. Bulk sync mode (merging offline localStorage places upon login)
     if (body.action === 'sync' && Array.isArray(body.places)) {
       const incoming: any[] = body.places.slice(0, 10);
@@ -85,7 +112,7 @@ export async function POST(req: NextRequest) {
       const toInsert: any[] = [];
 
       for (const item of incoming) {
-        if (!item || !item.name || typeof item.lat !== 'number' || typeof item.lng !== 'number') continue;
+        if (!item || !item.name || typeof item.lat !== 'number' || typeof item.lng !== 'number' || isLegacyPlaceObject(item)) continue;
         const cleanName = String(item.name).trim();
         const duplicate = existingPlaces.some(
           (ex) =>
@@ -144,6 +171,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const cleanLabel = (label || cleanName).trim();
+    if (isLegacyPlaceObject({ name: cleanName, label: cleanLabel })) {
+      return NextResponse.json(
+        { error: 'This place name is not permitted.' },
+        { status: 400 }
+      );
+    }
+
     const nLat = Number(lat);
     const nLng = Number(lng);
     if (isNaN(nLat) || isNaN(nLng) || nLat < -90 || nLat > 90 || nLng < -180 || nLng > 180) {
@@ -151,7 +186,6 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanType = VALID_TYPES.includes(type) ? type : 'custom';
-    const cleanLabel = (label || cleanName).trim();
 
     const admin = createAdminClient();
 

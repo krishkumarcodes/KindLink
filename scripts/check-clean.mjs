@@ -35,7 +35,10 @@ const FORBIDDEN_RULES = [
   },
   { name: 'Asansol Engineering references', regex: new RegExp('\\b' + ['asansol', '\\s+', 'engineering'].join('') + '\\b', 'i') },
   { name: 'AEC references', regex: new RegExp('\\b' + ['A', 'E', 'C'].join('') + '\\b') },
-  { name: 'MAKAUT references', regex: new RegExp('\\b' + ['mak', 'aut'].join('') + '\\b', 'i') }
+  { name: 'MAKAUT references', regex: new RegExp('\\b' + ['mak', 'aut'].join('') + '\\b', 'i') },
+  { name: 'MedPlus references', regex: new RegExp('\\b' + ['med', 'plus'].join('') + '\\b', 'i') },
+  { name: 'Sanjeevani references', regex: new RegExp('\\b' + ['sanje', 'evani'].join('') + '\\b', 'i') },
+  { name: 'Life Line Blood references', regex: new RegExp('\\b' + ['life', '\\s+', 'line', '\\s+', 'blood'].join('') + '\\b', 'i') }
 ];
 
 // Special checker for UI strings, category cards, and translations

@@ -133,6 +133,8 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="alternate icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/icon.svg" />
+        <link rel="preconnect" href="https://tiles.openfreemap.org" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://tiles.openfreemap.org" />
         <link
           rel="alternate"
           type="text/markdown"

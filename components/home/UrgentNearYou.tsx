@@ -24,6 +24,12 @@ import { calculateETA, formatETA } from '@/lib/data/distance';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { formatWaitingTime } from '@/lib/utils/formatTime';
 import { PrimaryHelpButton } from '@/components/requests/ActionButtons';
+import { getCategoryToken } from '@/lib/data/categoryColors';
+import {
+  formatCategoryTitle,
+  getCategoryByKey,
+  CATEGORY_ICON_MAP,
+} from '@/lib/data/categories';
 
 export interface UrgentNearYouProps {
   /** Optional custom requests list. If omitted, fetched from useKindLinkStore. */
@@ -100,78 +106,37 @@ function getUrgencyTextLabel(urgency: string): string {
 }
 
 function getCategoryIcon(category: HelpCategory | string) {
-  switch (category) {
-    case 'blood':
-      return <Droplets className="h-4 w-4 text-rose-500 notranslate" />;
-    case 'equipment':
-      return <Stethoscope className="h-4 w-4 text-teal-500 notranslate" />;
-    case 'elderly':
-      return <Users className="h-4 w-4 text-indigo-500 notranslate" />;
-    case 'books':
-      return <BookOpen className="h-4 w-4 text-emerald-500 notranslate" />;
-    case 'transport':
-      return <Car className="h-4 w-4 text-amber-500 notranslate" />;
-    default:
-      return <HeartHandshake className="h-4 w-4 text-primary notranslate" />;
+  const cat = getCategoryByKey(category);
+  if (cat && CATEGORY_ICON_MAP[cat.icon]) {
+    const Icon = CATEGORY_ICON_MAP[cat.icon];
+    return <Icon className="h-4 w-4 notranslate" />;
   }
+  return <HeartHandshake className="h-4 w-4 notranslate" />;
 }
 
-function getCategoryCircleStyle(category: HelpCategory | string): string {
-  switch (category) {
-    case 'blood':
-      return 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400';
-    case 'equipment':
-      return 'bg-teal-500/10 border-teal-500/20 text-teal-600 dark:text-teal-400';
-    case 'elderly':
-      return 'bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400';
-    case 'books':
-      return 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400';
-    case 'transport':
-      return 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400';
-    default:
-      return 'bg-primary/10 border-primary/20 text-primary';
-  }
+function getCategoryCircleStyle(category: HelpCategory | string, customLabel?: string) {
+  const token = getCategoryToken(category, customLabel);
+  return {
+    backgroundColor: token.lightBg,
+    borderColor: token.border,
+    color: token.primary,
+  };
 }
 
-function getCategoryChip(category: HelpCategory | string) {
-  switch (category) {
-    case 'blood':
-      return {
-        label: 'Blood',
-        icon: <Droplets className="h-3 w-3 text-rose-500 notranslate shrink-0" />,
-        style: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25',
-      };
-    case 'equipment':
-      return {
-        label: 'Medical Gear',
-        icon: <Stethoscope className="h-3 w-3 text-teal-500 notranslate shrink-0" />,
-        style: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/25',
-      };
-    case 'elderly':
-      return {
-        label: 'Elderly Care',
-        icon: <Users className="h-3 w-3 text-indigo-500 notranslate shrink-0" />,
-        style: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/25',
-      };
-    case 'books':
-      return {
-        label: 'Books & Study',
-        icon: <BookOpen className="h-3 w-3 text-emerald-500 notranslate shrink-0" />,
-        style: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25',
-      };
-    case 'transport':
-      return {
-        label: 'Emergency Transit',
-        icon: <Car className="h-3 w-3 text-amber-500 notranslate shrink-0" />,
-        style: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25',
-      };
-    default:
-      return {
-        label: 'Community Aid',
-        icon: <HeartHandshake className="h-3 w-3 text-primary notranslate shrink-0" />,
-        style: 'bg-primary/10 text-primary border-primary/25',
-      };
-  }
+function getCategoryChip(category: HelpCategory | string, customLabel?: string) {
+  const token = getCategoryToken(category, customLabel);
+  const title = formatCategoryTitle(category, customLabel);
+  const icon = getCategoryIcon(category);
+
+  return {
+    label: title,
+    icon,
+    style: {
+      backgroundColor: token.lightBg,
+      borderColor: token.border,
+      color: token.primary,
+    },
+  };
 }
 
 export function UrgentNearYou({
@@ -367,7 +332,9 @@ export function UrgentNearYou({
             const etaMinutes = calculateETA(req.distanceKm, effectiveTravelMode);
             const etaStr = formatETA(etaMinutes);
             const isNew = newlyAddedIds.has(req.id);
-            const categoryChip = getCategoryChip(req.category);
+            const categoryChip = getCategoryChip(req.category, req.customCategoryLabel);
+            const categoryToken = getCategoryToken(req.category, req.customCategoryLabel);
+            const circleStyle = getCategoryCircleStyle(req.category, req.customCategoryLabel);
 
             return (
               <div
@@ -381,6 +348,7 @@ export function UrgentNearYou({
                     handleRequestClick(req);
                   }
                 }}
+                style={{ borderLeftColor: categoryToken.primary, borderLeftWidth: '4px' }}
                 className={`group relative flex overflow-hidden rounded-2xl border border-border/80 dark:border-white/10 bg-card/95 backdrop-blur-xs shadow-soft hover:shadow-md hover:border-primary/40 dark:hover:border-primary/50 transition-all duration-200 cursor-pointer ${
                   isNew ? 'animate-urgent-slide-in' : ''
                 }`}
@@ -401,11 +369,10 @@ export function UrgentNearYou({
                     <div className="flex items-start gap-3 min-w-0 flex-1">
                       {/* Category icon in a tinted circle */}
                       <div
-                        className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 border ${getCategoryCircleStyle(
-                          req.category
-                        )}`}
+                        className="h-10 w-10 rounded-full flex items-center justify-center shrink-0 border"
+                        style={circleStyle}
                       >
-                        {getCategoryIcon(req.category)}
+                        {categoryChip.icon}
                       </div>
 
                       {/* Content column */}
@@ -414,7 +381,8 @@ export function UrgentNearYou({
                         <div className="flex items-center flex-wrap gap-1.5">
                           {/* Top category chip with icon and accent color */}
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold border ${categoryChip.style}`}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold border"
+                            style={categoryChip.style}
                           >
                             {categoryChip.icon}
                             <span>{categoryChip.label}</span>
@@ -439,8 +407,8 @@ export function UrgentNearYou({
                           )}
                         </div>
 
-                        {/* Request title (no line-clamp / no ellipsis) */}
-                        <h3 className="text-sm sm:text-base font-bold text-foreground group-hover:text-primary transition leading-snug">
+                        {/* Request title */}
+                        <h3 className="text-sm sm:text-base font-bold text-foreground group-hover:text-primary transition leading-snug break-words">
                           {req.title}
                         </h3>
 
@@ -458,7 +426,7 @@ export function UrgentNearYou({
                               </span>
                             )}
                             {req.hospitalName && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[11px] font-semibold border border-rose-500/20 truncate max-w-[200px]">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[11px] font-semibold border border-rose-500/20 max-w-[200px]">
                                 🏥 {req.hospitalName}
                               </span>
                             )}
@@ -467,9 +435,9 @@ export function UrgentNearYou({
 
                         {req.category === 'transport' && (req.pickupAddress || req.dropAddress) && (
                           <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-[11px] font-medium max-w-full overflow-hidden">
-                            <span className="truncate max-w-[110px] sm:max-w-[150px]">{req.pickupAddress || 'Pickup'}</span>
+                            <span className="max-w-[150px]">{req.pickupAddress || 'Pickup'}</span>
                             <span className="text-amber-500 font-bold shrink-0">→</span>
-                            <span className="truncate max-w-[110px] sm:max-w-[150px]">{req.dropAddress || 'Destination'}</span>
+                            <span className="max-w-[150px]">{req.dropAddress || 'Destination'}</span>
                           </div>
                         )}
 
@@ -516,9 +484,39 @@ export function UrgentNearYou({
                           </div>
                         )}
 
+                        {req.category === 'medicine' && (
+                          <div className="flex items-center flex-wrap gap-1.5">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-orange-500/10 text-orange-700 dark:text-orange-300 border border-orange-500/20 text-[11px] font-semibold">
+                              💊 {req.categoryFields?.medicineNames || 'Prescribed medicines'}
+                            </span>
+                          </div>
+                        )}
+
+                        {req.category === 'food' && (
+                          <div className="flex items-center flex-wrap gap-1.5">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20 text-[11px] font-semibold">
+                              🍲 {req.categoryFields?.servingsCount || 2} Meals
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Suggested / user tags chips */}
+                        {req.tags && req.tags.length > 0 && (
+                          <div className="flex items-center flex-wrap gap-1">
+                            {req.tags.slice(0, 4).map((t) => (
+                              <span
+                                key={t}
+                                className="px-1.5 py-0.5 rounded-md bg-muted text-[10px] font-mono text-muted-foreground"
+                              >
+                                #{t}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
                         {/* Distance, ETA, and Waiting time */}
                         <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1 text-xs text-muted-foreground pt-0.5">
-                          {/* Distance and ETA: e.g. "2.4 km · 8 min away" */}
+                          {/* Distance and ETA */}
                           <span className="flex items-center gap-1 font-medium">
                             <MapPin className="h-3.5 w-3.5 text-primary shrink-0 notranslate" />
                             <span>
@@ -530,27 +528,52 @@ export function UrgentNearYou({
                             •
                           </span>
 
-                          {/* Waiting time: e.g. "Posted 12 min ago" (or "Posted 2 h 48 min ago") */}
+                          {/* Waiting time */}
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3 text-muted-foreground shrink-0 notranslate" />
                             <span>{formatWaitingTime(req.waitingMinutes, req.createdAt)}</span>
                           </span>
                         </div>
+
+                        {/* Requester & Verification row */}
+                        <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground pt-1.5 border-t border-border/40">
+                          <span>
+                            Requester: <strong className="text-foreground font-semibold">{req.contactName || 'Community Member'}</strong>
+                          </span>
+                          {req.verified && (
+                            <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
+                              <ShieldCheck className="h-3.5 w-3.5 notranslate" />
+                              <span>{req.verificationBadge || 'Verified'}</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Help button: 44 px high, category colored */}
-                    <PrimaryHelpButton
-                      category={req.category}
-                      size="card"
-                      label="I can help"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRequestClick(req);
-                      }}
-                      className="w-full min-[400px]:w-auto min-[400px]:px-5 px-4 shrink-0"
-                      aria-label={`Help with request: ${req.title}`}
-                    />
+                    {/* 2 Action Buttons: Details + Category-colored Help Button */}
+                    <div className="flex items-center gap-2 w-full min-[400px]:w-auto shrink-0 pt-2 min-[400px]:pt-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRequestClick(req);
+                        }}
+                        className="px-3.5 py-2.5 rounded-2xl border border-border/80 bg-background hover:bg-muted text-xs font-bold text-foreground transition active:scale-95 touch-target flex-1 min-[400px]:flex-initial"
+                      >
+                        Details
+                      </button>
+                      <PrimaryHelpButton
+                        category={req.category}
+                        size="card"
+                        label="I can help"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRequestClick(req);
+                        }}
+                        className="flex-1 min-[400px]:flex-initial min-[400px]:px-5 px-4 shrink-0"
+                        aria-label={`Help with request: ${req.title}`}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

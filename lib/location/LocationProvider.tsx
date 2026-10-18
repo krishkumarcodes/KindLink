@@ -14,6 +14,11 @@ import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { ASANSOL_CENTER } from '@/lib/data/mock-requests';
 import { reverseGeocode } from '@/lib/geo/reverse-geocode';
 import {
+  isLegacyLocationString,
+  isLegacyPlaceObject,
+  runStorageMigration,
+} from '@/lib/utils/storage-migration';
+import {
   UserCoordinates,
   GeolocationPermissionState,
   SavedPlace,
@@ -29,7 +34,7 @@ const DEFAULT_COORDINATES: UserCoordinates = {
   isLive: false,
 };
 
-const DEFAULT_AREA_NAME = 'Asansol Region';
+const DEFAULT_AREA_NAME = 'Set your area';
 
 const INITIAL_SAVED_PLACES: SavedPlace[] = [];
 
@@ -174,6 +179,9 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    // Run versioned storage migration immediately
+    runStorageMigration().catch(() => {});
+
     // Load saved places (and purge any legacy fake hard-coded places)
     try {
       const rawPlaces = localStorage.getItem(SAVED_PLACES_STORAGE_KEY);
@@ -184,6 +192,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
             (p: SavedPlace) =>
               p &&
               p.id &&
+              !isLegacyPlaceObject(p) &&
               !['sp-campus', 'sp-hospital', 'sp-ushagram'].includes(p.id) &&
               !p.id.startsWith('fake-')
           );
@@ -205,13 +214,15 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         const parsed = JSON.parse(rawLoc);
         if (parsed.coords?.lat && parsed.coords?.lng) {
           setUserCoordsState(parsed.coords);
-          if (parsed.areaName) {
-            setUserAreaNameState(parsed.areaName);
-          }
+          const validAreaName =
+            parsed.areaName && !isLegacyLocationString(parsed.areaName)
+              ? parsed.areaName
+              : DEFAULT_AREA_NAME;
+          setUserAreaNameState(validAreaName);
           if (typeof parsed.accuracy === 'number') {
             setAccuracy(parsed.accuracy);
           }
-          syncWithStore(parsed.coords, parsed.areaName);
+          syncWithStore(parsed.coords, validAreaName);
         }
       } else {
         // Sync default coords to store

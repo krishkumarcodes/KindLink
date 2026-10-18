@@ -11,7 +11,9 @@ import {
   Heart,
   ShieldCheck,
   Radio,
+  Check,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { Last24HoursSheet } from './Last24HoursSheet';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
@@ -34,6 +36,8 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showCheck, setShowCheck] = useState(false);
 
   // 24h stats data for sheet and sparkline
   const [twentyFourHourData, setTwentyFourHourData] = useState<Last24HoursData | null>(null);
@@ -261,11 +265,21 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
     return () => clearInterval(interval);
   }, [anonymizedEvents.length, isTickerPaused, prefersReducedMotion]);
 
-  // Refresh handler
-  const handleRefresh = useCallback(() => {
-    fetchLiveStats();
-    fetch24hStats();
-  }, [fetchLiveStats, fetch24hStats]);
+  // Refresh handler with 360 rotation, checkmark tick, and toast
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing || isLoadingStats) return;
+    setIsRefreshing(true);
+    try {
+      await Promise.all([fetchLiveStats(), fetch24hStats()]);
+      setShowCheck(true);
+      toast.success('Live community pulse updated', { duration: 2000 });
+      setTimeout(() => setShowCheck(false), 1500);
+    } catch {
+      toast.error('Could not refresh stats');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchLiveStats, fetch24hStats, isRefreshing, isLoadingStats]);
 
   // Sparkline coordinates computed from 24h hourly request data (56 x 20 px)
   const sparklineData = useMemo(() => {
@@ -375,18 +389,22 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
           type="button"
           onClick={() => {
             fetchLiveStats();
-            fetch24hStats();
+            handleRefresh();
           }}
-          disabled={isLoadingStats}
+          disabled={isLoadingStats || isRefreshing}
           title="Refresh live stats"
           aria-label="Refresh live stats"
-          className="h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 rounded-full border border-border/80 bg-background/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-all shadow-xs flex items-center justify-center touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-70"
+          className="h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 rounded-full border border-border/80 bg-background/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-all shadow-xs flex items-center justify-center touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-70 active:scale-95"
         >
-          <RotateCw
-            className={`h-4 w-4 notranslate ${
-              isLoadingStats ? 'animate-spin text-primary' : ''
-            }`}
-          />
+          {showCheck ? (
+            <Check className="h-4 w-4 text-emerald-500 notranslate animate-in zoom-in-75" />
+          ) : (
+            <RotateCw
+              className={`h-4 w-4 notranslate transition-transform duration-500 ${
+                isLoadingStats || isRefreshing ? 'animate-spin text-primary' : 'hover:rotate-180'
+              }`}
+            />
+          )}
         </button>
       </div>
 
@@ -394,7 +412,7 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
           - Left: Pulsing green dot with single "Live · updated 18s ago" (or "Live · 18s ago" on narrow screens).
           - Right: "24h" chip with tiny sparkline, label "24h", and chevron (opens last 24h details sheet).
           - Below 340px: hide sparkline; never wrap or overflow horizontally. */}
-      <div className="h-11 min-h-[44px] w-full rounded-2xl border border-border/80 bg-card/85 dark:bg-card/50 backdrop-blur-xs px-3 sm:px-3.5 flex items-center justify-between gap-2 min-w-0 overflow-hidden shadow-xs">
+      <div className="h-11 min-h-[44px] h-auto w-full rounded-2xl border border-border/80 bg-card/85 dark:bg-card/50 backdrop-blur-xs p-2 sm:px-3.5 flex flex-wrap items-center justify-between gap-2 min-w-0 shadow-xs">
         {/* Left: Pulsing green dot + single status string */}
         <div className="flex items-center gap-2 min-w-0 shrink">
           <span className="relative flex h-2 w-2 shrink-0">
@@ -496,7 +514,7 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
           return (
             <div
               key={card.id}
-              className={`relative flex flex-col justify-between p-4 rounded-2xl bg-card/90 dark:bg-card/75 border ${card.cardBorder} shadow-xs hover:shadow-md transition-all duration-200 h-[154px] min-h-[154px] backdrop-blur-xs`}
+              className={`relative flex flex-col justify-between p-3.5 rounded-2xl bg-card/90 dark:bg-card/75 border ${card.cardBorder} shadow-xs hover:shadow-md transition-all duration-200 h-[154px] min-h-[154px] backdrop-blur-xs`}
             >
               {/* Top Row: Icon chip on left, Info button with 44px tap area on right */}
               <div className="flex h-9 items-center justify-between gap-2">
@@ -520,10 +538,10 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
                 </button>
               </div>
 
-              {/* Bottom Content: Number, Full Label, Caption sitting on the exact same lines across cards */}
+              {/* Bottom Content: Number, Full Label, Caption sitting on the exact same lines across cards (12px mt-3 gap) */}
               {isLoadingStats && !liveStats ? (
                 <div
-                  className="grid grid-rows-[32px_18px_28px] items-start gap-1 animate-pulse"
+                  className="grid grid-rows-[32px_18px_28px] items-start gap-1 mt-3 animate-pulse"
                   aria-busy="true"
                 >
                   <div className="h-7 w-16 bg-muted/80 rounded-lg" />
@@ -531,7 +549,7 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
                   <div className="h-3 w-28 bg-muted/40 rounded-md" />
                 </div>
               ) : (
-                <div className="grid grid-rows-[32px_18px_28px] items-start gap-1">
+                <div className="grid grid-rows-[32px_18px_28px] items-start gap-1 mt-3">
                   {/* Row 1: Number */}
                   <div className="h-8 flex items-baseline text-2xl sm:text-3xl font-black text-foreground tabular-nums tracking-tight leading-none">
                     <AnimatedNumber value={card.value} />

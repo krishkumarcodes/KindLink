@@ -32,6 +32,7 @@ import { Select } from '@/components/ui/Select';
 import { OrganizationType } from '@/lib/data/types';
 import { OrganizationBadge } from './OrganizationBadge';
 import { BadgeMedalIcon } from './BadgeMedalIcon';
+import { getLanguageDisplay } from '@/lib/translate/googleTranslate';
 
 export interface PublicMemberProfile {
   id: string;
@@ -513,19 +514,28 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-2">
               Languages
             </span>
-            <div className="flex flex-wrap gap-1.5">
-              {member.languages.map((lang) => (
-                <span
-                  key={lang}
-                  className="px-2.5 py-1 rounded-xl bg-background border border-border text-xs font-medium text-foreground"
-                >
-                  {lang}
-                </span>
-              ))}
+            <div className="flex flex-wrap gap-2">
+              {member.languages.map((codeOrName) => {
+                const info = getLanguageDisplay(codeOrName);
+                return (
+                  <span
+                    key={codeOrName}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-background border border-border text-xs font-semibold text-foreground shadow-2xs"
+                  >
+                    <span>{info.name}</span>
+                    {info.nativeName !== info.name && (
+                      <span className="text-[10px] text-muted-foreground font-normal" translate="no">
+                        ({info.nativeName})
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
             </div>
           </div>
         )}
       </div>
+
 
       {/* Pinned & Community Badges */}
       <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-4">

@@ -5,6 +5,7 @@ import { X, Pin, Check, Lock, Award, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserBadgeProgress } from '@/lib/data/badges';
 import { BadgeMedalIcon } from './BadgeMedalIcon';
+import { useBodyScrollLock } from '@/components/ui/OverlayPortal';
 
 interface BadgePinningModalProps {
   open: boolean;
@@ -23,6 +24,8 @@ export function BadgePinningModal({
   onTogglePin,
   onViewAllBadges,
 }: BadgePinningModalProps) {
+  useBodyScrollLock(open);
+
   // Close on escape key
   useEffect(() => {
     if (!open) return;
@@ -55,27 +58,27 @@ export function BadgePinningModal({
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
     >
       <div
-        className="relative w-full sm:max-w-lg bg-card border-t sm:border border-border rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
+        className="relative w-full sm:max-w-lg bg-card text-card-foreground border-t sm:border border-border rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85dvh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Mobile drag handle */}
-        <div className="sm:hidden mx-auto my-2 w-12 h-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
-
-        {/* HEADER */}
-        <div className="shrink-0 px-5 sm:px-6 py-4 border-b border-border bg-card/95 backdrop-blur-md flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 id="pinning-modal-title" className="text-base sm:text-lg font-bold text-foreground">
-                Pinned Badges
-              </h2>
-              <span className="px-2 py-0.5 rounded-full text-xs font-extrabold bg-primary/10 text-primary border border-primary/20">
-                {pinnedIds.length} / 3 pinned
-              </span>
+        {/* HEADER with Integrated Drag Handle */}
+        <div className="shrink-0 border-b border-border bg-card">
+          {/* Mobile drag handle */}
+          <div className="sm:hidden mx-auto my-2 w-12 h-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
+          <div className="px-5 sm:px-6 pb-4 pt-1 sm:pt-4 flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 id="pinning-modal-title" className="text-base sm:text-lg font-bold text-foreground">
+                  Pinned Badges
+                </h2>
+                <span className="px-2 py-0.5 rounded-full text-xs font-extrabold bg-primary/10 text-primary border border-primary/20">
+                  {pinnedIds.length} / 3 pinned
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Select up to 3 badges to display on your profile header
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Select up to 3 badges to display on your profile header
-            </p>
-          </div>
           <button
             type="button"
             onClick={onClose}
@@ -85,9 +88,10 @@ export function BadgePinningModal({
             <X className="h-5 w-5 notranslate" />
           </button>
         </div>
+      </div>
 
         {/* BODY */}
-        <div className="overflow-y-auto flex-1 px-5 sm:px-6 py-4 space-y-4">
+        <div className="overflow-y-auto overscroll-contain flex-1 px-5 sm:px-6 py-4 space-y-4">
           {earnedBadges.length === 0 ? (
             <div className="p-6 text-center rounded-2xl bg-muted/30 border border-dashed border-border space-y-3">
               <div className="w-12 h-12 mx-auto rounded-full bg-primary/10 text-primary flex items-center justify-center">
@@ -221,7 +225,7 @@ export function BadgePinningModal({
         </div>
 
         {/* FOOTER */}
-        <div className="shrink-0 px-5 sm:px-6 py-3.5 border-t border-border bg-card/95 backdrop-blur-md flex items-center justify-between gap-3">
+        <div className="shrink-0 px-5 sm:px-6 py-3.5 border-t border-border bg-card flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => {

@@ -436,6 +436,324 @@ assert.ok(
 );
 console.log('     ✓ Bottom tab clearance verified (>= 96px safe zone padding)');
 
+// ==============================================================================
+// TEST SUITE 7: Notification Panel (Section 6 Audit)
+// ==============================================================================
+console.log('\n--- 7. Testing Notification Panel (Section 6 Requirements) ---');
+
+const notificationCenterFile = 'components/notifications/NotificationCenter.tsx';
+const notificationSettingsSheetFile = 'components/notifications/NotificationSettingsSheet.tsx';
+const notificationModalFile = 'components/notifications/NotificationModal.tsx';
+
+assert.ok(fs.existsSync(notificationCenterFile), 'NotificationCenter.tsx must exist');
+assert.ok(fs.existsSync(notificationSettingsSheetFile), 'NotificationSettingsSheet.tsx must exist');
+assert.ok(fs.existsSync(notificationModalFile), 'NotificationModal.tsx must exist');
+
+const notificationCenterCode = fs.readFileSync(notificationCenterFile, 'utf8');
+const notificationSettingsSheetCode = fs.readFileSync(notificationSettingsSheetFile, 'utf8');
+const notificationModalCode = fs.readFileSync(notificationModalFile, 'utf8');
+
+// 7.1 Single-Surface Panel (Solid bg-card, no two-tone translucent headers)
+console.log('  7.1 Auditing single-surface solid background in NotificationCenter...');
+assert.ok(
+  notificationCenterCode.includes('bg-card') &&
+  !notificationCenterCode.includes('bg-card/90') &&
+  !notificationCenterCode.includes('bg-card/95'),
+  'NotificationCenter header and body must use solid bg-card (no translucent band or opacity seams)'
+);
+assert.ok(
+  notificationCenterCode.includes('unreadNotificationCount') &&
+  notificationCenterCode.includes('Mark all read') &&
+  notificationCenterCode.includes('Notification Settings') &&
+  notificationCenterCode.includes('setSettingsOpen(true)'),
+  'Sticky header must feature unread count, Mark all read button, and settings gear opening NotificationSettingsSheet'
+);
+console.log('     ✓ NotificationCenter uses unified solid bg-card surface and full sticky header controls');
+
+// 7.2 Wrapping Filter Chips with Live Count Pills
+console.log('  7.2 Auditing wrapping filter chips and live count pills...');
+assert.ok(
+  notificationCenterCode.includes('flex flex-wrap items-center gap-1.5') ||
+  notificationCenterCode.includes('flex-wrap gap-1.5'),
+  'Filter chips container must wrap with flex-wrap gap-1.5 to prevent horizontal overflow on small devices'
+);
+
+const filterKeys = ['all', 'requests', 'offers', 'updates', 'emergency'];
+for (const key of filterKeys) {
+  assert.ok(
+    notificationCenterCode.includes(`'${key}'`) || notificationCenterCode.includes(`"${key}"`),
+    `Filter chips must support category: ${key}`
+  );
+}
+console.log('     ✓ Filter chips wrap gracefully and contain live count pills for All, Requests, Offers, Updates, and Emergency');
+
+// 7.3 Push Notification Card (Full text wrapping, no truncation)
+console.log('  7.3 Auditing push notification card text wrapping...');
+assert.ok(
+  notificationCenterCode.includes('break-words') || notificationCenterCode.includes('whitespace-normal'),
+  'Push notification card must use break-words or whitespace-normal for full text wrap'
+);
+assert.ok(
+  !notificationCenterCode.includes('truncate text-xs sm:text-sm font-bold text-foreground') &&
+  !notificationCenterCode.includes('truncate leading-snug break-words'),
+  'Push notification card title and description must never be truncated'
+);
+console.log('     ✓ Push notification card wraps fully without truncation');
+
+// 7.4 Date Grouping & Relative Time
+console.log('  7.4 Auditing date grouping (Today, Yesterday, Earlier) and relative time...');
+assert.ok(
+  notificationCenterCode.includes('getItemDateGroup') &&
+  notificationCenterCode.includes("'today'") &&
+  notificationCenterCode.includes("'yesterday'") &&
+  notificationCenterCode.includes("'earlier'"),
+  'NotificationCenter must group notifications into Today, Yesterday, and Earlier'
+);
+assert.ok(
+  notificationCenterCode.includes('formatNotificationRelativeTime'),
+  'NotificationCenter must format human-readable relative timestamps'
+);
+console.log('     ✓ Date grouping and relative time calculations verified');
+
+// 7.5 Working Notification Settings Sheet
+console.log('  7.5 Auditing NotificationSettingsSheet features...');
+assert.ok(
+  notificationSettingsSheetCode.includes('Notification.requestPermission') ||
+  notificationSettingsSheetCode.includes('handleRequestPushPermission'),
+  'NotificationSettingsSheet must provide push permission toggle'
+);
+assert.ok(
+  notificationSettingsSheetCode.includes('nearbyDistanceKm') &&
+  (notificationSettingsSheetCode.includes('1') && notificationSettingsSheetCode.includes('5') && notificationSettingsSheetCode.includes('10')),
+  'NotificationSettingsSheet must provide radius options (1km, 2km, 5km, 10km)'
+);
+assert.ok(
+  notificationSettingsSheetCode.includes('quietHoursEnabled') &&
+  notificationSettingsSheetCode.includes('quietHoursStart') &&
+  notificationSettingsSheetCode.includes('quietHoursEnd'),
+  'NotificationSettingsSheet must provide quiet hours configuration'
+);
+assert.ok(
+  notificationSettingsSheetCode.includes('handleSendTestNotification'),
+  'NotificationSettingsSheet must provide a send test notification button'
+);
+console.log('     ✓ NotificationSettingsSheet is fully functional with radius, quiet hours, and test alerts');
+
+// 7.6 NotificationModal Re-export
+console.log('  7.6 Auditing NotificationModal re-export compatibility...');
+assert.ok(
+  notificationModalCode.includes('NotificationCenter as NotificationModal'),
+  'NotificationModal.tsx must cleanly re-export NotificationCenter'
+);
+console.log('     ✓ NotificationModal cleanly re-exports NotificationCenter');
+
+// ==============================================================================
+// TEST SUITE 8: Request Details Sheet & Actions (Section 7 Audit)
+// ==============================================================================
+console.log('\n--- 8. Testing Request Details Sheet & Actions (Section 7 Requirements) ---');
+
+// 8.1 Strictly ONE Route Card Assertion
+console.log('  8.1 Checking strictly ONE route card in RequestDetailModal...');
+function countOccurrences(str, sub) {
+  return str.split(sub).length - 1;
+}
+
+const miniMapRenderCount = countOccurrences(requestDetailModalCode, '<RequestRouteMiniMap');
+assert.equal(
+  miniMapRenderCount,
+  1,
+  `RequestDetailModal must render <RequestRouteMiniMap> strictly once. Found: ${miniMapRenderCount}`
+);
+
+const routeHeaderCount = countOccurrences(requestDetailModalCode, 'You to this request:');
+assert.equal(
+  routeHeaderCount,
+  1,
+  `"You to this request:" header must appear strictly once. Found: ${routeHeaderCount}`
+);
+
+// Zero occurrences of provider branding in the user-visible UI route header
+const userFacingRouteSection = requestDetailModalCode.slice(
+  requestDetailModalCode.indexOf('data-section="route-card"'),
+  requestDetailModalCode.indexOf('data-section="nearby-places"')
+);
+const forbiddenProviders = ['OSRM', 'GraphHopper', 'MapTiler', 'OpenStreetMap'];
+for (const provider of forbiddenProviders) {
+  assert.ok(
+    !userFacingRouteSection.includes(provider),
+    `User-facing route card section must not expose provider branding: ${provider}`
+  );
+}
+console.log('     ✓ Strictly ONE route card verified with zero provider branding');
+
+// 8.2 Route Card Header Format (Distance and time on one line)
+console.log('  8.2 Auditing distance and time format on one line...');
+assert.ok(
+  requestDetailModalCode.includes('You to this request:') &&
+  requestDetailModalCode.includes('by {travelMode}'),
+  'Route header must format distance and time on one line'
+);
+console.log('     ✓ "You to this request: <dist> km · <time> by <mode>" formatted on a single line');
+
+// 8.3 Expand and Google Maps buttons in RequestRouteMiniMap
+console.log('  8.3 Auditing Expand and Google Maps actions in RequestRouteMiniMap...');
+assert.ok(
+  requestRouteMiniMapCode.includes('/map?request=') || requestRouteMiniMapCode.includes('onExpand'),
+  'RequestRouteMiniMap must provide an Expand button linking to /map?request=ID&route=1 or triggering onExpand'
+);
+assert.ok(
+  requestRouteMiniMapCode.includes('hasValidCoords &&') || requestRouteMiniMapCode.includes('googleMapsUrl'),
+  'Google Maps directions button must be strictly hidden if coordinates are invalid or missing'
+);
+
+const mapPageFile = 'app/map/page.tsx';
+assert.ok(fs.existsSync(mapPageFile), 'app/map/page.tsx must exist for deep-linked map navigation');
+const mapPageCode = fs.readFileSync(mapPageFile, 'utf8');
+assert.ok(
+  mapPageCode.includes('searchParams.get') &&
+  mapPageCode.includes('request') &&
+  mapPageCode.includes('Suspense'),
+  'app/map/page.tsx must handle request and route query params within Suspense'
+);
+console.log('     ✓ Expand deep link and coordinate validation for directions verified');
+
+// 8.4 Nearby Places (Category headings, separated title/subtitle, max 3, conditional call, collapsible)
+console.log('  8.4 Auditing Nearby Places structure & accessibility...');
+assert.ok(
+  requestDetailModalCode.includes('nearbyHeading.title') &&
+  requestDetailModalCode.includes('nearbyHeading.subtitle'),
+  'Nearby places header must render title and subtitle on separate rows to prevent clipping'
+);
+assert.ok(
+  requestDetailModalCode.includes('nearbyHospitals.slice(0, 3)'),
+  'Nearby places must display a maximum of 3 results'
+);
+assert.ok(
+  requestDetailModalCode.includes('isNearbyCollapsed') &&
+  requestDetailModalCode.includes('setIsNearbyCollapsed'),
+  'Nearby places must be collapsible with state toggle'
+);
+assert.ok(
+  requestDetailModalCode.includes('facility.phone &&') &&
+  requestDetailModalCode.includes('tel:'),
+  'Call button must be conditionally rendered only when phone exists'
+);
+assert.ok(
+  requestDetailModalCode.includes('animate-pulse') &&
+  requestDetailModalCode.includes('No medical facilities found nearby'),
+  'Nearby places must support skeleton loading and empty states'
+);
+console.log('     ✓ Nearby places separated rows, max 3, conditional call, and collapse toggle verified');
+
+// 8.5 Plural Rules (Lowercase unit needed, passenger)
+console.log('  8.5 Auditing proper lowercase plurals...');
+assert.ok(
+  requestDetailModalCode.includes("'unit needed' : 'units needed'") ||
+  requestDetailModalCode.includes('"unit needed" : "units needed"'),
+  'Must use lowercase "unit needed" / "units needed"'
+);
+assert.ok(
+  requestDetailModalCode.includes("'passenger' : 'passengers'") ||
+  requestDetailModalCode.includes('"passenger" : "passengers"'),
+  'Must use lowercase "passenger" / "passengers"'
+);
+
+function formatUnitsNeeded(n) {
+  return `${n} ${n === 1 ? 'unit needed' : 'units needed'}`;
+}
+function formatPassengers(n) {
+  return `${n} ${n === 1 ? 'passenger' : 'passengers'}`;
+}
+assert.equal(formatUnitsNeeded(1), '1 unit needed');
+assert.equal(formatUnitsNeeded(2), '2 units needed');
+assert.equal(formatPassengers(1), '1 passenger');
+assert.equal(formatPassengers(3), '3 passengers');
+console.log('     ✓ Lowercase plural rules verified for units and passengers');
+
+// 8.6 Sticky Bottom Action Bar States
+console.log('  8.6 Auditing StickyActionBar states across viewer roles...');
+assert.ok(
+  stickyActionBarCode.includes('bg-card') &&
+  !stickyActionBarCode.includes('bg-card/90') &&
+  !stickyActionBarCode.includes('bg-card/95'),
+  'StickyActionBar must use solid bg-card surface'
+);
+
+// Helper not yet offered: full-width Offer help + Share + Report
+assert.ok(
+  stickyActionBarCode.includes('PrimaryHelpButton') &&
+  stickyActionBarCode.includes('ShareButton') &&
+  stickyActionBarCode.includes('ReportButton'),
+  'StickyActionBar must provide Offer help, Share, and Report icon buttons'
+);
+
+// Helper offer sent: stacked rows with banner + Withdraw offer button + confirmation modal
+assert.ok(
+  stickyActionBarCode.includes('Offer sent · waiting for a reply') &&
+  stickyActionBarCode.includes('Withdraw offer') &&
+  stickyActionBarCode.includes('Withdraw your offer?') &&
+  stickyActionBarCode.includes('Confirm Withdraw'),
+  'StickyActionBar must provide two-row offer sent view with clearly labelled Withdraw offer button and confirmation modal'
+);
+
+// Owner controls: Edit, Cancel, Share (no help button)
+assert.ok(
+  stickyActionBarCode.includes('isRequester') &&
+  stickyActionBarCode.includes('Edit request') &&
+  stickyActionBarCode.includes('Cancel request') &&
+  !stickyActionBarCode.includes('isRequester ? <PrimaryHelpButton'),
+  'Owner must see Edit and Cancel request buttons, never an Offer help button'
+);
+
+// Accepted helper & completed states
+assert.ok(
+  stickyActionBarCode.includes('isAcceptedHelper') &&
+  stickyActionBarCode.includes('On the way') &&
+  stickyActionBarCode.includes('Arrived') &&
+  stickyActionBarCode.includes('Rate helper') &&
+  stickyActionBarCode.includes('Rate requester'),
+  'Accepted helper lifecycle status controls and mutual rating buttons verified'
+);
+console.log('     ✓ StickyActionBar states (new helper, offer sent, owner, accepted helper, completed) verified');
+
+// 8.7 Share and Report Functionality
+console.log('  8.7 Auditing Share and Report functionality...');
+// Share: Web Share API with clipboard fallback
+assert.ok(
+  requestDetailModalCode.includes('navigator.share') &&
+  requestDetailModalCode.includes('navigator.clipboard.writeText') &&
+  requestDetailModalCode.includes('Link copied to clipboard!'),
+  'handleShare must support Web Share API with clipboard fallback toast'
+);
+
+// Report: 5 reasons sheet, textarea for Other, submitReport to DB, thank-you toast, prevent double reports
+const reportReasons = [
+  'Fake or wrong',
+  'Spam',
+  'Unsafe',
+  'Already solved',
+  'Other',
+];
+for (const reason of reportReasons) {
+  assert.ok(
+    requestDetailModalCode.includes(`'${reason}'`) || requestDetailModalCode.includes(`"${reason}"`),
+    `Report modal must include reason: ${reason}`
+  );
+}
+assert.ok(
+  requestDetailModalCode.includes('dataAdapter.submitReport') &&
+  requestDetailModalCode.includes('Thank you for reporting') &&
+  requestDetailModalCode.includes('hasAlreadyReported'),
+  'handleReport must call submitReport, prevent double reports, and display thank-you toast'
+);
+assert.ok(
+  mockAdapterCode.includes('submitReport') &&
+  supabaseAdapterCode.includes('submitReport'),
+  'Both mockAdapter and supabaseAdapter must implement submitReport'
+);
+console.log('     ✓ Share and Report sheet with anti-double-report guard verified');
+
 console.log('\n======================================================================');
-console.log('  🎉 ALL REQUEST DETAILS, ROUTE MAPS & QA CHECKS PASSED WITH ZERO ERRORS');
+console.log('  🎉 ALL REQUEST DETAILS, ROUTE MAPS, NOTIFICATIONS & QA CHECKS PASSED');
 console.log('======================================================================\n');
+

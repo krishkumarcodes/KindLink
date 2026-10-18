@@ -210,6 +210,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     addNotification,
     endorseRequest,
     removeEndorsement,
+    setSelectedRequestId,
   } = useKindLinkStore();
 
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -290,9 +291,30 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     updatedAt: string;
   } | null>(null);
 
-  // Reporting
+  // Reporting state
+  const REPORT_REASONS = [
+    'Fake or wrong',
+    'Spam',
+    'Unsafe',
+    'Already solved',
+    'Other',
+  ] as const;
+
   const [reportModalOpen, setReportModalOpen] = useState(false);
-  const [reportReason, setReportReason] = useState('');
+  const [selectedReportReason, setSelectedReportReason] = useState<string>('Fake or wrong');
+  const [otherReportText, setOtherReportText] = useState('');
+  const [hasAlreadyReported, setHasAlreadyReported] = useState(false);
+
+  useEffect(() => {
+    if (!request?.id) return;
+    try {
+      const raw = localStorage.getItem('kindlink_reported_requests');
+      if (raw) {
+        const list = JSON.parse(raw);
+        setHasAlreadyReported(Array.isArray(list) && list.includes(request.id));
+      }
+    } catch {}
+  }, [request?.id]);
 
   // Story Card Share Modal
   const [storyModalOpen, setStoryModalOpen] = useState(false);
@@ -308,6 +330,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
   const [loadingRoute, setLoadingRoute] = useState(false);
   const [nearbyHospitals, setNearbyHospitals] = useState<MedicalFacility[]>([]);
   const [loadingHospitals, setLoadingHospitals] = useState(false);
+  const [isNearbyCollapsed, setIsNearbyCollapsed] = useState(false);
 
   // Remember the last chosen mode on device in localStorage
   useEffect(() => {
@@ -334,9 +357,6 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
   const [nearbyPlaces, setNearbyPlaces] = useState<MedicalFacility[]>([]);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
   const [placesError, setPlacesError] = useState<string | null>(null);
-  const [placesCollapsed, setPlacesCollapsed] = useState(() => {
-    return !(request?.category === 'blood' || request?.category === 'transport');
-  });
 
   // Live ticking state (updates every 60s for live Waiting tile)
   const [currentTime, setCurrentTime] = useState(() => Date.now());
@@ -695,23 +715,72 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     }
   };
 
-  // Share Request & Story Card
-  const handleShare = () => {
-    setStoryModalOpen(true);
+  // Share Request via Web Share API with copy-link fallback toast
+  const handleShare = async () => {
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (typeof window !== 'undefined' ? window.location.origin : '');
+    const shareUrl = `${siteUrl}/requests/${request.id}`;
+    const shareData = {
+      title: `KindLink Alert: ${request.title}`,
+      text: `${request.title} at ${request.locationName}. Urgency: ${request.urgency}. Can you help?`,
+      url: shareUrl,
+    };
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Link copied to clipboard!', {
+        description: 'Share this link with your neighbors or community group.',
+      });
+    } catch {
+      toast.info(`Request link: ${shareUrl}`);
+    }
   };
 
-  // Report Request
+  // Report Request with reason sheet & double report guard
   const handleReport = async () => {
-    if (!reportReason.trim()) {
-      toast.error('Please enter a reason for the report');
+    if (hasAlreadyReported) {
+      toast.info('You have already reported this request.');
+      setReportModalOpen(false);
       return;
     }
-    await dataAdapter.submitReport(request.id, reportReason);
-    setReportModalOpen(false);
-    setReportReason('');
-    toast.info('Report submitted to Asansol moderators', {
-      description: 'Our team will review this request within 15 minutes.',
-    });
+
+    const finalReason =
+      selectedReportReason === 'Other'
+        ? otherReportText.trim()
+          ? `Other: ${otherReportText.trim()}`
+          : 'Other'
+        : selectedReportReason;
+
+    try {
+      await dataAdapter.submitReport(request.id, finalReason);
+      setHasAlreadyReported(true);
+      try {
+        const raw = localStorage.getItem('kindlink_reported_requests');
+        const list = raw ? JSON.parse(raw) : [];
+        if (!list.includes(request.id)) {
+          list.push(request.id);
+          localStorage.setItem('kindlink_reported_requests', JSON.stringify(list));
+        }
+      } catch {}
+
+      setReportModalOpen(false);
+      setOtherReportText('');
+      toast.success('Thank you for reporting', {
+        description: 'Our moderation team will review this request shortly.',
+      });
+    } catch (err: any) {
+      toast.error('Could not submit report', { description: err.message });
+    }
   };
 
   // Submit Rating
@@ -810,6 +879,22 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     return 'Updated recently';
   })();
 
+  // Category-specific heading for nearby facilities
+  const nearbyHeading = useMemo(() => {
+    switch (request.category) {
+      case 'blood':
+        return { title: 'Nearby hospitals & blood banks', subtitle: 'Around request location' };
+      case 'equipment':
+        return { title: 'Nearby hospitals & medical supply', subtitle: 'Around request location' };
+      case 'elderly':
+        return { title: 'Nearby hospitals & clinics', subtitle: 'Around request location' };
+      case 'transport':
+        return { title: 'Nearby hospitals & transit hubs', subtitle: 'Around request location' };
+      default:
+        return { title: 'Nearby hospitals', subtitle: 'Around request location' };
+    }
+  }, [request.category]);
+
   const getStepTimestamp = (idx: number): string => {
     if (idx === 0) {
       if (!request.createdAt) return 'Opened';
@@ -864,7 +949,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
           {/* =====================================================================
               1. STICKY TOP BAR & TITLE
              ===================================================================== */}
-          <div className="sticky top-0 z-20 shrink-0 bg-card/95 backdrop-blur-md border-b border-border/80 px-4 sm:px-6 pt-3.5 pb-3.5 space-y-2">
+          <div className="sticky top-0 z-20 shrink-0 bg-card border-b border-border/80 px-4 sm:px-6 pt-3.5 pb-3.5 space-y-2">
             {/* Top Row: Category Chip, Urgency Badge, Status Chip, Accessible Close Button */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
@@ -1156,7 +1241,9 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                   )}
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20 font-bold">
                     <PlusCircle className="h-3.5 w-3.5 notranslate text-rose-600 dark:text-rose-400" />
-                    <span>{request.unitsNeeded || 1} Units Needed</span>
+                    <span>
+                      {request.unitsNeeded || 1} {(request.unitsNeeded || 1) === 1 ? 'unit needed' : 'units needed'}
+                    </span>
                   </span>
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/80 text-foreground border border-border font-bold">
                     <Hospital className="h-3.5 w-3.5 notranslate text-primary" />
@@ -1222,7 +1309,9 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                   </span>
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/80 text-foreground border border-border font-bold">
                     <Users className="h-3.5 w-3.5 notranslate text-muted-foreground" />
-                    <span>{request.passengerCount || 1} Passenger(s)</span>
+                    <span>
+                      {request.passengerCount || 1} {(request.passengerCount || 1) === 1 ? 'passenger' : 'passengers'}
+                    </span>
                   </span>
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/80 text-foreground border border-border font-bold">
                     <span>{request.wheelchairAccessible ? 'Wheelchair Ready' : 'Standard Access'}</span>
@@ -1471,37 +1560,25 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
             </div>
 
             {/* =====================================================================
-                PROXIMITY, OSRM ROUTE PREVIEW & TRAVEL MODE
+                PROXIMITY, ROUTE PREVIEW & TRAVEL MODE (Strictly ONE Route Card)
                ===================================================================== */}
-            <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs space-y-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-foreground flex items-center gap-1.5">
-                  <Navigation className="h-4 w-4 text-primary notranslate" />
-                  <span>
+            <div data-section="route-card" className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs space-y-3">
+              <div className="flex items-center justify-between text-xs flex-wrap gap-1.5">
+                <span className="font-bold text-foreground flex items-center gap-1.5 min-w-0">
+                  <Navigation className="h-4 w-4 text-primary shrink-0 notranslate" />
+                  <span className="truncate">
                     You to this request:{' '}
-                    <strong className="text-foreground">
-                      {routeResult
-                        ? routeResult.formattedText
-                        : `${request.distanceKm} km, about ${formatETA(etaMinutes)} by ${travelMode}`}
+                    <strong className="text-foreground font-semibold">
+                      {routeResult?.distanceKm ? `${routeResult.distanceKm} km` : `${request.distanceKm} km`}
+                      {' · '}
+                      {formatETA(etaMinutes)} by {travelMode}
                     </strong>
                   </span>
                 </span>
-                {loadingRoute ? (
-                  <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                {loadingRoute && (
+                  <span className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0">
                     <Loader2 className="h-3 w-3 animate-spin notranslate" />
                     <span>Routing...</span>
-                  </span>
-                ) : (
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                      routeResult?.isFallback || routeResult?.source === 'straight-line'
-                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                        : 'bg-primary/10 text-primary border border-primary/20'
-                    }`}
-                  >
-                    {routeResult?.isFallback || routeResult?.source === 'straight-line'
-                      ? 'Straight Line (Fallback)'
-                      : `${routeResult?.sourceProvider ? routeResult.sourceProvider.toUpperCase() : 'Road'} Route`}
                   </span>
                 )}
               </div>
@@ -1509,6 +1586,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
               {/* Road Route Mini-Map */}
               <div className="pt-0.5">
                 <RequestRouteMiniMap
+                  requestId={request.id}
                   origin={[userCoords.lat, userCoords.lng]}
                   destination={[request.latitude, request.longitude]}
                   routeCoordinates={
@@ -1521,16 +1599,22 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                   }
                   isStraightLine={Boolean(routeResult?.isFallback || routeResult?.source === 'straight-line')}
                   urgency={request.urgency}
+                  category={request.category}
                   destinationLabel={request.title}
+                  onExpand={() => {
+                    setSelectedRequestId(request.id);
+                    setCurrentView('map');
+                    onClose();
+                  }}
                 />
               </div>
 
-              {/* Travel Mode Selector */}
+              {/* Travel Mode Selector (Live recomputing) */}
               <div className="flex gap-2 pt-1">
                 {(['bike', 'walking', 'car'] as TravelMode[]).map((mode) => (
                   <button
                     key={mode}
-                    onClick={() => setTravelMode(mode)}
+                    onClick={() => handleTravelModeChange(mode)}
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold border transition touch-target ${
                       travelMode === mode
                         ? 'border-primary bg-primary text-white shadow-xs font-bold'
@@ -1547,87 +1631,123 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
             </div>
 
             {/* =====================================================================
-                NEAREST HOSPITALS, CLINICS & PHARMACIES
+                NEARBY HOSPITALS & EMERGENCY PLACES (Collapsible, separated rows)
                ===================================================================== */}
-            <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5">
-                  <Hospital className="h-4 w-4 text-rose-500 notranslate" />
-                  <span>Nearest Medical Hubs &amp; Emergency</span>
-                </h4>
-                <span className="text-[10px] text-muted-foreground">Around request</span>
+            <div data-section="nearby-places" className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs space-y-3">
+              {/* Header row: title and toggle on one row, subtitle on its own row below so nothing is cut */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-0.5 min-w-0">
+                  <h4 className="text-xs font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5 truncate">
+                    <Hospital className="h-4 w-4 text-rose-500 shrink-0 notranslate" />
+                    <span className="truncate">{nearbyHeading.title}</span>
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground">
+                    {nearbyHeading.subtitle}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsNearbyCollapsed(!isNearbyCollapsed)}
+                  className="p-1.5 rounded-xl border border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground transition touch-target flex items-center gap-1 text-xs shrink-0"
+                  aria-expanded={!isNearbyCollapsed}
+                  aria-label={isNearbyCollapsed ? 'Expand nearby places' : 'Collapse nearby places'}
+                >
+                  <span className="text-[11px] font-semibold hidden sm:inline">
+                    {isNearbyCollapsed ? 'Show' : 'Hide'}
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 notranslate transition-transform duration-200 ${
+                      isNearbyCollapsed ? '' : 'rotate-180'
+                    }`}
+                  />
+                </button>
               </div>
 
-              {loadingHospitals ? (
-                <div className="p-3 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin notranslate" />
-                  <span>Locating nearest emergency hospitals &amp; pharmacies...</span>
-                </div>
-              ) : nearbyHospitals.length > 0 ? (
-                <div className="space-y-2">
-                  {nearbyHospitals.map((facility) => {
-                    const mapDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${facility.latitude},${facility.longitude}`;
-                    return (
-                      <div
-                        key={facility.id}
-                        className="p-3 rounded-xl bg-muted/40 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-foreground">{facility.name}</span>
-                            <span
-                              className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
-                                facility.type === 'hospital'
-                                  ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
-                                  : facility.type === 'blood_bank'
-                                  ? 'bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/20'
-                                  : facility.type === 'pharmacy'
-                                  ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
-                                  : 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
-                              }`}
-                            >
-                              {facility.type.replace('_', ' ')}
-                            </span>
-                            {facility.emergency && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
-                                24/7
-                              </span>
-                            )}
+              {!isNearbyCollapsed && (
+                <>
+                  {loadingHospitals ? (
+                    /* Skeleton loading state */
+                    <div className="space-y-2 pt-1 animate-pulse">
+                      {[1, 2].map((i) => (
+                        <div key={i} className="p-3 rounded-xl bg-muted/40 border border-border/60 flex items-center justify-between">
+                          <div className="space-y-1.5 flex-1">
+                            <div className="h-3.5 w-36 bg-muted-foreground/20 rounded" />
+                            <div className="h-2.5 w-24 bg-muted-foreground/15 rounded" />
                           </div>
-                          <p className="text-[11px] text-muted-foreground line-clamp-1">
-                            📍 {facility.distanceKm.toFixed(1)} km away
-                            {facility.address ? ` · ${facility.address}` : ''}
-                          </p>
+                          <div className="h-7 w-20 bg-muted-foreground/20 rounded-lg" />
                         </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          {facility.phone && (
-                            <a
-                              href={`tel:${facility.phone.replace(/[^0-9+]/g, '')}`}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition shadow-xs touch-target"
-                              title="Call Facility"
-                            >
-                              <Phone className="h-3 w-3 notranslate" />
-                              <span>Call</span>
-                            </a>
-                          )}
-                          <a
-                            href={mapDirectionsUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-[11px] font-bold transition shadow-xs touch-target"
-                            title="Get Directions"
+                      ))}
+                    </div>
+                  ) : nearbyHospitals.length > 0 ? (
+                    <div className="space-y-2 pt-1">
+                      {nearbyHospitals.slice(0, 3).map((facility) => {
+                        const mapDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${facility.latitude},${facility.longitude}`;
+                        return (
+                          <div
+                            key={facility.id}
+                            className="p-3 rounded-xl bg-muted/40 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs"
                           >
-                            <ExternalLink className="h-3 w-3 notranslate" />
-                            <span>Directions</span>
-                          </a>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">No medical facilities found nearby.</p>
+                            <div className="space-y-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-foreground">{facility.name}</span>
+                                <span
+                                  className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                    facility.type === 'hospital'
+                                      ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
+                                      : facility.type === 'blood_bank'
+                                      ? 'bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/20'
+                                      : facility.type === 'pharmacy'
+                                      ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                                      : 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
+                                  }`}
+                                >
+                                  {facility.type.replace('_', ' ')}
+                                </span>
+                                {facility.emergency && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
+                                    24/7
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-muted-foreground line-clamp-1">
+                                📍 {facility.distanceKm.toFixed(1)} km away
+                                {facility.address ? ` · ${facility.address}` : ''}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {facility.phone && (
+                                <a
+                                  href={`tel:${facility.phone.replace(/[^0-9+]/g, '')}`}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition shadow-xs touch-target"
+                                  title="Call Facility"
+                                >
+                                  <Phone className="h-3 w-3 notranslate" />
+                                  <span>Call</span>
+                                </a>
+                              )}
+                              <a
+                                href={mapDirectionsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-[11px] font-bold transition shadow-xs touch-target"
+                                title="Get Directions"
+                              >
+                                <ExternalLink className="h-3 w-3 notranslate" />
+                                <span>Directions</span>
+                              </a>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground p-3 rounded-xl bg-muted/20 border border-border/50 text-center">
+                      No medical facilities found nearby.
+                    </p>
+                  )}
+                </>
               )}
             </div>
 
@@ -1966,33 +2086,89 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
       {reportModalOpen && (
         <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in zoom-in-95 duration-150">
           <div className="w-full max-w-sm rounded-3xl bg-card border border-border/80 p-6 shadow-2xl text-left space-y-4">
-            <h3 className="text-base font-bold text-foreground">Report Inappropriate Request</h3>
-            <p className="text-xs text-muted-foreground">
-              Please specify reason (e.g. spam, commercial service, incorrect urgency):
-            </p>
-            <textarea
-              rows={3}
-              value={reportReason}
-              onChange={(e) => setReportReason(e.target.value)}
-              placeholder="Explain the safety or policy concern..."
-              className="w-full p-3 rounded-xl border border-border/80 bg-background text-foreground text-xs focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-            />
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setReportModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold hover:bg-muted transition-all active:scale-95"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleReport}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 transition-all active:scale-95 shadow-soft"
-              >
-                Submit Report
-              </button>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
+                <Flag className="h-5 w-5 notranslate" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground">Report Request</h3>
+                <p className="text-xs text-muted-foreground">Help keep our community safe</p>
+              </div>
             </div>
+
+            {hasAlreadyReported ? (
+              <div className="py-2 space-y-4 text-center">
+                <div className="p-3.5 rounded-2xl bg-muted/60 border border-border/70 text-xs text-muted-foreground leading-relaxed">
+                  You have already reported this request. Our moderation team is currently reviewing it. Thank you for keeping KindLink safe.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReportModalOpen(false)}
+                  className="w-full py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all active:scale-95 shadow-soft"
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Select a reason for reporting this request:
+                </p>
+
+                <div className="space-y-2">
+                  {REPORT_REASONS.map((reason) => {
+                    const isSelected = selectedReportReason === reason;
+                    return (
+                      <label
+                        key={reason}
+                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition text-xs font-medium ${
+                          isSelected
+                            ? 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300'
+                            : 'border-border/80 hover:bg-muted text-foreground'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="reportReason"
+                          value={reason}
+                          checked={isSelected}
+                          onChange={() => setSelectedReportReason(reason)}
+                          className="text-rose-600 focus:ring-rose-500"
+                        />
+                        <span>{reason}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {selectedReportReason === 'Other' && (
+                  <textarea
+                    rows={3}
+                    value={otherReportText}
+                    onChange={(e) => setOtherReportText(e.target.value)}
+                    placeholder="Please explain the issue or concern..."
+                    className="w-full p-3 rounded-xl border border-border/80 bg-background text-foreground text-xs focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all"
+                  />
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setReportModalOpen(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold hover:bg-muted transition-all active:scale-95"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReport}
+                    className="flex-1 py-2.5 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 transition-all active:scale-95 shadow-soft"
+                  >
+                    Submit Report
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

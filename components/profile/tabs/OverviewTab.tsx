@@ -412,7 +412,8 @@ export function OverviewTab({ onEditProfile, onSelectTab }: OverviewTabProps) {
                     )}
                   </div>
                   <strong className="text-foreground text-xs block truncate">
-                    {userProfile.homeNeighborhood || userAreaName || 'Not specified'}
+                    {userProfile.homeNeighborhood ||
+                      (userAreaName && userAreaName !== 'Set your area' ? userAreaName : 'Not specified')}
                   </strong>
                 </div>
               </div>
@@ -422,7 +423,7 @@ export function OverviewTab({ onEditProfile, onSelectTab }: OverviewTabProps) {
                 className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 border ${
                   userCoords?.isLive
                     ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
-                    : userProfile.homeNeighborhood || userAreaName
+                    : userProfile.homeNeighborhood || (userAreaName && userAreaName !== 'Set your area')
                     ? 'bg-muted text-muted-foreground border-border'
                     : 'bg-muted/50 text-muted-foreground/60 border-transparent'
                 }`}

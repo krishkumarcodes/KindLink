@@ -24,6 +24,7 @@ class SupabaseDataAdapter implements DataAdapter {
     radiusKm?: number;
     category?: HelpCategory | 'all';
     urgency?: UrgencyLevel | 'all';
+    tag?: string;
   }): Promise<HelpRequest[]> {
     const supabase = this.getSupabase();
     const lat = options?.lat ?? ASANSOL_CENTER.lat;
@@ -38,6 +39,7 @@ class SupabaseDataAdapter implements DataAdapter {
       lng,
       radius_km: radius,
       filter_cat: cat === 'elderly' ? 'elderly_help' : cat,
+      filter_tag: options?.tag || null,
       page_limit: 100,
       page_offset: 0,
       p_user_id: user?.id || null,
@@ -70,6 +72,8 @@ class SupabaseDataAdapter implements DataAdapter {
       title: r.title,
       description: r.description,
       category,
+      customCategoryLabel: r.custom_category_label || details.custom_category_label,
+      tags: r.tags || details.tags || [],
       urgency: r.urgency as UrgencyLevel,
       waitingMinutes: r.waiting_minutes ?? Math.max(1, Math.round((Date.now() - new Date(r.created_at).getTime()) / 60000)),
       distanceKm: r.distance_km ?? 0,
@@ -191,6 +195,16 @@ class SupabaseDataAdapter implements DataAdapter {
 
     const dbCategory = req.category === 'elderly' ? 'elderly_help' : req.category;
 
+    if (req.categoryFields) {
+      Object.assign(details, req.categoryFields);
+    }
+    if (req.customCategoryLabel) {
+      details.custom_category_label = req.customCategoryLabel;
+    }
+    if (req.tags && req.tags.length > 0) {
+      details.tags = req.tags;
+    }
+
     const insertPayload: Record<string, any> = {
       requester_id: user.id,
       category: dbCategory,
@@ -202,6 +216,12 @@ class SupabaseDataAdapter implements DataAdapter {
       details,
       status: 'open',
     };
+    if (req.customCategoryLabel) {
+      insertPayload.custom_category_label = req.customCategoryLabel;
+    }
+    if (req.tags && req.tags.length > 0) {
+      insertPayload.tags = req.tags;
+    }
     if (requiresPin) insertPayload.requires_handover_pin = true;
     if (pin) insertPayload.handover_pin = pin;
 

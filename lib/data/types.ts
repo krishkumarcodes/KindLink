@@ -1,4 +1,42 @@
-export type HelpCategory = 'blood' | 'equipment' | 'elderly' | 'books' | 'transport';
+export type StandardHelpCategory =
+  | 'blood'
+  | 'equipment'
+  | 'elderly'
+  | 'books'
+  | 'transport'
+  | 'medicine'
+  | 'food'
+  | 'hospital_attendant'
+  | 'disaster_relief'
+  | 'education'
+  | 'clothes'
+  | 'home_repairs'
+  | 'government_aid'
+  | 'animal_care'
+  | 'other';
+
+export type HelpCategory = StandardHelpCategory | (string & {});
+
+export interface RequestCategory {
+  key: string;
+  name: string;
+  description: string;
+  icon: string;
+  colour: string;
+  defaultUrgencyHint?: string;
+  responseExpectation?: string;
+  suggestedTags: string[];
+  extraFields?: {
+    key: string;
+    label: string;
+    type: 'text' | 'number' | 'select' | 'boolean';
+    required?: boolean;
+    options?: string[];
+  }[];
+  sortOrder: number;
+  active: boolean;
+  isUrgent: boolean;
+}
 
 export type UrgencyLevel = 'critical' | 'high' | 'medium' | 'low';
 
@@ -39,6 +77,9 @@ export interface HelpRequest {
   title: string;
   description: string;
   category: HelpCategory;
+  customCategoryLabel?: string;
+  tags?: string[];
+  categoryFields?: Record<string, any>;
   urgency: UrgencyLevel;
   waitingMinutes: number;
   distanceKm: number;
@@ -223,6 +264,9 @@ export interface CommunityLiveStats {
 
 export interface DraftRequest {
   category: HelpCategory;
+  customCategoryLabel?: string;
+  tags?: string[];
+  categoryFields?: Record<string, any>;
   urgency: UrgencyLevel;
   title: string;
   description: string;

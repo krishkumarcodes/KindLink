@@ -285,6 +285,39 @@ export function getLanguage(code: string): LanguageMeta {
   return match || SUPPORTED_LANGUAGES[0];
 }
 
+export interface LanguageDisplayInfo {
+  code: string;
+  name: string;
+  nativeName: string;
+  isCustom?: boolean;
+}
+
+export function getLanguageDisplay(codeOrName: string): LanguageDisplayInfo {
+  if (!codeOrName) return { code: 'en', name: 'English', nativeName: 'English' };
+  const trimmed = codeOrName.trim();
+  const lower = trimmed.toLowerCase();
+  const match = SUPPORTED_LANGUAGES.find(
+    (l) => l.code.toLowerCase() === lower || l.name.toLowerCase() === lower
+  );
+  if (match) {
+    return {
+      code: match.code,
+      name: match.name,
+      nativeName: match.nativeName,
+    };
+  }
+  return {
+    code: trimmed,
+    name: trimmed,
+    nativeName: trimmed,
+    isCustom: true,
+  };
+}
+
+export function getLanguageFullName(codeOrName: string): string {
+  return getLanguageDisplay(codeOrName).name;
+}
+
 export function isRTL(code: string): boolean {
   return code === 'ur' || code === 'ar';
 }
@@ -292,3 +325,4 @@ export function isRTL(code: string): boolean {
 export function isValidLocale(code: string): code is Locale {
   return SUPPORTED_LANGUAGES.some((l) => l.code === code);
 }
+

@@ -21,6 +21,7 @@ import {
   changeLanguageInstantly,
   getCurrentLanguageCode,
 } from '@/lib/translate/googleTranslate';
+import { useBodyScrollLock } from '@/components/ui/OverlayPortal';
 
 export interface LanguageModalProps {
   open: boolean;
@@ -34,6 +35,8 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
   const [translatingCode, setTranslatingCode] = useState<string | null>(null);
   const [lastUsedLangCode, setLastUsedLangCode] = useState<string | null>(null);
   const [langSource, setLangSource] = useState<'auto' | 'user' | null>(null);
+
+  useBodyScrollLock(open);
 
   useEffect(() => {
     setMounted(true);
@@ -61,11 +64,10 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
     };
   }, []);
 
-  // Lock body scroll and handle Escape key while open
+  // Handle open state and Escape key
   useEffect(() => {
     if (!open) return;
 
-    // Reset search query and state on open
     setSearchQuery('');
     setTranslatingCode(null);
 
@@ -76,9 +78,6 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
       setLangSource(storedSource === 'auto' ? 'auto' : storedSource === 'user' ? 'user' : null);
     } catch {}
 
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !translatingCode) {
         onClose();
@@ -87,7 +86,6 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.body.style.overflow = prevOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [open, onClose, translatingCode]);
@@ -95,7 +93,7 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
   const currentCode = getCurrentLanguageCode();
   const currentLang = SUPPORTED_LANGUAGES.find((l) => l.code === currentCode);
 
-  // Filter languages based on search query (English name, native name, code, script, or region)
+  // Filter languages based on search query (English name, native name, code, or region)
   const filteredIndian = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return INDIAN_LANGUAGES;
@@ -104,7 +102,6 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
         l.name.toLowerCase().includes(q) ||
         l.nativeName.toLowerCase().includes(q) ||
         l.code.toLowerCase().includes(q) ||
-        l.script.toLowerCase().includes(q) ||
         (l.region && l.region.toLowerCase().includes(q))
     );
   }, [searchQuery]);
@@ -117,7 +114,6 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
         l.name.toLowerCase().includes(q) ||
         l.nativeName.toLowerCase().includes(q) ||
         l.code.toLowerCase().includes(q) ||
-        l.script.toLowerCase().includes(q) ||
         (l.region && l.region.toLowerCase().includes(q))
     );
   }, [searchQuery]);
@@ -132,19 +128,18 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
 
     let fourth: LanguageOption | undefined;
 
-    // Check last used language if different from en, hi, bn
     if (lastUsedLangCode && !['en', 'hi', 'bn'].includes(lastUsedLangCode)) {
       fourth = SUPPORTED_LANGUAGES.find((l) => l.code === lastUsedLangCode);
     }
 
-    // Check active language if different
     if (!fourth && currentCode && !['en', 'hi', 'bn'].includes(currentCode)) {
       fourth = SUPPORTED_LANGUAGES.find((l) => l.code === currentCode);
     }
 
-    // Regional fallback if no previous selection (Santali - indigenous language of Bengal/Jharkhand)
     if (!fourth) {
-      fourth = SUPPORTED_LANGUAGES.find((l) => l.code === 'sat') || SUPPORTED_LANGUAGES.find((l) => l.code === 'bho');
+      fourth =
+        SUPPORTED_LANGUAGES.find((l) => l.code === 'sat') ||
+        SUPPORTED_LANGUAGES.find((l) => l.code === 'bho');
     }
 
     return [en, hi, bn, fourth].filter(Boolean) as LanguageOption[];
@@ -172,7 +167,6 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
 
     changeLanguageInstantly(lang.code);
 
-    // Persist to database profile via /api/auth/profile
     fetch('/api/auth/profile', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -195,6 +189,11 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
 
   if (!open || !mounted) return null;
 
+  // Render language list item using consistent ONE-row format:
+  // - Native script prominent
+  // - English name smaller below it
+  // - Active checkmark
+  // - Clean layout without script jargon (Devanagari/Latin)
   const renderLanguageRow = (lang: LanguageOption) => {
     const isSelected = currentCode === lang.code;
     const isThisTranslating = translatingCode === lang.code;
@@ -205,10 +204,10 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
         type="button"
         disabled={Boolean(translatingCode)}
         onClick={() => handleSelect(lang)}
-        className={`relative flex items-center justify-between p-2.5 sm:p-3 rounded-2xl border text-left transition-all duration-150 touch-target group min-w-0 w-full min-h-[56px] select-none ${
+        className={`relative flex items-center justify-between p-3 rounded-2xl border text-left transition-all duration-150 touch-target group min-w-0 w-full min-h-[56px] select-none ${
           isSelected
             ? 'border-primary bg-primary/10 dark:bg-primary/15 text-foreground font-semibold ring-2 ring-primary/25 shadow-xs'
-            : 'border-border/70 bg-card/70 hover:bg-muted/70 hover:border-primary/40 text-foreground'
+            : 'border-border/70 bg-card hover:bg-muted/70 hover:border-primary/40 text-foreground'
         } ${isThisTranslating ? 'opacity-85 ring-2 ring-primary' : ''}`}
       >
         <div className="flex items-center gap-3 min-w-0 pr-2 flex-1">
@@ -229,7 +228,7 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
             )}
           </div>
 
-          {/* Language name in native script and English name on one line */}
+          {/* Language in native script, English name smaller below */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
               <span
@@ -238,11 +237,6 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
               >
                 {lang.nativeName}
               </span>
-              {lang.nativeName !== lang.name && (
-                <span className="text-xs text-muted-foreground font-medium truncate">
-                  ({lang.name})
-                </span>
-              )}
               {lang.dir === 'rtl' && (
                 <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-muted text-muted-foreground border border-border shrink-0">
                   RTL
@@ -250,14 +244,15 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
               )}
             </div>
 
-            {/* Small muted script name */}
-            <div className="text-[11px] text-muted-foreground/80 truncate mt-0.5">
-              <span>{lang.script}</span>
-            </div>
+            {lang.nativeName !== lang.name ? (
+              <div className="text-xs text-muted-foreground font-medium truncate mt-0.5">
+                {lang.name}
+              </div>
+            ) : null}
           </div>
         </div>
 
-        {/* Selected Checkmark or Arrow / Loading spinner */}
+        {/* Selected Checkmark or Loading spinner */}
         <div className="shrink-0 flex items-center pl-2">
           {isThisTranslating ? (
             <Loader2 className="h-4 w-4 animate-spin text-primary notranslate" />
@@ -283,7 +278,7 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
       }}
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4 bg-black/60 dark:bg-black/75 backdrop-blur-xs animate-in fade-in duration-200"
     >
-      {/* Single Clean Sheet (No outer card peeking, no double scroll container) */}
+      {/* Single Clean Surface (Unified solid bg-card with matching header & footer) */}
       <div
         onClick={(e) => e.stopPropagation()}
         style={{ width: 'min(100% - 24px, 480px)' }}
@@ -291,7 +286,7 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
       >
         {/* Translating Spinner Overlay */}
         {translatingCode && (
-          <div className="absolute inset-0 z-50 bg-card/80 dark:bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="absolute inset-0 z-50 bg-card/85 dark:bg-slate-950/85 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="px-5 py-3.5 rounded-2xl bg-card border border-border/80 shadow-2xl flex items-center gap-3 animate-in zoom-in-95 duration-150">
               <Loader2 className="h-5 w-5 text-primary animate-spin notranslate" />
               <span className="text-sm font-bold text-foreground">
@@ -301,8 +296,8 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
           </div>
         )}
 
-        {/* Sticky Top Header */}
-        <div className="px-4 pt-3.5 pb-2.5 shrink-0 border-b border-border/70 bg-card/95 backdrop-blur-xs space-y-2.5">
+        {/* Sticky Top Header (Single uniform bg-card surface) */}
+        <div className="sticky top-0 z-10 px-4 pt-3.5 pb-2.5 shrink-0 border-b border-border/70 bg-card space-y-2.5">
           {/* Title Row with accessible close button */}
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
@@ -328,7 +323,7 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
             </button>
           </div>
 
-          {/* One compact line: "Current: English" (or current active language) */}
+          {/* Current language line (no doubled names like English (English)) */}
           <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
             <p className="flex items-center gap-1.5 truncate">
               <span className="font-medium text-muted-foreground">Current:</span>
@@ -336,7 +331,11 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
                 translate="no"
                 className="notranslate font-bold text-foreground truncate"
               >
-                {currentLang ? `${currentLang.name} (${currentLang.nativeName})` : 'English'}
+                {currentLang
+                  ? currentLang.nativeName === currentLang.name
+                    ? currentLang.name
+                    : `${currentLang.nativeName} (${currentLang.name})`
+                  : 'English'}
               </span>
             </p>
 
@@ -361,29 +360,29 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
             </div>
           )}
 
-          {/* Search field with short placeholder "Search languages" */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none notranslate" />
+          {/* 48px search field with icon and text sharing vertical centre on one flex row */}
+          <div className="flex items-center h-12 w-full px-3.5 rounded-xl bg-muted/50 border border-border/70 focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary gap-2.5 transition-all shadow-inner">
+            <Search className="h-4 w-4 text-muted-foreground pointer-events-none notranslate shrink-0" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search languages"
-              className="w-full pl-9 pr-9 py-2 rounded-xl bg-muted/50 border border-border/70 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all shadow-inner"
+              className="flex-1 h-full bg-transparent text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground touch-target"
+                className="p-1 text-muted-foreground hover:text-foreground touch-target shrink-0"
                 aria-label="Clear search"
               >
-                <X className="h-3.5 w-3.5 notranslate" />
+                <X className="h-4 w-4 notranslate" />
               </button>
             )}
           </div>
 
-          {/* Single-row Segmented Control: "All", "Indian", "International" with counts (fits cleanly on 360px without wrapping) */}
+          {/* Single-row Segmented Control: All, Indian, International */}
           <div className="grid grid-cols-3 p-1 rounded-xl bg-muted/60 dark:bg-muted/30 border border-border/50 text-[11px] font-semibold">
             <button
               type="button"
@@ -421,18 +420,18 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
           </div>
         </div>
 
-        {/* Scrollable Language List with Non-sticking natural inline group headings */}
+        {/* Scrollable Language List with smooth scrolling */}
         <div className="flex-1 overflow-y-auto overscroll-contain min-h-0 p-3 sm:p-4 space-y-4">
-          {/* Popular Quick Row (Shown when not searching) */}
+          {/* Popular Shortcuts (Using consistent ONE-row format) */}
           {!searchQuery && (
-            <div className="space-y-1.5 pb-1 border-b border-border/50">
+            <div className="space-y-2 pb-2 border-b border-border/50">
               <div className="flex items-center gap-1.5 px-1">
                 <Sparkles className="h-3 w-3 text-primary notranslate" />
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Popular Quick Access
+                  Popular Shortcuts
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-2 gap-2">
                 {popularLanguages.map((lang) => {
                   const isSelected = currentCode === lang.code;
                   const isTranslating = translatingCode === lang.code;
@@ -442,39 +441,43 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
                       type="button"
                       disabled={Boolean(translatingCode)}
                       onClick={() => handleSelect(lang)}
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-left transition-all touch-target select-none min-h-[44px] ${
+                      className={`flex items-center justify-between p-2.5 rounded-xl border text-left transition-all touch-target select-none min-h-[50px] ${
                         isSelected
                           ? 'border-primary bg-primary/10 dark:bg-primary/15 text-foreground font-semibold ring-1 ring-primary/30 shadow-xs'
-                          : 'border-border/70 bg-card/70 hover:bg-muted/70 hover:border-primary/40 text-foreground'
+                          : 'border-border/70 bg-card hover:bg-muted/70 hover:border-primary/40 text-foreground'
                       }`}
                     >
-                      <span
-                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-black uppercase ${
-                          isSelected
-                            ? 'bg-primary text-primary-foreground shadow-xs'
-                            : 'bg-muted text-muted-foreground'
-                        }`}
-                      >
-                        {isTranslating ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary notranslate" />
-                        ) : (
-                          <span className="notranslate" translate="no">
-                            {lang.code.slice(0, 2)}
-                          </span>
-                        )}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-bold truncate">
-                          <span translate="no" className="notranslate">
-                            {lang.nativeName}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-muted-foreground truncate font-normal">
-                          {lang.name}
+                      <div className="flex items-center gap-2.5 min-w-0 pr-1 flex-1">
+                        <span
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-black uppercase ${
+                            isSelected
+                              ? 'bg-primary text-primary-foreground shadow-xs'
+                              : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {isTranslating ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary notranslate" />
+                          ) : (
+                            <span className="notranslate" translate="no">
+                              {lang.code.slice(0, 2)}
+                            </span>
+                          )}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-bold truncate">
+                            <span translate="no" className="notranslate">
+                              {lang.nativeName}
+                            </span>
+                          </div>
+                          {lang.nativeName !== lang.name ? (
+                            <div className="text-[10px] text-muted-foreground truncate font-normal mt-0.5">
+                              {lang.name}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                       {isSelected && (
-                        <Check className="h-3.5 w-3.5 text-primary shrink-0 stroke-[2.5] notranslate" />
+                        <Check className="h-3.5 w-3.5 text-primary shrink-0 stroke-[2.5] notranslate ml-1" />
                       )}
                     </button>
                   );
@@ -483,22 +486,21 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
             </div>
           )}
 
-          {/* Section 1: Indian Languages */}
+          {/* Section 1: Indian Languages (Readable group heading, region hint on small second line) */}
           {(activeGroup === 'all' || activeGroup === 'indian') && filteredIndian.length > 0 && (
             <div className="space-y-2">
-              {/* Natural Inline Group Header (NOT sticky, does NOT float over the list) */}
-              <div className="h-7 sm:h-8 flex items-center justify-between gap-2 px-1 select-none">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground truncate">
+              <div className="px-1 py-1 select-none">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Indian Languages
                   </span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/60 shrink-0">
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/60">
                     {filteredIndian.length}
                   </span>
                 </div>
-                <span className="text-[10px] text-muted-foreground/75 truncate text-right">
+                <p className="text-[10px] text-muted-foreground/75 mt-0.5">
                   Bengal • Bihar • Jharkhand • Pan-India
-                </span>
+                </p>
               </div>
 
               <div className="grid grid-cols-1 gap-2">
@@ -507,23 +509,22 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
             </div>
           )}
 
-          {/* Section 2: International Languages */}
+          {/* Section 2: International Languages (Readable group heading, region hint on small second line) */}
           {(activeGroup === 'all' || activeGroup === 'international') &&
             filteredInternational.length > 0 && (
               <div className="space-y-2">
-                {/* Natural Inline Group Header (NOT sticky, does NOT float over the list) */}
-                <div className="h-7 sm:h-8 flex items-center justify-between gap-2 px-1 select-none">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground truncate">
+                <div className="px-1 py-1 select-none">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       International Languages
                     </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/60 shrink-0">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/60">
                       {filteredInternational.length}
                     </span>
                   </div>
-                  <span className="text-[10px] text-muted-foreground/75 truncate text-right">
+                  <p className="text-[10px] text-muted-foreground/75 mt-0.5">
                     Global Community
-                  </span>
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 gap-2">
@@ -548,8 +549,8 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
           )}
         </div>
 
-        {/* Slim Footer: Translated by Google & Close Button (Safe-area bottom padding) */}
-        <div className="px-4 py-2.5 sm:py-3 border-t border-border/80 bg-card/95 backdrop-blur-xs shrink-0 flex items-center justify-between gap-3 text-xs pb-[max(0.625rem,env(safe-area-inset-bottom))]">
+        {/* Slim Footer: Solid bg-card, safe-area inset bottom */}
+        <div className="sticky bottom-0 z-10 px-4 py-2.5 sm:py-3 border-t border-border/80 bg-card shrink-0 flex items-center justify-between gap-3 text-xs pb-[max(0.625rem,env(safe-area-inset-bottom))]">
           <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] min-w-0">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
             <span className="truncate">Translated by Google</span>
@@ -570,3 +571,5 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
 
   return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : null;
 }
+
+export default LanguageModal;

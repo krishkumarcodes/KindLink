@@ -62,6 +62,7 @@ class MockDataAdapter implements DataAdapter {
     radiusKm?: number;
     category?: any;
     urgency?: any;
+    tag?: string;
   }): Promise<HelpRequest[]> {
     const lat = options?.lat ?? ASANSOL_CENTER.lat;
     const lng = options?.lng ?? ASANSOL_CENTER.lng;
@@ -82,6 +83,7 @@ class MockDataAdapter implements DataAdapter {
       .filter((r) => {
         if (options?.category && options.category !== 'all' && r.category !== options.category) return false;
         if (options?.urgency && options.urgency !== 'all' && r.urgency !== options.urgency) return false;
+        if (options?.tag && options.tag.trim() && !(r.tags || []).some(t => t.toLowerCase() === options.tag!.trim().toLowerCase())) return false;
         return r.distanceKm <= radius;
       })
       .sort((a, b) => {
@@ -101,6 +103,8 @@ class MockDataAdapter implements DataAdapter {
       title: req.title,
       description: req.description,
       category: req.category,
+      customCategoryLabel: req.customCategoryLabel,
+      tags: req.tags || [],
       urgency: req.urgency,
       waitingMinutes: 1,
       distanceKm: 0.5,
@@ -383,12 +387,30 @@ class MockDataAdapter implements DataAdapter {
     this.notifications.forEach((n) => (n.unread = false));
   }
 
-  async submitRating(): Promise<{ success: boolean }> {
+  async submitRating(
+    requestId: string,
+    rateeId: string,
+    stars: number,
+    comment?: string
+  ): Promise<{ success: boolean; error?: string }> {
     return { success: true };
   }
 
-  async submitReport(): Promise<{ success: boolean }> {
-    return { success: true };
+  private mockReports: Array<{ id: string; requestId: string; reason: string; createdAt: string }> = [];
+
+  async submitReport(requestId: string = '', reason: string = ''): Promise<{ success: boolean; id?: string }> {
+    const reportId = `rep-${Date.now()}`;
+    this.mockReports.push({
+      id: reportId,
+      requestId,
+      reason,
+      createdAt: new Date().toISOString(),
+    });
+    return { success: true, id: reportId };
+  }
+
+  getSubmittedReports() {
+    return [...this.mockReports];
   }
 
   private sosEvents: Map<string, SosEvent> = new Map();

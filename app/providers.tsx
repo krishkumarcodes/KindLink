@@ -7,6 +7,7 @@ import { I18nProvider } from '@/lib/i18n';
 import { applyReactGoogleTranslatePatch } from '@/lib/translate/googleTranslate';
 
 import { LocationProvider } from '@/lib/location';
+import { runStorageMigration } from '@/lib/utils/storage-migration';
 
 export function Providers({
   children,
@@ -16,6 +17,9 @@ export function Providers({
   initialLocale?: string;
 }) {
   useEffect(() => {
+    // 0. Run automated storage migration to eradicate legacy location defaults
+    runStorageMigration().catch(() => {});
+
     // Apply React DOM patch against external translation modifications
     applyReactGoogleTranslatePatch();
 

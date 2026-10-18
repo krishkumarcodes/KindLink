@@ -19,6 +19,7 @@ import {
 import { toast } from 'sonner';
 import { UserBadgeProgress, BadgeTier } from '@/lib/data/badges';
 import { BadgeMedalIcon } from './BadgeMedalIcon';
+import { useBodyScrollLock } from '@/components/ui/OverlayPortal';
 
 interface BadgeDetailSheetProps {
   badge: UserBadgeProgress | null;
@@ -43,26 +44,20 @@ export function BadgeDetailSheet({
   const [isCelebrating, setIsCelebrating] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Close on Escape key & lock body scroll while strictly preserving window.scrollY
+  useBodyScrollLock(open);
+
+  // Close on Escape key
   useEffect(() => {
     if (!open) return;
-
-    const savedScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = prevOverflow;
-      if (typeof window !== 'undefined' && window.scrollY !== savedScrollY) {
-        window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior });
-      }
     };
   }, [open, onClose]);
 
@@ -238,7 +233,7 @@ export function BadgeDetailSheet({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-h-[92vh] sm:max-h-[85vh] rounded-t-[32px] sm:rounded-3xl bg-card border-t sm:border border-border shadow-2xl flex flex-col overflow-hidden sm:max-w-lg transition-all duration-300 animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95"
+        className="relative w-full max-h-[85dvh] rounded-t-[32px] sm:rounded-3xl bg-card text-card-foreground border-t sm:border border-border shadow-2xl flex flex-col overflow-hidden sm:max-w-lg transition-all duration-300 animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95"
       >
         {/* Celebration Canvas Overlay */}
         <canvas
@@ -246,41 +241,43 @@ export function BadgeDetailSheet({
           className="pointer-events-none absolute inset-0 z-20 h-full w-full"
         />
 
-        {/* Mobile Drag Handle */}
-        <div
-          className="w-full pt-3 pb-1 flex justify-center sm:hidden select-none"
-          aria-hidden="true"
-        >
-          <div className="h-1.5 w-12 rounded-full bg-muted-foreground/30" />
-        </div>
-
-        {/* Sticky Header with Title and Close Button */}
-        <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3.5 border-b border-border bg-card/95 backdrop-blur-md">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Badge Details
-            </span>
-            <span
-              className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
-                tierColors[badge.currentTier]
-              }`}
-            >
-              {badge.earned ? badge.currentTierName : 'Locked'}
-            </span>
+        {/* Unified Solid Header with Integrated Drag Handle */}
+        <div className="sticky top-0 z-10 w-full bg-card border-b border-border select-none">
+          {/* Mobile Drag Handle */}
+          <div
+            className="w-full pt-3 pb-1 flex justify-center sm:hidden"
+            aria-hidden="true"
+          >
+            <div className="h-1.5 w-12 rounded-full bg-muted-foreground/30" />
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close Badge Details"
-            className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary select-none touch-target"
-          >
-            <X className="h-5 w-5 notranslate" />
-          </button>
+          <div className="flex items-center justify-between px-5 py-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Badge Details
+              </span>
+              <span
+                className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                  tierColors[badge.currentTier]
+                }`}
+              >
+                {badge.earned ? badge.currentTierName : 'Locked'}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close Badge Details"
+              className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary select-none touch-target"
+            >
+              <X className="h-5 w-5 notranslate" />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 pb-8">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-6 pb-8">
           {/* Badge Showcase Hero: 80px Medal Artwork Preview with Soft Radial Ambient Glow */}
           <div className="flex flex-col items-center text-center space-y-3 pt-2">
             <div

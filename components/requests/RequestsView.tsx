@@ -23,6 +23,7 @@ import {
   BookOpen,
   Car,
   User,
+  Tag,
 } from 'lucide-react';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { HelpCategory, HelpRequest, UrgencyLevel } from '@/lib/data/types';
@@ -33,6 +34,8 @@ import { HelpFlowModal } from './HelpFlowModal';
 import { useTranslation } from '@/lib/i18n';
 import { ModalOverlay } from '@/components/ui/OverlayPortal';
 import { SwitchRow } from '@/components/ui/Switch';
+import { STANDARD_CATEGORIES, CATEGORY_ICON_MAP } from '@/lib/data/categories';
+import { getCategoryToken } from '@/lib/data/categoryColors';
 
 export function RequestsView() {
   const {
@@ -81,6 +84,7 @@ export function RequestsView() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'accepted'>('all');
   const [neededInFilter, setNeededInFilter] = useState<'all' | 'immediate' | 'today' | 'within24h'>('all');
   const [verifiedOnly, setVerifiedOnly] = useState<boolean>(false);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   // Sync external filterCategory changes (e.g. from Home category clicks)
   useEffect(() => {
@@ -144,6 +148,11 @@ export function RequestsView() {
         return false;
       }
 
+      // 1.5 Tag Filter
+      if (selectedTag && (!req.tags || !req.tags.includes(selectedTag))) {
+        return false;
+      }
+
       // 2. Urgencies Checkboxes
       if (selectedUrgencies.length > 0 && !selectedUrgencies.includes(req.urgency)) {
         return false;
@@ -192,7 +201,9 @@ export function RequestsView() {
         const matchBlood = req.bloodGroup?.toLowerCase().includes(q);
         const matchItem = req.itemType?.toLowerCase().includes(q);
         const matchCategory = req.category.toLowerCase().includes(q);
-        if (!matchTitle && !matchDesc && !matchLoc && !matchBlood && !matchItem && !matchCategory) {
+        const matchCustom = req.customCategoryLabel?.toLowerCase().includes(q);
+        const matchTags = req.tags?.some((t) => t.toLowerCase().includes(q) || `#${t.toLowerCase()}`.includes(q));
+        if (!matchTitle && !matchDesc && !matchLoc && !matchBlood && !matchItem && !matchCategory && !matchCustom && !matchTags) {
           return false;
         }
       }
@@ -204,6 +215,7 @@ export function RequestsView() {
     activeFeedTab,
     userProfile,
     selectedCategories,
+    selectedTag,
     selectedUrgencies,
     radiusKm,
     statusFilter,
@@ -268,13 +280,30 @@ export function RequestsView() {
     return sortedRequests.slice(0, visibleCount);
   }, [sortedRequests, visibleCount]);
 
-  const categoriesList: { key: HelpCategory; label: string; icon: React.ReactNode }[] = [
-    { key: 'blood', label: t('categories.blood') || 'Blood Donation', icon: <Droplets className="h-3.5 w-3.5 text-rose-500 notranslate" /> },
-    { key: 'equipment', label: t('categories.equipment') || 'Medical Gear', icon: <Stethoscope className="h-3.5 w-3.5 text-teal-500 notranslate" /> },
-    { key: 'elderly', label: t('categories.elderly') || 'Elderly Care', icon: <Users className="h-3.5 w-3.5 text-blue-500 notranslate" /> },
-    { key: 'books', label: t('categories.books') || 'Books and Study', icon: <BookOpen className="h-3.5 w-3.5 text-emerald-500 notranslate" /> },
-    { key: 'transport', label: t('categories.transport') || 'Emergency Transit', icon: <Car className="h-3.5 w-3.5 text-amber-500 notranslate" /> },
-  ];
+  const categoriesList: { key: HelpCategory; label: string; icon: React.ReactNode }[] = useMemo(() => {
+    return STANDARD_CATEGORIES.map((c) => {
+      const IconComp = CATEGORY_ICON_MAP[c.icon] || Droplets;
+      const token = getCategoryToken(c.key);
+      return {
+        key: c.key as HelpCategory,
+        label: c.name,
+        icon: <IconComp className="h-3.5 w-3.5 notranslate" style={{ color: token.primary }} />,
+      };
+    });
+  }, []);
+
+  const popularTags = useMemo(() => {
+    const counts = new Map<string, number>();
+    allFeedRequests.forEach((r) => {
+      r.tags?.forEach((t) => {
+        counts.set(t, (counts.get(t) || 0) + 1);
+      });
+    });
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([tag]) => tag);
+  }, [allFeedRequests]);
 
   const urgenciesList: { key: UrgencyLevel; label: string; dotColor: string }[] = [
     { key: 'critical', label: 'Critical', dotColor: 'bg-red-500' },
@@ -297,6 +326,7 @@ export function RequestsView() {
 
   const resetAllFilters = () => {
     setSelectedCategories([]);
+    setSelectedTag(null);
     setSelectedUrgencies([]);
     setRadiusKm(50);
     setFilterRadius(50);
@@ -310,6 +340,7 @@ export function RequestsView() {
 
   const hasActiveFilters =
     selectedCategories.length > 0 ||
+    Boolean(selectedTag) ||
     selectedUrgencies.length > 0 ||
     radiusKm < 50 ||
     statusFilter !== 'all' ||
@@ -451,6 +482,20 @@ export function RequestsView() {
               </button>
             </span>
           ))}
+
+          {selectedTag && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-mono text-xs font-semibold">
+              <span>#{selectedTag}</span>
+              <button
+                type="button"
+                onClick={() => setSelectedTag(null)}
+                className="hover:text-rose-500"
+                aria-label={`Remove #${selectedTag} tag filter`}
+              >
+                <X className="h-3 w-3 notranslate" />
+              </button>
+            </span>
+          )}
 
           {selectedUrgencies.map((u) => (
             <span
@@ -769,7 +814,7 @@ export function RequestsView() {
         maxWidthClass="max-w-xl"
       >
         {/* Sticky Header: Title "Filters", count pill, and "Reset" on ONE line (never wraps) */}
-        <div className="flex items-center justify-between gap-2 px-5 py-4 border-b border-border/80 bg-card/95 backdrop-blur-md shrink-0">
+        <div className="flex items-center justify-between gap-2 px-5 py-4 border-b border-border/80 bg-card shrink-0">
           <div className="flex items-center gap-2 min-w-0 shrink-0">
             <SlidersHorizontal className="h-4 w-4 text-primary notranslate shrink-0" />
             <h2 className="text-base font-bold text-foreground shrink-0">Filters</h2>
@@ -825,6 +870,36 @@ export function RequestsView() {
               })}
             </div>
           </div>
+
+          {/* Popular Tags */}
+          {popularTags.length > 0 && (
+            <div>
+              <label className="text-xs font-bold text-foreground block mb-2">
+                Filter by Tag
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {popularTags.map((tag) => {
+                  const isSelected = selectedTag === tag;
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setSelectedTag(isSelected ? null : tag)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono transition-all active:scale-95 border ${
+                        isSelected
+                          ? 'border-primary bg-primary text-white font-bold shadow-xs'
+                          : 'border-border/80 bg-background hover:bg-muted text-foreground'
+                      }`}
+                    >
+                      <Tag className="h-3 w-3 notranslate" />
+                      <span>#{tag}</span>
+                      {isSelected && <Check className="h-3 w-3 notranslate stroke-[3]" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* 2. Urgency Chips with individual coloured dots (Critical red, High orange, Medium blue, Low green) */}
           <div>
@@ -932,7 +1007,7 @@ export function RequestsView() {
         </div>
 
         {/* Sticky Footer: "N requests found", "Reset", and "Apply filters" buttons */}
-        <div className="p-4 sm:p-5 border-t border-border/80 bg-card/95 backdrop-blur-md flex items-center justify-between gap-2 shrink-0">
+        <div className="p-4 sm:p-5 border-t border-border/80 bg-card flex items-center justify-between gap-2 shrink-0">
           <span className="text-xs sm:text-sm font-bold text-muted-foreground truncate">
             {filteredRequests.length} {filteredRequests.length === 1 ? 'request' : 'requests'} found
           </span>

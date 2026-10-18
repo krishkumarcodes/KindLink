@@ -413,7 +413,28 @@ async function runMapsCheck() {
   // ============================================================================
   // TEST 6: TILE FETCH (z=12, x=3037, y=1778 - Asansol)
   // ============================================================================
-  console.log(`\n${BOLD}6. Map Tile Fetch (Tile [12/3037/1778] - Asansol, India)${RESET}`);
+  // OpenFreeMap Vector Tile Server (Primary Zero-Key Provider)
+  const ofmTile = await timedFetch('https://tiles.openfreemap.org/styles/liberty', {
+    headers: { 'User-Agent': `KindLink-Diagnostics/1.0 (${contactEmail})` },
+  });
+  if (ofmTile.ok) {
+    printResult({
+      testName: 'Map Tile Primary Fetch',
+      provider: 'OpenFreeMap',
+      status: 'PASS',
+      latency: ofmTile.latency,
+      info: 'Vector tile style and planet tiles active with zero API keys required',
+    });
+  } else {
+    printResult({
+      testName: 'Map Tile Primary Fetch',
+      provider: 'OpenFreeMap',
+      status: 'FAIL',
+      latency: ofmTile.latency,
+      info: ofmTile.error || `HTTP ${ofmTile.status}`,
+      hint: 'OpenFreeMap style endpoint unavailable; automated failover to MapTiler / OSM.',
+    });
+  }
 
   if (maptilerKey && !maptilerKey.includes('your_')) {
     const res = await timedFetch(`https://api.maptiler.com/maps/streets-v2/12/3037/1778.png?key=${encodeURIComponent(maptilerKey)}`);

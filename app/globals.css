@@ -259,6 +259,53 @@ html[data-reduce-motion="true"] *::after {
   border-radius: inherit;
   z-index: 10;
   font-family: inherit;
+  background-color: #f1f5f9;
+}
+
+.dark .leaflet-container {
+  background-color: #0b0f19;
+}
+
+/* Mandatory Tailwind/Leaflet fix: prevent base img styles from squashing or distorting raster tiles */
+.leaflet-container img.leaflet-tile,
+.leaflet-tile-pane img,
+.leaflet-layer img {
+  max-width: none !important;
+  max-height: none !important;
+  width: auto;
+  padding: 0 !important;
+}
+
+/* Map shimmer skeleton animation */
+@keyframes map-skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.map-skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(226, 232, 240, 0.6) 0%,
+    rgba(241, 245, 249, 0.9) 50%,
+    rgba(226, 232, 240, 0.6) 100%
+  );
+  background-size: 200% 100%;
+  animation: map-skeleton-shimmer 2s infinite linear;
+}
+
+.dark .map-skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(15, 23, 42, 0.8) 0%,
+    rgba(30, 41, 59, 0.9) 50%,
+    rgba(15, 23, 42, 0.8) 100%
+  );
+  background-size: 200% 100%;
+  animation: map-skeleton-shimmer 2s infinite linear;
 }
 
 /* Remove default Leaflet zoom control and stray white boxes at top-left */

@@ -10,6 +10,7 @@ import {
   isSupportedCountry,
 } from 'libphonenumber-js';
 import { ChevronDown, Search, X, Check, Globe } from 'lucide-react';
+import { useBodyScrollLock } from '@/components/ui/OverlayPortal';
 
 export interface PhoneInputMeta {
   country: CountryCode;
@@ -218,6 +219,8 @@ export function PhoneInput({
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
+
+  useBodyScrollLock(isPickerOpen);
 
   // Sync internal display with incoming `value` prop
   useEffect(() => {
@@ -520,11 +523,11 @@ export function PhoneInput({
           onClick={() => setIsPickerOpen(false)}
         >
           <div
-            className="relative w-full max-w-sm rounded-3xl bg-card border border-border shadow-2xl text-left overflow-hidden flex flex-col max-h-[82vh] animate-scale-up"
+            className="relative w-full max-w-sm rounded-3xl bg-card text-card-foreground border border-border shadow-2xl text-left overflow-hidden flex flex-col max-h-[85dvh] animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="p-4 border-b border-border bg-card/95 flex items-center justify-between shrink-0">
+            <div className="p-4 border-b border-border bg-card flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <div className="p-1.5 rounded-xl bg-primary/10 text-primary">
                   <Globe className="h-4 w-4 notranslate" />
@@ -571,7 +574,7 @@ export function PhoneInput({
             </div>
 
             {/* Scrollable Country List */}
-            <div className="overflow-y-auto flex-1 divide-y divide-border/40 p-1">
+            <div className="overflow-y-auto overscroll-contain flex-1 divide-y divide-border/40 p-1">
               {/* Popular countries section if no search query */}
               {!searchQuery && (
                 <div className="p-2 pb-3">

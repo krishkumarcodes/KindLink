@@ -62,7 +62,10 @@ export function Header() {
         .toUpperCase()
     : 'U';
 
-  const displayAreaName = userAreaName || 'Asansol, WB';
+  const displayAreaName =
+    userAreaName?.trim() && userAreaName !== 'Set your area'
+      ? userAreaName
+      : 'Set your area';
 
   return (
     <>

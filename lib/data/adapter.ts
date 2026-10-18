@@ -14,6 +14,9 @@ export type { CommunityLiveStats, SosEvent };
 
 export interface CreateRequestInput {
   category: HelpCategory;
+  customCategoryLabel?: string;
+  tags?: string[];
+  categoryFields?: Record<string, any>;
   title: string;
   description: string;
   urgency: UrgencyLevel;
@@ -69,6 +72,7 @@ export interface DataAdapter {
     radiusKm?: number;
     category?: HelpCategory | 'all';
     urgency?: UrgencyLevel | 'all';
+    tag?: string;
   }): Promise<HelpRequest[]>;
 
   createRequest(request: CreateRequestInput): Promise<{ success: boolean; id: string }>;

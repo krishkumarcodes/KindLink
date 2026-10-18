@@ -17,6 +17,8 @@ export interface RequestRouteMiniMapProps {
   destinationLabel: string;
   startLabel?: string;
   className?: string;
+  requestId?: string;
+  onExpand?: () => void;
 }
 
 /**
@@ -199,6 +201,8 @@ export default function RequestRouteMiniMap({
   destinationLabel,
   startLabel = 'You',
   className = '',
+  requestId,
+  onExpand,
 }: RequestRouteMiniMapProps) {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -212,7 +216,33 @@ export default function RequestRouteMiniMap({
       ? routeCoordinates
       : [origin, destination];
 
-  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination[0]},${destination[1]}`;
+  const hasValidCoords = Boolean(
+    destination &&
+    typeof destination[0] === 'number' &&
+    typeof destination[1] === 'number' &&
+    !isNaN(destination[0]) &&
+    !isNaN(destination[1]) &&
+    (destination[0] !== 0 || destination[1] !== 0)
+  );
+
+  const hasOriginCoords = Boolean(
+    origin &&
+    typeof origin[0] === 'number' &&
+    typeof origin[1] === 'number' &&
+    !isNaN(origin[0]) &&
+    !isNaN(origin[1]) &&
+    (origin[0] !== 0 || origin[1] !== 0)
+  );
+
+  const googleMapsUrl = hasValidCoords
+    ? hasOriginCoords
+      ? `https://www.google.com/maps/dir/?api=1&origin=${origin[0]},${origin[1]}&destination=${destination[0]},${destination[1]}`
+      : `https://www.google.com/maps/dir/?api=1&destination=${destination[0]},${destination[1]}`
+    : '';
+
+  const expandHref = requestId
+    ? `/map?request=${encodeURIComponent(requestId)}&route=1`
+    : '/map';
 
   // Close full screen on Escape key
   useEffect(() => {
@@ -331,27 +361,37 @@ export default function RequestRouteMiniMap({
           )}
         </div>
 
-        {/* Top-right: Action buttons (Full screen & Open in Google Maps) */}
+        {/* Top-right: Action buttons (Expand & working Google Maps directions button) */}
         <div className="absolute top-2.5 right-2.5 z-[400] flex items-center gap-1.5 pointer-events-auto">
-          <button
-            type="button"
-            onClick={() => setIsFullScreen(true)}
+          <a
+            href={expandHref}
+            onClick={(e) => {
+              if (onExpand) {
+                e.preventDefault();
+                onExpand();
+              } else {
+                setIsFullScreen(true);
+              }
+            }}
             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-900/95 dark:bg-black/95 hover:bg-slate-800 text-white border border-white/20 text-[10px] font-bold shadow-md transition-all active:scale-95 touch-target select-none"
-            title="Expand to full screen"
+            title="Expand to Map page with route"
           >
             <Maximize2 className="h-3 w-3 notranslate" />
-            <span className="hidden sm:inline">Full screen</span>
-          </button>
-          <a
-            href={googleMapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-900/95 dark:bg-black/95 hover:bg-slate-800 text-white border border-white/20 text-[10px] font-bold shadow-md transition-all active:scale-95 touch-target select-none"
-            title="Open directions in Google Maps"
-          >
-            <ExternalLink className="h-3 w-3 notranslate" />
-            <span>Google Maps</span>
+            <span>Expand</span>
           </a>
+
+          {hasValidCoords && (
+            <a
+              href={googleMapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-900/95 dark:bg-black/95 hover:bg-slate-800 text-white border border-white/20 text-[10px] font-bold shadow-md transition-all active:scale-95 touch-target select-none"
+              title="Open directions in Google Maps"
+            >
+              <ExternalLink className="h-3 w-3 notranslate" />
+              <span>Google Maps</span>
+            </a>
+          )}
         </div>
       </div>
 

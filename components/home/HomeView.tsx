@@ -184,8 +184,10 @@ export function HomeView() {
   const [selectedDetailRequest, setSelectedDetailRequest] = useState<HelpRequest | null>(null);
   const [helpFlowRequest, setHelpFlowRequest] = useState<HelpRequest | null>(null);
 
-  // Exact same location source as the header chip: userAreaName || 'Asansol, WB'
-  const [resolvedLocation, setResolvedLocation] = useState<string>(userAreaName || 'Kalyanpur, Asansol');
+  // Resolved user location
+  const [resolvedLocation, setResolvedLocation] = useState<string>(
+    userAreaName && userAreaName !== 'Set your area' ? userAreaName : ''
+  );
 
   // SOS hold-to-activate tracking
   const [isHoldingSos, setIsHoldingSos] = useState(false);
@@ -289,31 +291,46 @@ export function HomeView() {
 
   // Helpers count & Subtitle
   const helpersCount = liveStats?.helpersNearby ?? 0;
-  const currentArea = userAreaName?.trim() || resolvedLocation?.trim();
+  const currentArea =
+    (userAreaName?.trim() && userAreaName !== 'Set your area' ? userAreaName.trim() : '') ||
+    (resolvedLocation?.trim() && resolvedLocation !== 'Set your area' ? resolvedLocation.trim() : '');
 
-
-  // Category stats calculation
+  // Category stats calculation across all categories
   const categoryStats = useMemo(() => {
-    const map: Record<HelpCategory, { count: number; criticalCount: number; highCount: number }> = {
-      blood: { count: 0, criticalCount: 0, highCount: 0 },
-      equipment: { count: 0, criticalCount: 0, highCount: 0 },
-      elderly: { count: 0, criticalCount: 0, highCount: 0 },
-      books: { count: 0, criticalCount: 0, highCount: 0 },
-      transport: { count: 0, criticalCount: 0, highCount: 0 },
-    };
+    const map: Record<string, { count: number; criticalCount: number; highCount: number }> = {};
 
     requests.forEach((r) => {
-      if (map[r.category]) {
-        map[r.category].count += 1;
-        if (r.urgency === 'critical') map[r.category].criticalCount += 1;
-        if (r.urgency === 'high') map[r.category].highCount += 1;
+      const cat = r.category || 'other';
+      if (!map[cat]) {
+        map[cat] = { count: 0, criticalCount: 0, highCount: 0 };
       }
+      map[cat].count += 1;
+      if (r.urgency === 'critical') map[cat].criticalCount += 1;
+      if (r.urgency === 'high') map[cat].highCount += 1;
     });
 
     return map;
   }, [requests]);
 
-  // 5 Responsive Category Cards
+  // Aggregated stats for the other 11+ categories
+  const otherCategoriesStats = useMemo(() => {
+    const top4 = new Set(['blood', 'equipment', 'elderly', 'books']);
+    let count = 0;
+    let criticalCount = 0;
+    let highCount = 0;
+
+    requests.forEach((r) => {
+      if (!top4.has(r.category)) {
+        count += 1;
+        if (r.urgency === 'critical') criticalCount += 1;
+        if (r.urgency === 'high') highCount += 1;
+      }
+    });
+
+    return { count, criticalCount, highCount };
+  }, [requests]);
+
+  // Top 4 Primary Category Cards
   const categories: {
     key: HelpCategory;
     title: string;
@@ -330,15 +347,15 @@ export function HomeView() {
       tintBg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20',
       borderColor: 'border-rose-500/30 hover:border-rose-500/60 hover:shadow-rose-500/10',
       urgencySummary:
-        categoryStats.blood.criticalCount > 0
+        (categoryStats.blood?.criticalCount ?? 0) > 0
           ? `${categoryStats.blood.criticalCount} critical`
-          : categoryStats.blood.count > 0
+          : (categoryStats.blood?.count ?? 0) > 0
           ? `${categoryStats.blood.count} active`
           : 'Standby ready',
       urgencyDotColor:
-        categoryStats.blood.criticalCount > 0
+        (categoryStats.blood?.criticalCount ?? 0) > 0
           ? 'bg-rose-500'
-          : categoryStats.blood.count > 0
+          : (categoryStats.blood?.count ?? 0) > 0
           ? 'bg-rose-500'
           : 'bg-rose-400/50',
     },
@@ -349,17 +366,17 @@ export function HomeView() {
       tintBg: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20',
       borderColor: 'border-teal-500/30 hover:border-teal-500/60 hover:shadow-teal-500/10',
       urgencySummary:
-        categoryStats.equipment.criticalCount > 0
+        (categoryStats.equipment?.criticalCount ?? 0) > 0
           ? `${categoryStats.equipment.criticalCount} critical`
-          : categoryStats.equipment.highCount > 0
+          : (categoryStats.equipment?.highCount ?? 0) > 0
           ? `${categoryStats.equipment.highCount} high priority`
-          : categoryStats.equipment.count > 0
+          : (categoryStats.equipment?.count ?? 0) > 0
           ? `${categoryStats.equipment.count} active`
           : 'Lending pool',
       urgencyDotColor:
-        categoryStats.equipment.criticalCount > 0
+        (categoryStats.equipment?.criticalCount ?? 0) > 0
           ? 'bg-rose-500'
-          : categoryStats.equipment.count > 0
+          : (categoryStats.equipment?.count ?? 0) > 0
           ? 'bg-teal-500'
           : 'bg-teal-400/50',
     },
@@ -370,17 +387,17 @@ export function HomeView() {
       tintBg: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20',
       borderColor: 'border-indigo-500/30 hover:border-indigo-500/60 hover:shadow-indigo-500/10',
       urgencySummary:
-        categoryStats.elderly.criticalCount > 0
+        (categoryStats.elderly?.criticalCount ?? 0) > 0
           ? `${categoryStats.elderly.criticalCount} critical`
-          : categoryStats.elderly.highCount > 0
+          : (categoryStats.elderly?.highCount ?? 0) > 0
           ? `${categoryStats.elderly.highCount} urgent`
-          : categoryStats.elderly.count > 0
+          : (categoryStats.elderly?.count ?? 0) > 0
           ? `${categoryStats.elderly.count} active`
           : 'Community care',
       urgencyDotColor:
-        categoryStats.elderly.criticalCount > 0
+        (categoryStats.elderly?.criticalCount ?? 0) > 0
           ? 'bg-rose-500'
-          : categoryStats.elderly.count > 0
+          : (categoryStats.elderly?.count ?? 0) > 0
           ? 'bg-indigo-500'
           : 'bg-indigo-400/50',
     },
@@ -391,38 +408,17 @@ export function HomeView() {
       tintBg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20',
       borderColor: 'border-emerald-500/30 hover:border-emerald-500/60 hover:shadow-emerald-500/10',
       urgencySummary:
-        categoryStats.books.criticalCount > 0
+        (categoryStats.books?.criticalCount ?? 0) > 0
           ? `${categoryStats.books.criticalCount} critical`
-          : categoryStats.books.count > 0
+          : (categoryStats.books?.count ?? 0) > 0
           ? `${categoryStats.books.count} active`
           : 'Peer book bank',
       urgencyDotColor:
-        categoryStats.books.criticalCount > 0
+        (categoryStats.books?.criticalCount ?? 0) > 0
           ? 'bg-rose-500'
-          : categoryStats.books.count > 0
+          : (categoryStats.books?.count ?? 0) > 0
           ? 'bg-emerald-500'
           : 'bg-emerald-400/50',
-    },
-    {
-      key: 'transport',
-      title: t('categories.transport') || 'Emergency Transit',
-      icon: <Car className="h-5 w-5 text-amber-500 notranslate" />,
-      tintBg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20',
-      borderColor: 'border-amber-500/30 hover:border-amber-500/60 hover:shadow-amber-500/10',
-      urgencySummary:
-        categoryStats.transport.criticalCount > 0
-          ? `${categoryStats.transport.criticalCount} critical`
-          : categoryStats.transport.highCount > 0
-          ? `${categoryStats.transport.highCount} high priority`
-          : categoryStats.transport.count > 0
-          ? `${categoryStats.transport.count} active`
-          : 'Transit network',
-      urgencyDotColor:
-        categoryStats.transport.criticalCount > 0
-          ? 'bg-rose-500'
-          : categoryStats.transport.count > 0
-          ? 'bg-amber-500'
-          : 'bg-amber-400/50',
     },
   ];
 
@@ -644,62 +640,6 @@ export function HomeView() {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           {categories.map((cat) => {
             const stats = categoryStats[cat.key] || { count: 0, criticalCount: 0, highCount: 0 };
-            const isTransit = cat.key === 'transport';
-
-            if (isTransit) {
-              return (
-                <button
-                  key={cat.key}
-                  type="button"
-                  onClick={() => handleCategoryClick(cat.key)}
-                  className={`col-span-2 lg:col-span-1 group p-4 rounded-3xl border ${cat.borderColor} bg-card/90 hover:bg-card hover:shadow-md hover:-translate-y-0.5 active:scale-98 transition-all duration-200 text-left touch-target flex flex-col justify-between`}
-                >
-                  {/* Wide horizontal card for 2-column mobile/tablet view (icon on left, text in middle, open pill on right) */}
-                  <div className="flex lg:hidden items-center justify-between w-full gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${cat.tintBg} transition-transform duration-200 group-hover:scale-105`}
-                      >
-                        {cat.icon}
-                      </div>
-                      <div className="min-w-0 space-y-0.5">
-                        <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors leading-snug truncate">
-                          {cat.title}
-                        </h3>
-                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                          <span className={`h-1.5 w-1.5 rounded-full ${cat.urgencyDotColor} shrink-0`} />
-                          <span className="truncate">{cat.urgencySummary}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-muted text-[11px] font-black text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors shrink-0">
-                      {stats.count} open
-                    </span>
-                  </div>
-
-                  {/* Standard vertical card layout on lg (5 columns) */}
-                  <div className="hidden lg:flex items-start justify-between w-full">
-                    <div
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${cat.tintBg} transition-transform duration-200 group-hover:scale-105`}
-                    >
-                      {cat.icon}
-                    </div>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-[10px] font-black text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                      {stats.count} open
-                    </span>
-                  </div>
-                  <div className="hidden lg:block mt-3 space-y-1 w-full">
-                    <h3 className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-1">
-                      {cat.title}
-                    </h3>
-                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                      <span className={`h-1.5 w-1.5 rounded-full ${cat.urgencyDotColor} shrink-0`} />
-                      <span className="truncate">{cat.urgencySummary}</span>
-                    </div>
-                  </div>
-                </button>
-              );
-            }
 
             return (
               <button
@@ -731,6 +671,73 @@ export function HomeView() {
               </button>
             );
           })}
+
+          {/* 5th Tile: More categories (Spans 2 cols on mobile/tablet, 1 col on desktop) */}
+          <button
+            type="button"
+            onClick={() => setAllCategoriesModalOpen(true)}
+            className="col-span-2 lg:col-span-1 group p-4 rounded-3xl border border-primary/30 hover:border-primary/60 bg-card/90 hover:bg-card hover:shadow-md hover:shadow-primary/5 hover:-translate-y-0.5 active:scale-98 transition-all duration-200 text-left touch-target flex flex-col justify-between min-h-[142px]"
+          >
+            {/* Wide horizontal layout on mobile/tablet */}
+            <div className="flex lg:hidden items-center justify-between w-full gap-3 my-auto">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 transition-transform duration-200 group-hover:scale-105">
+                  <Layers className="h-5 w-5 notranslate" />
+                </div>
+                <div className="min-w-0 space-y-0.5">
+                  <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors leading-snug truncate">
+                    More categories
+                  </h3>
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        otherCategoriesStats.criticalCount > 0 ? 'bg-rose-500' : 'bg-primary'
+                      } shrink-0`}
+                    />
+                    <span className="truncate">
+                      {otherCategoriesStats.criticalCount > 0
+                        ? `${otherCategoriesStats.criticalCount} critical`
+                        : otherCategoriesStats.count > 0
+                        ? `${otherCategoriesStats.count} active`
+                        : '11 more categories'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-primary/10 text-[11px] font-black text-primary transition-colors shrink-0">
+                {otherCategoriesStats.count} open
+              </span>
+            </div>
+
+            {/* Standard vertical layout on desktop (lg) */}
+            <div className="hidden lg:flex items-start justify-between w-full">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 transition-transform duration-200 group-hover:scale-105">
+                <Layers className="h-5 w-5 notranslate" />
+              </div>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-[10px] font-black text-primary transition-colors">
+                {otherCategoriesStats.count} open
+              </span>
+            </div>
+            <div className="hidden lg:block mt-3 space-y-1 w-full">
+              <h3 className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-1">
+                More categories
+              </h3>
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    otherCategoriesStats.criticalCount > 0 ? 'bg-rose-500' : 'bg-primary'
+                  } shrink-0`}
+                />
+                <span className="truncate">
+                  {otherCategoriesStats.criticalCount > 0
+                    ? `${otherCategoriesStats.criticalCount} critical`
+                    : otherCategoriesStats.count > 0
+                    ? `${otherCategoriesStats.count} active`
+                    : '11 more aid types'}
+                </span>
+              </div>
+            </div>
+          </button>
         </div>
       </div>
 

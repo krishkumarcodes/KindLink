@@ -41,6 +41,21 @@ interface ProviderCredit {
 
 const MAP_PROVIDERS: ProviderCredit[] = [
   {
+    id: 'openfreemap',
+    name: 'OpenFreeMap',
+    badge: 'Primary Basemap Vector Tiles (Key-Free)',
+    attribution: '© OpenStreetMap contributors, OpenFreeMap',
+    license: 'Open Source / Open Database License (ODbL)',
+    url: 'https://openfreemap.org/',
+    description:
+      'Provides high-performance vector map styles (Liberty, Dark, Positron, Bright) with zero API keys and no rate limits, serving as the primary interactive base layer for KindLink.',
+    usedFor: [
+      'Primary interactive community map base layer',
+      'Zero-key vector tiles with automatic client dark styling',
+      'Fast tile rendering for mobile and low-latency emergency dispatch',
+    ],
+  },
+  {
     id: 'maptiler',
     name: 'MapTiler',
     badge: 'Basemap Vector & Raster Tiles',

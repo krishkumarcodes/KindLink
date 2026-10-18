@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from '@/components/ui/OverlayPortal';
 import dynamic from 'next/dynamic';
@@ -89,7 +89,7 @@ const EMERGENCY_LINES: EmergencyLine[] = [
   {
     badge: '108',
     title: '108 - Emergency Ambulance Service',
-    description: 'West Bengal Emergency Medical Transport',
+    description: 'Emergency Medical Transport & Ambulance',
     phone: '108',
     colorClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
   },
@@ -103,14 +103,14 @@ const EMERGENCY_LINES: EmergencyLine[] = [
   {
     badge: '100',
     title: '100 - Police Control Room',
-    description: 'Asansol Durgapur Police Commissionerate',
+    description: '24/7 Police Emergency Dispatch & Control',
     phone: '100',
     colorClass: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30',
   },
   {
     badge: '101',
     title: '101 - Fire & Rescue Services',
-    description: 'West Bengal Fire & Emergency Operations',
+    description: 'Fire & Emergency Disaster Operations',
     phone: '101',
     colorClass: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
   },
@@ -124,6 +124,7 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
   const [holdProgress, setHoldProgress] = useState(0);
   const [holdElapsed, setHoldElapsed] = useState(0);
   const [isRippling, setIsRippling] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [sosToken, setSosToken] = useState<string>('');
   const [trackingUrl, setTrackingUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
@@ -149,6 +150,32 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
   const [isAddingContact, setIsAddingContact] = useState(false);
   const [hospitals, setHospitals] = useState<MedicalFacility[]>([]);
   const [isLoadingHospitals, setIsLoadingHospitals] = useState(false);
+
+  // De-duplicate hospitals by place id and normalized name + coords (max 3)
+  const deduplicatedHospitals = useMemo(() => {
+    const seenIds = new Set<string>();
+    const seenKeys = new Set<string>();
+    const result: MedicalFacility[] = [];
+
+    for (const hosp of hospitals) {
+      if (!hosp || !hosp.name) continue;
+      const cleanId = hosp.id?.trim();
+      if (cleanId && seenIds.has(cleanId)) continue;
+
+      // Normalize name: lowercase, strip punctuation and whitespace
+      const normName = hosp.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const latRound = hosp.latitude ? hosp.latitude.toFixed(3) : '0';
+      const lngRound = hosp.longitude ? hosp.longitude.toFixed(3) : '0';
+      const key = `${normName}_${latRound}_${lngRound}`;
+      if (seenKeys.has(key)) continue;
+
+      if (cleanId) seenIds.add(cleanId);
+      seenKeys.add(key);
+      result.push(hosp);
+      if (result.length >= 3) break;
+    }
+    return result;
+  }, [hospitals]);
   const [routeData, setRouteData] = useState<RoadRouteResult | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
 
@@ -195,6 +222,7 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
 
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
   const holdStartTimeRef = useRef<number>(0);
+  const lastHapticPulseRef = useRef<number>(0);
   const elapsedTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check login state
@@ -299,6 +327,7 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
     setHoldProgress(0);
     setHoldElapsed(0);
     setIsRippling(false);
+    setIsCancelling(false);
     setIsSubmitting(false);
     setKeyboardConfirmOpen(false);
     setIsLowSignal(false);
@@ -372,7 +401,11 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
       }
     }
 
-    const currentArea = userAreaName || 'Asansol Region, West Bengal';
+    const rawArea = userAreaName?.trim();
+    const isOldCollege = /engineering|college|aec/i.test(rawArea || '');
+    const currentArea = (!rawArea || rawArea === 'Set your area' || isOldCollege)
+      ? (bestLat && bestLng ? 'Your Location' : 'Asansol Region')
+      : rawArea;
 
     // Generate random token for SOS tracking URL
     const generatedToken =
@@ -486,9 +519,11 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
     setStatus('holding');
     setHoldProgress(0);
     setHoldElapsed(0);
+    setIsCancelling(false);
     holdStartTimeRef.current = Date.now();
+    lastHapticPulseRef.current = 0;
 
-    // Haptic vibration [40, 60, 40] where supported
+    // Initial light tactile vibration where supported
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       navigator.vibrate([40, 60, 40]);
     }
@@ -499,11 +534,23 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
       const progress = Math.min(100, (elapsed / 2000) * 100);
       setHoldProgress(progress);
 
+      // Light rhythmic haptic pulse during hold (~every 350ms)
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        if (elapsed - lastHapticPulseRef.current >= 350) {
+          lastHapticPulseRef.current = elapsed;
+          navigator.vibrate(12);
+        }
+      }
+
       if (elapsed >= 2000) {
         if (holdTimerRef.current) clearInterval(holdTimerRef.current);
         holdTimerRef.current = null;
         setHoldProgress(100);
         setStatus('sending');
+        if (!prefersReducedMotion) {
+          setIsRippling(true);
+          setTimeout(() => setIsRippling(false), 800);
+        }
         triggerActivation();
       }
     }, 20);
@@ -513,11 +560,14 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
     if (status === 'holding') {
       if (holdTimerRef.current) clearInterval(holdTimerRef.current);
       holdTimerRef.current = null;
-      setStatus('idle');
-      setHoldProgress(0);
-      setHoldElapsed(0);
-      setIsRippling(true);
-      setTimeout(() => setIsRippling(false), 500);
+      setIsCancelling(true);
+      // Gentle cancel animation if released early
+      setTimeout(() => {
+        setStatus('idle');
+        setHoldProgress(0);
+        setHoldElapsed(0);
+        setIsCancelling(false);
+      }, 200);
     }
   };
 
@@ -611,7 +661,11 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
 
   if (!open) return null;
 
-  const currentArea = userAreaName || 'Asansol Region';
+  const rawArea = userAreaName?.trim();
+  const isOldCollege = /engineering|college|aec/i.test(rawArea || '');
+  const currentArea = (!rawArea || rawArea === 'Set your area' || isOldCollege)
+    ? (userCoords ? 'Your Location' : 'Asansol Region')
+    : rawArea;
   const savedContacts = userProfile?.emergencyContacts || [];
   const fullName = userProfile?.name?.trim() || 'Community Member';
   const displayPhone = userProfile?.phone?.trim();
@@ -668,9 +722,9 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
       aria-modal="true"
       aria-labelledby="emergency-sos-modal-title"
     >
-      <div className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-3xl bg-card border-2 border-rose-500/40 shadow-[0_0_50px_rgba(244,63,94,0.25)] text-card-foreground overflow-hidden">
+      <div className="w-full max-w-lg max-h-[90dvh] flex flex-col rounded-3xl bg-card border-2 border-rose-500/40 shadow-[0_0_50px_rgba(244,63,94,0.25)] text-card-foreground overflow-hidden">
         {/* 1. STICKY HEADER */}
-        <div className="sticky top-0 z-20 px-5 py-3.5 bg-card/95 backdrop-blur-md border-b border-border/80 flex items-center justify-between shrink-0">
+        <div className="sticky top-0 z-20 px-5 py-3.5 bg-card border-b border-border flex items-center justify-between shrink-0">
           <div className="min-w-0 pr-2">
             <div className="flex items-center gap-2">
               <span className="text-[10px] uppercase font-black tracking-widest text-rose-600 dark:text-rose-400 block leading-tight">
@@ -685,7 +739,7 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
               </h2>
             </div>
             <div className="flex items-center gap-2 mt-1">
-              <p className="text-xs font-semibold text-rose-600/90 dark:text-rose-400/90 leading-tight truncate">
+              <p className="text-xs font-semibold text-rose-600/90 dark:text-rose-400/90 leading-tight break-words line-clamp-1">
                 {currentArea}
               </p>
               {isOfflineMode ? (
@@ -713,7 +767,7 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
         </div>
 
         {/* SCROLLABLE CONTAINER WITH NATURAL HEIGHT & SAFE-AREA INSET PADDING */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 pt-4 pb-4 [padding-bottom:max(1rem,calc(env(safe-area-inset-bottom,0px)+16px))] space-y-4">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 pt-4 pb-4 [padding-bottom:max(1rem,calc(env(safe-area-inset-bottom,0px)+16px))] space-y-4">
           {/* LOGGED-OUT PROMPT BANNER */}
           {!isLoggedIn && (
             <div className="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 space-y-2.5">
@@ -1161,19 +1215,40 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
             <div className="flex flex-col items-center text-center pt-2 pb-1">
               {/* Circular Hold Button with SVG Progress Ring */}
               <div className="relative flex items-center justify-center my-3">
-                {/* Calm pulsing glow ring (disabled on prefers-reduced-motion) */}
+                {/* Calm pulsing glow ring that grows stronger as hold progress advances */}
                 <div
-                  className={`absolute -inset-6 rounded-full bg-rose-500/25 blur-2xl pointer-events-none transition-all duration-300 ${
-                    status === 'holding'
-                      ? 'opacity-100 scale-110'
-                      : prefersReducedMotion
-                      ? 'opacity-40'
-                      : 'opacity-40 animate-pulse'
+                  className={`absolute -inset-6 rounded-full pointer-events-none transition-all duration-150 ${
+                    prefersReducedMotion ? 'opacity-40 bg-rose-500/25 blur-xl' : ''
                   }`}
+                  style={
+                    !prefersReducedMotion
+                      ? {
+                          background:
+                            'radial-gradient(circle, rgba(244,63,94,0.45) 0%, rgba(225,29,72,0.15) 60%, transparent 80%)',
+                          filter: 'blur(24px)',
+                          opacity: status === 'holding' ? 0.4 + (holdProgress / 100) * 0.6 : 0.35,
+                          transform:
+                            status === 'holding'
+                              ? `scale(${1 + (holdProgress / 100) * 0.2})`
+                              : 'scale(1)',
+                        }
+                      : undefined
+                  }
                 />
 
+                {/* Expanding soft ripple rings during hold (disabled on reduced motion) */}
+                {!prefersReducedMotion && status === 'holding' && (
+                  <>
+                    <div className="absolute -inset-2 rounded-full border-2 border-rose-500/40 animate-ping pointer-events-none [animation-duration:1.5s]" />
+                    <div className="absolute -inset-4 rounded-full border border-rose-400/30 animate-pulse pointer-events-none" />
+                  </>
+                )}
+
                 {/* SVG circular progress ring */}
-                <svg className="w-56 h-56 sm:w-60 sm:h-60 -rotate-90 relative pointer-events-none" viewBox="0 0 200 200">
+                <svg
+                  className="w-56 h-56 sm:w-60 sm:h-60 -rotate-90 relative pointer-events-none"
+                  viewBox="0 0 200 200"
+                >
                   <defs>
                     <linearGradient id="roseRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                       <stop offset="0%" stopColor="#fb7185" />
@@ -1201,11 +1276,15 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
                     strokeDashoffset={2 * Math.PI * 84 * (1 - holdProgress / 100)}
                     strokeLinecap="round"
                     fill="transparent"
-                    className="transition-all duration-75 drop-shadow-[0_0_12px_rgba(244,63,94,0.7)]"
+                    className={`${
+                      prefersReducedMotion || isCancelling
+                        ? 'transition-none'
+                        : 'transition-[stroke-dashoffset] duration-75 ease-linear'
+                    } drop-shadow-[0_0_12px_rgba(244,63,94,0.7)]`}
                   />
                 </svg>
 
-                {/* Central Premium Circular Action Button (160-176px) */}
+                {/* Central Premium Circular Action Button (160-176px - Size & Colors Strictly Unchanged) */}
                 <button
                   type="button"
                   tabIndex={0}
@@ -1221,17 +1300,17 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
                       setKeyboardConfirmOpen(true);
                     }
                   }}
-                  className={`absolute flex h-40 w-40 sm:h-44 sm:w-44 flex-col items-center justify-center rounded-full bg-gradient-to-tr from-rose-600 via-red-600 to-rose-700 text-white shadow-[inset_0_2px_4px_rgba(255,255,255,0.35),0_12px_36px_rgba(225,29,72,0.45)] transition-all duration-150 select-none touch-target ring-4 ring-rose-500/40 focus:outline-none focus:ring-4 focus:ring-rose-400 overflow-hidden ${
+                  className={`absolute flex h-40 w-40 sm:h-44 sm:w-44 flex-col items-center justify-center rounded-full bg-gradient-to-tr from-rose-600 via-red-600 to-rose-700 text-white shadow-[inset_0_2px_4px_rgba(255,255,255,0.35),0_12px_36px_rgba(225,29,72,0.45)] transition-colors duration-150 select-none touch-target ring-4 ring-rose-500/40 focus:outline-none focus:ring-4 focus:ring-rose-400 overflow-hidden ${
                     status === 'holding'
-                      ? 'scale-95 from-red-700 via-rose-700 to-red-800 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),0_0_40px_rgba(225,29,72,0.7)]'
+                      ? 'shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),0_0_40px_rgba(225,29,72,0.7)]'
                       : status === 'sending'
-                      ? 'scale-95 opacity-90'
-                      : 'hover:scale-105 active:scale-95'
+                      ? 'opacity-90'
+                      : ''
                   }`}
                   aria-label="Touch and hold for 2 seconds or press Enter to activate Emergency SOS"
                 >
-                  {/* Ripple on release */}
-                  {isRippling && (
+                  {/* Ripple on trigger */}
+                  {!prefersReducedMotion && isRippling && (
                     <span className="absolute inset-0 rounded-full bg-white/30 animate-ping pointer-events-none" />
                   )}
 
@@ -1779,17 +1858,17 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
                     {line.badge}
                   </div>
 
-                  {/* Middle: Title + short description */}
+                  {/* Middle: Title + short description - wrap cleanly onto up to two lines, no truncation */}
                   <div className="flex-1 min-w-0 pr-1">
-                    <p className="text-xs sm:text-sm font-bold text-foreground leading-snug truncate">
+                    <p className="text-xs sm:text-sm font-bold text-foreground leading-snug break-words line-clamp-2">
                       {line.title}
                     </p>
-                    <p className="text-[11px] text-muted-foreground leading-tight mt-0.5 truncate">
+                    <p className="text-[11px] text-muted-foreground leading-tight mt-0.5 break-words line-clamp-2">
                       {line.description}
                     </p>
                   </div>
 
-                  {/* Right: Fixed-width Call button on mobile, Copy fallback with Call note on desktop */}
+                  {/* Right: Fixed-width Call button on mobile, Copy fallback on desktop */}
                   {isDesktop ? (
                     <div className="flex flex-col items-end shrink-0">
                       <button
@@ -1800,22 +1879,25 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
                             description: 'Call from your phone to connect immediately.',
                           });
                         }}
-                        className="w-24 text-center py-2 px-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 font-bold text-xs whitespace-nowrap shadow-xs active:scale-95 transition touch-target flex items-center justify-center gap-1"
-                        title="Copy helpline number"
+                        className="w-20 sm:w-[88px] h-10 shrink-0 rounded-xl bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-bold text-xs whitespace-nowrap shadow-xs active:scale-95 transition touch-target flex items-center justify-center gap-1.5 px-3"
+                        title={`Copy ${line.badge} helpline number`}
+                        aria-label={`Copy ${line.badge}`}
                       >
-                        <Copy className="h-3.5 w-3.5 notranslate" />
-                        <span>Copy {line.badge}</span>
+                        <Copy className="h-3.5 w-3.5 notranslate shrink-0" />
+                        <span>Copy</span>
                       </button>
                       <span className="text-[9px] text-muted-foreground mt-0.5 whitespace-nowrap">
-                        Call from your phone
+                        Call via phone
                       </span>
                     </div>
                   ) : (
                     <a
                       href={`tel:${line.phone}`}
-                      className="w-24 shrink-0 text-center py-2 px-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs whitespace-nowrap shadow-xs active:scale-95 transition touch-target"
+                      className="w-20 sm:w-[88px] h-10 shrink-0 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs whitespace-nowrap shadow-xs active:scale-95 transition touch-target flex items-center justify-center gap-1.5 px-3"
+                      aria-label={`Call ${line.badge}`}
                     >
-                      Call {line.badge}
+                      <Phone className="h-3.5 w-3.5 notranslate shrink-0" />
+                      <span>Call</span>
                     </a>
                   )}
                 </div>
@@ -1828,25 +1910,24 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <Heart className="h-3.5 w-3.5 text-primary notranslate" />
-                <span>Nearest hospitals ({hospitals.length})</span>
+                <span>Nearest hospitals ({deduplicatedHospitals.length})</span>
               </h3>
             </div>
 
             {isLoadingHospitals ? (
               <div className="p-4 rounded-2xl bg-muted/30 border border-border flex items-center justify-center text-xs text-muted-foreground gap-2">
                 <Loader2 className="h-4 w-4 animate-spin text-primary notranslate" />
-                <span>Locating nearest emergency hospitals in Asansol...</span>
+                <span>Locating nearest emergency hospitals...</span>
               </div>
-            ) : hospitals.length > 0 ? (
+            ) : deduplicatedHospitals.length > 0 ? (
               <div className="space-y-2.5">
-                {hospitals.map((hosp) => {
-                  const hasPhone = Boolean(hosp.phone && hosp.phone.trim().length > 3);
-                  const userLat = userCoords?.lat || ASANSOL_CENTER.lat;
-                  const userLng = userCoords?.lng || ASANSOL_CENTER.lng;
+                {deduplicatedHospitals.map((hosp) => {
+                  const cleanPhone = hosp.phone ? hosp.phone.replace(/[^0-9]/g, '') : '';
+                  const hasPhone = cleanPhone.length >= 7;
 
                   return (
                     <div
-                      key={hosp.id}
+                      key={hosp.id || `${hosp.name}-${hosp.latitude}`}
                       className="p-3.5 rounded-2xl bg-muted/40 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
                     >
                       <div className="min-w-0 flex-1">
@@ -1861,46 +1942,43 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
                             <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[10px] font-bold">
                               24/7 Trauma / Emergency
                             </span>
-                          ) : (
-                            <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold">
-                              Hospital
+                          ) : hosp.type ? (
+                            <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold capitalize">
+                              {hosp.type.replace('_', ' ')}
                             </span>
-                          )}
+                          ) : null}
                         </div>
+                        {hosp.address && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5 break-words line-clamp-1">
+                            {hosp.address}
+                          </p>
+                        )}
                       </div>
 
-                      {/* Action buttons: Directions always shown + small Map fallback; Call shown ONLY if valid phone */}
-                      <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                        <div className={`flex items-center gap-1.5 ${hasPhone ? 'flex-1 sm:w-auto' : 'w-full'}`}>
-                          <a
-                            href={`https://www.google.com/maps/dir/?api=1&destination=${hosp.latitude},${hosp.longitude}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`text-center py-2 px-3 rounded-xl border border-border bg-card hover:bg-muted text-foreground font-bold text-xs whitespace-nowrap transition touch-target flex items-center justify-center gap-1.5 ${
-                              hasPhone ? 'flex-1 sm:w-28' : 'w-full'
-                            }`}
-                          >
-                            <Navigation className="h-3.5 w-3.5 text-primary notranslate" />
-                            <span>Directions</span>
-                          </a>
-                          <a
-                            href={`https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=${userLat}%2C${userLng}%3B${hosp.latitude}%2C${hosp.longitude}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 rounded-xl border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground text-[10px] font-semibold transition touch-target shrink-0"
-                            title="OpenStreetMap directions fallback"
-                            aria-label="OpenStreetMap directions fallback"
-                          >
-                            Map
-                          </a>
-                        </div>
+                      {/* Action buttons: Directions (Google Maps link) and Call (only if valid phone exists; otherwise Directions is full width). Removed small "Map" button. */}
+                      <div
+                        className={`flex items-center gap-2 ${
+                          hasPhone ? 'grid grid-cols-2 sm:flex sm:w-auto' : 'w-full sm:w-auto'
+                        } shrink-0`}
+                      >
+                        <a
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${hosp.latitude},${hosp.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`text-center py-2 px-3 rounded-xl border border-border bg-card hover:bg-muted text-foreground font-bold text-xs whitespace-nowrap transition touch-target flex items-center justify-center gap-1.5 ${
+                            hasPhone ? 'w-full sm:w-28' : 'w-full sm:w-44'
+                          }`}
+                        >
+                          <Navigation className="h-3.5 w-3.5 text-primary notranslate shrink-0" />
+                          <span>Directions</span>
+                        </a>
 
                         {hasPhone && (
                           <a
                             href={`tel:${hosp.phone}`}
-                            className="flex-1 sm:w-24 text-center py-2 px-3 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs whitespace-nowrap transition touch-target flex items-center justify-center gap-1.5"
+                            className="w-full sm:w-24 text-center py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs whitespace-nowrap transition touch-target flex items-center justify-center gap-1.5 shadow-xs"
                           >
-                            <Phone className="h-3.5 w-3.5 notranslate" />
+                            <Phone className="h-3.5 w-3.5 notranslate shrink-0" />
                             <span>Call</span>
                           </a>
                         )}
@@ -1910,8 +1988,19 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
                 })}
               </div>
             ) : (
-              <div className="p-3 rounded-xl bg-muted/30 border border-border text-xs text-muted-foreground">
-                Hospital directory centered on Asansol District Hospital &amp; HLG Memorial.
+              /* Fallback: If no hospitals found or fetch fails, remove whole list and show ONE simple button */
+              <div className="pt-1">
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=hospital+near+${
+                    userCoords?.lat || ASANSOL_CENTER.lat
+                  },${userCoords?.lng || ASANSOL_CENTER.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 px-4 rounded-2xl border border-border bg-card hover:bg-muted text-foreground font-black text-xs flex items-center justify-center gap-2 transition active:scale-[0.98] shadow-sm touch-target"
+                >
+                  <Navigation className="h-4 w-4 text-primary notranslate shrink-0" />
+                  <span>Find hospitals near me in Google Maps</span>
+                </a>
               </div>
             )}
           </div>

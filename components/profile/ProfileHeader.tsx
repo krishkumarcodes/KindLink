@@ -177,7 +177,7 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
   // 2. Else if user profile has saved home_neighborhood: show saved home area
   // 3. Else: show friendly prompt "Add your area" with link opening Edit Profile
   // Never show college name or hard-coded fallback!
-  const isLiveGpsOn = Boolean(userCoords?.isLive && userAreaName?.trim());
+  const isLiveGpsOn = Boolean(userCoords?.isLive && userAreaName?.trim() && userAreaName !== 'Set your area');
   const savedHomeArea = (userProfile.homeNeighborhood || (userProfile as any).home_neighborhood)?.trim();
   const liveAreaName = userAreaName?.trim();
 

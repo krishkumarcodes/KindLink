@@ -24,70 +24,26 @@ import {
   Users,
   ShieldCheck,
   Check,
+  ChevronDown,
+  Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { FieldVisibility, ProfileVisibilitySettings } from '@/lib/data/types';
 import { PhoneInput } from './PhoneInput';
+import {
+  INDIAN_LANGUAGES,
+  INTERNATIONAL_LANGUAGES,
+  SUPPORTED_LANGUAGES,
+  getLanguageDisplay,
+  LanguageOption,
+} from '@/lib/translate/googleTranslate';
 
 interface EditProfileModalProps {
   open: boolean;
   onClose: () => void;
 }
 
-// Indian and International Languages
-const ALL_AVAILABLE_LANGUAGES = [
-  // Major Indian Languages
-  'Hindi',
-  'Bengali',
-  'English',
-  'Urdu',
-  'Santali',
-  'Bhojpuri',
-  'Maithili',
-  'Nepali',
-  'Odia',
-  'Assamese',
-  'Marathi',
-  'Gujarati',
-  'Punjabi',
-  'Tamil',
-  'Telugu',
-  'Kannada',
-  'Malayalam',
-  'Sindhi',
-  'Konkani',
-  'Dogri',
-  'Manipuri',
-  'Bodo',
-  'Kashmiri',
-  'Sanskrit',
-  'Marwari',
-  'Chhattisgarhi',
-  'Magahi',
-  'Haryanvi',
-  // Major International Languages
-  'Arabic',
-  'French',
-  'Spanish',
-  'German',
-  'Portuguese',
-  'Italian',
-  'Russian',
-  'Chinese',
-  'Japanese',
-  'Korean',
-  'Indonesian',
-  'Turkish',
-  'Persian',
-  'Vietnamese',
-  'Thai',
-  'Dutch',
-  'Polish',
-  'Swahili',
-  'Tagalog',
-  'Malay',
-];
 
 interface GeocodeItem {
   id: string;
@@ -111,7 +67,8 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
   const [isPhoneValid, setIsPhoneValid] = useState(true);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
-  const [languageSearch, setLanguageSearch] = useState('');
+  const [isLanguagePickerOpen, setIsLanguagePickerOpen] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState('');
   const [customLanguage, setCustomLanguage] = useState('');
 
   // Visibility settings
@@ -149,11 +106,19 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
       setNeighborhood(userProfile.homeNeighborhood || '');
       setPhone(userProfile.phone || '');
       setAvatarPreview(userProfile.avatarUrl || null);
-      setSelectedLanguages(
+      const rawLangs =
         userProfile.languages && userProfile.languages.length > 0
-          ? [...userProfile.languages]
-          : ['Bengali', 'Hindi', 'English']
-      );
+          ? userProfile.languages
+          : ['Bengali', 'Hindi', 'English'];
+      const normalized = rawLangs.map((item) => {
+        const match = SUPPORTED_LANGUAGES.find(
+          (l) =>
+            l.name.toLowerCase() === item.toLowerCase() ||
+            l.code.toLowerCase() === item.toLowerCase()
+        );
+        return match ? match.code : item;
+      });
+      setSelectedLanguages(normalized);
       setVisibility({
         phone: userProfile.visibility?.phone || 'helpers',
         email: userProfile.visibility?.email || 'private',
@@ -167,6 +132,7 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
       setAddressSuggestions([]);
     }
   }, [open, userProfile]);
+
 
   // Preserve window.scrollY across modal open and close
   useEffect(() => {
@@ -368,12 +334,31 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
     }
   };
 
-  // Toggle languages
-  const toggleLanguage = (lang: string) => {
-    if (selectedLanguages.includes(lang)) {
-      setSelectedLanguages(selectedLanguages.filter((l) => l !== lang));
+  // Toggle languages (normalizes to language code when supported)
+  const toggleLanguage = (codeOrName: string) => {
+    const match = SUPPORTED_LANGUAGES.find(
+      (l) =>
+        l.code.toLowerCase() === codeOrName.toLowerCase() ||
+        l.name.toLowerCase() === codeOrName.toLowerCase()
+    );
+    const code = match ? match.code : codeOrName;
+
+    if (
+      selectedLanguages.some(
+        (l) =>
+          l.toLowerCase() === code.toLowerCase() ||
+          (match && l.toLowerCase() === match.name.toLowerCase())
+      )
+    ) {
+      setSelectedLanguages(
+        selectedLanguages.filter(
+          (l) =>
+            l.toLowerCase() !== code.toLowerCase() &&
+            (!match || l.toLowerCase() !== match.name.toLowerCase())
+        )
+      );
     } else {
-      setSelectedLanguages([...selectedLanguages, lang]);
+      setSelectedLanguages([...selectedLanguages, code]);
     }
   };
 
@@ -381,18 +366,48 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
     if ('key' in e && e.key !== 'Enter') return;
     e.preventDefault();
     const trimmed = customLanguage.trim();
-    if (trimmed && !selectedLanguages.includes(trimmed)) {
-      setSelectedLanguages([...selectedLanguages, trimmed]);
-      setCustomLanguage('');
+    if (!trimmed) return;
+    const match = SUPPORTED_LANGUAGES.find(
+      (l) =>
+        l.name.toLowerCase() === trimmed.toLowerCase() ||
+        l.code.toLowerCase() === trimmed.toLowerCase()
+    );
+    const codeToSave = match ? match.code : trimmed;
+    if (
+      !selectedLanguages.some(
+        (l) =>
+          l.toLowerCase() === codeToSave.toLowerCase() ||
+          (match && l.toLowerCase() === match.name.toLowerCase())
+      )
+    ) {
+      setSelectedLanguages([...selectedLanguages, codeToSave]);
     }
+    setCustomLanguage('');
   };
 
-  // Filter languages for chip browser
-  const filteredAvailableLanguages = useMemo(() => {
-    const q = languageSearch.trim().toLowerCase();
-    if (!q) return ALL_AVAILABLE_LANGUAGES;
-    return ALL_AVAILABLE_LANGUAGES.filter((l) => l.toLowerCase().includes(q));
-  }, [languageSearch]);
+  // Filter languages for the searchable picker sheet
+  const pickerFilteredIndian = useMemo(() => {
+    const q = pickerSearch.trim().toLowerCase();
+    if (!q) return INDIAN_LANGUAGES;
+    return INDIAN_LANGUAGES.filter(
+      (l) =>
+        l.name.toLowerCase().includes(q) ||
+        l.nativeName.toLowerCase().includes(q) ||
+        l.code.toLowerCase().includes(q)
+    );
+  }, [pickerSearch]);
+
+  const pickerFilteredIntl = useMemo(() => {
+    const q = pickerSearch.trim().toLowerCase();
+    if (!q) return INTERNATIONAL_LANGUAGES;
+    return INTERNATIONAL_LANGUAGES.filter(
+      (l) =>
+        l.name.toLowerCase().includes(q) ||
+        l.nativeName.toLowerCase().includes(q) ||
+        l.code.toLowerCase().includes(q)
+    );
+  }, [pickerSearch]);
+
 
   // Save profile changes
   const handleSubmit = async (e: React.FormEvent) => {
@@ -481,7 +496,7 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
         <div className="sm:hidden mx-auto my-2 w-12 h-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
 
         {/* STICKY HEADER */}
-        <div className="shrink-0 px-5 sm:px-6 py-4 border-b border-border bg-card/95 backdrop-blur-md flex items-center justify-between z-10">
+        <div className="shrink-0 px-5 sm:px-6 py-4 border-b border-border bg-card flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary shrink-0">
               <User className="h-5 w-5 notranslate" />
@@ -791,18 +806,21 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
                   <Lock className="h-3 w-3 notranslate" />
                   <span>Phone Visibility:</span>
                 </span>
-                <select
-                  aria-label="Phone number visibility"
-                  value={visibility.phone || 'helpers'}
-                  onChange={(e) =>
-                    setVisibility({ ...visibility, phone: e.target.value as FieldVisibility })
-                  }
-                  className="px-2.5 py-1 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="public">Public (Everyone)</option>
-                  <option value="helpers">Helpers &amp; Matches only</option>
-                  <option value="private">Private (Only Me &amp; SOS)</option>
-                </select>
+                <div className="relative inline-flex items-center">
+                  <select
+                    aria-label="Phone number visibility"
+                    value={visibility.phone || 'helpers'}
+                    onChange={(e) =>
+                      setVisibility({ ...visibility, phone: e.target.value as FieldVisibility })
+                    }
+                    className="appearance-none pl-3 pr-7 py-1 rounded-full border border-border bg-muted/50 hover:bg-muted text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer transition text-left"
+                  >
+                    <option value="public">Public (Everyone)</option>
+                    <option value="helpers">Helpers &amp; Matches only</option>
+                    <option value="private">Private (Only Me &amp; SOS)</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 h-3.5 w-3.5 text-muted-foreground pointer-events-none shrink-0 notranslate" />
+                </div>
               </div>
             </div>
 
@@ -832,18 +850,21 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
                   <Lock className="h-3 w-3 notranslate" />
                   <span>Email Visibility:</span>
                 </span>
-                <select
-                  aria-label="Email address visibility"
-                  value={visibility.email || 'private'}
-                  onChange={(e) =>
-                    setVisibility({ ...visibility, email: e.target.value as FieldVisibility })
-                  }
-                  className="px-2.5 py-1 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="public">Public (Everyone)</option>
-                  <option value="helpers">Helpers &amp; Matches only</option>
-                  <option value="private">Private (Only Me)</option>
-                </select>
+                <div className="relative inline-flex items-center">
+                  <select
+                    aria-label="Email address visibility"
+                    value={visibility.email || 'private'}
+                    onChange={(e) =>
+                      setVisibility({ ...visibility, email: e.target.value as FieldVisibility })
+                    }
+                    className="appearance-none pl-3 pr-7 py-1 rounded-full border border-border bg-muted/50 hover:bg-muted text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer transition text-left"
+                  >
+                    <option value="public">Public (Everyone)</option>
+                    <option value="helpers">Helpers &amp; Matches only</option>
+                    <option value="private">Private (Only Me)</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 h-3.5 w-3.5 text-muted-foreground pointer-events-none shrink-0 notranslate" />
+                </div>
               </div>
             </div>
 
@@ -875,21 +896,24 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
                   <Lock className="h-3 w-3 notranslate" />
                   <span>Organisation Visibility:</span>
                 </span>
-                <select
-                  aria-label="Organisation visibility"
-                  value={visibility.organisation || 'public'}
-                  onChange={(e) =>
-                    setVisibility({
-                      ...visibility,
-                      organisation: e.target.value as FieldVisibility,
-                    })
-                  }
-                  className="px-2.5 py-1 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="public">Public (Everyone)</option>
-                  <option value="helpers">Helpers only</option>
-                  <option value="private">Private (Only Me)</option>
-                </select>
+                <div className="relative inline-flex items-center">
+                  <select
+                    aria-label="Organisation visibility"
+                    value={visibility.organisation || 'public'}
+                    onChange={(e) =>
+                      setVisibility({
+                        ...visibility,
+                        organisation: e.target.value as FieldVisibility,
+                      })
+                    }
+                    className="appearance-none pl-3 pr-7 py-1 rounded-full border border-border bg-muted/50 hover:bg-muted text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer transition text-left"
+                  >
+                    <option value="public">Public (Everyone)</option>
+                    <option value="helpers">Helpers only</option>
+                    <option value="private">Private (Only Me)</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 h-3.5 w-3.5 text-muted-foreground pointer-events-none shrink-0 notranslate" />
+                </div>
               </div>
             </div>
 
@@ -962,24 +986,27 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
                 Matches community help requests within 2 to 5 km of your primary neighborhood.
               </p>
 
-              {/* Visibility Selector for Area */}
+              {/* Visibility Selector for Area (Label and arrow centered in a compact pill) */}
               <div className="flex items-center justify-between pt-1">
                 <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
                   <Lock className="h-3 w-3 notranslate" />
                   <span>Area Visibility:</span>
                 </span>
-                <select
-                  aria-label="Area visibility"
-                  value={visibility.area || 'public'}
-                  onChange={(e) =>
-                    setVisibility({ ...visibility, area: e.target.value as FieldVisibility })
-                  }
-                  className="px-2.5 py-1 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="public">Public (Everyone)</option>
-                  <option value="helpers">Helpers &amp; Matches only</option>
-                  <option value="private">Private (Only Me)</option>
-                </select>
+                <div className="relative inline-flex items-center">
+                  <select
+                    aria-label="Area visibility"
+                    value={visibility.area || 'public'}
+                    onChange={(e) =>
+                      setVisibility({ ...visibility, area: e.target.value as FieldVisibility })
+                    }
+                    className="appearance-none pl-3 pr-7 py-1 rounded-full border border-border bg-muted/50 hover:bg-muted text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer transition text-left"
+                  >
+                    <option value="public">Public (Everyone)</option>
+                    <option value="helpers">Helpers &amp; Matches only</option>
+                    <option value="private">Private (Only Me)</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 h-3.5 w-3.5 text-muted-foreground pointer-events-none shrink-0 notranslate" />
+                </div>
               </div>
             </div>
           </div>
@@ -988,90 +1015,69 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
               SECTION 5: LANGUAGES SPOKEN
              ========================================================================= */}
           <div className="space-y-3">
-            <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Globe className="h-3.5 w-3.5 text-primary notranslate" />
-              <span>Languages Spoken ({selectedLanguages.length})</span>
-            </h3>
-
-            {/* Active selected languages chips */}
-            {selectedLanguages.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 p-2.5 rounded-2xl bg-muted/30 border border-border">
-                {selectedLanguages.map((lang) => (
-                  <span
-                    key={`sel-${lang}`}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary text-white text-xs font-bold shadow-2xs"
-                  >
-                    <span>{lang}</span>
-                    <button
-                      type="button"
-                      onClick={() => toggleLanguage(lang)}
-                      className="hover:opacity-75 transition"
-                      aria-label={`Remove ${lang}`}
-                    >
-                      <X className="h-3 w-3 notranslate" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Quick search filter for language browser */}
-            <div className="relative flex items-center">
-              <Search className="absolute left-3 h-3.5 w-3.5 text-muted-foreground notranslate" />
-              <input
-                type="text"
-                value={languageSearch}
-                onChange={(e) => setLanguageSearch(e.target.value)}
-                placeholder="Search languages (Hindi, Santali, Spanish, Arabic, etc.)..."
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-
-            {/* Language Chips */}
-            <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1">
-              {filteredAvailableLanguages.map((lang) => {
-                const isSelected = selectedLanguages.includes(lang);
-                return (
-                  <button
-                    key={lang}
-                    type="button"
-                    onClick={() => toggleLanguage(lang)}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition touch-target ${
-                      isSelected
-                        ? 'bg-primary text-white shadow-2xs'
-                        : 'bg-muted/70 text-muted-foreground hover:text-foreground hover:bg-muted border border-border/80'
-                    }`}
-                  >
-                    {isSelected ? `✓ ${lang}` : `+ ${lang}`}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Add custom / other language free-text input */}
-            <div className="flex gap-2 pt-1">
-              <input
-                type="text"
-                value={customLanguage}
-                onChange={(e) => setCustomLanguage(e.target.value)}
-                onKeyDown={handleAddCustomLanguage}
-                placeholder="Add other dialect / language..."
-                className="flex-1 px-3 py-2 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
+            <div className="flex items-center justify-between">
+              <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Globe className="h-3.5 w-3.5 text-primary notranslate" />
+                <span>Languages Spoken ({selectedLanguages.length})</span>
+              </h3>
               <button
                 type="button"
-                onClick={handleAddCustomLanguage}
-                disabled={!customLanguage.trim()}
-                className="px-4 py-2 rounded-xl bg-background border border-border hover:bg-muted text-xs font-bold text-primary transition disabled:opacity-40"
+                onClick={() => setIsLanguagePickerOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 text-xs font-bold transition touch-target"
               >
-                Add
+                <Plus className="h-3.5 w-3.5 notranslate" />
+                <span>Add language</span>
               </button>
             </div>
+
+            {/* Active selected languages chips (Full names and native script) */}
+            {selectedLanguages.length > 0 ? (
+              <div className="flex flex-wrap gap-2 p-3 rounded-2xl bg-muted/30 border border-border">
+                {selectedLanguages.map((codeOrName) => {
+                  const info = getLanguageDisplay(codeOrName);
+                  return (
+                    <span
+                      key={`sel-${info.code}`}
+                      className="inline-flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-xl bg-card border border-border/80 text-foreground text-xs font-semibold shadow-2xs group hover:border-primary/40 transition"
+                    >
+                      <span className="flex flex-col min-w-0">
+                        <strong className="font-bold text-foreground leading-tight">{info.name}</strong>
+                        {info.nativeName !== info.name && (
+                          <span className="text-[10px] text-muted-foreground leading-tight font-normal" translate="no">
+                            {info.nativeName}
+                          </span>
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => toggleLanguage(codeOrName)}
+                        className="p-1 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition"
+                        aria-label={`Remove ${info.name}`}
+                      >
+                        <X className="h-3.5 w-3.5 notranslate" />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-muted/20 border border-dashed border-border text-center space-y-2">
+                <p className="text-xs text-muted-foreground">No languages selected yet.</p>
+                <button
+                  type="button"
+                  onClick={() => setIsLanguagePickerOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition shadow-xs"
+                >
+                  <Plus className="h-3.5 w-3.5 notranslate" />
+                  <span>Add language</span>
+                </button>
+              </div>
+            )}
           </div>
         </form>
 
-        {/* STICKY FOOTER */}
-        <div className="shrink-0 px-5 sm:px-6 py-4 border-t border-border bg-card/95 backdrop-blur-md flex items-center justify-end gap-3 z-10">
+        {/* STICKY FOOTER (Solid bg-card) */}
+        <div className="shrink-0 px-5 sm:px-6 py-4 border-t border-border bg-card flex items-center justify-end gap-3 z-10">
           <button
             type="button"
             onClick={onClose}
@@ -1090,6 +1096,205 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
             <span>{isSubmitting ? 'Saving Profile...' : 'Save Profile'}</span>
           </button>
         </div>
+
+        {/* SEARCHABLE LANGUAGE PICKER SHEET */}
+        {isLanguagePickerOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add Languages"
+            className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+            onClick={() => setIsLanguagePickerOpen(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full sm:max-w-md max-h-[85vh] sm:max-h-[80vh] rounded-t-3xl sm:rounded-3xl bg-card border border-border shadow-2xl flex flex-col overflow-hidden text-card-foreground"
+            >
+              {/* Picker Header */}
+              <div className="p-4 border-b border-border bg-card flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                    <Globe className="h-4 w-4 notranslate" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">Add Languages Spoken</h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      Select languages or add custom dialects
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsLanguagePickerOpen(false)}
+                  className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition"
+                  aria-label="Close language picker"
+                >
+                  <X className="h-4 w-4 notranslate" />
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="p-3 border-b border-border bg-muted/20 shrink-0">
+                <div className="flex items-center h-11 w-full px-3 rounded-xl bg-background border border-border focus-within:ring-2 focus-within:ring-primary/20 gap-2">
+                  <Search className="h-4 w-4 text-muted-foreground shrink-0 notranslate" />
+                  <input
+                    type="text"
+                    value={pickerSearch}
+                    onChange={(e) => setPickerSearch(e.target.value)}
+                    placeholder="Search languages (Hindi, Santali, Spanish)..."
+                    className="flex-1 h-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  />
+                  {pickerSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setPickerSearch('')}
+                      className="p-1 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3 w-3 notranslate" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Grouped Languages List */}
+              <div className="overflow-y-auto flex-1 p-3 space-y-4 overscroll-contain">
+                {/* Indian Languages */}
+                {pickerFilteredIndian.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Indian Languages ({pickerFilteredIndian.length})
+                    </div>
+                    <div className="grid grid-cols-1 gap-1">
+                      {pickerFilteredIndian.map((l) => {
+                        const isSelected =
+                          selectedLanguages.some(
+                            (item) =>
+                              item.toLowerCase() === l.code.toLowerCase() ||
+                              item.toLowerCase() === l.name.toLowerCase()
+                          );
+                        return (
+                          <button
+                            key={`pick-${l.code}`}
+                            type="button"
+                            onClick={() => toggleLanguage(l.code)}
+                            className={`flex items-center justify-between p-2.5 rounded-xl text-left transition text-xs font-semibold ${
+                              isSelected
+                                ? 'bg-primary/10 text-primary border border-primary/25'
+                                : 'hover:bg-muted text-foreground border border-transparent'
+                            }`}
+                          >
+                            <div className="min-w-0 flex flex-col">
+                              <span className="font-bold leading-tight">{l.name}</span>
+                              {l.nativeName !== l.name && (
+                                <span className="text-[10px] text-muted-foreground font-normal" translate="no">
+                                  {l.nativeName}
+                                </span>
+                              )}
+                            </div>
+                            {isSelected ? (
+                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
+                                <Check className="h-3 w-3 stroke-[3] notranslate" />
+                              </div>
+                            ) : (
+                              <div className="h-5 w-5 rounded-full border border-border" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* International Languages */}
+                {pickerFilteredIntl.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      International Languages ({pickerFilteredIntl.length})
+                    </div>
+                    <div className="grid grid-cols-1 gap-1">
+                      {pickerFilteredIntl.map((l) => {
+                        const isSelected =
+                          selectedLanguages.some(
+                            (item) =>
+                              item.toLowerCase() === l.code.toLowerCase() ||
+                              item.toLowerCase() === l.name.toLowerCase()
+                          );
+                        return (
+                          <button
+                            key={`pick-${l.code}`}
+                            type="button"
+                            onClick={() => toggleLanguage(l.code)}
+                            className={`flex items-center justify-between p-2.5 rounded-xl text-left transition text-xs font-semibold ${
+                              isSelected
+                                ? 'bg-primary/10 text-primary border border-primary/25'
+                                : 'hover:bg-muted text-foreground border border-transparent'
+                            }`}
+                          >
+                            <div className="min-w-0 flex flex-col">
+                              <span className="font-bold leading-tight">{l.name}</span>
+                              {l.nativeName !== l.name && (
+                                <span className="text-[10px] text-muted-foreground font-normal" translate="no">
+                                  {l.nativeName}
+                                </span>
+                              )}
+                            </div>
+                            {isSelected ? (
+                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
+                                <Check className="h-3 w-3 stroke-[3] notranslate" />
+                              </div>
+                            ) : (
+                              <div className="h-5 w-5 rounded-full border border-border" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Add custom dialect / other language input */}
+                <div className="pt-2 border-t border-border/60 space-y-1.5">
+                  <label className="text-[11px] font-bold text-muted-foreground px-1 block">
+                    Add Other Language / Dialect
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={customLanguage}
+                      onChange={(e) => setCustomLanguage(e.target.value)}
+                      onKeyDown={handleAddCustomLanguage}
+                      placeholder="e.g. Marwari, Bhojpuri, Angika..."
+                      className="flex-1 px-3 py-2 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCustomLanguage}
+                      disabled={!customLanguage.trim()}
+                      className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition disabled:opacity-40"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Picker Footer */}
+              <div className="p-3 border-t border-border bg-card flex items-center justify-between shrink-0">
+                <span className="text-xs text-muted-foreground font-semibold px-1">
+                  {selectedLanguages.length} selected
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsLanguagePickerOpen(false)}
+                  className="px-5 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold transition shadow-xs"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

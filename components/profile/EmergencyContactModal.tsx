@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, ShieldAlert, AlertCircle, Info, Loader2, User, HeartHandshake } from 'lucide-react';
+import { X, ShieldAlert, AlertCircle, Loader2, HeartHandshake } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmergencyContact } from '@/lib/data/types';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
-import { PhoneInput } from './PhoneInput';
+import { useBodyScrollLock } from '@/components/ui/OverlayPortal';
+import { PhoneInput, detectUserCountry } from './PhoneInput';
 
 export interface EmergencyContactModalProps {
   open: boolean;
@@ -41,6 +42,8 @@ export function EmergencyContactModal({
   const [customRelation, setCustomRelation] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useBodyScrollLock(open);
+
   // Sync state whenever modal opens or contact changes
   useEffect(() => {
     if (open) {
@@ -66,17 +69,6 @@ export function EmergencyContactModal({
       }
     }
   }, [open, contact]);
-
-  // Preserve window.scrollY across modal open and close
-  useEffect(() => {
-    if (!open) return;
-    const savedScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
-    return () => {
-      if (typeof window !== 'undefined' && window.scrollY !== savedScrollY) {
-        window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior });
-      }
-    };
-  }, [open]);
 
   // Handle escape key
   useEffect(() => {
@@ -158,13 +150,22 @@ export function EmergencyContactModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="emergency-contact-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 dark:bg-black/75 backdrop-blur-xs animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isSubmitting) {
+          onClose();
+        }
+      }}
     >
-      <div className="relative w-full max-w-md rounded-3xl bg-card border border-border p-5 sm:p-6 shadow-2xl text-left flex flex-col max-h-[92vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-border shrink-0">
+      {/* Single Surface Panel (Unified solid bg-card with matching header & footer) */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-md rounded-3xl bg-card border border-border shadow-2xl text-left flex flex-col max-h-[88dvh] overflow-hidden text-card-foreground animate-in zoom-in-95 duration-150"
+      >
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-10 px-5 sm:px-6 py-4 border-b border-border bg-card flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
               <ShieldAlert className="h-5 w-5 notranslate" />
             </div>
             <div>
@@ -187,8 +188,8 @@ export function EmergencyContactModal({
         </div>
 
         {/* Scrollable Form Body */}
-        <form onSubmit={handleSubmit} className="overflow-y-auto space-y-4 py-4 flex-1">
-          {/* Honest notice banner */}
+        <form onSubmit={handleSubmit} className="overflow-y-auto overscroll-contain space-y-4 px-5 sm:px-6 py-4 flex-1">
+          {/* Notice banner */}
           <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-900 dark:text-rose-200 space-y-1">
             <div className="flex items-center gap-1.5 font-bold text-xs text-rose-700 dark:text-rose-300">
               <AlertCircle className="h-3.5 w-3.5 notranslate shrink-0" />
@@ -217,7 +218,7 @@ export function EmergencyContactModal({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Ramesh Sharma, Dr. Sunita Roy"
                 maxLength={60}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target shadow-inner"
               />
             </div>
             <p className="text-[10px] text-muted-foreground mt-1">
@@ -254,7 +255,7 @@ export function EmergencyContactModal({
 
           {/* Custom relationship input when 'Custom' is selected */}
           {selectedRelation === 'Custom' && (
-            <div className="animate-fade-in pl-1">
+            <div className="animate-in fade-in pl-1">
               <label
                 htmlFor="emergency-custom-relationship"
                 className="block text-xs font-bold text-foreground mb-1"
@@ -274,12 +275,13 @@ export function EmergencyContactModal({
             </div>
           )}
 
-          {/* Phone Number with International PhoneInput */}
+          {/* Phone Number with International PhoneInput (defaults to India +91 / local, never US +1) */}
           <div>
             <PhoneInput
               id="emergency-contact-phone"
               label="Contact Phone Number"
               required
+              defaultCountry="IN"
               value={phone}
               onChange={(val, valid) => {
                 setPhone(val);
@@ -290,8 +292,8 @@ export function EmergencyContactModal({
           </div>
         </form>
 
-        {/* Footer Actions */}
-        <div className="pt-4 border-t border-border flex items-center justify-end gap-3 shrink-0">
+        {/* Sticky Footer: Distinct disabled vs enabled states */}
+        <div className="sticky bottom-0 z-10 px-5 sm:px-6 py-4 border-t border-border bg-card flex items-center justify-end gap-3 shrink-0">
           <button
             type="button"
             onClick={onClose}
@@ -304,7 +306,11 @@ export function EmergencyContactModal({
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting || !isFormValid}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-soft transition touch-target disabled:opacity-50"
+            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition touch-target ${
+              isFormValid && !isSubmitting
+                ? 'bg-primary hover:bg-primary-hover text-white shadow-soft cursor-pointer active:scale-95'
+                : 'bg-muted text-muted-foreground border border-border/80 cursor-not-allowed opacity-70 shadow-none'
+            }`}
           >
             {isSubmitting && <Loader2 className="h-4 w-4 animate-spin notranslate" />}
             <span>{isSubmitting ? 'Saving...' : 'Save Contact'}</span>

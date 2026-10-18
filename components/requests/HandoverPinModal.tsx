@@ -156,7 +156,7 @@ export function HandoverPinModal({
       className="p-0 overflow-hidden"
     >
       {/* HEADER */}
-      <div className="sticky top-0 z-10 px-5 py-4 bg-card/95 backdrop-blur-md border-b border-border/80 flex items-center justify-between">
+      <div className="sticky top-0 z-10 px-5 py-4 bg-card border-b border-border/80 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl shadow-xs text-white"

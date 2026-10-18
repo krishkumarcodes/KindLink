@@ -10,7 +10,6 @@ import {
   ChevronRight,
   ChevronLeft,
   CheckCircle2,
-  Atom,
   AlertTriangle,
   MapPin,
   Sparkles,
@@ -29,6 +28,9 @@ import {
   Compass,
   Search,
   Share2,
+  X,
+  Tag,
+  Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
@@ -40,6 +42,14 @@ import { PinDropMap } from '@/components/location/PinDropMap';
 import { HelpCategory, UrgencyLevel, DraftRequest, HelpRequest } from '@/lib/data/types';
 import { EmergencyStoryCardModal } from '@/components/requests/EmergencyStoryCardModal';
 import { dataAdapter } from '@/lib/data';
+import {
+  STANDARD_CATEGORIES,
+  getCategoryByKey,
+  getSuggestedTagsForCategory,
+  formatCategoryTitle,
+} from '@/lib/data/categories';
+import { getCategoryToken } from '@/lib/data/categoryColors';
+import { validateCustomCategoryLabel, validateTag } from '@/lib/utils/content-filter';
 
 const DRAFT_STORAGE_KEY = 'kindlink_new_request_draft_v2';
 
@@ -49,6 +59,7 @@ export function NewRequestWizard() {
     userCoords: providerCoords,
     userAreaName: providerAreaName,
     accuracy: providerAccuracy,
+    savedPlaces,
     requestLiveLocation,
   } = useLocation();
 
@@ -59,45 +70,85 @@ export function NewRequestWizard() {
   const [createdRequest, setCreatedRequest] = useState<HelpRequest | null>(null);
   const [storyModalOpen, setStoryModalOpen] = useState(false);
 
-  // Form State
+  // Form State - Categories & Custom Label
   const [category, setCategory] = useState<HelpCategory>('blood');
+  const [customCategoryLabel, setCustomCategoryLabel] = useState('');
+  const [customCategoryError, setCustomCategoryError] = useState('');
+
+  // Tags State
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+  const [tagError, setTagError] = useState('');
+
+  // Urgency & Core Fields
   const [urgency, setUrgency] = useState<UrgencyLevel>('critical');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
 
-  // Blood
+  // Category specific fields
+  // 1. Blood
   const [bloodGroup, setBloodGroup] = useState('O+');
   const [unitsNeeded, setUnitsNeeded] = useState(1);
-  const [hospitalName, setHospitalName] = useState('Asansol District Hospital, SB Gorai Road');
+  const [hospitalName, setHospitalName] = useState('');
   const [bloodNeededBy, setBloodNeededBy] = useState('Within 2 hours');
 
-  // Equipment
+  // 2. Equipment
   const [itemType, setItemType] = useState('Wheelchair');
   const [itemDuration, setItemDuration] = useState('3 days');
 
-  // Elderly
+  // 3. Elderly
   const [elderlyAidType, setElderlyAidType] = useState('Medicine Pickup');
   const [elderlyDuration, setElderlyDuration] = useState('1 hour');
   const [scheduledTime, setScheduledTime] = useState('Today 4:00 PM');
 
-  // Books
+  // 4. Books
   const [booksClassSubject, setBooksClassSubject] = useState('Class 10 CBSE Mathematics');
-  const [bookTitle, setBookTitle] = useState('NCERT Mathematics (Standard)');
+  const [bookTitle, setBookTitle] = useState('NCERT Mathematics');
   const [bookCondition, setBookCondition] = useState('Gently Used');
 
-  // Transport
-  const [pickupAddress, setPickupAddress] = useState('Asansol Railway Station (Platform 1 Exit)');
-  const [dropAddress, setDropAddress] = useState('Asansol District Hospital, SB Gorai Road');
+  // 5. Transport
+  const [pickupAddress, setPickupAddress] = useState('');
+  const [dropAddress, setDropAddress] = useState('');
   const [passengerCount, setPassengerCount] = useState(1);
   const [hasLuggage, setHasLuggage] = useState(false);
   const [wheelchairAccessible, setWheelchairAccessible] = useState(true);
+
+  // 6. Medicines & Pharmacy
+  const [medicineNames, setMedicineNames] = useState('');
+  const [prescriptionRequired, setPrescriptionRequired] = useState(false);
+
+  // 7. Food & Groceries
+  const [servingsCount, setServingsCount] = useState(2);
+  const [dietaryRestrictions, setDietaryRestrictions] = useState('');
+
+  // 8. Hospital Attendant
+  const [wardRoom, setWardRoom] = useState('');
+
+  // 9. Disaster Relief
+  const [hazardType, setHazardType] = useState('');
+  const [peopleCount, setPeopleCount] = useState(1);
+
+  // 10. Education
+  const [subjectGrade, setSubjectGrade] = useState('');
+
+  // 11. Clothes
+  const [sizesNeeded, setSizesNeeded] = useState('');
+
+  // 12. Home Repairs
+  const [repairType, setRepairType] = useState('');
+
+  // 13. Government Aid
+  const [schemeName, setSchemeName] = useState('');
+
+  // 14. Animal Care
+  const [animalType, setAnimalType] = useState('');
 
   // General Needed By Time (Step 3)
   const [neededByTime, setNeededByTime] = useState('Immediate (0-2 hours)');
 
   // Location & Contact (Step 4)
   const [locationMode, setLocationMode] = useState<'current' | 'custom'>('current');
-  const [locationName, setLocationName] = useState('Asansol District Hospital, SB Gorai Road');
+  const [locationName, setLocationName] = useState('');
   const [latitude, setLatitude] = useState(providerCoords?.lat || 23.6845);
   const [longitude, setLongitude] = useState(providerCoords?.lng || 86.9742);
   const [isLocating, setIsLocating] = useState(false);
@@ -118,31 +169,22 @@ export function NewRequestWizard() {
   // Review & Submit (Step 5)
   const [nearbyHelpersCount, setNearbyHelpersCount] = useState(14);
 
-  // Landmark presets in Asansol and surrounding coalfield zone
-  const landmarks = [
-    { name: 'Asansol District Hospital, SB Gorai Road', lat: 23.6845, lng: 86.9742 },
-    { name: 'Kalyanpur Housing Hub, Asansol', lat: 23.6889, lng: 86.9661 },
-    { name: 'HLG Memorial Hospital, Sen Raleigh Road', lat: 23.7012, lng: 86.9554 },
-    { name: 'Burnpur Riverside Road, Burnpur', lat: 23.6642, lng: 86.9388 },
-    { name: 'Ushagram Main Crossing, Asansol', lat: 23.6791, lng: 86.9814 },
-    { name: 'City Centre, Durgapur', lat: 23.5385, lng: 87.2941 },
-    { name: 'SNMMCH Hospital, Dhanbad', lat: 23.8143, lng: 86.4412 },
-  ];
-
   // Load draft from localStorage on initial render
   useEffect(() => {
     try {
       const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
       if (raw) {
         const draft: DraftRequest = JSON.parse(raw);
-        if (draft.title || draft.description) {
+        if (draft.title || draft.description || draft.customCategoryLabel) {
           setCategory(draft.category || 'blood');
+          setCustomCategoryLabel(draft.customCategoryLabel || '');
+          setTags(draft.tags || []);
           setUrgency(draft.urgency || 'critical');
           setTitle(draft.title || '');
           setDescription(draft.description || '');
           setBloodGroup(draft.bloodGroup || 'O+');
           setUnitsNeeded(draft.unitsNeeded || 1);
-          setHospitalName(draft.hospitalName || 'Asansol District Hospital');
+          setHospitalName(draft.hospitalName || '');
           setBloodNeededBy(draft.neededByTime || 'Within 2 hours');
           setItemType(draft.itemType || 'Wheelchair');
           setItemDuration(draft.itemDuration || '3 days');
@@ -152,17 +194,31 @@ export function NewRequestWizard() {
           setBooksClassSubject(draft.booksClassSubject || 'Class 10 CBSE Mathematics');
           setBookTitle(draft.bookTitle || 'NCERT Mathematics');
           setBookCondition(draft.bookCondition || 'Gently Used');
-          setPickupAddress(draft.pickupAddress || 'Asansol Railway Station');
-          setDropAddress(draft.dropAddress || 'Asansol District Hospital');
+          setPickupAddress(draft.pickupAddress || '');
+          setDropAddress(draft.dropAddress || '');
           setPassengerCount(draft.passengerCount || 1);
           setHasLuggage(Boolean(draft.hasLuggage));
           setWheelchairAccessible(Boolean(draft.wheelchairAccessible));
-          setLocationName(draft.locationName || 'Asansol District Hospital');
+          setLocationName(draft.locationName || '');
           if (draft.latitude) setLatitude(draft.latitude);
           if (draft.longitude) setLongitude(draft.longitude);
           if (draft.contactName) setContactName(draft.contactName);
           if (draft.contactRole) setContactRole(draft.contactRole);
           if (draft.phone) setPhone(draft.phone);
+          if (draft.categoryFields) {
+            if (draft.categoryFields.medicineNames) setMedicineNames(draft.categoryFields.medicineNames);
+            if (draft.categoryFields.prescriptionRequired !== undefined) setPrescriptionRequired(draft.categoryFields.prescriptionRequired);
+            if (draft.categoryFields.servingsCount) setServingsCount(draft.categoryFields.servingsCount);
+            if (draft.categoryFields.dietaryRestrictions) setDietaryRestrictions(draft.categoryFields.dietaryRestrictions);
+            if (draft.categoryFields.wardRoom) setWardRoom(draft.categoryFields.wardRoom);
+            if (draft.categoryFields.hazardType) setHazardType(draft.categoryFields.hazardType);
+            if (draft.categoryFields.peopleCount) setPeopleCount(draft.categoryFields.peopleCount);
+            if (draft.categoryFields.subjectGrade) setSubjectGrade(draft.categoryFields.subjectGrade);
+            if (draft.categoryFields.sizesNeeded) setSizesNeeded(draft.categoryFields.sizesNeeded);
+            if (draft.categoryFields.repairType) setRepairType(draft.categoryFields.repairType);
+            if (draft.categoryFields.schemeName) setSchemeName(draft.categoryFields.schemeName);
+            if (draft.categoryFields.animalType) setAnimalType(draft.categoryFields.animalType);
+          }
           setIsDraftRestored(true);
         }
       }
@@ -176,6 +232,22 @@ export function NewRequestWizard() {
     try {
       const draft: DraftRequest = {
         category,
+        customCategoryLabel: category === 'other' ? customCategoryLabel : undefined,
+        tags,
+        categoryFields: {
+          medicineNames,
+          prescriptionRequired,
+          servingsCount,
+          dietaryRestrictions,
+          wardRoom,
+          hazardType,
+          peopleCount,
+          subjectGrade,
+          sizesNeeded,
+          repairType,
+          schemeName,
+          animalType,
+        },
         urgency,
         title,
         description,
@@ -210,6 +282,20 @@ export function NewRequestWizard() {
     }
   }, [
     category,
+    customCategoryLabel,
+    tags,
+    medicineNames,
+    prescriptionRequired,
+    servingsCount,
+    dietaryRestrictions,
+    wardRoom,
+    hazardType,
+    peopleCount,
+    subjectGrade,
+    sizesNeeded,
+    repairType,
+    schemeName,
+    animalType,
     urgency,
     title,
     description,
@@ -257,6 +343,8 @@ export function NewRequestWizard() {
       setIsDraftRestored(false);
       setTitle('');
       setDescription('');
+      setCustomCategoryLabel('');
+      setTags([]);
       toast.info('Draft discarded');
     } catch {}
   };
@@ -264,30 +352,87 @@ export function NewRequestWizard() {
   // Category switch with smart default urgency
   const handleSelectCategory = (cat: HelpCategory) => {
     setCategory(cat);
-    // Smart defaults: blood and transport default to critical
-    if (cat === 'blood') {
-      setUrgency('critical');
-      setNeededByTime('Immediate (0-2 hours)');
-    } else if (cat === 'transport') {
-      setUrgency('critical');
-      setNeededByTime('Immediate (0-2 hours)');
-    } else if (cat === 'books') {
-      setUrgency('medium');
-      setNeededByTime('Within 24 hours');
+    const catObj = getCategoryByKey(cat);
+    if (catObj) {
+      if (catObj.isUrgent) {
+        setUrgency('critical');
+      } else {
+        setUrgency(cat === 'books' || cat === 'education' ? 'medium' : 'high');
+      }
+      setNeededByTime(catObj.responseExpectation || 'Immediate (0-2 hours)');
     } else {
       setUrgency('high');
       setNeededByTime('Within 2-4 hours');
     }
+    setCustomCategoryError('');
+  };
+
+  // Tag helpers
+  const handleAddCustomTag = () => {
+    if (!tagInput.trim()) return;
+    const res = validateTag(tagInput);
+    if (!res.valid || !res.sanitized) {
+      setTagError(res.error || 'Invalid tag.');
+      return;
+    }
+    if (tags.includes(res.sanitized)) {
+      setTagError('Tag already added.');
+      return;
+    }
+    if (tags.length >= 5) {
+      setTagError('Maximum 5 tags allowed.');
+      return;
+    }
+    setTags([...tags, res.sanitized]);
+    setTagInput('');
+    setTagError('');
+  };
+
+  const handleAddSuggestedTag = (suggested: string) => {
+    const res = validateTag(suggested);
+    if (!res.valid || !res.sanitized) return;
+    if (tags.includes(res.sanitized)) return;
+    if (tags.length >= 5) {
+      setTagError('Maximum 5 tags allowed.');
+      return;
+    }
+    setTags([...tags, res.sanitized]);
+    setTagError('');
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter((t) => t !== tagToRemove));
+    setTagError('');
   };
 
   // Step 1 -> Step 2
   const handleNextFromStep1 = () => {
+    if (category === 'other') {
+      const res = validateCustomCategoryLabel(customCategoryLabel);
+      if (!res.valid) {
+        setCustomCategoryError(res.error || 'Please enter a valid category name (3-40 characters).');
+        return;
+      }
+      setCustomCategoryError('');
+    }
+
     if (!title) {
       if (category === 'blood') setTitle(`${bloodGroup} Blood Urgently Needed`);
-      else if (category === 'equipment') setTitle(`${itemType} Needed`);
-      else if (category === 'elderly') setTitle(`Elderly Care: ${elderlyAidType}`);
+      else if (category === 'equipment') setTitle(`${itemType || 'Medical Gear'} Needed`);
+      else if (category === 'elderly') setTitle(`Elderly Care: ${elderlyAidType || 'Companion Aid'}`);
       else if (category === 'transport') setTitle('Emergency Hospital Escort');
-      else setTitle(`${bookTitle} Textbook Needed`);
+      else if (category === 'books') setTitle(`${bookTitle || 'Study Material'} Needed`);
+      else if (category === 'medicine') setTitle(medicineNames ? `Medicine: ${medicineNames}` : 'Prescription Medicine Pickup');
+      else if (category === 'food') setTitle('Emergency Food Support');
+      else if (category === 'hospital_attendant') setTitle('Hospital Attendant Needed');
+      else if (category === 'disaster_relief') setTitle('Emergency Disaster / Flood Aid');
+      else if (category === 'education') setTitle('Study Tutoring Assistance');
+      else if (category === 'clothes') setTitle('Clothing & Blanket Support');
+      else if (category === 'home_repairs') setTitle('Urgent Home Fix');
+      else if (category === 'government_aid') setTitle('Government Scheme Form Assistance');
+      else if (category === 'animal_care') setTitle('Animal Rescue & Pet Care');
+      else if (category === 'other') setTitle(`Other: ${customCategoryLabel.trim()}`);
+      else setTitle('Community Aid Request');
     }
     setErrorMsg('');
     setStep(2);
@@ -301,6 +446,10 @@ export function NewRequestWizard() {
     }
     if (!description.trim()) {
       setErrorMsg('Please enter a brief description of the requirement');
+      return;
+    }
+    if (category === 'other' && !customCategoryLabel.trim()) {
+      setErrorMsg('Please enter a custom category label');
       return;
     }
     setErrorMsg('');
@@ -452,6 +601,22 @@ export function NewRequestWizard() {
         title,
         description,
         category,
+        customCategoryLabel: category === 'other' ? customCategoryLabel.trim() : undefined,
+        tags,
+        categoryFields: {
+          medicineNames,
+          prescriptionRequired,
+          servingsCount,
+          dietaryRestrictions,
+          wardRoom,
+          hazardType,
+          peopleCount,
+          subjectGrade,
+          sizesNeeded,
+          repairType,
+          schemeName,
+          animalType,
+        },
         urgency,
         waitingMinutes: 1,
         locationName: locationFinal,
@@ -486,6 +651,8 @@ export function NewRequestWizard() {
         title,
         description,
         category,
+        customCategoryLabel: category === 'other' ? customCategoryLabel.trim() : undefined,
+        tags,
         urgency,
         waitingMinutes: 0,
         distanceKm: 0.1,
@@ -676,78 +843,83 @@ export function NewRequestWizard() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {[
-                {
-                  id: 'blood' as HelpCategory,
-                  title: 'Blood Donation',
-                  desc: 'Emergency blood units, platelets, or replacement donors',
-                  icon: <Droplets className="h-6 w-6 text-rose-500 notranslate" />,
-                  urgencyHint: 'Usually Critical',
-                  tagBg: 'bg-rose-500/10 text-rose-600 border-rose-500/20',
-                },
-                {
-                  id: 'transport' as HelpCategory,
-                  title: 'Emergency Transit',
-                  desc: 'Urgent hospital transit, clinic escort, wheelchair accessible transit',
-                  icon: <Car className="h-6 w-6 text-amber-500 notranslate" />,
-                  urgencyHint: 'Usually High',
-                  tagBg: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
-                },
-                {
-                  id: 'elderly' as HelpCategory,
-                  title: 'Elderly Care',
-                  desc: 'Prescription pickup, senior citizen companion, grocery delivery',
-                  icon: <Users className="h-6 w-6 text-blue-500 notranslate" />,
-                  urgencyHint: 'Flexible timing',
-                  tagBg: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
-                },
-                {
-                  id: 'equipment' as HelpCategory,
-                  title: 'Medical Equipment',
-                  desc: 'Wheelchairs, oxygen concentrators, walkers, nebulizers, crutches',
-                  icon: <Stethoscope className="h-6 w-6 text-teal-500 notranslate" />,
-                  urgencyHint: 'Standard priority',
-                  tagBg: 'bg-teal-500/10 text-teal-600 border-teal-500/20',
-                },
-                {
-                  id: 'books' as HelpCategory,
-                  title: 'Books & Study',
-                  desc: 'School textbooks, competitive exam notes, reference guides',
-                  icon: <BookOpen className="h-6 w-6 text-emerald-500 notranslate" />,
-                  urgencyHint: 'Community aid',
-                  tagBg: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
-                },
-              ].map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleSelectCategory(item.id)}
-                  className={`p-4 rounded-2xl border text-left transition-all duration-200 touch-target flex flex-col justify-between group active:scale-98 ${
-                    category === item.id
-                      ? 'border-primary bg-primary/10 shadow-md ring-2 ring-primary/30 -translate-y-0.5'
-                      : 'border-border/80 bg-background hover:bg-muted/60 hover:border-border hover:-translate-y-0.5'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="p-3 rounded-2xl bg-card border border-border shadow-xs group-hover:scale-105 transition">
-                      {item.icon}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {STANDARD_CATEGORIES.map((cat) => {
+                const token = getCategoryToken(cat.key);
+                const IconComponent = token.icon;
+                const isSelected = category === cat.key;
+
+                return (
+                  <button
+                    key={cat.key}
+                    type="button"
+                    onClick={() => handleSelectCategory(cat.key as HelpCategory)}
+                    className={`p-4 rounded-2xl border text-left transition-all duration-200 touch-target flex flex-col justify-between group active:scale-[0.98] min-h-[148px] ${
+                      isSelected
+                        ? 'border-primary bg-primary/10 shadow-md ring-2 ring-primary/30 -translate-y-0.5'
+                        : 'border-border/80 bg-background hover:bg-muted/60 hover:border-border hover:-translate-y-0.5'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between w-full">
+                      <div
+                        className="h-11 w-11 rounded-2xl flex items-center justify-center shrink-0 border transition-transform group-hover:scale-105"
+                        style={{
+                          backgroundColor: token.lightBg,
+                          borderColor: token.border,
+                          color: token.primary,
+                        }}
+                      >
+                        <IconComponent className="h-5 w-5 notranslate" />
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-border/80 bg-card/80 text-foreground/80">
+                          {cat.defaultUrgencyHint}
+                        </span>
+                        {isSelected && (
+                          <CheckCircle2 className="h-4 w-4 text-primary shrink-0 notranslate" />
+                        )}
+                      </div>
                     </div>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${item.tagBg}`}
-                    >
-                      {item.urgencyHint}
-                    </span>
-                  </div>
-                  <div className="mt-3.5">
-                    <h3 className="text-sm font-bold text-foreground">{item.title}</h3>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                      {item.desc}
-                    </p>
-                  </div>
-                </button>
-              ))}
+                    <div className="mt-3">
+                      <h3 className="text-sm font-bold text-foreground leading-snug truncate">
+                        {cat.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                        {cat.description}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
+
+            {/* Custom Category Input (shown when Other is selected) */}
+            {category === 'other' && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-muted/40 border border-border/80 space-y-2.5 animate-in fade-in duration-200">
+                <label className="text-xs font-bold text-foreground block">
+                  Custom Category Name * (3 to 40 characters)
+                </label>
+                <input
+                  type="text"
+                  value={customCategoryLabel}
+                  onChange={(e) => {
+                    setCustomCategoryLabel(e.target.value);
+                    if (customCategoryError) setCustomCategoryError('');
+                  }}
+                  placeholder="e.g. Animal Foster Care, Flood Shelter Aid, Legal Paperwork..."
+                  maxLength={40}
+                  className="w-full rounded-xl border border-border/80 bg-card px-4 py-3 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-xs"
+                />
+                {customCategoryError && (
+                  <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+                    {customCategoryError}
+                  </p>
+                )}
+                <p className="text-[11px] text-muted-foreground">
+                  Will be displayed across KindLink as &ldquo;Other: {customCategoryLabel.trim() || 'Custom Need'}&rdquo;. Filtered for respectful community language.
+                </p>
+              </div>
+            )}
 
             <div className="flex justify-end pt-4 border-t border-border/80">
               <button
@@ -1117,6 +1289,366 @@ export function NewRequestWizard() {
                   </div>
                 </div>
               )}
+
+              {/* 6. MEDICINES & PHARMACY FIELDS */}
+              {category === 'medicine' && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-4">
+                  <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-bold text-xs uppercase tracking-wide">
+                    <span>Medicines &amp; Prescription Details</span>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-foreground block mb-1.5">
+                      Medicine Names &amp; Dosage *
+                    </label>
+                    <input
+                      type="text"
+                      value={medicineNames}
+                      onChange={(e) => setMedicineNames(e.target.value)}
+                      placeholder="e.g. Paracetamol 650mg, Insulin Glargine, Nebulizer drops..."
+                      className="w-full rounded-xl border border-border bg-card p-3 text-xs text-foreground"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-card">
+                    <span className="text-xs font-semibold text-foreground">Doctor Prescription Ready?</span>
+                    <input
+                      type="checkbox"
+                      checked={prescriptionRequired}
+                      onChange={(e) => setPrescriptionRequired(e.target.checked)}
+                      className="h-4 w-4 rounded text-primary"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 7. FOOD & GROCERIES FIELDS */}
+              {category === 'food' && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-rose-500/5 border border-rose-500/20 space-y-4">
+                  <div className="flex items-center gap-2 text-rose-600 font-bold text-xs uppercase tracking-wide">
+                    <span>Meal &amp; Ration Support Details</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="text-xs font-bold text-foreground block mb-1.5">
+                        Number of Persons / Servings
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="50"
+                        value={servingsCount}
+                        onChange={(e) => setServingsCount(Math.max(1, Number(e.target.value)))}
+                        className="w-full rounded-xl border border-border bg-card p-3 text-xs text-foreground"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-foreground block mb-1.5">
+                        Dietary Preference / Notes
+                      </label>
+                      <input
+                        type="text"
+                        value={dietaryRestrictions}
+                        onChange={(e) => setDietaryRestrictions(e.target.value)}
+                        placeholder="e.g. Vegetarian, Soft diet for patient, Dry grocery kit..."
+                        className="w-full rounded-xl border border-border bg-card p-3 text-xs text-foreground"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 8. HOSPITAL ATTENDANT FIELDS */}
+              {category === 'hospital_attendant' && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-sky-500/5 border border-sky-500/20 space-y-4">
+                  <div className="flex items-center gap-2 text-sky-600 font-bold text-xs uppercase tracking-wide">
+                    <span>Patient Attendant &amp; Hospital Details</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="text-xs font-bold text-foreground block mb-1.5">
+                        Hospital / Clinic Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={hospitalName}
+                        onChange={(e) => setHospitalName(e.target.value)}
+                        placeholder="Hospital name..."
+                        className="w-full rounded-xl border border-border bg-card p-3 text-xs text-foreground"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-foreground block mb-1.5">
+                        Ward / Bed / Floor
+                      </label>
+                      <input
+                        type="text"
+                        value={wardRoom}
+                        onChange={(e) => setWardRoom(e.target.value)}
+                        placeholder="e.g. Ward 4, Bed 12"
+                        className="w-full rounded-xl border border-border bg-card p-3 text-xs text-foreground"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 9. DISASTER & FLOOD RELIEF FIELDS */}
+              {category === 'disaster_relief' && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-red-500/5 border border-red-500/20 space-y-4">
+                  <div className="flex items-center gap-2 text-red-600 font-bold text-xs uppercase tracking-wide">
+                    <span>Emergency Relief Situation</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="text-xs font-bold text-foreground block mb-1.5">
+                        Situation / Urgent Need *
+                      </label>
+                      <input
+                        type="text"
+                        value={hazardType}
+                        onChange={(e) => setHazardType(e.target.value)}
+                        placeholder="e.g. Inundation, Drinking water supply, Evacuation..."
+                        className="w-full rounded-xl border border-border bg-card p-3 text-xs text-foreground"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-foreground block mb-1.5">
+                        People Affected
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={peopleCount}
+                        onChange={(e) => setPeopleCount(Math.max(1, Number(e.target.value)))}
+                        className="w-full rounded-xl border border-border bg-card p-3 text-xs text-foreground"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 10. EDUCATION FIELDS */}
+              {category === 'education' && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-purple-500/5 border border-purple-500/20 space-y-4">
+                  <div className="flex items-center gap-2 text-purple-600 font-bold text-xs uppercase tracking-wide">
+                    <span>Tutoring &amp; Academic Guidance</span>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-foreground block mb-1.5">
+                      Subject, Topic or Standard *
+                    </label>
+                    <input
+                      type="text"
+                      value={subjectGrade}
+                      onChange={(e) => setSubjectGrade(e.target.value)}
+                      placeholder="e.g. Class 10 Science, Chemistry Numerical Problem, English..."
+                      className="w-full rounded-xl border border-border bg-card p-3 text-xs text-foreground"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 11. CLOTHES & ESSENTIALS FIELDS */}
+              {category === 'clothes' && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 space-y-4">
+                  <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs uppercase tracking-wide">
+                    <span>Clothing &amp; Essentials Specification</span>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-foreground block mb-1.5">
+                      Items &amp; Sizes Needed *
+                    </label>
+                    <input
+                      type="text"
+                      value={sizesNeeded}
+                      onChange={(e) => setSizesNeeded(e.target.value)}
+                      placeholder="e.g. 2 Warm blankets, Child age 7 warm jacket..."
+                      className="w-full rounded-xl border border-border bg-card p-3 text-xs text-foreground"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 12. HOME REPAIRS FIELDS */}
+              {category === 'home_repairs' && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-500/5 border border-slate-500/20 space-y-4">
+                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-bold text-xs uppercase tracking-wide">
+                    <span>Home Repair Requirement</span>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-foreground block mb-1.5">
+                      Specific Fix / Issue *
+                    </label>
+                    <input
+                      type="text"
+                      value={repairType}
+                      onChange={(e) => setRepairType(e.target.value)}
+                      placeholder="e.g. Fuse tripped / sparking, Pipe leakage under sink..."
+                      className="w-full rounded-xl border border-border bg-card p-3 text-xs text-foreground"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 13. GOVERNMENT AID FIELDS */}
+              {category === 'government_aid' && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 space-y-4">
+                  <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-bold text-xs uppercase tracking-wide">
+                    <span>Scheme &amp; Documentation Assistance</span>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-foreground block mb-1.5">
+                      Scheme or Document Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={schemeName}
+                      onChange={(e) => setSchemeName(e.target.value)}
+                      placeholder="e.g. Pension application, Health card, Ration card correction..."
+                      className="w-full rounded-xl border border-border bg-card p-3 text-xs text-foreground"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 14. ANIMAL CARE FIELDS */}
+              {category === 'animal_care' && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-orange-500/5 border border-orange-500/20 space-y-4">
+                  <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300 font-bold text-xs uppercase tracking-wide">
+                    <span>Animal Rescue / Pet Need</span>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-foreground block mb-1.5">
+                      Animal Type &amp; Situation *
+                    </label>
+                    <input
+                      type="text"
+                      value={animalType}
+                      onChange={(e) => setAnimalType(e.target.value)}
+                      placeholder="e.g. Injured street puppy, Emergency vet clinic escort needed..."
+                      className="w-full rounded-xl border border-border bg-card p-3 text-xs text-foreground"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 15. OTHER CUSTOM FIELDS */}
+              {category === 'other' && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-muted/40 border border-border/80 space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-foreground block mb-1.5">
+                      Custom Category Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={customCategoryLabel}
+                      onChange={(e) => setCustomCategoryLabel(e.target.value)}
+                      placeholder="e.g. Community Garden Help, Legal Aid..."
+                      className="w-full rounded-xl border border-border bg-card p-3 text-xs text-foreground"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* TAGS SECTION (UP TO 5 TAGS) */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-card border border-border/80 space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-primary notranslate" />
+                    <label className="text-xs font-bold text-foreground">
+                      Tags <span className="font-normal text-muted-foreground">(up to 5 tags)</span>
+                    </label>
+                  </div>
+                  <span className="text-[11px] font-semibold text-muted-foreground">
+                    {tags.length}/5 tags selected
+                  </span>
+                </div>
+
+                {/* Selected Tags Chips */}
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((t) => (
+                      <span
+                        key={t}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20 shadow-xs"
+                      >
+                        <span>#{t}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTag(t)}
+                          className="h-4 w-4 rounded-full flex items-center justify-center hover:bg-primary/20 transition-colors"
+                          aria-label={`Remove tag ${t}`}
+                        >
+                          <X className="h-3 w-3 notranslate" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Tag Input Form */}
+                {tags.length < 5 && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={tagInput}
+                      onChange={(e) => {
+                        setTagInput(e.target.value);
+                        if (tagError) setTagError('');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddCustomTag();
+                        }
+                      }}
+                      placeholder="Add custom tag (lowercase, 2-24 chars)..."
+                      maxLength={24}
+                      className="flex-1 rounded-xl border border-border/80 bg-background/80 px-4 py-2.5 text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition shadow-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCustomTag}
+                      className="px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition shadow-xs flex items-center gap-1"
+                    >
+                      <Plus className="h-3.5 w-3.5 notranslate" />
+                      <span>Add</span>
+                    </button>
+                  </div>
+                )}
+
+                {tagError && (
+                  <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+                    {tagError}
+                  </p>
+                )}
+
+                {/* Suggested Tags from Category */}
+                <div className="space-y-1.5 pt-1">
+                  <span className="text-[11px] font-semibold text-muted-foreground block">
+                    Suggested tags for {formatCategoryTitle(category, customCategoryLabel)}:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {getSuggestedTagsForCategory(category).map((st) => {
+                      const isAdded = tags.includes(st);
+                      return (
+                        <button
+                          key={st}
+                          type="button"
+                          disabled={isAdded || tags.length >= 5}
+                          onClick={() => handleAddSuggestedTag(st)}
+                          className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition ${
+                            isAdded
+                              ? 'bg-muted/70 text-muted-foreground/50 border-transparent cursor-default'
+                              : 'bg-background hover:bg-muted text-foreground border-border/80 active:scale-95 cursor-pointer shadow-xs'
+                          }`}
+                        >
+                          + {st}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="flex justify-between pt-4 border-t border-border/80">
@@ -1289,7 +1821,7 @@ export function NewRequestWizard() {
                 Where is help required?
               </h2>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                Provide location or select a landmark in Asansol to calculate proximity ETA.
+                Provide location, pin on map, or choose a saved place to calculate proximity ETA.
               </p>
             </div>
 
@@ -1531,36 +2063,38 @@ export function NewRequestWizard() {
                   )}
                 </div>
 
-                {/* Landmark Quick Selection */}
-                <div>
-                  <label className="text-xs font-bold text-foreground block mb-2">
-                    Quick Landmark Selection (Asansol &amp; Nearby)
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {landmarks.map((lm) => (
-                      <button
-                        key={lm.name}
-                        type="button"
-                        onClick={() => {
-                          setLocationName(lm.name);
-                          setLatitude(lm.lat);
-                          setLongitude(lm.lng);
-                          if (category === 'transport') {
-                            setDropAddress(lm.name);
-                          }
-                        }}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all active:scale-95 ${
-                          locationName === lm.name
-                            ? 'border-primary bg-primary text-white font-bold shadow-xs'
-                            : 'border-border/80 bg-card hover:bg-muted text-foreground hover:border-border'
-                        }`}
-                      >
-                        <MapPin className="h-3 w-3 notranslate" />
-                        <span className="truncate max-w-[200px]">{lm.name}</span>
-                      </button>
-                    ))}
+                {/* Saved Places Quick Selection (if user has any saved places) */}
+                {savedPlaces && savedPlaces.length > 0 && (
+                  <div>
+                    <label className="text-xs font-bold text-foreground block mb-2">
+                      Your Saved Places
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {savedPlaces.map((sp) => (
+                        <button
+                          key={sp.id}
+                          type="button"
+                          onClick={() => {
+                            setLocationName(sp.name);
+                            setLatitude(sp.lat);
+                            setLongitude(sp.lng);
+                            if (category === 'transport') {
+                              setDropAddress(sp.name);
+                            }
+                          }}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all active:scale-95 ${
+                            locationName === sp.name
+                              ? 'border-primary bg-primary text-white font-bold shadow-xs'
+                              : 'border-border/80 bg-card hover:bg-muted text-foreground hover:border-border'
+                          }`}
+                        >
+                          <MapPin className="h-3 w-3 notranslate" />
+                          <span className="truncate max-w-[200px]">{sp.label || sp.name}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Exact Address / Hospital Ward input field */}
                 {category !== 'transport' && (
@@ -1710,7 +2244,7 @@ export function NewRequestWizard() {
 
             {/* Live Request Preview Card */}
             <div className="p-5 rounded-3xl bg-muted/40 border border-border/80 space-y-4">
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <div>
                   <span
                     className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
@@ -1728,10 +2262,30 @@ export function NewRequestWizard() {
                     {title}
                   </h3>
                 </div>
-                <div className="p-2.5 rounded-2xl bg-card border border-border text-primary font-bold text-xs uppercase shadow-xs">
-                  {category}
+                <div
+                  className="px-3 py-1.5 rounded-2xl text-xs font-bold border shadow-xs shrink-0"
+                  style={{
+                    backgroundColor: getCategoryToken(category, customCategoryLabel).lightBg,
+                    borderColor: getCategoryToken(category, customCategoryLabel).border,
+                    color: getCategoryToken(category, customCategoryLabel).primary,
+                  }}
+                >
+                  {formatCategoryTitle(category, customCategoryLabel)}
                 </div>
               </div>
+
+              {tags && tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {tags.map((t) => (
+                    <span
+                      key={t}
+                      className="px-2 py-0.5 rounded-lg bg-card border border-border/80 text-[11px] font-mono text-muted-foreground"
+                    >
+                      #{t}
+                    </span>
+                  ))}
+                </div>
+              )}
 
               <p className="text-xs text-foreground/80 leading-relaxed bg-card p-3.5 rounded-2xl border border-border/80">
                 {description}
@@ -1762,6 +2316,56 @@ export function NewRequestWizard() {
                 {category === 'transport' && (
                   <span className="px-3 py-1 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/20">
                     🚗 {passengerCount} Pax · {wheelchairAccessible ? 'Wheelchair Ready' : 'Standard'}
+                  </span>
+                )}
+                {category === 'medicine' && (
+                  <span className="px-3 py-1 rounded-xl bg-orange-500/10 text-orange-700 dark:text-orange-300 font-bold border border-orange-500/20">
+                    💊 {medicineNames || 'Prescribed medicines'} {prescriptionRequired ? '(Prescription)' : ''}
+                  </span>
+                )}
+                {category === 'food' && (
+                  <span className="px-3 py-1 rounded-xl bg-rose-500/10 text-rose-700 dark:text-rose-300 font-bold border border-rose-500/20">
+                    🍲 {servingsCount} Meals {dietaryRestrictions ? `· ${dietaryRestrictions}` : ''}
+                  </span>
+                )}
+                {category === 'hospital_attendant' && (
+                  <span className="px-3 py-1 rounded-xl bg-sky-500/10 text-sky-700 dark:text-sky-300 font-bold border border-sky-500/20">
+                    🏥 Ward / Room: {wardRoom || 'Bedside care'}
+                  </span>
+                )}
+                {category === 'disaster_relief' && (
+                  <span className="px-3 py-1 rounded-xl bg-red-500/10 text-red-700 dark:text-red-300 font-bold border border-red-500/20">
+                    🚨 {hazardType || 'Emergency'} · {peopleCount} People
+                  </span>
+                )}
+                {category === 'education' && (
+                  <span className="px-3 py-1 rounded-xl bg-purple-500/10 text-purple-700 dark:text-purple-300 font-bold border border-purple-500/20">
+                    🎓 {subjectGrade || 'Tutoring & Study Support'}
+                  </span>
+                )}
+                {category === 'clothes' && (
+                  <span className="px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-500/20">
+                    👕 Sizes: {sizesNeeded || 'Clothing donation'}
+                  </span>
+                )}
+                {category === 'home_repairs' && (
+                  <span className="px-3 py-1 rounded-xl bg-slate-500/10 text-slate-700 dark:text-slate-300 font-bold border border-slate-500/20">
+                    🛠️ {repairType || 'Urgent home repair'}
+                  </span>
+                )}
+                {category === 'government_aid' && (
+                  <span className="px-3 py-1 rounded-xl bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-500/20">
+                    🏛️ Scheme: {schemeName || 'Government application aid'}
+                  </span>
+                )}
+                {category === 'animal_care' && (
+                  <span className="px-3 py-1 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/20">
+                    🐾 {animalType || 'Animal rescue'}
+                  </span>
+                )}
+                {category === 'other' && (
+                  <span className="px-3 py-1 rounded-xl bg-slate-500/10 text-slate-700 dark:text-slate-300 font-bold border border-slate-500/20">
+                    📌 {customCategoryLabel || 'Custom Aid'}
                   </span>
                 )}
 

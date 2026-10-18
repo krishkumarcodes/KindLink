@@ -468,52 +468,53 @@ export function HelpFlowModal({
                 }
               : undefined
           }
-          className="relative w-full sm:max-w-xl h-auto max-h-[calc(100dvh-max(12px,calc(env(safe-area-inset-top)+12px)))] sm:max-h-[85vh] flex flex-col bg-card text-card-foreground rounded-t-3xl sm:rounded-3xl border-t sm:border border-border/80 shadow-[0_20px_60px_rgba(0,0,0,0.4)] overflow-hidden outline-none animate-in slide-in-from-bottom duration-200 sm:slide-in-from-bottom-0 sm:zoom-in-95"
+          className="relative w-full sm:max-w-xl h-auto max-h-[85dvh] flex flex-col bg-card text-card-foreground rounded-t-3xl sm:rounded-3xl border-t sm:border border-border/80 shadow-[0_20px_60px_rgba(0,0,0,0.4)] overflow-hidden outline-none animate-in slide-in-from-bottom duration-200 sm:slide-in-from-bottom-0 sm:zoom-in-95"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Mobile Drag Indicator */}
-          <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full mx-auto my-2.5 sm:hidden shrink-0" />
-
           {/* =====================================================================
-              1. STICKY TITLE BAR
+              1. STICKY TITLE BAR (Solid bg-card with Integrated Drag Handle)
              ===================================================================== */}
-          <div className="sticky top-0 z-20 shrink-0 bg-card/95 backdrop-blur-md border-b border-border/80 px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-xs"
-                style={{
-                  backgroundColor: categoryToken.lightBg,
-                  color: categoryToken.primary,
-                  borderColor: categoryToken.border,
-                }}
-              >
-                <CategoryIcon className="h-5 w-5 notranslate" />
+          <div className="sticky top-0 z-20 shrink-0 bg-card border-b border-border/80">
+            {/* Mobile Drag Indicator */}
+            <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full mx-auto my-2.5 sm:hidden shrink-0" />
+            <div className="px-4 sm:px-6 pb-3.5 pt-0.5 sm:pt-3.5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-xs"
+                  style={{
+                    backgroundColor: categoryToken.lightBg,
+                    color: categoryToken.primary,
+                    borderColor: categoryToken.border,
+                  }}
+                >
+                  <CategoryIcon className="h-5 w-5 notranslate" />
+                </div>
+                <div className="min-w-0">
+                  <h2 id={titleId} className="text-base sm:text-lg font-black text-foreground truncate">
+                    Offer to help
+                  </h2>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    Responding to <span className="font-semibold text-foreground">{requesterName}</span>
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h2 id={titleId} className="text-base sm:text-lg font-black text-foreground truncate">
-                  Offer to help
-                </h2>
-                <p className="text-[11px] text-muted-foreground truncate">
-                  Responding to <span className="font-semibold text-foreground">{requesterName}</span>
-                </p>
-              </div>
-            </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground touch-target transition-all active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5 notranslate" />
-            </button>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground touch-target transition-all active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5 notranslate" />
+              </button>
+            </div>
           </div>
 
           {/* =====================================================================
               SCROLLING MIDDLE CONTENT
              ===================================================================== */}
-          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 space-y-4">
             {/* SUCCESS STATE VIEW */}
             {isSuccess ? (
               <div className="py-6 space-y-5 text-center animate-in fade-in zoom-in-95 duration-200">
@@ -920,7 +921,7 @@ export function HelpFlowModal({
               STICKY FOOTER WITH PRIMARY "SEND OFFER" BUTTON (52px, CATEGORY COLOUR)
              ===================================================================== */}
           {!isSuccess && (
-            <div className="sticky bottom-0 z-20 shrink-0 bg-card/95 backdrop-blur-md border-t border-border/80 px-4 sm:px-6 py-3 pb-[max(12px,calc(env(safe-area-inset-bottom,0px)+12px))] shadow-lg flex items-center gap-3">
+            <div className="sticky bottom-0 z-20 shrink-0 bg-card border-t border-border/80 px-4 sm:px-6 py-3 pb-[max(12px,calc(env(safe-area-inset-bottom,0px)+12px))] shadow-lg flex items-center gap-3">
               <button
                 type="button"
                 onClick={onClose}
