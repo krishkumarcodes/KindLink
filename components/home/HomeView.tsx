@@ -161,6 +161,7 @@ function getWelcomeGreeting(locale: string = 'en'): string {
 export function HomeView() {
   const {
     requests,
+    myActiveRequests,
     userProfile,
     userCoords,
     userAreaName,
@@ -170,6 +171,7 @@ export function HomeView() {
     fetchLiveStats,
     setCurrentView,
     setSelectedRequestId,
+    setActiveFeedTab,
     setFilterCategory,
     setFilterRadius,
   } = useKindLinkStore();
@@ -436,6 +438,70 @@ export function HomeView() {
 
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-36 sm:pb-36 lg:pb-36">
+      {/* 0. "Your active requests" Strip (shown when user has active requests) */}
+      {myActiveRequests.length > 0 && (
+        <div className="rounded-3xl border-2 border-indigo-500/30 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-card p-4 sm:p-5 shadow-soft space-y-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-indigo-500 animate-pulse" />
+              <h2 className="text-sm sm:text-base font-bold text-foreground flex items-center gap-1.5">
+                <span>Your active requests</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-black bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30">
+                  {myActiveRequests.length}
+                </span>
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveFeedTab('my_requests');
+                setCurrentView('requests');
+              }}
+              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+            >
+              <span>Manage in My Requests</span>
+              <ArrowRight className="h-3.5 w-3.5 notranslate" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {myActiveRequests.map((req) => (
+              <div
+                key={req.id}
+                onClick={() => {
+                  setSelectedDetailRequest(req);
+                }}
+                className="p-3 rounded-2xl bg-card/90 border border-border/80 hover:border-indigo-500/50 shadow-xs cursor-pointer transition flex items-center justify-between gap-3 text-left group"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/25">
+                      {req.category}
+                    </span>
+                    <span className="text-[10px] font-bold capitalize text-muted-foreground">
+                      {req.status === 'open' ? 'Looking for helpers' : req.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <h4 className="text-xs font-bold text-foreground truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
+                    {req.title}
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                    {req.helpersOffered && req.helpersOffered > 0
+                      ? `${req.helpersOffered} volunteer offer${req.helpersOffered === 1 ? '' : 's'}`
+                      : 'No offers yet'}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 group-hover:translate-x-0.5 inline-block transition-transform">
+                    Manage →
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 1. Hero Greeting Banner */}
       <div className="rounded-3xl bg-gradient-to-br from-card via-card to-primary/5 p-5 sm:p-7 lg:p-8 border border-border shadow-soft">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
