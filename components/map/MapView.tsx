@@ -278,8 +278,8 @@ export function MapView() {
 
   const visibleRequests = useMemo(() => {
     if (!layers.requests) return [];
-    return requests;
-  }, [requests, layers.requests]);
+    return allMapRequests;
+  }, [allMapRequests, layers.requests]);
 
   // Select place from search suggestions
   const handleSelectPlace = async (place: PlaceSearchResult) => {
@@ -477,7 +477,8 @@ export function MapView() {
         <LeafletInnerMap
           center={mapCenter}
           zoom={mapZoom}
-          requests={requests}
+          requests={allMapRequests}
+          userProfile={userProfile}
           radiusMeters={radiusKm * 1000}
           selectedRequest={activeItem?.type === 'request' ? activeItem.data : null}
           selectedFacility={activeItem?.type === 'facility' ? activeItem.data : null}
@@ -619,7 +620,7 @@ export function MapView() {
             }`}
           >
             <span className="h-2 w-2 rounded-full bg-current" />
-            <span>Aid Requests ({requests.length})</span>
+            <span>Aid Requests ({allMapRequests.length})</span>
           </button>
 
           {/* Toggle Hospitals */}
@@ -915,6 +916,11 @@ export function MapView() {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {activeItem.type === 'request' ? (
                       <>
+                        {isRequestOwner(activeItem.data, userProfile) && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800">
+                            <span>★</span> Your Request
+                          </span>
+                        )}
                         <span
                           className={`inline-block text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
                             activeItem.data.urgency === 'critical'
@@ -1110,23 +1116,69 @@ export function MapView() {
                   <span className="hidden sm:inline">Maps</span>
                 </a>
 
-                {/* 4. Request Specific: "I Can Help" & "View Details" */}
+                {/* 4. Request Specific: Owner actions vs Volunteer "I Can Help" & "Details" */}
                 {activeItem.type === 'request' && (
                   <>
-                    <PrimaryHelpButton
-                      category={activeItem.data.category || 'equipment'}
-                      size="card"
-                      label="I can help"
-                      onClick={() => setHelpFlowOpen(true)}
-                    />
-                    <SecondaryButton
-                      size="card"
-                      variant="outline"
-                      onClick={() => setDetailModalOpen(true)}
-                    >
-                      <span>Details</span>
-                      <ArrowRight className="h-3.5 w-3.5 notranslate ml-1" />
-                    </SecondaryButton>
+                    {isRequestOwner(activeItem.data, userProfile) ? (
+                      <>
+                        {activeItem.data.status === 'open' && (
+                          <SecondaryButton
+                            size="card"
+                            variant="destructive-outline"
+                            onClick={async () => {
+                              const confirmed = window.confirm('Are you sure you want to cancel this request?');
+                              if (confirmed) {
+                                await cancelRequest(activeItem.data.id);
+                                setActiveItem(null);
+                                toast.info('Your request has been cancelled');
+                              }
+                            }}
+                          >
+                            Cancel Request
+                          </SecondaryButton>
+                        )}
+                        {(activeItem.data.status === 'accepted' ||
+                          activeItem.data.status === 'on_the_way' ||
+                          activeItem.data.status === 'arrived') && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await completeRequest(activeItem.data.id);
+                              setActiveItem(null);
+                              toast.success('Your request was marked as completed!');
+                            }}
+                            className="min-h-[44px] flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md active:scale-95 transition-all touch-target"
+                          >
+                            Mark Completed
+                          </button>
+                        )}
+                        <SecondaryButton
+                          size="card"
+                          variant="outline"
+                          onClick={() => setDetailModalOpen(true)}
+                        >
+                          <span>Manage Request</span>
+                          <ArrowRight className="h-3.5 w-3.5 notranslate ml-1" />
+                        </SecondaryButton>
+                      </>
+                    ) : (
+                      <>
+                        <PrimaryHelpButton
+                          category={activeItem.data.category || 'equipment'}
+                          size="card"
+                          label="I can help"
+                          onClick={() => setHelpFlowOpen(true)}
+                        />
+                        <SecondaryButton
+                          size="card"
+                          variant="outline"
+                          onClick={() => setDetailModalOpen(true)}
+                        >
+                          <span>Details</span>
+                          <ArrowRight className="h-3.5 w-3.5 notranslate ml-1" />
+                        </SecondaryButton>
+                      </>
+                    )}
                   </>
                 )}
               </div>
