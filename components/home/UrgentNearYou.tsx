@@ -190,6 +190,7 @@ export function UrgentNearYou({
   const storeIsLoading = useKindLinkStore((s) => s.isLoadingRequests);
   const storeFilterRadius = useKindLinkStore((s) => s.filterRadius);
   const storeTravelMode = useKindLinkStore((s) => s.travelMode);
+  const userProfile = useKindLinkStore((s) => s.userProfile);
   const setCurrentView = useKindLinkStore((s) => s.setCurrentView);
   const setSelectedRequestId = useKindLinkStore((s) => s.setSelectedRequestId);
   const setFilterRadius = useKindLinkStore((s) => s.setFilterRadius);
@@ -199,10 +200,10 @@ export function UrgentNearYou({
   const effectiveRadius = propFilterRadius ?? storeFilterRadius ?? 20;
   const effectiveTravelMode = propTravelMode ?? storeTravelMode ?? 'bike';
 
-  // Sort strictly by urgency, distance, and waiting time
+  // Sort strictly by urgency, distance, and waiting time - exclude user's own requests from help list
   const sortedUrgentRequests = useMemo(() => {
     return [...effectiveRequests]
-      .filter((r) => r.status !== 'completed' && r.status !== 'cancelled')
+      .filter((r) => r.status !== 'completed' && r.status !== 'cancelled' && !isRequestOwner(r, userProfile))
       .sort((a, b) => {
         const urgA = URGENCY_PRIORITY[a.urgency] ?? 5;
         const urgB = URGENCY_PRIORITY[b.urgency] ?? 5;
