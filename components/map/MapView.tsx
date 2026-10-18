@@ -1224,7 +1224,12 @@ export function MapView() {
                 }`}
               >
                 <div className="flex items-center justify-between gap-1 mb-1.5">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {isRequestOwner(req, userProfile) && (
+                      <span className="text-[9px] font-black uppercase text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-950 px-1.5 py-0.5 rounded border border-indigo-300 dark:border-indigo-800">
+                        ★ Your Request
+                      </span>
+                    )}
                     <span
                       className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
                         req.urgency === 'critical'

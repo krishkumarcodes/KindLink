@@ -19,6 +19,7 @@ import {
   Car,
 } from 'lucide-react';
 import { HelpCategory, HelpRequest, TravelMode } from '@/lib/data/types';
+import { isRequestOwner } from '@/lib/data/ownership';
 import { calculateETA, formatETA } from '@/lib/data/distance';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { formatWaitingTime } from '@/lib/utils/formatTime';
