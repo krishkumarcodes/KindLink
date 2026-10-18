@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import {
   X,
   MapPin,
   Clock,
   ShieldCheck,
-  ShieldAlert,
   AlertTriangle,
+  AlertCircle,
   Phone,
   Share2,
   Flag,
@@ -26,9 +26,25 @@ import {
   Loader2,
   Lock,
   Hospital,
+  Droplet,
+  BookOpen,
+  Package,
+  PlusCircle,
+  Users,
+  Flame,
+  Calendar,
+  ChevronDown,
+  RotateCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { HelpRequest, TravelMode, VolunteerOffer, RequestLifecycleStatus } from '@/lib/data/types';
+import {
+  HelpRequest,
+  TravelMode,
+  VolunteerOffer,
+  RequestLifecycleStatus,
+  HelpCategory,
+  UrgencyLevel,
+} from '@/lib/data/types';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { calculateETA, formatETA } from '@/lib/data/distance';
 import { getRoadRoute, RoadRouteResult } from '@/lib/geo/osrm';
@@ -36,6 +52,11 @@ import { getNearestMedicalFacilities, MedicalFacility } from '@/lib/geo/hospital
 import { HelpFlowModal } from './HelpFlowModal';
 import { dataAdapter } from '@/lib/data';
 import { createClient } from '@/lib/supabase/client';
+import { OverlayPortal, useBodyScrollLock } from '@/components/ui/OverlayPortal';
+import { formatTimeAgo, formatMinutesAgo } from '@/lib/utils/formatTime';
+import { OffersReceivedSection } from './OffersReceivedSection';
+import { StickyActionBar } from './StickyActionBar';
+import { getCategoryToken } from '@/lib/data/categoryColors';
 
 const RequestRouteMiniMap = dynamic(
   () => import('@/components/map/RequestRouteMiniMap'),
@@ -55,6 +76,117 @@ interface RequestDetailModalProps {
   onClose: () => void;
 }
 
+interface LifecycleStepItem {
+  key: RequestLifecycleStatus | 'offered';
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+}
+
+const LIFECYCLE_STEPS: LifecycleStepItem[] = [
+  { key: 'open', label: 'Open', icon: Radio, description: 'Sent to nearby volunteers' },
+  { key: 'offered', label: 'Offered', icon: HeartHandshake, description: 'Volunteer stepped up' },
+  { key: 'accepted', label: 'Accepted', icon: ShieldCheck, description: 'Matched pair confirmed' },
+  { key: 'on_the_way', label: 'On the way', icon: Navigation, description: 'Volunteer en route' },
+  { key: 'arrived', label: 'Arrived', icon: MapPin, description: 'Volunteer at location' },
+  { key: 'completed', label: 'Completed', icon: CheckCircle2, description: 'Aid fulfilled successfully' },
+];
+
+function getCategoryConfig(category: HelpCategory) {
+  switch (category) {
+    case 'blood':
+      return {
+        label: 'Blood Need',
+        icon: Droplet,
+        badge: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30',
+      };
+    case 'equipment':
+      return {
+        label: 'Medical Gear',
+        icon: Package,
+        badge: 'bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/30',
+      };
+    case 'elderly':
+      return {
+        label: 'Elderly Care',
+        icon: HeartHandshake,
+        badge: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30',
+      };
+    case 'books':
+      return {
+        label: 'Books & Notes',
+        icon: BookOpen,
+        badge: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
+      };
+    case 'transport':
+      return {
+        label: 'Emergency Transit',
+        icon: Car,
+        badge: 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30',
+      };
+    default:
+      return {
+        label: (category as string).replace('_', ' '),
+        icon: AlertTriangle,
+        badge: 'bg-muted text-foreground border-border',
+      };
+  }
+}
+
+function getUrgencyConfig(urgency: UrgencyLevel) {
+  switch (urgency) {
+    case 'critical':
+      return {
+        label: 'Critical',
+        icon: Flame,
+        badge: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30',
+      };
+    case 'high':
+      return {
+        label: 'High',
+        icon: AlertTriangle,
+        badge: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
+      };
+    case 'medium':
+      return {
+        label: 'Medium',
+        icon: Clock,
+        badge: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30',
+      };
+    case 'low':
+      return {
+        label: 'Low',
+        icon: CheckCircle2,
+        badge: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+      };
+    default:
+      return {
+        label: (urgency as string).toUpperCase(),
+        icon: AlertCircle,
+        badge: 'bg-muted text-muted-foreground border-border',
+      };
+  }
+}
+
+function formatMemberSince(dateStr?: string | null): string {
+  if (!dateStr) return 'Oct 2024';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return 'Oct 2024';
+  const month = d.toLocaleString('en-US', { month: 'short' });
+  const year = d.getFullYear();
+  return `${month} ${year}`;
+}
+
+function formatWaitingDuration(minutes: number): string {
+  if (minutes < 1) return 'just now';
+  const rounded = Math.floor(minutes);
+  const hours = Math.floor(rounded / 60);
+  const remMinutes = rounded % 60;
+  if (hours === 0) return `${remMinutes} min`;
+  if (remMinutes === 0) return `${hours} h`;
+  return `${hours} h ${remMinutes} min`;
+}
+
 export function RequestDetailModal({ request, open, onClose }: RequestDetailModalProps) {
   const {
     travelMode,
@@ -63,9 +195,20 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     userCoords,
     updateRequestStatus,
     fetchLiveRequests,
+    fetchLiveStats,
+    withdrawOffer,
+    setCurrentView,
+    setProfileActiveTab,
+    addNotification,
   } = useKindLinkStore();
 
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  // Body scroll locking via portal system
+  useBodyScrollLock(open);
+
   const [helpFlowOpen, setHelpFlowOpen] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
   const [contactInfo, setContactInfo] = useState<{
     name: string;
     phone: string;
@@ -74,7 +217,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
 
   // Offers state
   const [offers, setOffers] = useState<VolunteerOffer[]>([]);
-  const [loadingOffers, setLoadingOffers] = useState(false);
+  const [, setLoadingOffers] = useState(false);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
   // Live Location Sharing state
@@ -99,16 +242,66 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
   // Road Routing & Mini-map state
   const [routeResult, setRouteResult] = useState<RoadRouteResult | null>(null);
   const [loadingRoute, setLoadingRoute] = useState(false);
-
-  // Nearby Hospitals & Medical Facilities state
   const [nearbyHospitals, setNearbyHospitals] = useState<MedicalFacility[]>([]);
   const [loadingHospitals, setLoadingHospitals] = useState(false);
 
-  // Check if current user is the requester or the accepted helper
-  const isRequester =
-    userProfile && request && (request.contactName === userProfile.name || !request.acceptedHelperId);
-  const isAcceptedHelper =
-    userProfile && request && request.acceptedHelperId === userProfile.id;
+  // Remember the last chosen mode on device in localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedMode = localStorage.getItem('kindlink_travel_mode') as TravelMode | null;
+        if (savedMode && (savedMode === 'bike' || savedMode === 'walking' || savedMode === 'car')) {
+          setTravelMode(savedMode);
+        }
+      } catch {}
+    }
+  }, [setTravelMode]);
+
+  const handleTravelModeChange = (mode: TravelMode) => {
+    setTravelMode(mode);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('kindlink_travel_mode', mode);
+      } catch {}
+    }
+  };
+
+  // Nearby Hospitals & Medical Facilities state
+  const [nearbyPlaces, setNearbyPlaces] = useState<MedicalFacility[]>([]);
+  const [loadingPlaces, setLoadingPlaces] = useState(false);
+  const [placesError, setPlacesError] = useState<string | null>(null);
+  const [placesCollapsed, setPlacesCollapsed] = useState(() => {
+    return !(request?.category === 'blood' || request?.category === 'transport');
+  });
+
+  // Live ticking state (updates every 60s for live Waiting tile)
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!open) return;
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [open]);
+
+  // Check if current user is the request owner
+  const isRequestOwner = Boolean(
+    userProfile &&
+      request &&
+      (((request as any).requesterId && userProfile.id === (request as any).requesterId) ||
+        (request.contactName &&
+          userProfile.name &&
+          (request.contactName.trim().toLowerCase() === userProfile.name.trim().toLowerCase() ||
+            request.contactName.toLowerCase().includes(userProfile.name.toLowerCase()))) ||
+        (request.phone &&
+          userProfile.phone &&
+          request.phone.replace(/[^0-9]/g, '') === userProfile.phone.replace(/[^0-9]/g, '')))
+  );
+  const isRequester = isRequestOwner;
+  const isAcceptedHelper = Boolean(
+    userProfile && request && request.acceptedHelperId === userProfile.id
+  );
 
   const currentStatus: RequestLifecycleStatus = request?.status || 'open';
   const isMatched =
@@ -155,17 +348,29 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     } catch {}
   }, [request, isMatched]);
 
+  // Supabase Realtime subscription for requests, offers & transit
   useEffect(() => {
     if (open && request) {
       loadContact();
       loadOffers();
       checkTransitLocation();
 
-      // Supabase Realtime subscription for offers & transit
       try {
         const supabase = createClient();
         const channel = supabase
-          .channel(`request-realtime-${request.id}`)
+          .channel(`request-live-detail-${request.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'requests',
+              filter: `id=eq.${request.id}`,
+            },
+            async () => {
+              await fetchLiveRequests();
+            }
+          )
           .on(
             'postgres_changes',
             {
@@ -174,9 +379,9 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
               table: 'offers',
               filter: `request_id=eq.${request.id}`,
             },
-            () => {
-              loadOffers();
-              toast.info('New update on volunteer offers!');
+            async () => {
+              await loadOffers();
+              toast.info('New volunteer offer update received!');
             }
           )
           .on(
@@ -199,10 +404,10 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
           supabase.removeChannel(channel);
         };
       } catch {
-        // Fallback for offline/mock mode
+        // Fallback for offline / mock mode
       }
     }
-  }, [open, request, loadContact, loadOffers, checkTransitLocation]);
+  }, [open, request, loadContact, loadOffers, checkTransitLocation, fetchLiveRequests]);
 
   // Load real road routing and nearest emergency medical facilities
   useEffect(() => {
@@ -247,7 +452,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     };
   }, [open, request, travelMode, userCoords.lat, userCoords.lng]);
 
-  // Modal keyboard focus handling & body scroll locking
+  // Keyboard navigation & escape handling
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -259,11 +464,8 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = prevOverflow;
     };
   }, [open, onClose, ratingModalOpen, reportModalOpen, locationConsentOpen]);
 
@@ -280,10 +482,34 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
         toast.success(`Accepted offer from ${offer.helperName}!`, {
           description: 'Contact details unlocked for direct coordination.',
         });
+        // Transition other pending offers to 'not_selected' and mark this accepted
+        setOffers((prev) =>
+          prev.map((o) =>
+            o.id === offer.id
+              ? { ...o, status: 'accepted' }
+              : o.status === 'pending'
+              ? { ...o, status: 'not_selected' }
+              : o
+          )
+        );
+        addNotification({
+          id: `notif-${Date.now()}`,
+          title: 'Offer Accepted!',
+          message: `${offer.helperName} was accepted for "${request.title}". Phone number shared for coordination.`,
+          timeAgo: 'Just now',
+          timestamp: Date.now(),
+          unread: true,
+          urgency: request.urgency,
+          requestId: request.id,
+          category: request.category,
+        });
         await updateRequestStatus(request.id, 'accepted');
         await loadContact();
         await loadOffers();
         await fetchLiveRequests();
+        if (fetchLiveStats) {
+          await fetchLiveStats();
+        }
       } else {
         toast.error('Could not accept offer', { description: res.error });
       }
@@ -295,17 +521,67 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
   };
 
   // Decline Offer Handler
-  const handleDeclineOffer = async (offer: VolunteerOffer) => {
+  const handleDeclineOffer = async (offer: VolunteerOffer, reason?: string) => {
     setActionInProgress(offer.id);
     try {
-      await dataAdapter.declineOffer(offer.id);
-      toast.info('Offer declined');
+      await dataAdapter.declineOffer(offer.id, reason);
+      setOffers((prev) =>
+        prev.map((o) => (o.id === offer.id ? { ...o, status: 'declined', declineReason: reason } : o))
+      );
+      toast.info(`Offer from ${offer.helperName} declined`);
       await loadOffers();
     } catch (err: any) {
       toast.error('Error declining offer', { description: err.message });
     } finally {
       setActionInProgress(null);
     }
+  };
+
+  // Withdraw Offer Handler
+  const handleWithdrawOffer = async (offerId: string) => {
+    setActionInProgress(offerId);
+    try {
+      await withdrawOffer(offerId, request.id);
+      setOffers((prev) =>
+        prev.map((o) => (o.id === offerId ? { ...o, status: 'withdrawn' } : o))
+      );
+      toast.info('Offer withdrawn');
+      await loadOffers();
+      await fetchLiveRequests();
+      if (fetchLiveStats) {
+        await fetchLiveStats();
+      }
+    } catch (err: any) {
+      toast.error('Error withdrawing offer', { description: err.message });
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  // Cancel Request Handler
+  const handleCancelRequest = async () => {
+    setActionInProgress('cancel');
+    try {
+      await dataAdapter.cancelRequest(request.id);
+      await updateRequestStatus(request.id, 'cancelled');
+      toast.info('Request has been cancelled');
+      await fetchLiveRequests();
+      onClose();
+    } catch (err: any) {
+      toast.error('Error cancelling request', { description: err.message });
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  // Get Verified Handler (redirects to Verification tab)
+  const handleGetVerified = () => {
+    setProfileActiveTab('verification');
+    setCurrentView('profile');
+    onClose();
+    toast.info('Redirecting to Verification tab', {
+      description: 'Upload your student or govt ID to become a verified volunteer.',
+    });
   };
 
   // Transition Lifecycle Status
@@ -329,7 +605,6 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
   // Live Location Toggle Consent
   const handleToggleLocationSharing = async () => {
     if (!isSharingLocation) {
-      // Prompt consent modal first
       setLocationConsentOpen(true);
     } else {
       setIsSharingLocation(false);
@@ -356,7 +631,6 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
           );
         },
         () => {
-          // Simulated fallback location in Asansol
           dataAdapter.updateTransitLocation(request.id, 23.685, 86.972, 45, 15);
         }
       );
@@ -368,7 +642,11 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     const shareData = {
       title: `KindLink Alert: ${request.title}`,
       text: `${request.title} at ${request.locationName}. Urgency: ${request.urgency}. Can you help?`,
-      url: process.env.NEXT_PUBLIC_SITE_URL ? `${process.env.NEXT_PUBLIC_SITE_URL}/requests/${request.id}` : (typeof window !== 'undefined' ? window.location.href : ''),
+      url: process.env.NEXT_PUBLIC_SITE_URL
+        ? `${process.env.NEXT_PUBLIC_SITE_URL}/requests/${request.id}`
+        : typeof window !== 'undefined'
+        ? window.location.href
+        : '',
     };
 
     if (navigator.share) {
@@ -425,192 +703,640 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     );
   };
 
-  // Timeline Steps
-  const timelineSteps: { key: RequestLifecycleStatus; label: string; desc: string }[] = [
-    { key: 'open', label: 'Open', desc: 'Sent to nearby volunteers' },
-    { key: 'offered', label: 'Offered', desc: 'Volunteer stepped up to assist' },
-    { key: 'accepted', label: 'Accepted', desc: 'Matched pair confirmed & unlocked' },
-    { key: 'on_the_way', label: 'On the way', desc: 'Volunteer en route to location' },
-    { key: 'arrived', label: 'Arrived', desc: 'Volunteer arrived at destination' },
-    { key: 'completed', label: 'Completed', desc: 'Aid fulfilled successfully' },
-  ];
+  // Determine active step in 6-step lifecycle
+  // 0: Open, 1: Offered, 2: Accepted, 3: On the way, 4: Arrived, 5: Completed
+  const hasOffers = offers.length > 0 || Boolean(request.helpersOffered && request.helpersOffered > 0);
 
-  const getStepIndex = (status: RequestLifecycleStatus) => {
-    const idx = timelineSteps.findIndex((s) => s.key === status);
-    return idx === -1 ? 0 : idx;
+  let activeStepIdx = 0;
+  if (currentStatus === 'completed') {
+    activeStepIdx = 5;
+  } else if (currentStatus === 'arrived') {
+    activeStepIdx = 4;
+  } else if (currentStatus === 'on_the_way') {
+    activeStepIdx = 3;
+  } else if (currentStatus === 'accepted') {
+    activeStepIdx = 2;
+  } else if (hasOffers) {
+    // "Offered" activates when at least one offer exists
+    activeStepIdx = 1;
+  } else {
+    activeStepIdx = 0;
+  }
+
+  const requesterFirstName = (request.contactName || 'Community Member').trim().split(/\s+/)[0];
+  const categoryConfig = getCategoryConfig(request.category);
+  const urgencyConfig = getUrgencyConfig(request.urgency);
+  const CategoryIcon = categoryConfig.icon;
+  const UrgencyIcon = urgencyConfig.icon;
+
+  // Format meta line "Posted by <first name> · <verified chip> · 3 h 44 min ago"
+  const metaTimeAgo = request.waitingMinutes
+    ? formatMinutesAgo(request.waitingMinutes)
+    : formatTimeAgo(request.createdAt);
+
+  // Live Ticking Waiting Tile
+  const waitingMinutesElapsed = (() => {
+    if (request.createdAt) {
+      const createdMs = new Date(request.createdAt).getTime();
+      if (!isNaN(createdMs) && createdMs > 0) {
+        return Math.max(0, Math.floor((currentTime - createdMs) / 60000));
+      }
+    }
+    if (typeof request.waitingMinutes === 'number') {
+      return request.waitingMinutes;
+    }
+    return 0;
+  })();
+
+  const waitingTileValue = formatWaitingDuration(waitingMinutesElapsed);
+  const waitingSinceFormatted = (() => {
+    if (!request.createdAt) return 'since posted';
+    const d = new Date(request.createdAt);
+    if (isNaN(d.getTime())) return 'since posted';
+    return `since ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  })();
+
+  const neededByTileValue = request.neededByTime || request.scheduledTime || 'Not set';
+
+  // Last update string for mobile tracker
+  const lastUpdateTrackerText = (() => {
+    if (transitLocation?.updatedAt) {
+      return `Updated ${formatTimeAgo(transitLocation.updatedAt)}`;
+    }
+    if (request.createdAt) {
+      return `Updated ${formatTimeAgo(request.createdAt)}`;
+    }
+    return 'Updated recently';
+  })();
+
+  const getStepTimestamp = (idx: number): string => {
+    if (idx === 0) {
+      if (!request.createdAt) return 'Opened';
+      const d = new Date(request.createdAt);
+      return isNaN(d.getTime()) ? 'Opened' : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+    if (idx === 1) {
+      if (offers.length > 0 && offers[0].createdAt) {
+        return formatTimeAgo(offers[0].createdAt);
+      }
+      return 'Offered';
+    }
+    if (idx === 2) return 'Accepted';
+    if (idx === 3) {
+      if (transitLocation?.updatedAt) {
+        const d = new Date(transitLocation.updatedAt);
+        return isNaN(d.getTime()) ? 'En route' : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      }
+      return 'En route';
+    }
+    if (idx === 4) return 'Arrived';
+    if (idx === 5) return 'Completed';
+    return '';
   };
 
-  const activeStepIdx = getStepIndex(currentStatus);
-
   return (
-    <>
+    <OverlayPortal>
+      {/* 
+        Full-height bottom sheet on phones, centered dialog on desktop.
+        Visible gap below status bar: pt-[max(12px,calc(env(safe-area-inset-top)+12px))].
+        Rendered above header and bottom tab bar (z-50).
+      */}
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="request-detail-title"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) onClose();
-        }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm transition-opacity duration-200 motion-reduce:transition-none pt-[max(12px,calc(env(safe-area-inset-top)+12px))] sm:p-4"
       >
+        {/* Backdrop click dismiss */}
         <div
-          onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-2xl rounded-3xl bg-card border border-border/80 dark:border-white/10 p-5 sm:p-7 shadow-2xl text-card-foreground max-h-[92vh] overflow-y-auto"
+          className="fixed inset-0 -z-10"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+
+        {/* Sheet Container Surface */}
+        <div
+          ref={sheetRef}
+          tabIndex={-1}
+          className="relative w-full max-w-2xl h-[calc(100dvh-max(12px,calc(env(safe-area-inset-top)+12px)))] sm:h-auto sm:max-h-[90dvh] flex flex-col bg-card text-card-foreground rounded-t-3xl sm:rounded-3xl border border-border/80 shadow-2xl overflow-hidden outline-none animate-in slide-in-from-bottom duration-200 sm:slide-in-from-bottom-0 sm:zoom-in-95"
         >
-          {/* Header */}
-          <div className="flex items-start justify-between pb-4 border-b border-border/80">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 flex-wrap">
+          {/* =====================================================================
+              1. STICKY TOP BAR & TITLE
+             ===================================================================== */}
+          <div className="sticky top-0 z-20 shrink-0 bg-card/95 backdrop-blur-md border-b border-border/80 px-4 sm:px-6 pt-3.5 pb-3.5 space-y-2">
+            {/* Top Row: Category Chip, Urgency Badge, Status Chip, Accessible Close Button */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+                {/* Category Chip */}
                 <span
-                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                    request.urgency === 'critical'
-                      ? 'bg-rose-500/15 text-rose-600 border border-rose-500/20'
-                      : request.urgency === 'high'
-                      ? 'bg-amber-500/15 text-amber-600 border border-amber-500/20'
-                      : 'bg-blue-500/15 text-blue-600 border border-blue-500/20'
-                  }`}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${categoryConfig.badge}`}
                 >
-                  <AlertTriangle className="h-3 w-3 notranslate" />
-                  {request.urgency}
+                  <CategoryIcon className="h-3.5 w-3.5 notranslate shrink-0" />
+                  <span>{categoryConfig.label}</span>
                 </span>
 
-                <span className="text-xs font-bold text-muted-foreground uppercase px-2 py-0.5 rounded-full bg-muted border border-border">
-                  {request.category}
+                {/* Urgency Badge (with text and icon, never colour alone) */}
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider border ${urgencyConfig.badge}`}
+                >
+                  <UrgencyIcon className="h-3.5 w-3.5 notranslate shrink-0" />
+                  <span>{urgencyConfig.label}</span>
+                </span>
+
+                {/* Status Chip */}
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-pulse" />
+                  <span className="capitalize">{LIFECYCLE_STEPS[activeStepIdx].label}</span>
                 </span>
               </div>
 
-              <h2 id="request-detail-title" className="text-xl sm:text-2xl font-bold text-foreground mt-1">
-                {request.title}
-              </h2>
+              {/* Accessible Close Button (44px tap target aligned and centered) */}
+              <button
+                type="button"
+                onClick={onClose}
+                className="min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
+                aria-label="Close request details sheet"
+              >
+                <X className="h-5 w-5 notranslate" />
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-95 touch-target shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              aria-label="Close details"
+            {/* Title Below: up to 3 lines, balanced wrapping, 22-24px, strong contrast */}
+            <h2
+              id="request-detail-title"
+              className="text-[22px] sm:text-[24px] font-bold text-foreground leading-snug line-clamp-3 [text-wrap:balance] tracking-tight"
             >
-              <X className="h-5 w-5 notranslate" />
-            </button>
+              {request.title}
+            </h2>
+
+            {/* Meta Line under title: "Posted by <first name> · <verified chip> · 3 h 44 min ago" */}
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap font-medium pt-0.5">
+              <span>
+                Posted by <strong className="text-foreground font-semibold">{requesterFirstName}</strong>
+              </span>
+              <span aria-hidden="true">·</span>
+              {request.verified && (
+                <>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-500/20">
+                    <ShieldCheck className="h-3.5 w-3.5 notranslate shrink-0" />
+                    <span>Verified</span>
+                  </span>
+                  <span aria-hidden="true">·</span>
+                </>
+              )}
+              <span>{metaTimeAgo}</span>
+            </div>
           </div>
 
-          <div className="mt-4 space-y-5">
+          {/* =====================================================================
+              2. SCROLLING MIDDLE CONTENT
+             ===================================================================== */}
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 space-y-5">
             {/* =====================================================================
-                LIFECYCLE TIMELINE (Open -> Offered -> Accepted -> On the way -> Arrived -> Completed)
+                PROGRESS TRACKER
+                (Rename "Request lifecycle progress" to "Progress", 6 steps, live updates)
                ===================================================================== */}
-            <div className="p-4 rounded-2xl bg-muted/40 border border-border space-y-3">
-              <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-foreground uppercase tracking-wider">
-                  Request Lifecycle Progress
+            <div className="p-4 rounded-2xl bg-muted/40 border border-border/80 shadow-xs space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold pb-0.5">
+                <span className="text-foreground uppercase tracking-wider font-extrabold flex items-center gap-1.5">
+                  <span>Progress</span>
                 </span>
-                <span className="text-primary font-black uppercase">
-                  {currentStatus.replace('_', ' ')}
+                <span className="text-primary font-black uppercase text-[11px] bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
+                  {LIFECYCLE_STEPS[activeStepIdx].label}
                 </span>
               </div>
 
-              {/* Multi-step progress bar */}
-              <div className="relative flex items-center justify-between">
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-muted rounded-full -z-0" />
-                <div
-                  className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-primary rounded-full transition-all duration-300 -z-0"
-                  style={{
-                    width: `${(activeStepIdx / (timelineSteps.length - 1)) * 100}%`,
-                  }}
-                />
+              {/* Wide screens (>=480px): Horizontal tracker with icons and labels */}
+              <div className="hidden min-[480px]:block pt-2 pb-1">
+                <div className="relative flex items-center justify-between">
+                  {/* Background Track */}
+                  <div className="absolute left-4 right-4 top-4 h-1 bg-muted rounded-full -z-0" />
+                  {/* Filled Active Track */}
+                  <div
+                    className="absolute left-4 top-4 h-1 bg-primary rounded-full transition-all duration-300 -z-0"
+                    style={{
+                      width: `calc(${(activeStepIdx / (LIFECYCLE_STEPS.length - 1)) * 100}% - 2rem)`,
+                    }}
+                  />
 
-                {timelineSteps.map((s, idx) => {
-                  const isPassed = idx <= activeStepIdx;
-                  const isCurrent = idx === activeStepIdx;
-                  return (
-                    <div
-                      key={s.key}
-                      className="relative z-10 flex flex-col items-center group cursor-default"
-                    >
+                  {LIFECYCLE_STEPS.map((step, idx) => {
+                    const isCompleted = idx < activeStepIdx;
+                    const isCurrent = idx === activeStepIdx;
+                    const StepIcon = step.icon;
+
+                    return (
                       <div
-                        className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-black transition ${
-                          isCurrent
-                            ? 'bg-primary text-white ring-4 ring-primary/20 scale-110'
-                            : isPassed
-                            ? 'bg-primary text-white'
-                            : 'bg-card border border-border text-muted-foreground'
-                        }`}
+                        key={step.key}
+                        className="relative z-10 flex flex-col items-center min-w-[54px] text-center"
                       >
-                        {isPassed ? <Check className="h-3 w-3 notranslate" /> : idx + 1}
+                        <div
+                          className={`h-8 w-8 rounded-full flex items-center justify-center transition-all ${
+                            isCompleted
+                              ? 'bg-primary text-white shadow-xs'
+                              : isCurrent
+                              ? 'bg-primary text-white ring-4 ring-primary/25 motion-safe:animate-pulse shadow-md'
+                              : 'bg-card border-2 border-border text-muted-foreground/60 opacity-60'
+                          }`}
+                        >
+                          {isCompleted ? (
+                            <Check className="h-4 w-4 stroke-[3] notranslate" />
+                          ) : (
+                            <StepIcon className="h-4 w-4 notranslate" />
+                          )}
+                        </div>
+
+                        <span
+                          className={`text-[10px] font-bold mt-1.5 whitespace-nowrap ${
+                            isCurrent
+                              ? 'text-primary'
+                              : isCompleted
+                              ? 'text-foreground font-semibold'
+                              : 'text-muted-foreground opacity-60'
+                          }`}
+                        >
+                          {step.label}
+                        </span>
+
+                        {/* Completed steps get a checkmark and timestamp */}
+                        {isCompleted && (
+                          <span className="text-[9px] text-muted-foreground font-medium mt-0.5 leading-tight">
+                            {getStepTimestamp(idx)}
+                          </span>
+                        )}
+                        {isCurrent && (
+                          <span className="text-[9px] text-primary font-bold mt-0.5 leading-tight">
+                            Current
+                          </span>
+                        )}
                       </div>
-                      <span
-                        className={`text-[9px] sm:text-[10px] font-bold mt-1 text-center whitespace-nowrap ${
-                          isCurrent ? 'text-primary' : 'text-muted-foreground'
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Mobile (<480px): Compact tracker: filled progress bar with 6 circular dots + "Step X of 6 · <Status>" */}
+              <div className="block min-[480px]:hidden space-y-2.5 pt-1">
+                <div className="relative flex items-center justify-between px-1">
+                  {/* Background Track */}
+                  <div className="absolute left-2 right-2 top-1/2 -translate-y-1/2 h-1 bg-muted rounded-full -z-0" />
+                  {/* Active Filled Progress Line */}
+                  <div
+                    className="absolute left-2 top-1/2 -translate-y-1/2 h-1 bg-primary rounded-full transition-all duration-300 -z-0"
+                    style={{
+                      width: `calc(${(activeStepIdx / (LIFECYCLE_STEPS.length - 1)) * 100}% - 1rem)`,
+                    }}
+                  />
+
+                  {LIFECYCLE_STEPS.map((step, idx) => {
+                    const isCompleted = idx < activeStepIdx;
+                    const isCurrent = idx === activeStepIdx;
+
+                    return (
+                      <div
+                        key={step.key}
+                        className={`relative z-10 h-4 w-4 rounded-full flex items-center justify-center transition-all ${
+                          isCompleted
+                            ? 'bg-primary text-white ring-2 ring-card'
+                            : isCurrent
+                            ? 'bg-primary text-white ring-4 ring-primary/30 motion-safe:animate-pulse'
+                            : 'bg-card border-2 border-border opacity-50'
                         }`}
+                        title={`${step.label} (Step ${idx + 1} of 6)`}
                       >
-                        {s.label}
-                      </span>
-                    </div>
-                  );
-                })}
+                        {isCompleted && <Check className="h-2.5 w-2.5 stroke-[3] notranslate" />}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* One clear line "Step X of 6 · <Status>" and time of last update */}
+                <div className="flex items-center justify-between text-xs pt-0.5">
+                  <span className="font-bold text-foreground">
+                    Step {activeStepIdx + 1} of 6 ·{' '}
+                    <span className="text-primary">{LIFECYCLE_STEPS[activeStepIdx].label}</span>
+                  </span>
+                  <span className="text-[11px] text-muted-foreground font-medium">
+                    {lastUpdateTrackerText}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Description */}
-            <p className="text-xs sm:text-sm text-foreground leading-relaxed bg-card p-4 rounded-2xl border border-border">
-              {request.description}
-            </p>
-
-            {/* Dynamic Category Specifications */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
-              {request.bloodGroup && (
-                <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-300">
-                  <span className="block font-medium">Blood Group</span>
-                  <span className="text-sm sm:text-base font-extrabold">{request.bloodGroup}</span>
-                  <span className="block text-[11px] mt-0.5">{request.unitsNeeded || 1} Units</span>
+            {/* =====================================================================
+                INFO TILES: One row of 3 equal grid tiles (never an orphan half-width card)
+                1. "Waiting" (live ticking each minute e.g. "3 h 44 min", with "since <time>")
+                2. "Needed by" (from request date/time, or "Not set")
+                3. "Distance" (live, updates when travel mode changes)
+               ===================================================================== */}
+            <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+              {/* Tile 1: Waiting */}
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/80 shadow-xs flex flex-col justify-between">
+                <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+                  <Clock className="h-3.5 w-3.5 text-primary notranslate shrink-0" />
+                  <span>Waiting</span>
                 </div>
-              )}
-              {request.itemType && (
-                <div className="p-3 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-700 dark:text-teal-300">
-                  <span className="block font-medium">Equipment</span>
-                  <span className="text-sm sm:text-base font-extrabold truncate">{request.itemType}</span>
-                  <span className="block text-[11px] mt-0.5">{request.itemDuration || '3 days'}</span>
-                </div>
-              )}
-              {request.elderlyAidType && (
-                <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300">
-                  <span className="block font-medium">Elderly Aid</span>
-                  <span className="text-sm sm:text-base font-extrabold">{request.elderlyAidType}</span>
-                  <span className="block text-[11px] mt-0.5">{request.scheduledTime || 'Scheduled'}</span>
-                </div>
-              )}
-              {request.bookTitle && (
-                <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300">
-                  <span className="block font-medium">Textbook</span>
-                  <span className="text-sm sm:text-base font-extrabold truncate">{request.bookTitle}</span>
-                  <span className="block text-[11px] mt-0.5">{request.bookCondition || 'Good'}</span>
-                </div>
-              )}
-              {request.pickupAddress && (
-                <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300">
-                  <span className="block font-medium">Transit</span>
-                  <span className="text-sm sm:text-base font-extrabold">
-                    {request.passengerCount || 1} Pax
-                  </span>
-                  <span className="block text-[11px] mt-0.5">
-                    {request.wheelchairAccessible ? 'Wheelchair Ready' : 'Standard'}
+                <div className="my-1.5">
+                  <span className="text-base sm:text-lg font-extrabold text-foreground tracking-tight block">
+                    {waitingTileValue}
                   </span>
                 </div>
-              )}
-              <div className="p-3 rounded-2xl bg-card border border-border">
-                <span className="block text-muted-foreground font-medium">Waiting Time</span>
-                <span className="text-sm sm:text-base font-extrabold text-foreground">
-                  {request.waitingMinutes} Mins
-                </span>
-                <span className="block text-[11px] text-muted-foreground mt-0.5">
-                  {request.createdAt}
+                <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium truncate">
+                  {waitingSinceFormatted}
                 </span>
               </div>
+
+              {/* Tile 2: Needed by */}
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/80 shadow-xs flex flex-col justify-between">
+                <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+                  <Calendar className="h-3.5 w-3.5 text-amber-500 notranslate shrink-0" />
+                  <span>Needed by</span>
+                </div>
+                <div className="my-1.5">
+                  <span className="text-base sm:text-lg font-extrabold text-foreground tracking-tight block truncate">
+                    {neededByTileValue}
+                  </span>
+                </div>
+                <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium truncate">
+                  {request.neededByTime || request.scheduledTime ? 'Target timing' : 'Flexible schedule'}
+                </span>
+              </div>
+
+              {/* Tile 3: Distance */}
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/80 shadow-xs flex flex-col justify-between">
+                <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+                  <Navigation className="h-3.5 w-3.5 text-emerald-500 notranslate shrink-0" />
+                  <span>Distance</span>
+                </div>
+                <div className="my-1.5">
+                  <span className="text-base sm:text-lg font-extrabold text-foreground tracking-tight block truncate">
+                    {routeResult?.distanceKm ? `${routeResult.distanceKm} km` : `${request.distanceKm} km`}
+                  </span>
+                </div>
+                <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium truncate">
+                  {formatETA(etaMinutes)} · {travelMode}
+                </span>
+              </div>
+            </div>
+
+            {/* =====================================================================
+                CATEGORY-SPECIFIC DETAIL CHIPS
+               ===================================================================== */}
+            <div className="flex flex-wrap gap-2 text-xs">
+              {request.category === 'blood' && (
+                <>
+                  {request.bloodGroup && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20 font-bold">
+                      <Droplet className="h-3.5 w-3.5 notranslate text-rose-600 dark:text-rose-400" />
+                      <span>Blood Group: {request.bloodGroup}</span>
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20 font-bold">
+                    <PlusCircle className="h-3.5 w-3.5 notranslate text-rose-600 dark:text-rose-400" />
+                    <span>{request.unitsNeeded || 1} Units Needed</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/80 text-foreground border border-border font-bold">
+                    <Hospital className="h-3.5 w-3.5 notranslate text-primary" />
+                    <span>{request.hospitalName || 'Asansol District Hospital'}</span>
+                  </span>
+                </>
+              )}
+
+              {request.category === 'equipment' && (
+                <>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20 font-bold">
+                    <Package className="h-3.5 w-3.5 notranslate text-teal-600 dark:text-teal-400" />
+                    <span>Item: {request.itemType || 'Medical Equipment'}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/80 text-foreground border border-border font-bold">
+                    <Clock className="h-3.5 w-3.5 notranslate text-muted-foreground" />
+                    <span>Duration: {request.itemDuration || '3 days'}</span>
+                  </span>
+                </>
+              )}
+
+              {request.category === 'elderly' && (
+                <>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 font-bold">
+                    <HeartHandshake className="h-3.5 w-3.5 notranslate text-blue-600 dark:text-blue-400" />
+                    <span>Task: {request.elderlyAidType || 'Companion Assistance'}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/80 text-foreground border border-border font-bold">
+                    <Clock className="h-3.5 w-3.5 notranslate text-muted-foreground" />
+                    <span>Time: {request.scheduledTime || request.elderlyDuration || 'Scheduled'}</span>
+                  </span>
+                </>
+              )}
+
+              {request.category === 'books' && (
+                <>
+                  {request.booksClassSubject && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 font-bold">
+                      <BookOpen className="h-3.5 w-3.5 notranslate text-amber-600 dark:text-amber-400" />
+                      <span>Subject/Class: {request.booksClassSubject}</span>
+                    </span>
+                  )}
+                  {request.bookTitle && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/80 text-foreground border border-border font-bold">
+                      <span>Book: {request.bookTitle}</span>
+                    </span>
+                  )}
+                  {request.bookCondition && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-muted text-muted-foreground text-[11px] font-semibold border border-border">
+                      <span>Condition: {request.bookCondition}</span>
+                    </span>
+                  )}
+                </>
+              )}
+
+              {request.category === 'transport' && (
+                <>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/20 font-bold">
+                    <Navigation className="h-3.5 w-3.5 notranslate text-violet-600 dark:text-violet-400" />
+                    <span>
+                      Route: {request.pickupAddress || request.locationName} → {request.dropAddress || 'Drop site'}
+                    </span>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/80 text-foreground border border-border font-bold">
+                    <Users className="h-3.5 w-3.5 notranslate text-muted-foreground" />
+                    <span>{request.passengerCount || 1} Passenger(s)</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/80 text-foreground border border-border font-bold">
+                    <span>{request.wheelchairAccessible ? 'Wheelchair Ready' : 'Standard Access'}</span>
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* =====================================================================
+                DESCRIPTION: Clean text block, preserved line breaks, "Read more" toggle
+               ===================================================================== */}
+            <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                Description
+              </h4>
+              <p
+                className={`whitespace-pre-line text-xs sm:text-sm text-foreground/90 leading-relaxed ${
+                  !descExpanded ? 'line-clamp-5' : ''
+                }`}
+              >
+                {request.description}
+              </p>
+              {request.description && request.description.length > 200 && (
+                <button
+                  type="button"
+                  onClick={() => setDescExpanded(!descExpanded)}
+                  className="text-xs font-bold text-primary hover:underline mt-2 inline-flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                >
+                  {descExpanded ? 'Show less' : 'Read more'}
+                </button>
+              )}
+            </div>
+
+            {/* =====================================================================
+                5. LOCATION CARD & REQUESTED BY CARD
+               ===================================================================== */}
+            {/* Location Card */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-card border border-border/80 shadow-xs space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                    <MapPin className="h-4.5 w-4.5 notranslate" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Location
+                    </h4>
+                    <p
+                      className="text-sm font-semibold text-foreground leading-snug line-clamp-2 break-words mt-0.5"
+                      title={request.locationName}
+                    >
+                      {request.locationName}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/50 flex-wrap">
+                {/* Verified Need Chip */}
+                <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+                  <ShieldCheck className="h-4 w-4 notranslate shrink-0" />
+                  <span>{request.verificationBadge || 'Verified Need'}</span>
+                </div>
+
+                {/* Open in Maps link */}
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${request.latitude},${request.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/80 bg-muted/60 hover:bg-muted text-foreground text-xs font-bold transition-colors touch-target focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
+                >
+                  <span>Open in Maps</span>
+                  <ExternalLink className="h-3.5 w-3.5 notranslate" />
+                </a>
+              </div>
+            </div>
+
+            {/* Requested By Card */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-card border border-border/80 shadow-xs space-y-3.5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  {/* Avatar */}
+                  <div className="h-11 w-11 rounded-2xl bg-primary/15 text-primary border border-primary/25 flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+                    {requesterFirstName.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-sm font-bold text-foreground">
+                        {requesterFirstName}
+                      </span>
+                      {/* Renamed confusing Community Volunteer label to Requester */}
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/60">
+                        Requester
+                      </span>
+                      {request.verified && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                          <ShieldCheck className="h-3 w-3 notranslate" />
+                          <span>Verified</span>
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
+                      <span className="flex items-center gap-0.5 font-bold text-amber-600 dark:text-amber-400">
+                        <Star className="h-3 w-3 fill-amber-500 text-amber-500 notranslate" />
+                        <span>4.9</span>
+                      </span>
+                      <span>·</span>
+                      <span>Member since {formatMemberSince(request.createdAt)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Row */}
+              {isMatched ? (
+                /* Unmasked Contact info for matched pair */
+                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                      <ShieldCheck className="h-4 w-4 notranslate" />
+                      <span>Verified Matched Pair · Direct Contact Unlocked</span>
+                    </span>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                      Private Channel
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
+                    <div>
+                      <p className="text-xs font-bold text-foreground">
+                        {contactInfo?.name || request.contactName}
+                      </p>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {contactInfo?.phone || request.phone}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`tel:${(contactInfo?.phone || request.phone).replace(/[^0-9+]/g, '')}`}
+                        className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold transition-colors shadow-xs touch-target focus-visible:ring-2 focus-visible:ring-emerald-500"
+                      >
+                        <Phone className="h-3.5 w-3.5 notranslate" />
+                        <span>Call</span>
+                      </a>
+                      <a
+                        href={`https://wa.me/${(contactInfo?.phone || request.phone).replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white px-3.5 py-2 text-xs font-bold transition-colors shadow-xs touch-target focus-visible:ring-2 focus-visible:ring-emerald-500"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5 notranslate" />
+                        <span>WhatsApp</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Masked Contact Row: Phone shown masked with a lock chip 'Hidden until matched' on same line (no wrap) */
+                <div className="p-3 rounded-xl bg-muted/40 border border-border/80 flex items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Phone className="h-4 w-4 text-muted-foreground shrink-0 notranslate" />
+                    <span className="font-mono text-xs font-semibold text-foreground truncate">
+                      +91 98320 •••••
+                    </span>
+                  </div>
+                  <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground bg-muted border border-border/60 px-2.5 py-1 rounded-lg whitespace-nowrap">
+                    <Lock className="h-3 w-3 notranslate" />
+                    <span>Hidden until matched</span>
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* =====================================================================
                 PROXIMITY, OSRM ROUTE PREVIEW & TRAVEL MODE
                ===================================================================== */}
-            <div className="p-4 rounded-2xl bg-card border border-border space-y-3">
+            <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-foreground flex items-center gap-1.5">
                   <Navigation className="h-4 w-4 text-primary notranslate" />
@@ -629,11 +1355,13 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                     <span>Routing...</span>
                   </span>
                 ) : (
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                    routeResult?.isFallback || routeResult?.source === 'straight-line'
-                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                      : 'bg-primary/10 text-primary border border-primary/20'
-                  }`}>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      routeResult?.isFallback || routeResult?.source === 'straight-line'
+                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                        : 'bg-primary/10 text-primary border border-primary/20'
+                    }`}
+                  >
                     {routeResult?.isFallback || routeResult?.source === 'straight-line'
                       ? 'Straight Line (Fallback)'
                       : `${routeResult?.sourceProvider ? routeResult.sourceProvider.toUpperCase() : 'Road'} Route`}
@@ -682,9 +1410,9 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
             </div>
 
             {/* =====================================================================
-                NEAREST HOSPITALS, CLINICS, PHARMACIES & BLOOD BANKS
+                NEAREST HOSPITALS, CLINICS & PHARMACIES
                ===================================================================== */}
-            <div className="p-4 rounded-2xl bg-card border border-border space-y-3">
+            <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5">
                   <Hospital className="h-4 w-4 text-rose-500 notranslate" />
@@ -767,170 +1495,29 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
             </div>
 
             {/* =====================================================================
-                CONTACT DETAILS: MASKED vs UNMASKED ON ACCEPTANCE
+                4. OFFERS RECEIVED SECTION (Owner View)
                ===================================================================== */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-muted/60 border border-border space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-2.5">
-                  <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5 notranslate" />
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">Location</h4>
-                    <p className="text-xs text-muted-foreground">{request.locationName}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-bold shrink-0">
-                  <ShieldCheck className="h-4 w-4 notranslate" />
-                  <span>{request.verificationBadge}</span>
-                </div>
-              </div>
-
-              {/* Matched Pair Contact Reveal Banner */}
-              {isMatched ? (
-                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
-                      <ShieldCheck className="h-4 w-4 notranslate" />
-                      <span>Verified Matched Pair · Direct Contact Unlocked</span>
-                    </span>
-                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
-                      Private Channel
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
-                    <div>
-                      <p className="text-xs font-bold text-foreground">
-                        {contactInfo?.name || request.contactName}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {contactInfo?.phone || request.phone}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={`tel:${contactInfo?.phone || request.phone}`}
-                        className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold transition shadow-xs touch-target"
-                      >
-                        <Phone className="h-3.5 w-3.5 notranslate" />
-                        <span>Call</span>
-                      </a>
-                      <a
-                        href={`https://wa.me/${(contactInfo?.phone || request.phone).replace(/[^0-9]/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white px-3.5 py-2 text-xs font-bold transition shadow-xs touch-target"
-                      >
-                        <MessageCircle className="h-3.5 w-3.5 notranslate" />
-                        <span>WhatsApp</span>
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-3 rounded-2xl bg-background border border-border flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <Lock className="h-4 w-4 text-muted-foreground notranslate" />
-                    <div>
-                      <span className="font-bold text-foreground block">{request.contactName}</span>
-                      <span className="text-[11px] text-muted-foreground">
-                        +91 98320 ••••• (Protected until match)
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-1 rounded-lg">
-                    Masked
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* =====================================================================
-                VOLUNTEER OFFERS SECTION (For Requester to Accept / Decline)
-               ===================================================================== */}
-            {isRequester && offers.length > 0 && currentStatus === 'open' && (
-              <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5">
-                    <HeartHandshake className="h-4 w-4 text-primary notranslate" />
-                    <span>Volunteer Offers Received ({offers.length})</span>
-                  </h4>
-                  <span className="text-[10px] text-primary font-bold">Action Required</span>
-                </div>
-
-                <div className="space-y-2.5">
-                  {offers.map((offer) => (
-                    <div
-                      key={offer.id}
-                      className="p-3.5 rounded-2xl bg-card border border-border shadow-xs space-y-2.5"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
-                            {offer.helperName.charAt(0)}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-bold text-foreground">
-                                {offer.helperName}
-                              </span>
-                              <ShieldCheck className="h-3.5 w-3.5 text-emerald-500 notranslate" />
-                            </div>
-                            <span className="text-[11px] text-muted-foreground">
-                              {offer.helperRating.toFixed(1)} ★ · {offer.helperDistanceKm || 1.2} km away · {offer.createdAt}
-                            </span>
-                          </div>
-                        </div>
-
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                          {offer.status}
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-foreground bg-muted/40 p-2.5 rounded-xl border border-border/70">
-                        &quot;{offer.message}&quot;
-                      </p>
-
-                      {offer.status === 'pending' && (
-                        <div className="flex gap-2 pt-1">
-                          <button
-                            onClick={() => handleDeclineOffer(offer)}
-                            disabled={actionInProgress === offer.id}
-                            className="flex-1 py-2 rounded-xl border border-border text-xs font-semibold text-muted-foreground hover:bg-muted transition"
-                          >
-                            Decline
-                          </button>
-                          <button
-                            onClick={() => handleAcceptOffer(offer)}
-                            disabled={actionInProgress === offer.id}
-                            className="flex-2 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition shadow-soft flex items-center justify-center gap-1.5"
-                          >
-                            {actionInProgress === offer.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin notranslate" />
-                            ) : (
-                              <Check className="h-3.5 w-3.5 notranslate" />
-                            )}
-                            <span>Accept Volunteer</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+            {isRequester && (
+              <OffersReceivedSection
+                request={request}
+                offers={offers}
+                actionInProgress={actionInProgress}
+                onAcceptOffer={handleAcceptOffer}
+                onDeclineOffer={handleDeclineOffer}
+              />
             )}
 
             {/* =====================================================================
-                LIVE LOCATION SHARING SECTION (When Accepted / On the way)
+                LIVE TRANSIT LOCATION SHARING SECTION
                ===================================================================== */}
             {isMatched && currentStatus !== 'completed' && (
-              <div className="p-4 rounded-2xl bg-card border border-border space-y-3">
+              <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Radio
                       className={`h-4 w-4 ${
                         isSharingLocation || transitLocation
-                          ? 'text-emerald-500 animate-pulse'
+                          ? 'text-emerald-500 motion-safe:animate-pulse'
                           : 'text-muted-foreground'
                       } notranslate`}
                     />
@@ -939,7 +1526,6 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                     </span>
                   </div>
 
-                  {/* Toggle button for helper */}
                   <button
                     onClick={handleToggleLocationSharing}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
@@ -975,7 +1561,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
             )}
 
             {/* =====================================================================
-                STATUS ADVANCEMENT CONTROLS (On the way -> Arrived -> Complete)
+                STATUS ADVANCEMENT CONTROLS (For Matched Helper)
                ===================================================================== */}
             {isMatched && currentStatus !== 'completed' && (
               <div className="p-4 rounded-2xl bg-muted/40 border border-border space-y-2.5">
@@ -1018,50 +1604,33 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
               </div>
             )}
 
-            {/* =====================================================================
-                PRIMARY ACTION BUTTONS (Offer Help / Completed / Share / Report)
-               ===================================================================== */}
-            <div className="pt-2 flex flex-col sm:flex-row gap-3">
-              {currentStatus === 'open' && (
-                <button
-                  type="button"
-                  onClick={() => setHelpFlowOpen(true)}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 px-4 text-sm font-bold text-white shadow-md shadow-primary/25 hover:bg-primary/90 transition-all active:scale-95 touch-target"
-                >
-                  <HeartHandshake className="h-5 w-5 notranslate" />
-                  <span>Offer Help Now</span>
-                </button>
-              )}
-
-              {currentStatus === 'completed' && (
-                <div className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold text-xs">
-                  <CheckCircle2 className="h-4 w-4 notranslate" />
-                  <span>Task Successfully Completed!</span>
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleShare}
-                  className="flex items-center justify-center gap-1.5 rounded-2xl border border-border/80 bg-card px-4 py-3 text-xs font-bold text-foreground hover:bg-muted transition-all active:scale-95 touch-target shadow-xs"
-                  title="Share request"
-                >
-                  <Share2 className="h-4 w-4 notranslate" />
-                  <span className="hidden sm:inline">Share</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReportModalOpen(true)}
-                  className="flex items-center justify-center gap-1.5 rounded-2xl border border-border/80 bg-card px-4 py-3 text-xs font-bold text-muted-foreground hover:text-rose-500 hover:bg-muted transition-all active:scale-95 touch-target shadow-xs"
-                  title="Report request"
-                >
-                  <Flag className="h-4 w-4 notranslate" />
-                  <span className="hidden sm:inline">Report</span>
-                </button>
-              </div>
-            </div>
+            {/* Bottom padding safe zone so content is completely reachable and never cut off */}
+            <div className="h-8 sm:h-10" aria-hidden="true" />
           </div>
+
+          {/* =====================================================================
+              3. STICKY BOTTOM ACTION BAR (Unified for all viewer roles)
+             ===================================================================== */}
+          <StickyActionBar
+            request={request}
+            userProfile={userProfile}
+            offers={offers}
+            isRequester={isRequester}
+            isAcceptedHelper={isAcceptedHelper}
+            currentStatus={currentStatus}
+            actionInProgress={actionInProgress}
+            onOfferHelp={() => setHelpFlowOpen(true)}
+            onAdvanceStatus={handleAdvanceStatus}
+            onWithdrawOffer={handleWithdrawOffer}
+            onCancelRequest={handleCancelRequest}
+            onEditRequest={() =>
+              toast.info('To edit your request, reach out to moderators or create an updated post.')
+            }
+            onOpenRating={() => setRatingModalOpen(true)}
+            onGetVerified={handleGetVerified}
+            onShare={handleShare}
+            onReport={() => setReportModalOpen(true)}
+          />
         </div>
       </div>
 
@@ -1072,7 +1641,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
         <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in zoom-in-95 duration-150">
           <div className="w-full max-w-sm rounded-3xl bg-card border border-border/80 p-6 shadow-2xl space-y-4">
             <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
-              <Radio className="h-6 w-6 notranslate animate-pulse" />
+              <Radio className="h-6 w-6 notranslate motion-safe:animate-pulse" />
             </div>
             <h3 className="text-base font-bold text-foreground text-center">
               Share Live Location While On the Way?
@@ -1093,7 +1662,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                 onClick={handleConfirmLocationConsent}
                 className="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition active:scale-95 shadow-soft"
               >
-                I Agree & Share
+                I Agree &amp; Share
               </button>
             </div>
           </div>
@@ -1226,6 +1795,6 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
           fetchLiveRequests();
         }}
       />
-    </>
+    </OverlayPortal>
   );
 }

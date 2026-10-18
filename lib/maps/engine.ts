@@ -427,6 +427,10 @@ export class MapsFallbackEngine {
     limit: number
   ): PlaceResult[] {
     const filtered = ASANSOL_CURATED_MEDICAL_HUBS.filter((h) => {
+      // Only return curated offline fallback if coordinates are actually near the curated area (within 35 km)
+      const dist = calculateDistance(lat, lng, h.latitude, h.longitude);
+      if (dist > 35) return false;
+
       if (category === 'all' || category === 'healthcare') return true;
       if (category === 'emergency') return h.emergency || h.type === 'hospital';
       return h.type === category;

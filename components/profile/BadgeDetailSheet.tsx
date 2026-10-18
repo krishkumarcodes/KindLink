@@ -288,21 +288,6 @@ export function BadgeDetailSheet({
                 isCelebrating ? 'scale-110' : ''
               }`}
             >
-              {/* Soft Radial Ambient Glow */}
-              <div
-                className={`absolute inset-0 rounded-full blur-xl transition-opacity duration-500 ${
-                  badge.earned
-                    ? badge.currentTier === 'gold'
-                      ? 'bg-amber-400/35 opacity-100 scale-125'
-                      : badge.currentTier === 'platinum'
-                      ? 'bg-cyan-400/35 opacity-100 scale-125'
-                      : badge.currentTier === 'silver'
-                      ? 'bg-slate-300/35 dark:bg-slate-500/25 opacity-100 scale-125'
-                      : 'bg-amber-700/35 opacity-100 scale-125'
-                    : 'opacity-0'
-                }`}
-              />
-
               {/* Large 80px SVG Medal Artwork */}
               <BadgeMedalIcon
                 badgeId={badge.id}

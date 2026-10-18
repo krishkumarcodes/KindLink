@@ -25,6 +25,7 @@ import {
 import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { NotificationItem } from '@/lib/data/types';
+import { BadgeMedalIcon } from '@/components/profile/BadgeMedalIcon';
 
 export interface NotificationCenterProps {
   open: boolean;
@@ -763,13 +764,25 @@ export function NotificationCenter({
         }`}
       >
         <div className="flex items-start gap-3 min-w-0">
-          {/* Typed colored icon circle */}
-          <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-transform duration-200 group-hover:scale-105 mt-0.5 ${visual.bgCircle}`}
-            title={visual.badgeLabel}
-          >
-            {visual.icon}
-          </div>
+          {/* Typed colored icon circle or Shared Circular Badge Medal */}
+          {visual.type === 'badge' ? (
+            <div className="shrink-0 mt-0.5" title={visual.badgeLabel}>
+              <BadgeMedalIcon
+                size="sm"
+                tier="gold"
+                badgeId={(item as any).badgeId || item.title}
+                title={item.title}
+                isEarned={true}
+              />
+            </div>
+          ) : (
+            <div
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-transform duration-200 group-hover:scale-105 mt-0.5 ${visual.bgCircle}`}
+              title={visual.badgeLabel}
+            >
+              {visual.icon}
+            </div>
+          )}
 
           {/* Title, descriptive body, and action */}
           <div className="flex-1 min-w-0">

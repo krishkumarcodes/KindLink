@@ -2,48 +2,59 @@
 
 import React from 'react';
 import {
-  Droplets,
-  Stethoscope,
-  Users,
-  BookOpen,
-  Car,
   MapPin,
   Clock,
   ShieldCheck,
   AlertTriangle,
   Navigation,
-  HeartHandshake,
+  User,
+  XCircle,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { HelpRequest, TravelMode } from '@/lib/data/types';
 import { calculateETA, formatETA } from '@/lib/data/distance';
+import { formatWaitingDuration } from '@/lib/utils/formatTime';
+import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
+import { dataAdapter } from '@/lib/data';
+import { getCategoryToken } from '@/lib/data/categoryColors';
+import { PrimaryHelpButton, SecondaryButton } from './ActionButtons';
 
-interface RequestCardProps {
+export interface RequestCardProps {
   request: HelpRequest;
   travelMode: TravelMode;
   onSelect: (request: HelpRequest) => void;
   onWhyRank?: (request: HelpRequest) => void;
   onHelp?: (request: HelpRequest) => void;
+  onCancel?: (request: HelpRequest) => void;
+  isOwner?: boolean;
 }
 
-export function RequestCard({ request, travelMode, onSelect, onHelp }: RequestCardProps) {
+export function RequestCard({
+  request,
+  travelMode,
+  onSelect,
+  onHelp,
+  onCancel,
+  isOwner: isOwnerProp,
+}: RequestCardProps) {
+  const { userProfile, fetchLiveRequests } = useKindLinkStore();
   const etaMinutes = calculateETA(request.distanceKm, travelMode);
+  const categoryToken = getCategoryToken(request.category);
+  const CategoryIcon = categoryToken.icon;
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'blood':
-        return <Droplets className="h-4 w-4 text-rose-500 notranslate" />;
-      case 'equipment':
-        return <Stethoscope className="h-4 w-4 text-teal-500 notranslate" />;
-      case 'elderly':
-        return <Users className="h-4 w-4 text-blue-500 notranslate" />;
-      case 'books':
-        return <BookOpen className="h-4 w-4 text-emerald-500 notranslate" />;
-      case 'transport':
-        return <Car className="h-4 w-4 text-amber-500 notranslate" />;
-      default:
-        return <Users className="h-4 w-4 text-primary notranslate" />;
-    }
-  };
+  // Determine if current user is the owner of this request
+  const isUserOwner =
+    isOwnerProp !== undefined
+      ? isOwnerProp
+      : Boolean(
+          (userProfile?.id && (request as any).requesterId === userProfile.id) ||
+          (userProfile?.name &&
+            request.contactName &&
+            request.contactName.trim().toLowerCase() === userProfile.name.trim().toLowerCase()) ||
+          (userProfile?.phone &&
+            request.phone &&
+            request.phone.trim() === userProfile.phone.trim())
+        );
 
   const getUrgencyBadge = (urgency: string) => {
     switch (urgency) {
@@ -58,6 +69,29 @@ export function RequestCard({ request, travelMode, onSelect, onHelp }: RequestCa
     }
   };
 
+  const handleCancelClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onCancel) {
+      onCancel(request);
+      return;
+    }
+    const confirmed = window.confirm('Are you sure you want to cancel this request?');
+    if (!confirmed) return;
+    try {
+      const res = await dataAdapter.cancelRequest(request.id);
+      if (res.success) {
+        toast.success('Request cancelled successfully');
+        if (fetchLiveRequests) {
+          fetchLiveRequests();
+        }
+      } else {
+        toast.error(res.error || 'Failed to cancel request');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Error cancelling request');
+    }
+  };
+
   return (
     <div
       onClick={() => onSelect(request)}
@@ -66,9 +100,15 @@ export function RequestCard({ request, travelMode, onSelect, onHelp }: RequestCa
       <div>
         {/* Top Badges Row */}
         <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-background border border-border/80 shadow-xs group-hover:border-primary/30 transition">
-              {getCategoryIcon(request.category)}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-background border shadow-xs group-hover:border-primary/30 transition"
+              style={{ borderColor: categoryToken.border }}
+            >
+              <CategoryIcon
+                className="h-4 w-4 notranslate"
+                style={{ color: categoryToken.primary }}
+              />
             </span>
             <span
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider border ${getUrgencyBadge(
@@ -79,6 +119,14 @@ export function RequestCard({ request, travelMode, onSelect, onHelp }: RequestCa
               <span>{request.urgency}</span>
             </span>
           </div>
+
+          {/* Owner Badge */}
+          {isUserOwner && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/25 shadow-xs shrink-0">
+              <User className="h-3 w-3 notranslate" />
+              <span>Your request</span>
+            </span>
+          )}
         </div>
 
         {/* Title & Description */}
@@ -111,53 +159,82 @@ export function RequestCard({ request, travelMode, onSelect, onHelp }: RequestCa
       </div>
 
       {/* Footer Info Row */}
-      <div className="mt-5 pt-4 border-t border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-        <div className="space-y-1 text-muted-foreground">
-          <div className="flex items-center gap-1.5 font-medium">
-            <MapPin className="h-3.5 w-3.5 text-primary notranslate shrink-0" />
-            <span className="truncate max-w-[150px] sm:max-w-[180px]">{request.locationName}</span>
+      <div className="mt-5 pt-4 border-t border-border/80 flex flex-col gap-3 text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          {/* Location text wraps cleanly to 2 lines without premature truncation */}
+          <div className="flex items-start gap-1.5 font-medium min-w-0">
+            <MapPin className="h-3.5 w-3.5 text-primary notranslate shrink-0 mt-0.5" />
+            <span className="line-clamp-2 break-words leading-snug text-foreground/90 font-medium">
+              {request.locationName}
+            </span>
           </div>
-          <div className="flex items-center gap-2 text-[11px] flex-wrap">
-            <span className="flex items-center gap-1 font-semibold text-foreground">
-              <Navigation className="h-3 w-3 text-primary notranslate" />
+
+          <div className="flex items-center gap-2 text-[11px] flex-wrap shrink-0">
+            <span className="flex items-center gap-1 font-semibold text-foreground whitespace-nowrap">
+              <Navigation className="h-3 w-3 text-primary notranslate shrink-0" />
               <span>{request.distanceKm} km ({formatETA(etaMinutes)})</span>
             </span>
             <span className="text-muted-foreground/60">•</span>
-            {/* Clear Waiting Time Badge */}
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-muted/80 text-[10px] font-bold text-foreground/80 border border-border/60">
-              <Clock className="h-3 w-3 text-primary notranslate" />
-              <span>waiting {request.waitingMinutes}m</span>
+            {/* Clear Human Waiting Time Badge */}
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-muted/80 text-[10px] font-bold text-foreground/80 border border-border/60 whitespace-nowrap">
+              <Clock className="h-3 w-3 text-primary notranslate shrink-0" />
+              <span>{formatWaitingDuration(request.waitingMinutes, request.createdAt)}</span>
             </span>
           </div>
         </div>
 
-        {/* High-contrast Action Buttons */}
-        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-          <button
-            type="button"
+        {/* Aligned button row: Details on left, category-coloured primary button on right (equal 44px height, radius 16, stacked on narrow screens) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full pt-1">
+          <SecondaryButton
+            size="card"
+            variant="outline"
             onClick={(e) => {
               e.stopPropagation();
               onSelect(request);
             }}
-            className="rounded-xl border border-border/80 bg-background/80 hover:bg-muted px-3 py-2 text-xs font-semibold text-foreground hover:text-primary transition active:scale-95 touch-target shadow-xs"
+            className="w-full"
           >
             Details
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onHelp) {
-                onHelp(request);
-              } else {
-                onSelect(request);
-              }
-            }}
-            className="rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-primary/25 hover:bg-primary/90 transition active:scale-95 touch-target flex items-center gap-1.5"
-          >
-            <HeartHandshake className="h-3.5 w-3.5 notranslate" />
-            <span>I Can Help</span>
-          </button>
+          </SecondaryButton>
+
+          {isUserOwner ? (
+            /* Owner action: Cancel */
+            request.status === 'cancelled' ? (
+              <SecondaryButton
+                size="card"
+                disabled
+                className="w-full"
+              >
+                Cancelled
+              </SecondaryButton>
+            ) : (
+              <SecondaryButton
+                size="card"
+                variant="destructive-outline"
+                icon={XCircle}
+                onClick={handleCancelClick}
+                className="w-full"
+              >
+                Cancel Request
+              </SecondaryButton>
+            )
+          ) : (
+            /* Volunteer Help button: category-coloured primary button (44px, radius 16, category icon on left, single line) */
+            <PrimaryHelpButton
+              category={request.category}
+              size="card"
+              label="I can help"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onHelp) {
+                  onHelp(request);
+                } else {
+                  onSelect(request);
+                }
+              }}
+              className="w-full"
+            />
+          )}
         </div>
       </div>
     </div>

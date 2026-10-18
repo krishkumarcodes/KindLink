@@ -203,6 +203,52 @@ export function formatWaitingTime(
 }
 
 /**
+ * Formats wait duration into a human string like "waiting 3 h 43 min", "waiting 45 min", "waiting 2 h".
+ */
+export function formatWaitingDuration(
+  minutes?: number | null,
+  createdAt?: string | Date | null
+): string {
+  let mins: number | undefined;
+
+  if (typeof minutes === 'number' && Number.isFinite(minutes) && minutes >= 0) {
+    mins = Math.floor(minutes);
+  } else if (createdAt) {
+    const time = typeof createdAt === 'string' ? new Date(createdAt).getTime() : createdAt.getTime();
+    if (!isNaN(time)) {
+      mins = Math.max(0, Math.floor((Date.now() - time) / (60 * 1000)));
+    }
+  }
+
+  if (mins === undefined || mins < 1) {
+    return 'waiting < 1 min';
+  }
+
+  if (mins < 60) {
+    return `waiting ${mins} min`;
+  }
+
+  if (mins < 1440) {
+    const hours = Math.floor(mins / 60);
+    const remMinutes = mins % 60;
+    if (remMinutes === 0) {
+      return `waiting ${hours} h`;
+    }
+    return `waiting ${hours} h ${remMinutes} min`;
+  }
+
+  const days = Math.floor(mins / 1440);
+  const remHours = Math.floor((mins % 1440) / 60);
+  if (remHours === 0) {
+    return `waiting ${days} d`;
+  }
+  return `waiting ${days} d ${remHours} h`;
+}
+
+export const formatWaitTime = formatWaitingDuration;
+
+
+/**
  * Format live status for Community Pulse with narrow and wide screen variants.
  */
 export function formatLivePulseStatus(secondsSinceUpdate: number): {

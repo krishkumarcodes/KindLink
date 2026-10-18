@@ -64,12 +64,13 @@ export const DEFAULT_USER: UserProfile = {
 
 interface KindLinkState {
   requests: HelpRequest[];
+  myActiveRequests: HelpRequest[];
   userProfile: UserProfile;
   notifications: NotificationItem[];
   unreadNotificationCount: number;
   currentView: AppView;
   selectedRequestId: string | null;
-  activeFeedTab: 'urgent' | 'nearest' | 'newest';
+  activeFeedTab: 'urgent' | 'nearest' | 'newest' | 'my_requests';
   filterCategory: HelpCategory | 'all';
   filterUrgency: UrgencyLevel | 'all';
   filterRadius: number; // km
@@ -86,7 +87,7 @@ interface KindLinkState {
   // Actions
   setCurrentView: (view: AppView) => void;
   setSelectedRequestId: (id: string | null) => void;
-  setActiveFeedTab: (tab: 'urgent' | 'nearest' | 'newest') => void;
+  setActiveFeedTab: (tab: 'urgent' | 'nearest' | 'newest' | 'my_requests') => void;
   setFilterCategory: (cat: HelpCategory | 'all') => void;
   setFilterUrgency: (urg: UrgencyLevel | 'all') => void;
   setFilterRadius: (radius: number) => void;
@@ -101,8 +102,16 @@ interface KindLinkState {
   fetchLiveProfile: () => Promise<void>;
   fetchLiveNotifications: () => Promise<void>;
 
+  profileActiveTab?: 'overview' | 'activity' | 'badges' | 'impact' | 'verification' | 'settings';
+  setProfileActiveTab: (tab: 'overview' | 'activity' | 'badges' | 'impact' | 'verification' | 'settings') => void;
+
   addRequest: (newReq: Omit<HelpRequest, 'id' | 'createdAt' | 'status' | 'helpersOffered' | 'distanceKm'>) => Promise<void>;
-  offerHelp: (requestId: string, message?: string) => Promise<void>;
+  offerHelp: (requestId: string, message?: string) => Promise<{ success: boolean; error?: string; offerId?: string; code?: string }>;
+  withdrawOffer: (offerId: string, requestId: string) => Promise<void>;
+  acceptOffer: (offerId: string, requestId: string) => Promise<void>;
+  declineOffer: (offerId: string, requestId: string, reason?: string) => Promise<void>;
+  cancelRequest: (requestId: string) => Promise<void>;
+  completeRequest: (requestId: string) => Promise<void>;
   updateRequestStatus: (requestId: string, status: RequestLifecycleStatus) => Promise<void>;
   updateUserProfile: (patch: Partial<UserProfile>) => void;
   addEmergencyContact: (contact: { name: string; phone: string; relationship: string }) => void;
@@ -120,6 +129,7 @@ export const useKindLinkStore = create<KindLinkState>()(
     (set, get) => ({
       // Real database state - starts empty
       requests: [],
+      myActiveRequests: [],
       userProfile: DEFAULT_USER,
       notifications: [],
       unreadNotificationCount: 0,
@@ -152,6 +162,8 @@ export const useKindLinkStore = create<KindLinkState>()(
       setSearchQuery: (query) => set({ searchQuery: query }),
       setTravelMode: (mode) => set({ travelMode: mode }),
       setWelcomeSeen: (seen) => set({ welcomeSeen: seen }),
+      profileActiveTab: undefined,
+      setProfileActiveTab: (tab) => set({ profileActiveTab: tab }),
 
       setUserCoords: (coords, areaName) => {
         set({
@@ -164,19 +176,26 @@ export const useKindLinkStore = create<KindLinkState>()(
       setUserAreaName: (name) => set({ userAreaName: name }),
 
       fetchLiveRequests: async () => {
-        const { userCoords, filterRadius, filterCategory, filterUrgency } = get();
+        const { userCoords, filterRadius, filterCategory, filterUrgency, userProfile } = get();
         set({ isLoadingRequests: true });
         try {
-          const fresh = await dataAdapter.getRequests({
-            lat: userCoords.lat,
-            lng: userCoords.lng,
-            radiusKm: filterRadius,
-            category: filterCategory,
-            urgency: filterUrgency,
+          const [fresh, myActive] = await Promise.all([
+            dataAdapter.getRequests({
+              lat: userCoords.lat,
+              lng: userCoords.lng,
+              radiusKm: filterRadius,
+              category: filterCategory,
+              urgency: filterUrgency,
+            }),
+            dataAdapter.getMyActiveRequests ? dataAdapter.getMyActiveRequests(userProfile?.id) : Promise.resolve([]),
+          ]);
+          set({
+            requests: fresh || [],
+            myActiveRequests: myActive || [],
+            isLoadingRequests: false,
           });
-          set({ requests: fresh || [], isLoadingRequests: false });
         } catch {
-          set({ requests: [], isLoadingRequests: false });
+          set({ requests: [], myActiveRequests: [], isLoadingRequests: false });
         }
       },
 
@@ -291,18 +310,52 @@ export const useKindLinkStore = create<KindLinkState>()(
       offerHelp: async (requestId, message) => {
         const { requests, userProfile, fetchLiveStats } = get();
         try {
-          await dataAdapter.offerHelp(requestId, message);
+          const res = await dataAdapter.offerHelp(requestId, message);
+          fetchLiveStats();
+          if (res && res.success === false) {
+            return res;
+          }
+
+          const updated = requests.map((req) => {
+            if (req.id === requestId) {
+              return {
+                ...req,
+                helpersOffered: (req.helpersOffered || 0) + 1,
+                status: (req.status === 'open' ? 'offered' : req.status) as RequestLifecycleStatus,
+              };
+            }
+            return req;
+          });
+
+          set({
+            requests: updated,
+            userProfile: {
+              ...userProfile,
+              helpsCount: userProfile.helpsCount + 1,
+            },
+          });
+          return res;
+        } catch (err: any) {
+          return { success: false, error: err.message || 'Failed to submit offer' };
+        }
+      },
+
+      withdrawOffer: async (offerId, requestId) => {
+        const { requests, userProfile, fetchLiveStats } = get();
+        try {
+          await dataAdapter.withdrawOffer(offerId);
           fetchLiveStats();
         } catch {
           // Handled
         }
 
         const updated = requests.map((req) => {
-          if (req.id === requestId) {
+          if (req.id === requestId && req.helpersOffered && req.helpersOffered > 0) {
+            const count = req.helpersOffered - 1;
             return {
               ...req,
-              helpersOffered: (req.helpersOffered || 0) + 1,
-              status: (req.status === 'open' ? 'offered' : req.status) as RequestLifecycleStatus,
+              helpersOffered: count,
+              status: (count === 0 && req.status === 'offered' ? 'open' : req.status) as RequestLifecycleStatus,
             };
           }
           return req;
@@ -312,9 +365,48 @@ export const useKindLinkStore = create<KindLinkState>()(
           requests: updated,
           userProfile: {
             ...userProfile,
-            helpsCount: userProfile.helpsCount + 1,
+            helpsCount: Math.max(0, (userProfile.helpsCount || 1) - 1),
           },
         });
+      },
+
+      acceptOffer: async (offerId, requestId) => {
+        const { fetchLiveStats, fetchLiveRequests } = get();
+        try {
+          await dataAdapter.acceptOffer(offerId);
+          await fetchLiveStats();
+          await fetchLiveRequests();
+        } catch {
+          // Handled
+        }
+      },
+
+      declineOffer: async (offerId, requestId, reason) => {
+        try {
+          await dataAdapter.declineOffer(offerId, reason);
+        } catch {
+          // Handled
+        }
+      },
+
+      cancelRequest: async (requestId: string) => {
+        try {
+          await dataAdapter.cancelRequest(requestId);
+          get().fetchLiveRequests();
+          get().fetchLiveStats();
+        } catch {
+          // Handled
+        }
+      },
+
+      completeRequest: async (requestId: string) => {
+        try {
+          await dataAdapter.completeRequest(requestId);
+          get().fetchLiveRequests();
+          get().fetchLiveStats();
+        } catch {
+          // Handled
+        }
       },
 
       updateRequestStatus: async (requestId, status) => {

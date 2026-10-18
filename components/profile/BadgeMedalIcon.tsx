@@ -7,6 +7,7 @@ import { BadgeTier } from '@/lib/data/badges';
 export interface BadgeMedalIconProps {
   iconName?: string;
   badgeId?: string;
+  title?: string;
   tier: BadgeTier | 'locked';
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'detail' | 'shelf';
   isEarned?: boolean;
@@ -16,31 +17,168 @@ export interface BadgeMedalIconProps {
 }
 
 /**
- * Normalizes badge ID or icon name to one of 18 distinct KindLink badge glyph keys
+ * Normalizes badge ID, icon name, or title to one of 18 distinct KindLink badge glyph keys.
+ * Notice: Generic star fallback has been removed; falls back cleanly to 'community_pillar'.
  */
-export function resolveBadgeGlyphKey(badgeId?: string, iconName?: string): string {
-  const raw = `${badgeId || ''} ${iconName || ''}`.toLowerCase().replace(/[-_]/g, ' ');
+export function resolveBadgeGlyphKey(
+  badgeId?: string,
+  iconName?: string,
+  title?: string
+): string {
+  const raw = `${badgeId || ''} ${iconName || ''} ${title || ''}`
+    .toLowerCase()
+    .replace(/[-_]/g, ' ');
 
-  if (raw.includes('blood') || raw.includes('life saver') || raw.includes('heartpulse')) return 'life_saver';
-  if (raw.includes('pillar') || raw.includes('community pillar') || (raw.includes('award') && !raw.includes('star'))) return 'community_pillar';
-  if (raw.includes('first responder') || raw.includes('emergency first') || raw.includes('zap')) return 'emergency_first_responder';
-  if (raw.includes('quick responder') || raw.includes('quick') || raw.includes('timer')) return 'quick_responder';
-  if (raw.includes('trusted') || raw.includes('neighbour') || raw.includes('neighbor')) return 'trusted_neighbour';
-  if (raw.includes('study') || raw.includes('books') || (raw.includes('mentor') && !raw.includes('teacher'))) return 'study_mentor';
-  if (raw.includes('gear') || raw.includes('lender') || raw.includes('equipment') || raw.includes('wheelchair')) return 'medical_gear_lender';
-  if (raw.includes('elder') || raw.includes('hearthandshake')) return 'elder_friend';
-  if (raw.includes('ride') || raw.includes('transport') || raw.includes('car')) return 'safe_ride_hero';
-  if (raw.includes('streak') || raw.includes('flame')) return 'helper_streak';
-  if (raw.includes('first help') || raw.includes('sparkles') || raw.includes('star')) return 'first_help';
-  if (raw.includes('doctor') || raw.includes('mbbs')) return 'verified_doctor';
-  if (raw.includes('student')) return 'verified_student';
-  if (raw.includes('nurse') || raw.includes('paramedic') || raw.includes('cross')) return 'verified_nurse';
-  if (raw.includes('pharmacist') || raw.includes('pill')) return 'verified_pharmacist';
-  if (raw.includes('teacher') || raw.includes('professor') || raw.includes('educator')) return 'verified_teacher';
-  if (raw.includes('ngo') || raw.includes('organisation') || raw.includes('organization') || raw.includes('building2')) return 'verified_ngo';
-  if (raw.includes('member') || raw.includes('shieldcheck') || raw.includes('verified')) return 'verified_member';
+  // 1. Life Saver (Blood & emergency)
+  if (raw.includes('blood') || raw.includes('life saver') || raw.includes('heartpulse')) {
+    return 'life_saver';
+  }
 
-  return 'first_help';
+  // 2. Trusted Local Neighbour (House with shield and heart)
+  if (raw.includes('trusted') || raw.includes('neighbour') || raw.includes('neighbor')) {
+    return 'trusted_neighbour';
+  }
+
+  // 3. Study and Books Mentor (Open book with academic graduation cap)
+  if (
+    raw.includes('study') ||
+    raw.includes('book') ||
+    raw.includes('books') ||
+    raw.includes('campus') ||
+    raw.includes('academic') ||
+    (raw.includes('mentor') && !raw.includes('teacher'))
+  ) {
+    return 'study_mentor';
+  }
+
+  // 4. Medical Gear Lender (Wheelchair & assistive equipment)
+  if (
+    raw.includes('gear') ||
+    raw.includes('lender') ||
+    raw.includes('equipment') ||
+    raw.includes('wheelchair') ||
+    raw.includes('assistive')
+  ) {
+    return 'medical_gear_lender';
+  }
+
+  // 5. Emergency First Responder (Beacon & radiation rays)
+  if (
+    raw.includes('first responder') ||
+    raw.includes('emergency first') ||
+    raw.includes('beacon') ||
+    raw.includes('zap')
+  ) {
+    return 'emergency_first_responder';
+  }
+
+  // 6. Quick Responder (Stopwatch & lightning bolt)
+  if (
+    raw.includes('quick responder') ||
+    raw.includes('quick') ||
+    raw.includes('timer') ||
+    raw.includes('speed')
+  ) {
+    return 'quick_responder';
+  }
+
+  // 7. Elder Friend (Two caring hands lifting and protecting a heart)
+  if (
+    raw.includes('elder') ||
+    raw.includes('senior') ||
+    raw.includes('companion') ||
+    raw.includes('hearthandshake')
+  ) {
+    return 'elder_friend';
+  }
+
+  // 8. Safe Ride Hero (Transport vehicle with shield)
+  if (
+    raw.includes('ride') ||
+    raw.includes('transit') ||
+    raw.includes('transport') ||
+    raw.includes('car')
+  ) {
+    return 'safe_ride_hero';
+  }
+
+  // 9. Helper Streak (Blazing dynamic flame)
+  if (raw.includes('streak') || raw.includes('flame') || raw.includes('fire')) {
+    return 'helper_streak';
+  }
+
+  // 10. Verified Doctor (Stethoscope with verified seal)
+  if (raw.includes('doctor') || raw.includes('mbbs') || raw.includes('physician')) {
+    return 'verified_doctor';
+  }
+
+  // 11. Verified Student (Graduation cap with verified seal)
+  if (raw.includes('student') || raw.includes('college')) {
+    return 'verified_student';
+  }
+
+  // 12. Verified Nurse (Cross with caduceus & heart)
+  if (raw.includes('nurse') || raw.includes('paramedic')) {
+    return 'verified_nurse';
+  }
+
+  // 13. Verified Pharmacist (Mortar & pestle with seal)
+  if (raw.includes('pharmacist') || raw.includes('pharmacy') || raw.includes('pill')) {
+    return 'verified_pharmacist';
+  }
+
+  // 14. Verified Teacher (Chalkboard & quill)
+  if (
+    raw.includes('teacher') ||
+    raw.includes('professor') ||
+    raw.includes('educator')
+  ) {
+    return 'verified_teacher';
+  }
+
+  // 15. Verified NGO (Classical building with verified shield)
+  if (
+    raw.includes('ngo') ||
+    raw.includes('organisation') ||
+    raw.includes('organization') ||
+    raw.includes('nonprofit') ||
+    raw.includes('building2')
+  ) {
+    return 'verified_ngo';
+  }
+
+  // 16. First Help (Helping hand holding heart with sparkle)
+  if (
+    raw.includes('first help') ||
+    raw.includes('first act') ||
+    raw.includes('kindness') ||
+    raw.includes('sparkle')
+  ) {
+    return 'first_help';
+  }
+
+  // 17. Community Pillar (Classical triumvirate columns)
+  if (
+    raw.includes('pillar') ||
+    raw.includes('community pillar') ||
+    raw.includes('neighbor aid') ||
+    raw.includes('award')
+  ) {
+    return 'community_pillar';
+  }
+
+  // 18. Verified Member (KindLink security shield with checkmark)
+  if (
+    raw.includes('member') ||
+    raw.includes('shieldcheck') ||
+    raw.includes('verified') ||
+    raw.includes('identity')
+  ) {
+    return 'verified_member';
+  }
+
+  // Default fallback - never generic star
+  return 'community_pillar';
 }
 
 /**
@@ -49,7 +187,6 @@ export function resolveBadgeGlyphKey(badgeId?: string, iconName?: string): strin
 function RenderBadgeGlyph({
   glyphKey,
   isEarned,
-  tier,
   gradientPrefix,
 }: {
   glyphKey: string;
@@ -110,9 +247,9 @@ function RenderBadgeGlyph({
           <rect x="46" y="38" width="8" height="25" rx="1.5" fill={glyphFill} stroke={strokeColor} strokeWidth="1.5" />
           <rect x="61" y="38" width="8" height="25" rx="1.5" fill={glyphFill} stroke={strokeColor} strokeWidth="1.5" />
           {/* Flute accents on columns */}
-          <line x1="35" y1="41" x2="35" y2="60" stroke={strokeColor} strokeWidth="1" opacity="0.6" />
-          <line x1="50" y1="41" x2="50" y2="60" stroke={strokeColor} strokeWidth="1" opacity="0.6" />
-          <line x1="65" y1="41" x2="65" y2="60" stroke={strokeColor} strokeWidth="1" opacity="0.6" />
+          <line x1="35" y1="41" x2="35" y2="60" stroke={strokeColor} strokeWidth="1" opacity={0.6} />
+          <line x1="50" y1="41" x2="50" y2="60" stroke={strokeColor} strokeWidth="1" opacity={0.6} />
+          <line x1="65" y1="41" x2="65" y2="60" stroke={strokeColor} strokeWidth="1" opacity={0.6} />
           {/* Stepped Plinth Foundation */}
           <path d="M 27 63 H 73 V 67 H 27 Z" fill={glyphFill} stroke={strokeColor} strokeWidth="1.5" />
           <path d="M 23 67 H 77 V 72 H 23 Z" fill={glyphFill} stroke={strokeColor} strokeWidth="1.5" />
@@ -192,7 +329,7 @@ function RenderBadgeGlyph({
       );
 
     case 'trusted_neighbour':
-      // Home with protective shield and heart
+      // House with protective shield and heart (Exact specification)
       return (
         <g opacity={isEarned ? 1 : 0.4}>
           {/* Roof Gable */}
@@ -225,7 +362,7 @@ function RenderBadgeGlyph({
       );
 
     case 'study_mentor':
-      // Open book with academic graduation cap above
+      // Open book with academic graduation cap above (Exact specification)
       return (
         <g opacity={isEarned ? 1 : 0.4}>
           {/* Mortarboard Cap */}
@@ -253,10 +390,10 @@ function RenderBadgeGlyph({
           />
           <line x1="50" y1="53" x2="50" y2="70" stroke={strokeColor} strokeWidth="2" />
           {/* Page Lines */}
-          <line x1="32" y1="58" x2="44" y2="56" stroke={strokeColor} strokeWidth="1.5" opacity="0.6" />
-          <line x1="32" y1="63" x2="44" y2="61" stroke={strokeColor} strokeWidth="1.5" opacity="0.6" />
-          <line x1="56" y1="56" x2="68" y2="58" stroke={strokeColor} strokeWidth="1.5" opacity="0.6" />
-          <line x1="56" y1="61" x2="68" y2="63" stroke={strokeColor} strokeWidth="1.5" opacity="0.6" />
+          <line x1="32" y1="58" x2="44" y2="56" stroke={strokeColor} strokeWidth="1.5" opacity={0.6} />
+          <line x1="32" y1="63" x2="44" y2="61" stroke={strokeColor} strokeWidth="1.5" opacity={0.6} />
+          <line x1="56" y1="56" x2="68" y2="58" stroke={strokeColor} strokeWidth="1.5" opacity={0.6} />
+          <line x1="56" y1="61" x2="68" y2="63" stroke={strokeColor} strokeWidth="1.5" opacity={0.6} />
         </g>
       );
 
@@ -267,8 +404,8 @@ function RenderBadgeGlyph({
           {/* Large Wheel */}
           <circle cx="45" cy="58" r="13" fill="none" stroke={strokeColor} strokeWidth="2.8" />
           <circle cx="45" cy="58" r="2.5" fill={strokeColor} />
-          <line x1="45" y1="45" x2="45" y2="71" stroke={strokeColor} strokeWidth="1.5" opacity="0.6" />
-          <line x1="32" y1="58" x2="58" y2="58" stroke={strokeColor} strokeWidth="1.5" opacity="0.6" />
+          <line x1="45" y1="45" x2="45" y2="71" stroke={strokeColor} strokeWidth="1.5" opacity={0.6} />
+          <line x1="32" y1="58" x2="58" y2="58" stroke={strokeColor} strokeWidth="1.5" opacity={0.6} />
           {/* Small Caster */}
           <circle cx="65" cy="68" r="3" fill={glyphFill} stroke={strokeColor} strokeWidth="1.5" />
           {/* User & Frame */}
@@ -381,33 +518,32 @@ function RenderBadgeGlyph({
       );
 
     case 'first_help':
-      // Golden star milestone with sparkle flares
+      // Caring helping hand holding an emblem of kindness (heart with sparkle flare)
       return (
         <g opacity={isEarned ? 1 : 0.4}>
-          {/* Radiant 5-Point Star */}
+          {/* Radiant Heart */}
           <path
-            d="M 50 23 L 56.5 37 L 72 38 L 60.5 49 L 64 64 L 50 56 L 36 64 L 39.5 49 L 28 38 L 43.5 37 Z"
-            fill={glyphFill}
-            stroke={strokeColor}
-            strokeWidth="2.5"
+            d="M 50 32 C 46 27 40 27 36 32 C 32 37 33 44 39 49 L 50 58 L 61 49 C 67 44 68 37 64 32 C 60 27 54 27 50 32 Z"
+            fill={isEarned ? '#EF4444' : '#64748B'}
+            stroke={isEarned ? '#FFFFFF' : '#475569'}
+            strokeWidth="1.5"
             strokeLinejoin="round"
           />
-          {/* Star facets/sheen */}
+          {/* Sparkle flare on heart */}
           <path
-            d="M 50 23 L 50 56 L 64 64 Z"
-            fill={isEarned ? '#FFFFFF' : '#64748B'}
-            opacity={isEarned ? 0.25 : 0.1}
-          />
-          {/* Sparkle Diamond 1 */}
-          <path
-            d="M 72 24 L 74 28 L 78 30 L 74 32 L 72 36 L 70 32 L 66 30 L 70 28 Z"
+            d="M 64 24 L 66 28 L 70 30 L 66 32 L 64 36 L 62 32 L 58 30 L 62 28 Z"
             fill={isEarned ? '#FDE047' : '#94A3B8'}
           />
-          {/* Sparkle Diamond 2 */}
+          {/* Supporting Helping Hand from bottom */}
           <path
-            d="M 28 58 L 29 61 L 32 62 L 29 63 L 28 66 L 27 63 L 24 62 L 27 61 Z"
-            fill={isEarned ? '#FDE047' : '#94A3B8'}
+            d="M 28 64 C 32 58 38 57 44 60 L 50 62 L 56 60 C 62 57 68 58 72 64 C 73 66 71 69 67 69 H 33 C 29 69 27 66 28 64 Z"
+            fill={glyphFill}
+            stroke={strokeColor}
+            strokeWidth="2"
+            strokeLinejoin="round"
           />
+          {/* Palm line */}
+          <path d="M 42 63 C 47 65 53 65 58 63" fill="none" stroke={strokeColor} strokeWidth="1.5" strokeLinecap="round" />
         </g>
       );
 
@@ -646,18 +782,18 @@ function RenderBadgeGlyph({
 export function BadgeMedalIcon({
   iconName,
   badgeId,
+  title,
   tier,
   size = 'md',
   isEarned = true,
   className = '',
   showLevelRing = true,
-  isRecent = false,
 }: BadgeMedalIconProps) {
   const uid = useId().replace(/:/g, '');
-  const glyphKey = resolveBadgeGlyphKey(badgeId, iconName);
+  const glyphKey = resolveBadgeGlyphKey(badgeId, iconName, title);
   const activeTier: BadgeTier | 'locked' = !isEarned ? 'locked' : tier;
 
-  // Size styling configuration
+  // Size styling configuration with equal width & height
   const sizeConfig = {
     sm: {
       container: 'h-10 w-10 min-w-10 min-h-10',
@@ -697,27 +833,27 @@ export function BadgeMedalIcon({
     lockIconSize: 'h-2.5 w-2.5',
   };
 
-  // Tier gradient definitions matching prompt specifications:
-  // Bronze: Rich copper/bronze metallic gradient (#B45309 to #78350F) with soft warm shine
-  // Silver: Crisp silver metallic gradient (#94A3B8 to #475569) with cool chrome highlight
-  // Gold: Radiant amber/gold metallic gradient (#F59E0B to #B45309) with luminous warm sheen
-  // Platinum: High-end icy platinum gradient (#38BDF8 to #6366F1) with violet/cyan shimmer
-  // Locked: Flat, muted dark/light grey silhouette
-  const tierGradients = {
+  // Crisp thin circular ring in level colour:
+  // Bronze: #B45309
+  // Silver: #94A3B8
+  // Gold: #F59E0B
+  // Platinum: #38BDF8
+  // Locked: Flat grey circular silhouette
+  const tierConfig = {
     bronze: {
+      ringColor: '#B45309',
       ringStop1: '#D97706',
       ringStop2: '#B45309',
       ringStop3: '#78350F',
-      discBg1: '#451A03',
-      discBg2: '#1C0D02',
+      discBg1: '#291305',
+      discBg2: '#120701',
       glyphStop1: '#FDE68A',
       glyphStop2: '#B45309',
       stroke: '#78350F',
-      glowRgba: 'rgba(180, 83, 9, 0.4)',
-      ambientGlow: 'shadow-[0_0_20px_rgba(180,83,9,0.35)]',
     },
     silver: {
-      ringStop1: '#F8FAFC',
+      ringColor: '#94A3B8',
+      ringStop1: '#F1F5F9',
       ringStop2: '#94A3B8',
       ringStop3: '#475569',
       discBg1: '#1E293B',
@@ -725,34 +861,31 @@ export function BadgeMedalIcon({
       glyphStop1: '#FFFFFF',
       glyphStop2: '#CBD5E1',
       stroke: '#475569',
-      glowRgba: 'rgba(148, 163, 184, 0.4)',
-      ambientGlow: 'shadow-[0_0_20px_rgba(148,163,184,0.35)]',
     },
     gold: {
-      ringStop1: '#FEF08A',
+      ringColor: '#F59E0B',
+      ringStop1: '#FDE047',
       ringStop2: '#F59E0B',
       ringStop3: '#B45309',
-      discBg1: '#451A03',
-      discBg2: '#1F0B00',
-      glyphStop1: '#FEF9C3',
+      discBg1: '#331804',
+      discBg2: '#160801',
+      glyphStop1: '#FEF08A',
       glyphStop2: '#F59E0B',
       stroke: '#92400E',
-      glowRgba: 'rgba(245, 158, 11, 0.45)',
-      ambientGlow: 'shadow-[0_0_24px_rgba(245,158,11,0.45)]',
     },
     platinum: {
-      ringStop1: '#A5F3FC',
+      ringColor: '#38BDF8',
+      ringStop1: '#BAE6FD',
       ringStop2: '#38BDF8',
-      ringStop3: '#6366F1',
-      discBg1: '#1E1B4B',
-      discBg2: '#0C0A26',
+      ringStop3: '#0284C7',
+      discBg1: '#0C1829',
+      discBg2: '#050B14',
       glyphStop1: '#E0F2FE',
-      glyphStop2: '#818CF8',
-      stroke: '#4338CA',
-      glowRgba: 'rgba(56, 189, 248, 0.5)',
-      ambientGlow: 'shadow-[0_0_28px_rgba(56,189,248,0.45)]',
+      glyphStop2: '#38BDF8',
+      stroke: '#0369A1',
     },
     locked: {
+      ringColor: '#64748B',
       ringStop1: '#64748B',
       ringStop2: '#475569',
       ringStop3: '#334155',
@@ -761,8 +894,6 @@ export function BadgeMedalIcon({
       glyphStop1: '#94A3B8',
       glyphStop2: '#64748B',
       stroke: '#475569',
-      glowRgba: 'transparent',
-      ambientGlow: '',
     },
   }[activeTier];
 
@@ -770,114 +901,114 @@ export function BadgeMedalIcon({
 
   return (
     <div
-      className={`relative inline-flex items-center justify-center select-none ${
-        sizeConfig.container
-      } ${isEarned ? tierGradients.ambientGlow : 'opacity-70'} ${className}`}
+      className={`relative inline-flex items-center justify-center shrink-0 select-none bg-transparent ${sizeConfig.container} ${className}`}
+      style={{ borderRadius: '50%' }}
     >
-      <svg
-        viewBox="0 0 100 100"
-        className="h-full w-full overflow-visible transition-transform duration-300 group-hover:scale-105"
-        aria-hidden="true"
+      {/* 
+        True Circle Medal:
+        - border-radius: 50%
+        - overflow: hidden
+        - transparent background
+        - Neutral dark shadow under circle only (within 6px, never rectangular or yellowish)
+      */}
+      <div
+        className="relative w-full h-full rounded-full overflow-hidden bg-transparent shadow-[0_2px_5px_rgba(0,0,0,0.22)] dark:shadow-[0_2px_6px_rgba(0,0,0,0.5)] flex items-center justify-center"
+        style={{ borderRadius: '50%', overflow: 'hidden' }}
       >
-        <defs>
-          {/* Outer Metallic Ring Gradient */}
-          <linearGradient id={`${gradPrefix}-ring`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={tierGradients.ringStop1} />
-            <stop offset="45%" stopColor={tierGradients.ringStop2} />
-            <stop offset="100%" stopColor={tierGradients.ringStop3} />
-          </linearGradient>
+        <svg
+          viewBox="0 0 100 100"
+          className="w-full h-full block rounded-full"
+          style={{ borderRadius: '50%' }}
+          aria-hidden="true"
+        >
+          <defs>
+            {/* Crisp Metallic Level Ring Gradient */}
+            <linearGradient id={`${gradPrefix}-ring`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={tierConfig.ringStop1} />
+              <stop offset="50%" stopColor={tierConfig.ringStop2} />
+              <stop offset="100%" stopColor={tierConfig.ringStop3} />
+            </linearGradient>
 
-          {/* Inner Medallion Disc Radial Background */}
-          <radialGradient id={`${gradPrefix}-disc`} cx="40%" cy="35%" r="65%">
-            <stop offset="0%" stopColor={tierGradients.discBg1} />
-            <stop offset="100%" stopColor={tierGradients.discBg2} />
-          </radialGradient>
+            {/* Inner Medallion Disc Radial Background */}
+            <radialGradient id={`${gradPrefix}-disc`} cx="42%" cy="38%" r="62%">
+              <stop offset="0%" stopColor={tierConfig.discBg1} />
+              <stop offset="100%" stopColor={tierConfig.discBg2} />
+            </radialGradient>
 
-          {/* Glyph Metallic Fill Gradient */}
-          <linearGradient id={`${gradPrefix}-glyph`} x1="20%" y1="0%" x2="80%" y2="100%">
-            <stop offset="0%" stopColor={tierGradients.glyphStop1} />
-            <stop offset="100%" stopColor={tierGradients.glyphStop2} />
-          </linearGradient>
+            {/* Glyph Metallic Fill Gradient */}
+            <linearGradient id={`${gradPrefix}-glyph`} x1="20%" y1="0%" x2="80%" y2="100%">
+              <stop offset="0%" stopColor={tierConfig.glyphStop1} />
+              <stop offset="100%" stopColor={tierConfig.glyphStop2} />
+            </linearGradient>
 
-          {/* Stroke Gradient */}
-          <linearGradient id={`${gradPrefix}-stroke`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={tierGradients.ringStop1} />
-            <stop offset="100%" stopColor={tierGradients.stroke} />
-          </linearGradient>
+            {/* Stroke Gradient */}
+            <linearGradient id={`${gradPrefix}-stroke`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={tierConfig.ringStop1} />
+              <stop offset="100%" stopColor={tierConfig.stroke} />
+            </linearGradient>
+          </defs>
 
-          {/* Glow filter for earned / recent badges */}
-          <filter id={`${gradPrefix}-glow`} x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow
-              dx="0"
-              dy="0"
-              stdDeviation={isRecent ? '4' : '2'}
-              floodColor={tierGradients.glowRgba}
-            />
-          </filter>
-        </defs>
-
-        {/* Outer Ring & Specular Metallic Bezel */}
-        {showLevelRing && (
-          <>
-            {/* Outer Drop Shadow Bezel */}
-            <circle
-              cx="50"
-              cy="50"
-              r="46"
-              fill="none"
-              stroke={isEarned ? `url(#${gradPrefix}-ring)` : '#64748B'}
-              strokeWidth="4.5"
-              strokeDasharray={isEarned ? undefined : '5 3'}
-              filter={isEarned ? `url(#${gradPrefix}-glow)` : undefined}
-            />
-
-            {/* Micro Beaded / Concentric Accent Ring */}
-            <circle
-              cx="50"
-              cy="50"
-              r="42"
-              fill="none"
-              stroke={isEarned ? tierGradients.ringStop1 : '#475569'}
-              strokeWidth="1"
-              strokeDasharray={isEarned ? '1 3' : '3 3'}
-              opacity={isEarned ? 0.6 : 0.3}
-            />
-          </>
-        )}
-
-        {/* Inner Coin Medallion Disc */}
-        <circle
-          cx="50"
-          cy="50"
-          r="41"
-          fill={`url(#${gradPrefix}-disc)`}
-        />
-
-        {/* Specular Chrome / Light Reflection Rim Arc */}
-        {isEarned && (
-          <path
-            d="M 23 37 A 40 40 0 0 1 65 13"
-            fill="none"
-            stroke="#FFFFFF"
-            strokeWidth="2"
-            strokeLinecap="round"
-            opacity={activeTier === 'silver' || activeTier === 'platinum' ? 0.6 : 0.45}
+          {/* Inner Coin Medallion Disc */}
+          <circle
+            cx="50"
+            cy="50"
+            r="47"
+            fill={`url(#${gradPrefix}-disc)`}
           />
-        )}
 
-        {/* Distinct SVG Glyph */}
-        <RenderBadgeGlyph
-          glyphKey={glyphKey}
-          isEarned={isEarned}
-          tier={activeTier}
-          gradientPrefix={gradPrefix}
-        />
-      </svg>
+          {/* Crisp, thin circular ring in level colour */}
+          {showLevelRing && (
+            <>
+              {/* Outer Thin Bezel Ring */}
+              <circle
+                cx="50"
+                cy="50"
+                r="47"
+                fill="none"
+                stroke={isEarned ? `url(#${gradPrefix}-ring)` : '#64748B'}
+                strokeWidth="2.5"
+                strokeDasharray={isEarned ? undefined : '4 3'}
+              />
 
-      {/* Locked Overlay Pill Indicator */}
+              {/* Subtle Inner Highlight Rim */}
+              <circle
+                cx="50"
+                cy="50"
+                r="44.5"
+                fill="none"
+                stroke="#FFFFFF"
+                strokeWidth="0.8"
+                opacity={isEarned ? 0.25 : 0.08}
+              />
+            </>
+          )}
+
+          {/* Specular Light Reflection Rim Arc (Subtle Inner Highlight) */}
+          {isEarned && (
+            <path
+              d="M 23 37 A 41 41 0 0 1 67 14"
+              fill="none"
+              stroke="#FFFFFF"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              opacity={activeTier === 'silver' || activeTier === 'platinum' ? 0.45 : 0.3}
+            />
+          )}
+
+          {/* Distinct SVG Glyph */}
+          <RenderBadgeGlyph
+            glyphKey={glyphKey}
+            isEarned={isEarned}
+            tier={activeTier}
+            gradientPrefix={gradPrefix}
+          />
+        </svg>
+      </div>
+
+      {/* Locked Overlay Pill Indicator: Flat grey silhouette with small lock badge */}
       {!isEarned && (
         <div
-          className={`absolute -bottom-1 -right-1 ${sizeConfig.lockSize} rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground shadow-xs`}
+          className={`absolute -bottom-0.5 -right-0.5 ${sizeConfig.lockSize} rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground shadow-xs z-10`}
           title="Locked badge"
         >
           <Lock className={`${sizeConfig.lockIconSize} notranslate`} />

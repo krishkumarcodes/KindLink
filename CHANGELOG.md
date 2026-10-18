@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v4.4.0] - 2026-10-18 - Request Details Overhaul, Route Map Fix, Offer Help Redesign, Own-Request Rules, Circular Badges & Filter Sheet 🚀
+
+### Summary
+Release v4.4.0 is a comprehensive overhaul and polish of the Request Details experience, Offer Help workflow, mini-map route rendering, own-request prevention rules across UI/API/Database, circular badge medal geometry, and the Requests page filter bottom sheet.
+
+### 🌟 Key Highlights & Enhancements
+- **Request Details Sheet Redesign**: Portal-rendered bottom sheet with sticky top bar, sticky bottom action bar, visible gap below status bar (`pt-[max(12px,calc(env(safe-area-inset-top)+12px))]`), 3 equal-width info tiles (Waiting, Needed by, Distance), category detail chips, and live Supabase Realtime progress tracker (Open -> Offered -> Accepted -> On the way -> Arrived -> Completed).
+- **Route Map Card & Blank Grey Map Root-Cause Fix**: Resolved 0x0 container size during modal transitions using `ResizeObserver` and multi-stage `invalidateSize()` calls; added multi-tier fallback (MapTiler -> Carto Voyager/Dark -> OSM) with `referrerPolicy="strict-origin-when-cross-origin"`; teal 6px route polyline with outline; 3-button segmented control (Bike, Walking, Car) updating distance and ETA live.
+- **Nearby Places Section**: Capped at 3 places relative to real request coordinates (<35 km), with conditional Call buttons rendered only when phone numbers are available.
+- **Offers Received & Action Buttons**: Unified WCAG AA contrast category-coloured buttons (Blood `#C62828`, Medical gear `#0F766E`, Elderly care `#4F46E5`, Books `#047857`, Transit `#B45309`); requester offers section with count pill, action needed tag, quote blocks, 48px Decline and Accept buttons, accept confirmation sheet, and decline modal.
+- **Own-Request Prevention**: Multi-layered enforcement preventing users from helping their own requests across UI ("Your request" badge with owner actions), Store/Adapters (`own_request` code), Server API (`403 Forbidden`), and PostgreSQL database trigger `trg_prevent_self_offer` on `public.offers`.
+- **Offer Help Sheet Redesign**: Shared portal bottom sheet with visual viewport keyboard adaptation, "You are offering as" card, auto-growing message textarea (0/300) with category-specific quick replies, arrival time picker, optional live location switch, and 52px category-coloured "Send offer" button.
+- **Badge Medals & Profile Location Polish**: True circular medals (`border-radius: 50%`, `overflow: hidden`, 1:1 aspect ratio) with zero square dark corners and zero yellow haze; pin button moved outside level pills; profile location line resolves live GPS area or saved home neighborhood, removing hard-coded college fallbacks.
+- **Requests Page & Filter Sheet**: Search placeholder shortened to `"Search requests"`; filter panel moved into shared portal bottom sheet with sticky header and footer, simplified distance slider labels (`1 km Nearby, 10 km, 25 km City, 50 km Wide`), individual coloured urgency dots, and accessible `SwitchRow`.
+
+---
+
 ## [v3.0.0] - 2026-10-14 - Design, Location, Clean Architecture & Internationalization Upgrade 🚀
 
 ### Summary

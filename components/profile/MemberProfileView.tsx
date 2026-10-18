@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Select } from '@/components/ui/Select';
+import { BadgeMedalIcon } from './BadgeMedalIcon';
 
 export interface PublicMemberProfile {
   id: string;
@@ -190,28 +191,28 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
       id: 'life_saver',
       title: 'Life Saver',
       desc: 'Critical emergency blood and hospital transport assistance',
-      icon: '🩸',
+      tier: 'gold' as const,
       unlocked: member.badges?.some((b) => /blood|saver/i.test(b)) ?? false,
     },
     {
-      id: 'neighbor_aid',
+      id: 'community_pillar',
       title: 'Community Pillar',
       desc: 'Completed multiple verified community help requests in neighborhood',
-      icon: '🤝',
+      tier: 'gold' as const,
       unlocked: member.badges?.some((b) => /pillar|first|neighbor/i.test(b)) ?? member.ratingCount > 0,
     },
     {
-      id: 'student_hero',
-      title: 'Campus Volunteer',
-      desc: 'Verified student assisting peers with study materials and transport',
-      icon: '📚',
+      id: 'study_mentor',
+      title: 'Study & Mentor',
+      desc: 'Assisting peers with study materials, notes, and guidance',
+      tier: 'silver' as const,
       unlocked: Boolean(member.college),
     },
     {
-      id: 'verified_id',
+      id: 'verified_member',
       title: 'Identity Verified',
       desc: 'Government or student ID audited and approved by moderators',
-      icon: '🛡️',
+      tier: 'platinum' as const,
       unlocked: member.verificationStatus === 'verified',
     },
   ];
@@ -534,8 +535,14 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
                   : 'bg-muted/30 border-border/60 opacity-60'
               }`}
             >
-              <div className="text-2xl p-1.5 rounded-xl bg-muted/60 shrink-0 notranslate select-none">
-                {b.icon}
+              <div className="shrink-0">
+                <BadgeMedalIcon
+                  badgeId={b.id}
+                  title={b.title}
+                  tier={b.unlocked ? b.tier : 'locked'}
+                  size="sm"
+                  isEarned={b.unlocked}
+                />
               </div>
               <div className="space-y-0.5 min-w-0 flex-1">
                 <div className="flex items-center justify-between">

@@ -224,8 +224,13 @@ export function BadgesTab({ userProfile: propUserProfile }: BadgesTabProps) {
   // Handle pin toggle (Max 3 badges)
   const handleTogglePin = async (badgeId: string, willPin: boolean) => {
     const currentPinned = userProfile.pinnedBadges || [];
+    const targetBadge = badges.find((b) => b.id === badgeId);
 
     if (willPin) {
+      if (targetBadge && !targetBadge.earned) {
+        toast.error('Complete community actions to earn this badge before pinning.');
+        return;
+      }
       if (currentPinned.length >= 3) {
         toast.error('Maximum 3 badges can be pinned to your profile header card.');
         return;
@@ -511,35 +516,59 @@ export function BadgesTab({ userProfile: propUserProfile }: BadgesTabProps) {
                     : 'bg-muted/20 border-border/60 opacity-80 hover:opacity-100 hover:border-border'
                 }`}
               >
-                {/* Pinned Tag in top-right */}
-                {isPinned && (
-                  <div
-                    title="Pinned to profile header"
-                    className="absolute top-3 right-3 h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shadow-xs"
-                  >
-                    <Pin className="h-3 w-3 fill-current notranslate" />
-                  </div>
-                )}
-
                 <div>
-                  {/* Category Pill & Level Name */}
-                  <div className="flex items-center justify-between gap-1 mb-2">
+                  {/* Category Pill & Level Name with Round Pin Button */}
+                  <div className="flex items-center justify-between gap-1.5 mb-2">
                     <span className="text-[10px] font-bold text-muted-foreground truncate uppercase tracking-wider">
                       {badge.category}
                     </span>
-                    <span
-                      className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded-md border ${
-                        tierBadgeColors[badge.currentTier]
-                      }`}
-                    >
-                      {badge.earned ? badge.currentTierName : 'Locked'}
-                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Level Pill: Fully readable with zero overlap */}
+                      <span
+                        className={`text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded-md border tracking-wide whitespace-nowrap shadow-2xs ${
+                          tierBadgeColors[badge.currentTier]
+                        }`}
+                      >
+                        {badge.earned ? badge.currentTierName : 'Locked'}
+                      </span>
+
+                      {/* Small round pin button at top-right corner OUTSIDE the level pill */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleTogglePin(badge.id, !isPinned);
+                        }}
+                        className={`h-6 w-6 rounded-full flex items-center justify-center transition-all shrink-0 ${
+                          isPinned
+                            ? 'bg-primary text-primary-foreground shadow-xs hover:bg-primary-hover ring-2 ring-primary/20'
+                            : badge.earned
+                            ? 'bg-muted/70 hover:bg-muted text-muted-foreground hover:text-primary opacity-60 hover:opacity-100'
+                            : 'bg-muted/40 text-muted-foreground/30 cursor-not-allowed'
+                        }`}
+                        title={
+                          isPinned
+                            ? 'Unpin from profile header'
+                            : badge.earned
+                            ? 'Pin to profile header'
+                            : 'Earn this badge to pin'
+                        }
+                        aria-label={
+                          isPinned
+                            ? `Unpin ${badge.title}`
+                            : `Pin ${badge.title}`
+                        }
+                      >
+                        <Pin className={`h-3 w-3 ${isPinned ? 'fill-current' : ''} notranslate`} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Medal Icon with Level Ring */}
                   <div className="flex justify-center my-2.5">
                     <BadgeMedalIcon
                       badgeId={badge.id}
+                      title={badge.title}
                       iconName={badge.icon}
                       tier={badge.currentTier}
                       size="md"
@@ -547,12 +576,12 @@ export function BadgesTab({ userProfile: propUserProfile }: BadgesTabProps) {
                     />
                   </div>
 
-                  {/* Badge Title: Wraps up to 2 lines, never cut off */}
+                  {/* Badge Title & Shortened 2-Line Description */}
                   <div className="text-center space-y-1">
                     <h3 className="h-10 min-h-[2.5rem] flex items-center justify-center text-center text-xs sm:text-sm font-bold text-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">
                       {badge.title}
                     </h3>
-                    <p className="text-[10px] sm:text-[11px] text-muted-foreground line-clamp-2 leading-tight">
+                    <p className="text-[10px] sm:text-[11px] text-muted-foreground line-clamp-2 leading-snug min-h-[2rem] flex items-center justify-center text-center">
                       {badge.description}
                     </p>
                   </div>

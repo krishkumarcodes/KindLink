@@ -128,7 +128,9 @@ export class OverpassPlacesProvider implements PlacesProvider {
       const name = tags.name || tags['name:en'] || 'Medical Facility';
       const amenity = tags.amenity || 'healthcare';
       const phone = tags.phone || tags['contact:phone'];
-      const emergency = tags.emergency === 'yes' || amenity === 'hospital';
+      const emergency =
+        tags.emergency === 'yes' ||
+        (tags.opening_hours ? tags.opening_hours.includes('24/7') || tags.opening_hours.includes('24 hours') : false);
       const openingHours = tags.opening_hours;
 
       const addressParts = [

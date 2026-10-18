@@ -31,6 +31,8 @@ class SupabaseDataAdapter implements DataAdapter {
     const radius = options?.radiusKm ?? 50.0;
     const cat = options?.category && options.category !== 'all' ? options.category : null;
 
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { data, error } = await supabase.rpc('nearby_requests', {
       lat,
       lng,
@@ -38,6 +40,7 @@ class SupabaseDataAdapter implements DataAdapter {
       filter_cat: cat === 'elderly' ? 'elderly_help' : cat,
       page_limit: 100,
       page_offset: 0,
+      p_user_id: user?.id || null,
     });
 
     if (error || !data) {
@@ -45,49 +48,90 @@ class SupabaseDataAdapter implements DataAdapter {
       return [];
     }
 
-    return (data as any[]).map((r) => {
-      const details = r.details || {};
-      const category = (r.category === 'elderly_help' ? 'elderly' : r.category) as HelpCategory;
-      return {
-        id: r.id,
-        title: r.title,
-        description: r.description,
-        category,
-        urgency: r.urgency as UrgencyLevel,
-        waitingMinutes: r.waiting_minutes,
-        distanceKm: r.distance_km,
-        locationName: r.address_text,
-        latitude: r.latitude,
-        longitude: r.longitude,
-        contactName: details.contact_name || 'Community Volunteer',
-        contactRole: details.contact_role || 'Requester',
-        phone: details.contact_phone || 'Protected until match',
-        bloodGroup: details.blood_group,
-        unitsNeeded: details.units_needed,
-        hospitalName: details.hospital_name,
-        neededByTime: details.needed_by_time,
-        itemType: details.item_type,
-        itemDuration: details.item_duration,
-        elderlyAidType: details.elderly_aid_type,
-        elderlyDuration: details.elderly_duration,
-        scheduledTime: details.scheduled_time,
-        booksClassSubject: details.books_class_subject,
-        bookTitle: details.book_title,
-        bookCondition: details.book_condition,
-        pickupAddress: details.pickup_address,
-        dropAddress: details.drop_address,
-        passengerCount: details.passenger_count,
-        hasLuggage: details.has_luggage,
-        wheelchairAccessible: details.wheelchair_accessible,
-        patientAge: details.patient_age,
-        verified: true,
-        verificationBadge: 'Verified Need',
-        createdAt: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: r.status as RequestLifecycleStatus,
-        helpersOffered: r.helpers_offered || 0,
-        acceptedHelperId: r.accepted_helper_id,
-      };
+    return (data as any[]).map((r) => this.mapDbRowToHelpRequest(r));
+  }
+
+  private mapDbRowToHelpRequest(r: any): HelpRequest {
+    const details = r.details || {};
+    const category = (r.category === 'elderly_help' ? 'elderly' : r.category) as HelpCategory;
+    let latitude = r.latitude;
+    let longitude = r.longitude;
+    if ((latitude === undefined || longitude === undefined) && typeof r.location === 'string') {
+      const match = r.location.match(/POINT\(([^ ]+)\s+([^)]+)\)/);
+      if (match) {
+        longitude = parseFloat(match[1]);
+        latitude = parseFloat(match[2]);
+      }
+    }
+
+    return {
+      id: r.id,
+      requesterId: r.requester_id,
+      title: r.title,
+      description: r.description,
+      category,
+      urgency: r.urgency as UrgencyLevel,
+      waitingMinutes: r.waiting_minutes ?? Math.max(1, Math.round((Date.now() - new Date(r.created_at).getTime()) / 60000)),
+      distanceKm: r.distance_km ?? 0,
+      locationName: r.address_text || 'Local Area',
+      latitude: latitude ?? 23.6889,
+      longitude: longitude ?? 86.9661,
+      contactName: details.contact_name || 'Community Volunteer',
+      contactRole: details.contact_role || 'Requester',
+      phone: details.contact_phone || 'Protected until match',
+      bloodGroup: details.blood_group,
+      unitsNeeded: details.units_needed,
+      hospitalName: details.hospital_name,
+      neededByTime: details.needed_by_time,
+      itemType: details.item_type,
+      itemDuration: details.item_duration,
+      elderlyAidType: details.elderly_aid_type,
+      elderlyDuration: details.elderly_duration,
+      scheduledTime: details.scheduled_time,
+      booksClassSubject: details.books_class_subject,
+      bookTitle: details.book_title,
+      bookCondition: details.book_condition,
+      pickupAddress: details.pickup_address,
+      dropAddress: details.drop_address,
+      passengerCount: details.passenger_count,
+      hasLuggage: details.has_luggage,
+      wheelchairAccessible: details.wheelchair_accessible,
+      patientAge: details.patient_age,
+      verified: true,
+      verificationBadge: 'Verified Need',
+      createdAt: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: r.status as RequestLifecycleStatus,
+      helpersOffered: Number(r.offer_count ?? r.helpers_offered ?? 0),
+      acceptedHelperId: r.accepted_helper_id,
+    };
+  }
+
+  async getMyActiveRequests(userId?: string): Promise<HelpRequest[]> {
+    const supabase = this.getSupabase();
+    let targetUserId = userId;
+    if (!targetUserId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      targetUserId = user?.id;
+    }
+    if (!targetUserId) return [];
+
+    const { data, error } = await supabase.rpc('get_my_active_requests', {
+      p_user_id: targetUserId,
     });
+
+    if (!error && data) {
+      return (data as any[]).map((r) => this.mapDbRowToHelpRequest(r));
+    }
+
+    const { data: rows } = await supabase
+      .from('requests')
+      .select('*')
+      .eq('requester_id', targetUserId)
+      .not('status', 'in', '("completed","cancelled")')
+      .order('created_at', { ascending: false });
+
+    if (!rows) return [];
+    return (rows as any[]).map((r) => this.mapDbRowToHelpRequest(r));
   }
 
   async createRequest(req: CreateRequestInput): Promise<{ success: boolean; id: string }> {
@@ -189,7 +233,52 @@ class SupabaseDataAdapter implements DataAdapter {
     });
   }
 
-  async offerHelp(requestId: string, message?: string): Promise<{ success: boolean; error?: string }> {
+  async canOfferHelp(
+    requestId: string,
+    userId?: string
+  ): Promise<{ allowed: boolean; reason?: 'own_request' | 'not_verified' | 'already_offered' | 'request_closed' | 'ok' | string }> {
+    const supabase = this.getSupabase();
+    let effectiveUserId = userId;
+    if (!effectiveUserId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      effectiveUserId = user?.id;
+    }
+    if (!effectiveUserId) {
+      return { allowed: false, reason: 'not_authenticated' };
+    }
+
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc('can_offer_help', {
+      p_request_id: requestId,
+      p_user_id: effectiveUserId,
+    });
+
+    if (!rpcErr && rpcRes) {
+      return {
+        allowed: rpcRes === 'ok',
+        reason: rpcRes as any,
+      };
+    }
+
+    const { data: req } = await supabase
+      .from('requests')
+      .select('requester_id, status')
+      .eq('id', requestId)
+      .single();
+
+    if (!req) return { allowed: false, reason: 'not_found' };
+
+    if (effectiveUserId && req.requester_id === effectiveUserId) {
+      return { allowed: false, reason: 'own_request' };
+    }
+
+    if (req.status !== 'open') {
+      return { allowed: false, reason: 'request_closed' };
+    }
+
+    return { allowed: true, reason: 'ok' };
+  }
+
+  async offerHelp(requestId: string, message?: string): Promise<{ success: boolean; error?: string; code?: string; offerId?: string }> {
     const supabase = this.getSupabase();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -197,18 +286,42 @@ class SupabaseDataAdapter implements DataAdapter {
       return { success: false, error: 'Please sign in to offer help.' };
     }
 
-    const { error } = await supabase.from('offers').insert({
+    const eligibility = await this.canOfferHelp(requestId, user.id);
+    if (!eligibility.allowed) {
+      if (eligibility.reason === 'own_request') {
+        return { success: false, error: 'You cannot offer help on your own request.', code: 'own_request' };
+      }
+      if (eligibility.reason === 'not_verified') {
+        return { success: false, error: 'Identity verification is required before offering volunteer assistance.', code: 'not_verified' };
+      }
+      if (eligibility.reason === 'already_offered') {
+        return { success: false, error: 'You already have an active offer on this request.', code: 'already_offered' };
+      }
+      if (eligibility.reason === 'request_closed') {
+        return { success: false, error: 'This request is no longer open for offers.', code: 'request_closed' };
+      }
+    }
+
+    const { data: inserted, error } = await supabase.from('offers').insert({
       request_id: requestId,
       helper_id: user.id,
       message: message || 'I am ready to help!',
       status: 'pending',
-    });
+    }).select('id').single();
 
     if (error) {
-      return { success: false, error: error.message };
+      const isOwn =
+        error.message?.toLowerCase().includes('own request') ||
+        error.code === 'P0001' ||
+        error.code === '42501';
+      return {
+        success: false,
+        error: isOwn ? 'You cannot offer help on your own request.' : error.message,
+        code: isOwn ? 'own_request' : undefined,
+      };
     }
 
-    return { success: true };
+    return { success: true, offerId: inserted?.id };
   }
 
   async acceptOffer(offerId: string): Promise<{ success: boolean; error?: string }> {
@@ -246,11 +359,23 @@ class SupabaseDataAdapter implements DataAdapter {
     return { success: false, error: rpcError.message };
   }
 
-  async declineOffer(offerId: string): Promise<{ success: boolean; error?: string }> {
+  async declineOffer(offerId: string, _reason?: string): Promise<{ success: boolean; error?: string }> {
     const supabase = this.getSupabase();
     const { error } = await supabase
       .from('offers')
       .update({ status: 'declined', updated_at: new Date().toISOString() })
+      .eq('id', offerId);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  }
+
+  async withdrawOffer(offerId: string): Promise<{ success: boolean; error?: string }> {
+    const supabase = this.getSupabase();
+    const { error } = await supabase
+      .from('offers')
+      .update({ status: 'withdrawn', updated_at: new Date().toISOString() })
       .eq('id', offerId);
     if (error) {
       return { success: false, error: error.message };

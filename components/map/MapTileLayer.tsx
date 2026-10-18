@@ -271,9 +271,17 @@ export function MapTileLayer({
     ).trim();
   }, [runtimeConfig]);
 
+  const [cartoFailed, setCartoFailed] = useState(false);
+
   const hasApiKey = apiKey.length > 0;
-  const isFallback = !hasApiKey || isCircuitTripped;
-  const currentProvider = isFallback ? 'osm' : 'maptiler';
+  const isMaptilerAvailable = hasApiKey && !isCircuitTripped;
+  const currentProvider: 'maptiler' | 'carto' | 'osm' = isMaptilerAvailable
+    ? 'maptiler'
+    : !cartoFailed
+    ? 'carto'
+    : 'osm';
+
+  const isFallback = currentProvider !== 'maptiler';
 
   // Notify parent component if callback provided
   useEffect(() => {
@@ -314,10 +322,15 @@ export function MapTileLayer({
     if (currentProvider === 'maptiler') {
       return `https://api.maptiler.com/maps/${selectedStyle}/{z}/{x}/{y}{r}.png?key=${apiKey}`;
     }
+    if (currentProvider === 'carto') {
+      return isDark
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+    }
     return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-  }, [currentProvider, selectedStyle, apiKey]);
+  }, [currentProvider, selectedStyle, apiKey, isDark]);
 
-  // 7. Manage Leaflet TileLayer lifecycle and CSS dark filter
+  // 7. Manage Leaflet TileLayer lifecycle with ReferrerPolicy & CSS dark filter
   useEffect(() => {
     if (!map) return;
 
@@ -333,72 +346,108 @@ export function MapTileLayer({
 
     const attributionText =
       currentProvider === 'maptiler'
-        ? '&copy; <a href="https://www.maptiler.com/copyright/" target="_blank" rel="noreferrer">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>'
-        : '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>';
+        ? '&copy; <a href="https://www.maptiler.com/copyright/" target="_blank" rel="noreferrer">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>'
+        : currentProvider === 'carto'
+        ? '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>'
+        : '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>';
 
     const providerChanged = activeProviderRef.current !== currentProvider;
 
-    // If provider changed (e.g. MapTiler 512px <-> OSM 256px), recreate layer to respect correct tileSize & zoomOffset
+    // Subclass TileLayer to enforce referrerPolicy="strict-origin-when-cross-origin"
+    const ReferrerTileLayer = L.TileLayer.extend({
+      createTile(coords: any, done: any) {
+        const tile = (L.TileLayer.prototype as any).createTile.call(
+          this,
+          coords,
+          done
+        ) as HTMLImageElement;
+        tile.referrerPolicy = 'strict-origin-when-cross-origin';
+        return tile;
+      },
+    });
+
     if (!tileLayerRef.current || providerChanged) {
       if (tileLayerRef.current) {
         map.removeLayer(tileLayerRef.current);
         tileLayerRef.current = null;
       }
 
-      const options: L.TileLayerOptions =
-        currentProvider === 'maptiler'
-          ? {
-              tileSize: 512,
-              zoomOffset: -1,
-              detectRetina: true,
-              minZoom: runtimeConfig.minZoom ?? 4,
-              maxZoom: runtimeConfig.maxZoom ?? 19,
-              bounds: indiaLatLngBounds,
-              keepBuffer: isMobile ? 1 : 2,
-              updateWhenIdle: true,
-              crossOrigin: true,
-              attribution: attributionText,
-            }
-          : {
-              tileSize: 256,
-              zoomOffset: 0,
-              detectRetina: false,
-              minZoom: runtimeConfig.minZoom ?? 4,
-              maxZoom: runtimeConfig.maxZoom ?? 19,
-              bounds: indiaLatLngBounds,
-              keepBuffer: isMobile ? 1 : 2,
-              updateWhenIdle: true,
-              attribution: attributionText,
-            };
+      let options: L.TileLayerOptions;
+      if (currentProvider === 'maptiler') {
+        options = {
+          tileSize: 512,
+          zoomOffset: -1,
+          detectRetina: true,
+          minZoom: runtimeConfig.minZoom ?? 4,
+          maxZoom: runtimeConfig.maxZoom ?? 19,
+          bounds: indiaLatLngBounds,
+          keepBuffer: isMobile ? 1 : 2,
+          updateWhenIdle: true,
+          crossOrigin: true,
+          attribution: attributionText,
+        };
+      } else if (currentProvider === 'carto') {
+        options = {
+          subdomains: ['a', 'b', 'c', 'd'],
+          tileSize: 256,
+          zoomOffset: 0,
+          detectRetina: true,
+          minZoom: runtimeConfig.minZoom ?? 4,
+          maxZoom: runtimeConfig.maxZoom ?? 19,
+          bounds: indiaLatLngBounds,
+          keepBuffer: isMobile ? 1 : 2,
+          updateWhenIdle: true,
+          crossOrigin: true,
+          attribution: attributionText,
+        };
+      } else {
+        options = {
+          tileSize: 256,
+          zoomOffset: 0,
+          detectRetina: false,
+          minZoom: runtimeConfig.minZoom ?? 4,
+          maxZoom: runtimeConfig.maxZoom ?? 19,
+          bounds: indiaLatLngBounds,
+          keepBuffer: isMobile ? 1 : 2,
+          updateWhenIdle: true,
+          crossOrigin: true,
+          attribution: attributionText,
+        };
+      }
 
-      const newLayer = L.tileLayer(tileUrl, options);
+      const newLayer = new (ReferrerTileLayer as any)(tileUrl, options);
 
       // Listen for tile errors
+      let errorCount = 0;
       newLayer.on('tileerror', (e: L.TileErrorEvent) => {
-        if (currentProvider !== 'maptiler') return;
+        if (currentProvider === 'maptiler') {
+          const tileImg = e.tile as HTMLImageElement | undefined;
+          const failedSrc = tileImg?.src || tileUrl;
 
-        const tileImg = e.tile as HTMLImageElement | undefined;
-        const failedSrc = tileImg?.src || tileUrl;
-
-        // Perform lightweight HEAD probe to detect HTTP 403 or 429
-        if (
-          typeof window !== 'undefined' &&
-          typeof window.fetch === 'function' &&
-          failedSrc
-        ) {
-          fetch(failedSrc, { method: 'HEAD' })
-            .then((res) => {
-              if (res.status === 403 || res.status === 429) {
-                mapTileCircuitBreaker.recordError(res.status);
-              } else {
+          if (
+            typeof window !== 'undefined' &&
+            typeof window.fetch === 'function' &&
+            failedSrc
+          ) {
+            fetch(failedSrc, { method: 'HEAD' })
+              .then((res) => {
+                if (res.status === 403 || res.status === 429) {
+                  mapTileCircuitBreaker.recordError(res.status);
+                } else {
+                  mapTileCircuitBreaker.recordError();
+                }
+              })
+              .catch(() => {
                 mapTileCircuitBreaker.recordError();
-              }
-            })
-            .catch(() => {
-              mapTileCircuitBreaker.recordError();
-            });
-        } else {
-          mapTileCircuitBreaker.recordError();
+              });
+          } else {
+            mapTileCircuitBreaker.recordError();
+          }
+        } else if (currentProvider === 'carto') {
+          errorCount += 1;
+          if (errorCount >= 3) {
+            setCartoFailed(true);
+          }
         }
       });
 
@@ -411,14 +460,14 @@ export function MapTileLayer({
 
       newLayer.addTo(map);
       tileLayerRef.current = newLayer;
-      activeProviderRef.current = currentProvider;
+      activeProviderRef.current = currentProvider as any;
     } else {
-      // Same provider: update URL smoothly (e.g. style change in MapTiler)
+      // Same provider: update URL smoothly
       tileLayerRef.current.setUrl(tileUrl);
     }
 
-    // Apply CSS Dark Filter for OSM tiles in dark mode
-    const container = tileLayerRef.current.getContainer();
+    // Apply CSS Dark Filter ONLY for OSM tiles in dark mode (Carto dark tiles are natively dark!)
+    const container = tileLayerRef.current?.getContainer();
     if (container) {
       if (currentProvider === 'osm' && isDark) {
         container.style.filter =
@@ -525,6 +574,27 @@ export function MapTileLayer({
                 className="hover:underline font-medium text-slate-800 dark:text-slate-200"
               >
                 OpenStreetMap contributors
+              </a>
+            </>
+          ) : currentProvider === 'carto' ? (
+            <>
+              &copy;{' '}
+              <a
+                href="https://www.openstreetmap.org/copyright"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline font-medium text-slate-800 dark:text-slate-200"
+              >
+                OpenStreetMap
+              </a>{' '}
+              &copy;{' '}
+              <a
+                href="https://carto.com/attributions"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline font-medium text-slate-800 dark:text-slate-200"
+              >
+                CARTO
               </a>
             </>
           ) : (

@@ -29,6 +29,7 @@ import {
 import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { HelpRequest, TravelMode } from '@/lib/data/types';
+import { isRequestOwner } from '@/lib/data/ownership';
 import { ASANSOL_CENTER } from '@/lib/data/mock-requests';
 import { searchPlaces, PlaceSearchResult } from '@/lib/geo/search';
 import { reverseGeocode } from '@/lib/geo/reverse-geocode';
@@ -37,6 +38,7 @@ import { getRoadRoute, RoadRouteResult } from '@/lib/geo/osrm';
 import { MapLayersState } from './LeafletInnerMap';
 import { RequestDetailModal } from '../requests/RequestDetailModal';
 import { HelpFlowModal } from '../requests/HelpFlowModal';
+import { PrimaryHelpButton, SecondaryButton } from '../requests/ActionButtons';
 
 // Immediate fallback component with Switch to List View for slow 2G/3G connections
 function MapLoadingFallback() {
@@ -92,6 +94,8 @@ type ActiveMapItem =
 export function MapView() {
   const {
     requests,
+    myActiveRequests,
+    userProfile,
     userCoords,
     userAreaName,
     setUserCoords,
@@ -100,7 +104,17 @@ export function MapView() {
     setCurrentView,
     travelMode,
     setTravelMode,
+    cancelRequest,
+    completeRequest,
   } = useKindLinkStore();
+
+  // Combine nearby requests and user's own active requests so both show on the map
+  const allMapRequests = useMemo(() => {
+    const map = new Map<string, HelpRequest>();
+    requests.forEach((r) => map.set(r.id, r));
+    myActiveRequests.forEach((r) => map.set(r.id, r));
+    return Array.from(map.values());
+  }, [requests, myActiveRequests]);
 
   // Active selection state
   const [activeItem, setActiveItem] = useState<ActiveMapItem | null>(null);
@@ -153,13 +167,13 @@ export function MapView() {
   // Auto-select request if selectedRequestId is set in store
   useEffect(() => {
     if (selectedRequestId) {
-      const match = requests.find((r) => r.id === selectedRequestId);
+      const match = allMapRequests.find((r) => r.id === selectedRequestId);
       if (match) {
         setActiveItem({ type: 'request', data: match });
         setMapCenter([match.latitude, match.longitude]);
       }
     }
-  }, [selectedRequestId, requests]);
+  }, [selectedRequestId, allMapRequests]);
 
   // Debounced Place & Address Search (300ms, triggers after 3 chars, user location biased)
   useEffect(() => {
@@ -1099,22 +1113,20 @@ export function MapView() {
                 {/* 4. Request Specific: "I Can Help" & "View Details" */}
                 {activeItem.type === 'request' && (
                   <>
-                    <button
-                      type="button"
+                    <PrimaryHelpButton
+                      category={activeItem.data.category || 'equipment'}
+                      size="card"
+                      label="I can help"
                       onClick={() => setHelpFlowOpen(true)}
-                      className="min-h-[44px] px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition-all touch-target"
-                    >
-                      <HeartHandshake className="h-4 w-4 notranslate" />
-                      <span>I can help</span>
-                    </button>
-                    <button
-                      type="button"
+                    />
+                    <SecondaryButton
+                      size="card"
+                      variant="outline"
                       onClick={() => setDetailModalOpen(true)}
-                      className="min-h-[44px] px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-bold shadow-md flex items-center justify-center gap-1 active:scale-95 transition-all touch-target"
                     >
                       <span>Details</span>
-                      <ArrowRight className="h-3.5 w-3.5 notranslate" />
-                    </button>
+                      <ArrowRight className="h-3.5 w-3.5 notranslate ml-1" />
+                    </SecondaryButton>
                   </>
                 )}
               </div>

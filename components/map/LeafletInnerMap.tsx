@@ -12,7 +12,8 @@ import {
 } from 'react-leaflet';
 import L from 'leaflet';
 import { MapTileLayer } from './MapTileLayer';
-import { HelpRequest } from '@/lib/data/types';
+import { HelpRequest, UserProfile } from '@/lib/data/types';
+import { isRequestOwner } from '@/lib/data/ownership';
 import { MedicalFacility, MedicalAmenityType } from '@/lib/geo/hospitals';
 import { RoadRouteResult } from '@/lib/geo/osrm';
 
@@ -44,6 +45,7 @@ interface LeafletInnerMapProps {
   layers?: MapLayersState;
   activeRoute?: RoadRouteResult | null;
   transportTripRoute?: RoadRouteResult | null;
+  userProfile?: UserProfile | null;
 }
 
 
@@ -177,6 +179,46 @@ function createUrgencyMarkerIcon(urgency: string, isSelected: boolean) {
   return L.divIcon({
     html,
     className: 'custom-urgency-pin',
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+/**
+ * Distinct "Your request" pin style with custom indigo-violet gradient & YOU label
+ */
+function createYourRequestMarkerIcon(isSelected: boolean) {
+  const size = isSelected ? 44 : 36;
+  const html = `
+    <div style="position: relative; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center;">
+      <span style="position: absolute; inset: -4px; border-radius: 50%; background: rgba(99, 102, 241, 0.45); animation: ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>
+      <div style="
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: ${size}px;
+        height: ${size}px;
+        background: linear-gradient(135deg, #6366F1, #8B5CF6);
+        border: ${isSelected ? '3.5px' : '2.5px'} solid #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.6);
+        cursor: pointer;
+        position: relative;
+        z-index: 2;
+        transform: translate(-50%, -50%);
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: -0.5px;
+      ">
+        YOU
+      </div>
+    </div>
+  `;
+
+  return L.divIcon({
+    html,
+    className: 'custom-your-request-pin',
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
@@ -438,6 +480,7 @@ function ClusteredMarkers({
   selectedFacility,
   onSelectRequest,
   onSelectFacility,
+  userProfile,
 }: {
   requests: HelpRequest[];
   facilities: MedicalFacility[];
@@ -445,6 +488,7 @@ function ClusteredMarkers({
   selectedFacility?: MedicalFacility | null;
   onSelectRequest: (req: HelpRequest) => void;
   onSelectFacility?: (fac: MedicalFacility) => void;
+  userProfile?: UserProfile | null;
 }) {
   const map = useMap();
   const [zoom, setZoom] = useState(() => map.getZoom());
@@ -552,12 +596,17 @@ function ClusteredMarkers({
           if (single.kind === 'request') {
             const req = single.data;
             const isSelected = selectedRequest?.id === req.id;
+            const isOwner = isRequestOwner(req, userProfile);
 
             return (
               <Marker
                 key={req.id}
                 position={single.position}
-                icon={createUrgencyMarkerIcon(req.urgency, isSelected)}
+                icon={
+                  isOwner
+                    ? createYourRequestMarkerIcon(isSelected)
+                    : createUrgencyMarkerIcon(req.urgency, isSelected)
+                }
                 eventHandlers={{
                   click: () => onSelectRequest(req),
                 }}
@@ -568,7 +617,11 @@ function ClusteredMarkers({
                       <span className="text-[10px] font-bold uppercase tracking-wide text-rose-600 dark:text-rose-400">
                         {req.urgency}
                       </span>
-                      {req.verified ? (
+                      {isOwner ? (
+                        <span className="text-[9px] font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded">
+                          ★ Your Request
+                        </span>
+                      ) : req.verified ? (
                         <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded">
                           ✓ Verified
                         </span>
@@ -584,7 +637,7 @@ function ClusteredMarkers({
                     <p className="text-[11px] text-slate-600 dark:text-slate-300 m-0">
                       {req.locationName}
                     </p>
-                    {!req.verified && (
+                    {!req.verified && !isOwner && (
                       <p className="text-[10px] text-amber-700 dark:text-amber-400 m-0 leading-tight">
                         🔒 Approximate location to protect unverified requester privacy.
                       </p>
@@ -592,9 +645,13 @@ function ClusteredMarkers({
                     <button
                       type="button"
                       onClick={() => onSelectRequest(req)}
-                      className="mt-1.5 w-full py-1.5 px-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold transition"
+                      className={`mt-1.5 w-full py-1.5 px-2 rounded-lg text-white text-[11px] font-bold transition ${
+                        isOwner
+                          ? 'bg-indigo-600 hover:bg-indigo-700'
+                          : 'bg-teal-600 hover:bg-teal-700'
+                      }`}
                     >
-                      View Details
+                      {isOwner ? 'Manage Your Request' : 'View Details'}
                     </button>
                   </div>
                 </Popup>
@@ -744,6 +801,7 @@ export default function LeafletInnerMap({
   },
   activeRoute,
   transportTripRoute,
+  userProfile,
 }: LeafletInnerMapProps) {
   // Filter visible medical facilities according to active layers
   const visibleFacilities = useMemo(() => {
@@ -854,6 +912,7 @@ export default function LeafletInnerMap({
         selectedFacility={selectedFacility}
         onSelectRequest={onSelectRequest}
         onSelectFacility={onSelectFacility}
+        userProfile={userProfile}
       />
     </MapContainer>
   );

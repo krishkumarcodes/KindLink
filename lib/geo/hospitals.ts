@@ -261,14 +261,18 @@ export function getCuratedMedicalFacilities(
   lng: number,
   typeFilter?: MedicalAmenityType
 ): MedicalFacility[] {
-  return ASANSOL_CURATED_MEDICAL_HUBS.filter((h) => !typeFilter || h.type === typeFilter)
-    .map((h) => ({
-      ...h,
-      distanceKm: calculateDistance(lat, lng, h.latitude, h.longitude),
-      isCuratedFallback: true,
-      sourceProvider: 'curated-database',
-      isFallback: true,
-    }))
+  return ASANSOL_CURATED_MEDICAL_HUBS.map((h) => ({
+    ...h,
+    distanceKm: calculateDistance(lat, lng, h.latitude, h.longitude),
+    isCuratedFallback: true,
+    sourceProvider: 'curated-database',
+    isFallback: true,
+  }))
+    .filter((h) => {
+      // Only include if actually nearby (within 35 km). Never return Asansol places for Mumbai or other cities!
+      if (h.distanceKm > 35) return false;
+      return !typeFilter || h.type === typeFilter;
+    })
     .sort((a, b) => a.distanceKm - b.distanceKm);
 }
 
@@ -373,9 +377,9 @@ export async function getNearestMedicalFacilities(options: {
           address: p.address,
           phone: p.phone,
           emergency: Boolean(
-            p.emergency ||
-            amenityType === 'hospital' ||
-            amenityType === 'blood_bank'
+            p.emergency === true ||
+            p.emergency === 'yes' ||
+            (p.openingHours && (p.openingHours.includes('24/7') || p.openingHours.includes('24 hours')))
           ),
           openingHours: p.openingHours,
           isCuratedFallback: Boolean(p.isCuratedFallback || p.isFallback),

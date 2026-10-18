@@ -58,9 +58,18 @@ export function ProfileView() {
     removeEmergencyContact,
     requests,
     setCurrentView,
+    profileActiveTab,
+    setProfileActiveTab,
   } = useKindLinkStore();
 
-  const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
+  const [activeTab, setActiveTab] = useState<ProfileTab>(profileActiveTab || 'overview');
+
+  useEffect(() => {
+    if (profileActiveTab) {
+      setActiveTab(profileActiveTab);
+      setProfileActiveTab(undefined as any);
+    }
+  }, [profileActiveTab, setProfileActiveTab]);
 
   // Modals
   const [editProfileOpen, setEditProfileOpen] = useState(false);

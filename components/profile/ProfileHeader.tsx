@@ -171,11 +171,14 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
     }
   };
 
-  // Location logic
-  const isLiveLocation = Boolean(userCoords?.isLive);
-  const savedArea = userProfile.homeNeighborhood?.trim();
-  const liveArea = userAreaName?.trim();
-  const hasArea = Boolean(liveArea || savedArea);
+  // Location logic strictly adhering to specification:
+  // 1. If live GPS is on: show live area name (e.g. "Kalyanpur, Asansol")
+  // 2. Else if user profile has saved home_neighborhood: show saved home area
+  // 3. Else: show friendly prompt "Add your area" with link opening Edit Profile
+  // Never show college name or hard-coded fallback!
+  const isLiveGpsOn = Boolean(userCoords?.isLive && userAreaName?.trim());
+  const savedHomeArea = (userProfile.homeNeighborhood || (userProfile as any).home_neighborhood)?.trim();
+  const liveAreaName = userAreaName?.trim();
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-card/85 backdrop-blur-md p-4 sm:p-8 shadow-soft">
@@ -276,22 +279,22 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
 
         {/* Location line & Member since */}
         <div className="flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1 text-xs text-muted-foreground pt-0.5">
-          {/* Location line */}
-          {isLiveLocation ? (
+          {/* Location line: Live GPS -> Saved home_neighborhood -> Friendly prompt "Add your area" */}
+          {isLiveGpsOn ? (
             <span className="inline-flex items-center gap-1.5 font-medium">
               <span className="relative flex h-2 w-2 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
               </span>
               <span className="truncate max-w-[180px] sm:max-w-none text-foreground font-semibold">
-                {liveArea || savedArea || 'Live Area'}
+                {liveAreaName}
               </span>
             </span>
-          ) : hasArea ? (
+          ) : savedHomeArea ? (
             <span className="inline-flex items-center gap-1 font-medium">
               <MapPin className="h-3.5 w-3.5 text-rose-500 notranslate shrink-0" />
-              <span className="truncate max-w-[180px] sm:max-w-none">
-                {savedArea || liveArea}
+              <span className="truncate max-w-[180px] sm:max-w-none text-foreground">
+                {savedHomeArea}
               </span>
             </span>
           ) : (
@@ -377,6 +380,8 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
                   <div className="relative transform transition group-hover:scale-110">
                     <BadgeMedalIcon
                       size="shelf"
+                      badgeId={badge.id}
+                      title={badge.title}
                       iconName={badge.icon}
                       tier={badge.currentTier}
                       isEarned={badge.earned}

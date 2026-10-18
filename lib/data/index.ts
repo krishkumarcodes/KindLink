@@ -11,3 +11,5 @@ export const dataAdapter: DataAdapter = isMock ? mockAdapter : supabaseAdapter;
 export * from './types';
 export * from './distance';
 export * from './adapter';
+export * from './categoryColors';
+export * from './ownership';

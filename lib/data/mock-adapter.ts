@@ -18,9 +18,25 @@ class MockDataAdapter implements DataAdapter {
       helperVerification: 'verified',
       helperDistanceKm: 1.4,
       helperEtaMinutes: 8,
+      helperBadges: ['Speed Responder', 'Blood Hero'],
       message: 'I have O+ blood donor card and can reach Asansol Hospital in 10 mins.',
       status: 'pending',
       createdAt: '2 mins ago',
+    },
+    {
+      id: 'mock-offer-3',
+      requestId: 'req-1',
+      helperId: 'usr-debanjan',
+      helperName: 'Debanjan Mukherjee',
+      helperPhone: '+91 97320 11223',
+      helperRating: 4.8,
+      helperVerification: 'verified',
+      helperDistanceKm: 1.8,
+      helperEtaMinutes: 12,
+      helperBadges: ['Life Saver', 'Neighborhood Guardian'],
+      message: 'I am near Asansol Railway Station with an active donor certificate. Can donate 1 unit immediately.',
+      status: 'pending',
+      createdAt: '8 mins ago',
     },
     {
       id: 'mock-offer-2',
@@ -32,6 +48,7 @@ class MockDataAdapter implements DataAdapter {
       helperVerification: 'verified',
       helperDistanceKm: 2.1,
       helperEtaMinutes: 12,
+      helperBadges: ['Verified Medic', 'Elderly Care'],
       message: 'Foldable wheelchair is sanitized and ready in my clinic.',
       status: 'pending',
       createdAt: '5 mins ago',
@@ -80,6 +97,7 @@ class MockDataAdapter implements DataAdapter {
     const newId = `req-mock-${Date.now()}`;
     const newReq: HelpRequest = {
       id: newId,
+      requesterId: this.user.id,
       title: req.title,
       description: req.description,
       category: req.category,
@@ -120,12 +138,44 @@ class MockDataAdapter implements DataAdapter {
     return { success: true, id: newId };
   }
 
+  async getMyActiveRequests(userId?: string): Promise<HelpRequest[]> {
+    const targetUserId = userId || this.user.id;
+    const targetUserName = this.user.name;
+    return this.requests.filter(
+      (r) =>
+        (r.requesterId === targetUserId ||
+          (r.contactName && targetUserName && r.contactName.trim().toLowerCase() === targetUserName.trim().toLowerCase())) &&
+        r.status !== 'completed' &&
+        r.status !== 'cancelled'
+    );
+  }
+
   async getOffers(requestId: string): Promise<VolunteerOffer[]> {
     return this.offers.filter((o) => o.requestId === requestId);
   }
 
-  async offerHelp(requestId: string, message?: string): Promise<{ success: boolean }> {
+  async canOfferHelp(
+    requestId: string,
+    userId?: string
+  ): Promise<{ allowed: boolean; reason?: 'own_request' | 'not_verified' | 'already_offered' | 'request_closed' | 'ok' | string }> {
     const r = this.requests.find((x) => x.id === requestId);
+    if (!r) return { allowed: false, reason: 'not_found' };
+    const effectiveUserId = userId || this.user.id;
+    const effectiveUserName = this.user.name;
+    if (r.requesterId === effectiveUserId || (r.contactName && effectiveUserName && r.contactName.trim().toLowerCase() === effectiveUserName.trim().toLowerCase())) {
+      return { allowed: false, reason: 'own_request' };
+    }
+    if (r.status !== 'open' && r.status !== 'offered') {
+      return { allowed: false, reason: 'request_closed' };
+    }
+    return { allowed: true, reason: 'ok' };
+  }
+
+  async offerHelp(requestId: string, message?: string): Promise<{ success: boolean; error?: string; code?: string; offerId?: string }> {
+    const r = this.requests.find((x) => x.id === requestId);
+    if (r && (r.requesterId === this.user.id || (r.contactName && this.user.name && r.contactName.trim().toLowerCase() === this.user.name.trim().toLowerCase()))) {
+      return { success: false, error: 'You cannot offer help on your own request.', code: 'own_request' };
+    }
     if (r) {
       r.helpersOffered = (r.helpersOffered || 0) + 1;
       r.status = 'offered';
@@ -145,13 +195,19 @@ class MockDataAdapter implements DataAdapter {
       createdAt: 'Just now',
     };
     this.offers.unshift(newOffer);
-    return { success: true };
+    return { success: true, offerId: newOffer.id };
   }
 
   async acceptOffer(offerId: string): Promise<{ success: boolean }> {
     const offer = this.offers.find((o) => o.id === offerId);
     if (offer) {
       offer.status = 'accepted';
+      // Transitions other pending offers for this request to 'not_selected'
+      this.offers.forEach((o) => {
+        if (o.requestId === offer.requestId && o.id !== offerId && o.status === 'pending') {
+          o.status = 'not_selected';
+        }
+      });
       const r = this.requests.find((x) => x.id === offer.requestId);
       if (r) {
         r.status = 'accepted';
@@ -166,10 +222,28 @@ class MockDataAdapter implements DataAdapter {
     return { success: true };
   }
 
-  async declineOffer(offerId: string): Promise<{ success: boolean }> {
+  async declineOffer(offerId: string, reason?: string): Promise<{ success: boolean }> {
     const offer = this.offers.find((o) => o.id === offerId);
     if (offer) {
       offer.status = 'declined';
+      if (reason) {
+        offer.declineReason = reason;
+      }
+    }
+    return { success: true };
+  }
+
+  async withdrawOffer(offerId: string): Promise<{ success: boolean; error?: string }> {
+    const offer = this.offers.find((o) => o.id === offerId);
+    if (offer) {
+      offer.status = 'withdrawn';
+      const r = this.requests.find((x) => x.id === offer.requestId);
+      if (r && r.helpersOffered && r.helpersOffered > 0) {
+        r.helpersOffered -= 1;
+        if (r.helpersOffered === 0 && r.status === 'offered') {
+          r.status = 'open';
+        }
+      }
     }
     return { success: true };
   }

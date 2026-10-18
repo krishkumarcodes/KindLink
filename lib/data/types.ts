@@ -20,18 +20,22 @@ export interface VolunteerOffer {
   requestId: string;
   helperId: string;
   helperName: string;
+  helperAvatar?: string;
   helperPhone?: string;
   helperRating: number;
   helperVerification: VerificationState;
   helperDistanceKm?: number;
   helperEtaMinutes?: number;
+  helperBadges?: string[];
   message: string;
-  status: 'pending' | 'accepted' | 'declined' | 'withdrawn';
+  status: 'pending' | 'accepted' | 'declined' | 'withdrawn' | 'not_selected';
+  declineReason?: string;
   createdAt: string;
 }
 
 export interface HelpRequest {
   id: string;
+  requesterId?: string;
   title: string;
   description: string;
   category: HelpCategory;

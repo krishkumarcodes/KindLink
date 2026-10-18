@@ -131,6 +131,8 @@ export function BadgePinningModal({
                       <div className="flex items-center gap-3 min-w-0">
                         <BadgeMedalIcon
                           size="sm"
+                          badgeId={badge.id}
+                          title={badge.title}
                           iconName={badge.icon}
                           tier={badge.currentTier}
                           isEarned={badge.earned}
@@ -198,6 +200,8 @@ export function BadgePinningModal({
                     <div className="flex items-center gap-2.5 min-w-0">
                       <BadgeMedalIcon
                         size="sm"
+                        badgeId={badge.id}
+                        title={badge.title}
                         iconName={badge.icon}
                         tier="locked"
                         isEarned={false}

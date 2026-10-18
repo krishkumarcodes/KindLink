@@ -71,11 +71,20 @@ export interface DataAdapter {
 
   getOffers(requestId: string): Promise<VolunteerOffer[]>;
 
-  offerHelp(requestId: string, message?: string): Promise<{ success: boolean; error?: string }>;
+  offerHelp(requestId: string, message?: string): Promise<{ success: boolean; error?: string; offerId?: string; code?: string }>;
+
+  canOfferHelp?(
+    requestId: string,
+    userId?: string
+  ): Promise<{ allowed: boolean; reason?: 'own_request' | 'not_verified' | 'already_offered' | 'request_closed' | 'ok' | string }>;
+
+  getMyActiveRequests?(userId?: string): Promise<HelpRequest[]>;
 
   acceptOffer(offerId: string): Promise<{ success: boolean; error?: string }>;
 
-  declineOffer(offerId: string): Promise<{ success: boolean; error?: string }>;
+  declineOffer(offerId: string, reason?: string): Promise<{ success: boolean; error?: string }>;
+
+  withdrawOffer(offerId: string): Promise<{ success: boolean; error?: string }>;
 
   completeRequest(requestId: string): Promise<{ success: boolean; error?: string }>;
 

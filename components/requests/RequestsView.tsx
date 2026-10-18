@@ -29,6 +29,8 @@ import { RequestCard } from './RequestCard';
 import { RequestDetailModal } from './RequestDetailModal';
 import { HelpFlowModal } from './HelpFlowModal';
 import { useTranslation } from '@/lib/i18n';
+import { ModalOverlay } from '@/components/ui/OverlayPortal';
+import { SwitchRow } from '@/components/ui/Switch';
 
 export function RequestsView() {
   const {
@@ -49,6 +51,7 @@ export function RequestsView() {
     fetchLiveRequests,
     setCurrentView,
     isLoadingRequests,
+    userProfile,
   } = useKindLinkStore();
 
   const { t } = useTranslation();
@@ -234,11 +237,11 @@ export function RequestsView() {
     { key: 'transport', label: t('categories.transport') || 'Emergency Transit', icon: <Car className="h-3.5 w-3.5 text-amber-500 notranslate" /> },
   ];
 
-  const urgenciesList: { key: UrgencyLevel; label: string; color: string }[] = [
-    { key: 'critical', label: 'Critical', color: 'text-rose-600 bg-rose-500/10 border-rose-500/30' },
-    { key: 'high', label: 'High', color: 'text-amber-600 bg-amber-500/10 border-amber-500/30' },
-    { key: 'medium', label: 'Medium', color: 'text-blue-600 bg-blue-500/10 border-blue-500/30' },
-    { key: 'low', label: 'Low', color: 'text-slate-600 bg-slate-500/10 border-slate-500/30' },
+  const urgenciesList: { key: UrgencyLevel; label: string; dotColor: string }[] = [
+    { key: 'critical', label: 'Critical', dotColor: 'bg-red-500' },
+    { key: 'high', label: 'High', dotColor: 'bg-orange-500' },
+    { key: 'medium', label: 'Medium', dotColor: 'bg-blue-500' },
+    { key: 'low', label: 'Low', dotColor: 'bg-green-500' },
   ];
 
   const toggleCategory = (cat: HelpCategory) => {
@@ -326,7 +329,7 @@ export function RequestsView() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search blood, wheelchair, medicine..."
+              placeholder="Search requests"
               className="w-full rounded-2xl border border-border/80 bg-card/90 focus:bg-background pl-10 pr-9 py-2.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-xs"
             />
             {searchQuery && (
@@ -371,200 +374,6 @@ export function RequestsView() {
         </div>
       </div>
 
-      {/* Expandable Filter Sheet / Panel */}
-      {filterPanelOpen && (
-        <div className="rounded-3xl border border-border/80 bg-card/95 backdrop-blur-md p-5 sm:p-6 shadow-xl space-y-5 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between pb-3 border-b border-border">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-primary notranslate" />
-              <span className="text-sm font-bold text-foreground">Filter Aid Requests</span>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
-                Matching {filteredRequests.length} of {requests.length}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={resetAllFilters}
-                className="text-xs text-primary font-semibold hover:underline"
-              >
-                Reset all
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterPanelOpen(false)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
-                aria-label="Close filters"
-              >
-                <X className="h-4 w-4 notranslate" />
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* 1. Category Multi-Select */}
-            <div>
-              <label className="text-xs font-bold text-foreground block mb-2">
-                Categories (Select Multiple)
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {categoriesList.map((c) => {
-                  const isSelected = selectedCategories.includes(c.key);
-                  return (
-                    <button
-                      key={c.key}
-                      type="button"
-                      onClick={() => toggleCategory(c.key)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
-                        isSelected
-                          ? 'border-primary bg-primary text-white font-bold shadow-xs'
-                          : 'border-border/80 bg-background hover:bg-muted text-foreground'
-                      }`}
-                    >
-                      {c.icon}
-                      <span>{c.label}</span>
-                      {isSelected && <Check className="h-3 w-3 notranslate stroke-[3]" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 2. Urgency Checkboxes */}
-            <div>
-              <label className="text-xs font-bold text-foreground block mb-2">
-                Urgency Level
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {urgenciesList.map((u) => {
-                  const isSelected = selectedUrgencies.includes(u.key);
-                  return (
-                    <button
-                      key={u.key}
-                      type="button"
-                      onClick={() => toggleUrgency(u.key)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
-                        isSelected
-                          ? 'border-primary bg-primary text-white font-bold shadow-xs'
-                          : 'border-border/80 bg-background hover:bg-muted text-foreground'
-                      }`}
-                    >
-                      <AlertTriangle className="h-3 w-3 notranslate" />
-                      <span>{u.label}</span>
-                      {isSelected && <Check className="h-3 w-3 notranslate stroke-[3]" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* 3. Distance Radius Slider (1-50 km) */}
-          <div className="space-y-2 pt-2 border-t border-border/80">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-foreground">Alert Distance Radius</span>
-              <span className="font-extrabold text-primary px-2.5 py-0.5 rounded-full bg-primary/10">
-                {radiusKm} km
-              </span>
-            </div>
-            <input
-              type="range"
-              min="1"
-              max="50"
-              step="1"
-              value={radiusKm}
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                setRadiusKm(val);
-                setFilterRadius(val);
-              }}
-              className="w-full accent-primary h-2 bg-muted rounded-lg cursor-pointer"
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground font-semibold">
-              <span>1 km (Local)</span>
-              <span>10 km (Asansol City)</span>
-              <span>25 km (Greater Corridor)</span>
-              <span>50 km (Wide Area)</span>
-            </div>
-          </div>
-
-          {/* 4. Status, Needed In, and Verified Requesters row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-border/80">
-            {/* Status */}
-            <div>
-              <label className="text-xs font-bold text-foreground block mb-1.5">
-                Lifecycle Status
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="w-full rounded-xl border border-border bg-background p-2.5 text-xs text-foreground font-semibold focus:outline-none focus:border-primary"
-              >
-                <option value="all">All Statuses</option>
-                <option value="open">Open Needs Only</option>
-                <option value="accepted">Accepted / In Progress</option>
-              </select>
-            </div>
-
-            {/* Needed in time */}
-            <div>
-              <label className="text-xs font-bold text-foreground block mb-1.5">
-                Needed In Timeframe
-              </label>
-              <select
-                value={neededInFilter}
-                onChange={(e) => setNeededInFilter(e.target.value as any)}
-                className="w-full rounded-xl border border-border bg-background p-2.5 text-xs text-foreground font-semibold focus:outline-none focus:border-primary"
-              >
-                <option value="all">Any Timing</option>
-                <option value="immediate">Immediate (0-2 hours)</option>
-                <option value="today">Today</option>
-                <option value="within24h">Within 24 Hours</option>
-              </select>
-            </div>
-
-            {/* Verified Requesters Only Toggle */}
-            <div className="flex flex-col justify-end">
-              <label
-                onClick={() => setVerifiedOnly(!verifiedOnly)}
-                className="flex items-center gap-2 p-2.5 rounded-xl border border-border bg-background cursor-pointer hover:bg-muted transition text-xs font-bold text-foreground select-none"
-              >
-                <input
-                  type="checkbox"
-                  checked={verifiedOnly}
-                  onChange={(e) => setVerifiedOnly(e.target.checked)}
-                  className="rounded border-border text-primary focus:ring-primary h-4 w-4 accent-primary"
-                />
-                <ShieldCheck className="h-4 w-4 text-emerald-500 notranslate" />
-                <span>Verified Requesters Only</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Footer Controls: Live Count, Reset & Apply */}
-          <div className="flex items-center justify-between pt-3 border-t border-border">
-            <span className="text-xs font-bold text-muted-foreground">
-              {filteredRequests.length} matching request{filteredRequests.length === 1 ? '' : 's'}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={resetAllFilters}
-                className="px-4 py-2 rounded-xl border border-border text-xs font-semibold text-foreground hover:bg-muted transition"
-              >
-                Reset
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterPanelOpen(false)}
-                className="px-5 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition shadow-xs"
-              >
-                Apply Filters
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Active Filter Chips */}
       {hasActiveFilters && (
@@ -816,15 +625,28 @@ export function RequestsView() {
         /* Requests Grid */
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {displayedRequests.map((req) => (
-              <RequestCard
-                key={req.id}
-                request={req}
-                travelMode={travelMode}
-                onSelect={(r) => setSelectedRequestId(r.id)}
-                onHelp={(r) => setHelpFlowReq(r)}
-              />
-            ))}
+            {displayedRequests.map((req) => {
+              const isOwner = Boolean(
+                (userProfile?.id && (req as any).requesterId === userProfile.id) ||
+                (userProfile?.name &&
+                  req.contactName &&
+                  req.contactName.trim().toLowerCase() === userProfile.name.trim().toLowerCase()) ||
+                (userProfile?.phone &&
+                  req.phone &&
+                  req.phone.trim() === userProfile.phone.trim())
+              );
+              return (
+                <RequestCard
+                  key={req.id}
+                  request={req}
+                  travelMode={travelMode}
+                  onSelect={(r) => setSelectedRequestId(r.id)}
+                  onHelp={(r) => setHelpFlowReq(r)}
+                  isOwner={isOwner}
+                />
+              );
+            })}
+
           </div>
 
           {/* Infinite Scroll / Load More */}
@@ -858,6 +680,203 @@ export function RequestsView() {
           fetchLiveRequests();
         }}
       />
+
+      {/* Shared Bottom Sheet Filter Panel */}
+      <ModalOverlay
+        open={filterPanelOpen}
+        onClose={() => setFilterPanelOpen(false)}
+        title="Filters"
+        ariaLabel="Filter Aid Requests"
+        mobileVariant="sheet"
+        maxWidthClass="max-w-xl"
+      >
+        {/* Sticky Header: Title "Filters", count pill, and "Reset" on ONE line (never wraps) */}
+        <div className="flex items-center justify-between gap-2 px-5 py-4 border-b border-border/80 bg-card/95 backdrop-blur-md shrink-0">
+          <div className="flex items-center gap-2 min-w-0 shrink-0">
+            <SlidersHorizontal className="h-4 w-4 text-primary notranslate shrink-0" />
+            <h2 className="text-base font-bold text-foreground shrink-0">Filters</h2>
+            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold whitespace-nowrap">
+              {filteredRequests.length} of {requests.length}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="text-xs font-bold text-primary hover:underline whitespace-nowrap px-1.5 py-1"
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterPanelOpen(false)}
+              className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted touch-target"
+              aria-label="Close filters"
+            >
+              <X className="h-4 w-4 notranslate" />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable Sheet Body */}
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 min-h-0">
+          {/* 1. Category Multi-Select */}
+          <div>
+            <label className="text-xs font-bold text-foreground block mb-2">
+              Categories (Select Multiple)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {categoriesList.map((c) => {
+                const isSelected = selectedCategories.includes(c.key);
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => toggleCategory(c.key)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
+                      isSelected
+                        ? 'border-teal-700 bg-teal-700 dark:bg-teal-600 text-white font-bold shadow-xs'
+                        : 'border-border/80 bg-background hover:bg-muted text-foreground'
+                    }`}
+                  >
+                    {c.icon}
+                    <span>{c.label}</span>
+                    {isSelected && <Check className="h-3 w-3 notranslate stroke-[3]" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 2. Urgency Chips with individual coloured dots (Critical red, High orange, Medium blue, Low green) */}
+          <div>
+            <label className="text-xs font-bold text-foreground block mb-2">
+              Urgency Level
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {urgenciesList.map((u) => {
+                const isSelected = selectedUrgencies.includes(u.key);
+                return (
+                  <button
+                    key={u.key}
+                    type="button"
+                    onClick={() => toggleUrgency(u.key)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
+                      isSelected
+                        ? 'border-teal-700 bg-teal-700 dark:bg-teal-600 text-white font-bold shadow-xs'
+                        : 'border-border/80 bg-background hover:bg-muted text-foreground'
+                    }`}
+                  >
+                    <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${u.dotColor}`} />
+                    <span>{u.label}</span>
+                    {isSelected && <Check className="h-3 w-3 notranslate stroke-[3]" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3. Distance Radius Slider */}
+          <div className="space-y-2.5 pt-2 border-t border-border/80">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-foreground">Alert Distance Radius</span>
+              <span className="font-extrabold text-primary px-2.5 py-0.5 rounded-full bg-primary/10">
+                {radiusKm} km
+              </span>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="50"
+              step="1"
+              value={radiusKm}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setRadiusKm(val);
+                setFilterRadius(val);
+              }}
+              className="w-full accent-primary h-2 bg-muted rounded-lg cursor-pointer"
+            />
+            <div className="flex justify-between text-[10px] sm:text-xs text-muted-foreground font-semibold">
+              <span>1 km Nearby</span>
+              <span>10 km</span>
+              <span>25 km City</span>
+              <span>50 km Wide</span>
+            </div>
+          </div>
+
+          {/* 4. Status and Needed within */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border/80">
+            {/* Status */}
+            <div>
+              <label className="text-xs font-bold text-foreground block mb-1.5">
+                Status
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="w-full rounded-xl border border-border bg-background p-2.5 text-xs text-foreground font-semibold focus:outline-none focus:border-primary"
+              >
+                <option value="all">All Statuses</option>
+                <option value="open">Open Needs Only</option>
+                <option value="accepted">Accepted / In Progress</option>
+              </select>
+            </div>
+
+            {/* Needed within */}
+            <div>
+              <label className="text-xs font-bold text-foreground block mb-1.5">
+                Needed within
+              </label>
+              <select
+                value={neededInFilter}
+                onChange={(e) => setNeededInFilter(e.target.value as any)}
+                className="w-full rounded-xl border border-border bg-background p-2.5 text-xs text-foreground font-semibold focus:outline-none focus:border-primary"
+              >
+                <option value="all">Any Timing</option>
+                <option value="immediate">Immediate (0-2 hours)</option>
+                <option value="today">Today</option>
+                <option value="within24h">Within 24 Hours</option>
+              </select>
+            </div>
+          </div>
+
+          {/* 5. Verified requesters only via shared SwitchRow */}
+          <div className="pt-2 border-t border-border/80">
+            <SwitchRow
+              checked={verifiedOnly}
+              onCheckedChange={setVerifiedOnly}
+              label="Verified requesters only"
+              description="Only show requests with verified identity badges"
+              icon={<ShieldCheck className="h-4 w-4 text-emerald-500" />}
+            />
+          </div>
+        </div>
+
+        {/* Sticky Footer: "N requests found", "Reset", and "Apply filters" buttons */}
+        <div className="p-4 sm:p-5 border-t border-border/80 bg-card/95 backdrop-blur-md flex items-center justify-between gap-2 shrink-0">
+          <span className="text-xs sm:text-sm font-bold text-muted-foreground truncate">
+            {filteredRequests.length} {filteredRequests.length === 1 ? 'request' : 'requests'} found
+          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="px-3.5 py-2 rounded-xl border border-border text-xs font-semibold text-foreground hover:bg-muted transition active:scale-95 touch-target"
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterPanelOpen(false)}
+              className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition active:scale-95 touch-target shadow-xs"
+            >
+              Apply filters
+            </button>
+          </div>
+        </div>
+      </ModalOverlay>
     </div>
   );
 }
+

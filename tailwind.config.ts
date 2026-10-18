@@ -51,6 +51,13 @@ const config: Config = {
           medium: '#3B82F6',
           low: '#10B981',
         },
+        category: {
+          blood: '#C62828',
+          equipment: '#0F766E',
+          elderly: '#4F46E5',
+          books: '#047857',
+          transport: '#B45309',
+        },
       },
       borderRadius: {
         '2xl': '1rem',

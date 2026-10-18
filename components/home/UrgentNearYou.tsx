@@ -22,6 +22,7 @@ import { HelpCategory, HelpRequest, TravelMode } from '@/lib/data/types';
 import { calculateETA, formatETA } from '@/lib/data/distance';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { formatWaitingTime } from '@/lib/utils/formatTime';
+import { PrimaryHelpButton } from '@/components/requests/ActionButtons';
 
 export interface UrgentNearYouProps {
   /** Optional custom requests list. If omitted, fetched from useKindLinkStore. */
@@ -536,19 +537,18 @@ export function UrgentNearYou({
                       </div>
                     </div>
 
-                    {/* Help button: 44 px high, on the right on wide screens and full width below on phones under 400 px */}
-                    <button
-                      type="button"
+                    {/* Help button: 44 px high, category colored */}
+                    <PrimaryHelpButton
+                      category={req.category}
+                      size="card"
+                      label="I can help"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleRequestClick(req);
                       }}
-                      className="h-[44px] min-h-[44px] w-full min-[400px]:w-auto min-[400px]:px-5 px-4 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 shadow-sm hover:shadow transition active:scale-95 shrink-0 touch-target"
+                      className="w-full min-[400px]:w-auto min-[400px]:px-5 px-4 shrink-0"
                       aria-label={`Help with request: ${req.title}`}
-                    >
-                      <HeartHandshake className="h-4 w-4 shrink-0 notranslate" />
-                      <span>Help</span>
-                    </button>
+                    />
                   </div>
                 </div>
               </div>

@@ -30,7 +30,11 @@ export function initializeRealtime() {
 
         if (payload.eventType === 'INSERT') {
           const newReq = payload.new as any;
-          if (newReq?.title) {
+          const currentUserId = store.userProfile?.id;
+          const isOwn = Boolean(currentUserId && newReq?.requester_id === currentUserId);
+
+          // Never notify requester about their own request being nearby
+          if (newReq?.title && !isOwn) {
             toast.info(`🚨 New ${newReq.category || 'Help'} Request: ${newReq.title}`, {
               description: newReq.address_text || newReq.location_name || 'Nearby request received',
               action: {
