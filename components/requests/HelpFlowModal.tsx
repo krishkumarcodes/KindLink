@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { HelpRequest, TravelMode, HelpCategory, UrgencyLevel } from '@/lib/data/types';
+import { isRequestOwner } from '@/lib/data/ownership';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { calculateETA, formatETA } from '@/lib/data/distance';
 import { OverlayPortal, useBodyScrollLock } from '@/components/ui/OverlayPortal';
@@ -214,17 +215,7 @@ export function HelpFlowModal({
   const isVerified = userProfile?.verificationState === 'verified';
 
   // Own-request check: users cannot offer help on requests they created
-  const isOwnRequest = Boolean(
-    userProfile &&
-      ((request.requesterId && userProfile.id === request.requesterId) ||
-        ((request as any).userId && userProfile.id === (request as any).userId) ||
-        (request.contactName &&
-          userProfile.name &&
-          request.contactName.trim().toLowerCase() === userProfile.name.trim().toLowerCase()) ||
-        (request.phone &&
-          userProfile.phone &&
-          request.phone.replace(/\D/g, '') === userProfile.phone.replace(/\D/g, '')))
-  );
+  const isOwnRequest = Boolean(isRequestOwner(request, userProfile));
 
   // Category token & colors
   const categoryToken = getCategoryToken(request.category);

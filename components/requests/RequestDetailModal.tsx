@@ -45,6 +45,7 @@ import {
   HelpCategory,
   UrgencyLevel,
 } from '@/lib/data/types';
+import { isRequestOwner } from '@/lib/data/ownership';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { calculateETA, formatETA } from '@/lib/data/distance';
 import { getRoadRoute, RoadRouteResult } from '@/lib/geo/osrm';
@@ -286,19 +287,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
   }, [open]);
 
   // Check if current user is the request owner
-  const isRequestOwner = Boolean(
-    userProfile &&
-      request &&
-      (((request as any).requesterId && userProfile.id === (request as any).requesterId) ||
-        (request.contactName &&
-          userProfile.name &&
-          (request.contactName.trim().toLowerCase() === userProfile.name.trim().toLowerCase() ||
-            request.contactName.toLowerCase().includes(userProfile.name.toLowerCase()))) ||
-        (request.phone &&
-          userProfile.phone &&
-          request.phone.replace(/[^0-9]/g, '') === userProfile.phone.replace(/[^0-9]/g, '')))
-  );
-  const isRequester = isRequestOwner;
+  const isRequester = Boolean(isRequestOwner(request, userProfile));
   const isAcceptedHelper = Boolean(
     userProfile && request && request.acceptedHelperId === userProfile.id
   );
@@ -848,6 +837,14 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                   <span className="h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-pulse" />
                   <span className="capitalize">{LIFECYCLE_STEPS[activeStepIdx].label}</span>
                 </span>
+
+                {/* Your Request Badge */}
+                {isRequester && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30">
+                    <span aria-hidden="true">★</span>
+                    <span>Your request</span>
+                  </span>
+                )}
               </div>
 
               {/* Accessible Close Button (44px tap target aligned and centered) */}

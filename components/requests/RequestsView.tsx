@@ -22,9 +22,11 @@ import {
   Users,
   BookOpen,
   Car,
+  User,
 } from 'lucide-react';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { HelpCategory, HelpRequest, UrgencyLevel } from '@/lib/data/types';
+import { isRequestOwner } from '@/lib/data/ownership';
 import { RequestCard } from './RequestCard';
 import { RequestDetailModal } from './RequestDetailModal';
 import { HelpFlowModal } from './HelpFlowModal';
@@ -35,6 +37,7 @@ import { SwitchRow } from '@/components/ui/Switch';
 export function RequestsView() {
   const {
     requests,
+    myActiveRequests,
     activeFeedTab,
     setActiveFeedTab,
     filterCategory,
@@ -53,6 +56,14 @@ export function RequestsView() {
     isLoadingRequests,
     userProfile,
   } = useKindLinkStore();
+
+  // Combine feed requests and user's own active requests
+  const allFeedRequests = useMemo(() => {
+    const map = new Map<string, HelpRequest>();
+    requests.forEach((r) => map.set(r.id, r));
+    myActiveRequests.forEach((r) => map.set(r.id, r));
+    return Array.from(map.values());
+  }, [requests, myActiveRequests]);
 
   const { t } = useTranslation();
 
@@ -112,11 +123,22 @@ export function RequestsView() {
   };
 
   // Selected request for details modal
-  const activeDetailRequest = requests.find((r) => r.id === selectedRequestId) || null;
+  const activeDetailRequest = allFeedRequests.find((r) => r.id === selectedRequestId) || null;
 
   // Filter Logic
   const filteredRequests = useMemo(() => {
-    return requests.filter((req) => {
+    return allFeedRequests.filter((req) => {
+      const isOwner = isRequestOwner(req, userProfile);
+
+      // Ownership enforcement:
+      // Tab 'my_requests' shows ONLY the user's own requests.
+      // Tabs 'urgent', 'nearest', 'newest' (help lists) EXCLUDE the user's own requests.
+      if (activeFeedTab === 'my_requests') {
+        if (!isOwner) return false;
+      } else {
+        if (isOwner) return false;
+      }
+
       // 1. Categories Multi-Select
       if (selectedCategories.length > 0 && !selectedCategories.includes(req.category)) {
         return false;
@@ -127,8 +149,8 @@ export function RequestsView() {
         return false;
       }
 
-      // 3. Distance Radius Slider (1-50 km)
-      if (req.distanceKm > radiusKm) {
+      // 3. Distance Radius Slider (1-50 km) - apply only for volunteer feed tabs
+      if (activeFeedTab !== 'my_requests' && req.distanceKm > radiusKm) {
         return false;
       }
 
@@ -178,7 +200,9 @@ export function RequestsView() {
       return true;
     });
   }, [
-    requests,
+    allFeedRequests,
+    activeFeedTab,
+    userProfile,
     selectedCategories,
     selectedUrgencies,
     radiusKm,
@@ -196,11 +220,26 @@ export function RequestsView() {
   };
 
   // Sorting logic based on tab:
+  // My Requests: status progression > newest
   // Most Urgent: urgency > distance > waiting time
   // Nearest: road/geodesic distance > urgency > waiting time
   // Newest: waitingMinutes ascending (creation time) > urgency
   const sortedRequests = useMemo(() => {
     return [...filteredRequests].sort((a, b) => {
+      if (activeFeedTab === 'my_requests') {
+        const statusOrder: Record<string, number> = {
+          open: 1,
+          accepted: 2,
+          on_the_way: 3,
+          arrived: 4,
+          completed: 5,
+          cancelled: 6,
+        };
+        const orderA = statusOrder[a.status] ?? 9;
+        const orderB = statusOrder[b.status] ?? 9;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.waitingMinutes || 0) - (b.waitingMinutes || 0);
+      }
       if (activeFeedTab === 'urgent') {
         const urgA = URGENCY_PRIORITY[a.urgency] ?? 5;
         const urgB = URGENCY_PRIORITY[b.urgency] ?? 5;
@@ -499,9 +538,9 @@ export function RequestsView() {
         </div>
       )}
 
-      {/* Tabs Row: Most Urgent, Nearest, Newest */}
-      <div className="flex items-center justify-between border-b border-border/80 pb-2.5">
-        <div className="flex items-center gap-1.5 sm:gap-2">
+      {/* Tabs Row: Most Urgent, Nearest, Newest, My Requests */}
+      <div className="flex items-center justify-between border-b border-border/80 pb-2.5 overflow-x-auto no-scrollbar gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             type="button"
             onClick={() => setActiveFeedTab('urgent')}
@@ -540,9 +579,33 @@ export function RequestsView() {
             <Clock className="h-4 w-4 notranslate text-blue-400" />
             <span>Newest</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveFeedTab('my_requests')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition-all active:scale-95 touch-target ${
+              activeFeedTab === 'my_requests'
+                ? 'bg-indigo-600 text-white shadow-soft ring-2 ring-indigo-500/20'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+            }`}
+          >
+            <User className="h-4 w-4 notranslate text-indigo-400" />
+            <span>My Requests</span>
+            {myActiveRequests.length > 0 && (
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                  activeFeedTab === 'my_requests'
+                    ? 'bg-white text-indigo-700'
+                    : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25'
+                }`}
+              >
+                {myActiveRequests.length}
+              </span>
+            )}
+          </button>
         </div>
 
-        <span className="text-xs text-muted-foreground font-semibold hidden sm:inline">
+        <span className="text-xs text-muted-foreground font-semibold hidden sm:inline whitespace-nowrap">
           Showing {displayedRequests.length} of {sortedRequests.length} request{sortedRequests.length === 1 ? '' : 's'}
         </span>
       </div>
@@ -573,7 +636,30 @@ export function RequestsView() {
         </div>
       ) : sortedRequests.length === 0 ? (
         /* Honest Empty States */
-        requests.length === 0 ? (
+        activeFeedTab === 'my_requests' ? (
+          /* Case 0: User has no active requests */
+          <div className="rounded-3xl border border-dashed border-border/80 bg-card/60 p-10 sm:p-14 text-center shadow-soft space-y-4">
+            <div className="h-16 w-16 rounded-3xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto">
+              <User className="h-8 w-8 notranslate" />
+            </div>
+            <div className="max-w-md mx-auto space-y-1.5">
+              <h3 className="text-lg font-bold text-foreground">You have no active requests</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                When you post an aid request (such as for medical gear, emergency transit, or elderly care), you can manage incoming volunteer offers and track fulfillment status here.
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setCurrentView('new')}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition active:scale-95 shadow-soft"
+              >
+                <PlusCircle className="h-4 w-4 notranslate" />
+                <span>Ask for Help</span>
+              </button>
+            </div>
+          </div>
+        ) : requests.length === 0 ? (
           /* Case 1: Feed is completely empty in database */
           <div className="rounded-3xl border border-dashed border-border/80 bg-card/60 p-10 sm:p-14 text-center shadow-soft space-y-4">
             <div className="h-16 w-16 rounded-3xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
@@ -626,15 +712,7 @@ export function RequestsView() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {displayedRequests.map((req) => {
-              const isOwner = Boolean(
-                (userProfile?.id && (req as any).requesterId === userProfile.id) ||
-                (userProfile?.name &&
-                  req.contactName &&
-                  req.contactName.trim().toLowerCase() === userProfile.name.trim().toLowerCase()) ||
-                (userProfile?.phone &&
-                  req.phone &&
-                  req.phone.trim() === userProfile.phone.trim())
-              );
+              const isOwner = isRequestOwner(req, userProfile);
               return (
                 <RequestCard
                   key={req.id}

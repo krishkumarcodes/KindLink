@@ -9,9 +9,11 @@ import {
   Navigation,
   User,
   XCircle,
+  CheckCircle2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { HelpRequest, TravelMode } from '@/lib/data/types';
+import { isRequestOwner } from '@/lib/data/ownership';
 import { calculateETA, formatETA } from '@/lib/data/distance';
 import { formatWaitingDuration } from '@/lib/utils/formatTime';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
@@ -37,7 +39,7 @@ export function RequestCard({
   onCancel,
   isOwner: isOwnerProp,
 }: RequestCardProps) {
-  const { userProfile, fetchLiveRequests } = useKindLinkStore();
+  const { userProfile, fetchLiveRequests, completeRequest } = useKindLinkStore();
   const etaMinutes = calculateETA(request.distanceKm, travelMode);
   const categoryToken = getCategoryToken(request.category);
   const CategoryIcon = categoryToken.icon;
@@ -46,15 +48,7 @@ export function RequestCard({
   const isUserOwner =
     isOwnerProp !== undefined
       ? isOwnerProp
-      : Boolean(
-          (userProfile?.id && (request as any).requesterId === userProfile.id) ||
-          (userProfile?.name &&
-            request.contactName &&
-            request.contactName.trim().toLowerCase() === userProfile.name.trim().toLowerCase()) ||
-          (userProfile?.phone &&
-            request.phone &&
-            request.phone.trim() === userProfile.phone.trim())
-        );
+      : isRequestOwner(request, userProfile);
 
   const getUrgencyBadge = (urgency: string) => {
     switch (urgency) {
@@ -198,7 +192,7 @@ export function RequestCard({
           </SecondaryButton>
 
           {isUserOwner ? (
-            /* Owner action: Cancel */
+            /* Owner actions */
             request.status === 'cancelled' ? (
               <SecondaryButton
                 size="card"
@@ -207,6 +201,31 @@ export function RequestCard({
               >
                 Cancelled
               </SecondaryButton>
+            ) : request.status === 'completed' ? (
+              <SecondaryButton
+                size="card"
+                disabled
+                className="w-full text-emerald-600 dark:text-emerald-400"
+              >
+                Completed
+              </SecondaryButton>
+            ) : (request.status === 'accepted' || request.status === 'on_the_way' || request.status === 'arrived') ? (
+              <button
+                type="button"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await completeRequest(request.id);
+                    toast.success('Request marked as completed!');
+                  } catch (err: any) {
+                    toast.error(err?.message || 'Failed to complete request');
+                  }
+                }}
+                className="w-full min-h-[44px] rounded-[16px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 touch-target"
+              >
+                <CheckCircle2 className="h-4 w-4 notranslate" />
+                <span>Mark Completed</span>
+              </button>
             ) : (
               <SecondaryButton
                 size="card"
