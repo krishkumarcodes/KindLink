@@ -123,7 +123,7 @@ export function Header() {
                     </filter>
                   </defs>
 
-                  {/* Squircle Base with Elevation */}
+                  {/* Squircle Base with Elevation & Refined Dual Rim */}
                   <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#header-kl-grad)" />
                   <rect
                     x="2.5"
@@ -132,19 +132,20 @@ export function Header() {
                     height="59"
                     rx="15.5"
                     stroke="#FFFFFF"
-                    strokeOpacity="0.25"
+                    strokeOpacity="0.3"
                     strokeWidth="1"
                   />
 
-                  {/* Community Connection Field Rings */}
+                  {/* Rebranded Community Radar Rings */}
+                  <circle cx="32" cy="32" r="22" stroke="#FFFFFF" strokeOpacity="0.14" strokeWidth="1.5" strokeDasharray="4 2" />
                   <ellipse
                     cx="32"
                     cy="32"
                     rx="22"
                     ry="11"
-                    transform="rotate(-25 32 32)"
+                    transform="rotate(-28 32 32)"
                     stroke="#FFFFFF"
-                    strokeOpacity="0.4"
+                    strokeOpacity="0.35"
                     strokeWidth="2.5"
                     strokeDasharray="4 2"
                   />
@@ -153,31 +154,31 @@ export function Header() {
                     cy="32"
                     rx="22"
                     ry="11"
-                    transform="rotate(25 32 32)"
+                    transform="rotate(28 32 32)"
                     stroke="#FFFFFF"
-                    strokeOpacity="0.4"
+                    strokeOpacity="0.35"
                     strokeWidth="2.5"
                     strokeDasharray="4 2"
                   />
-                  <circle cx="32" cy="32" r="18" stroke="#FFFFFF" strokeOpacity="0.18" strokeWidth="1.5" />
 
-                  {/* Connected Hearts & Hands Mobius Loop */}
+                  {/* Rebranded Interlocking Heart-Link Vector */}
                   <path
-                    d="M22 28 C18 22, 12 25, 12 32 C12 39, 24 46, 32 50 C40 46, 52 39, 52 32 C52 25, 46 22, 42 28 C39 32, 35 34, 32 34 C29 34, 25 32, 22 28 Z"
+                    d="M 22.5 25.5 C 15.5 18.5, 10 25.5, 10 33 C 10 40.5, 19.5 48, 32 53 C 44.5 48, 54 40.5, 54 33 C 54 25.5, 48.5 18.5, 41.5 25.5 C 37 30, 32 35, 32 35 C 32 35, 27 30, 22.5 25.5 Z"
                     fill="#FFFFFF"
                     fillOpacity="0.96"
                   />
 
-                  {/* Inner Link Arch */}
+                  {/* Inner Dimension Arch */}
                   <path
-                    d="M23.5 30 C26 33, 29 34.5, 32 34.5 C35 34.5, 38 33, 40.5 30"
+                    d="M 25 28 C 28.5 32.5, 32 36, 32 36 C 32 36, 35.5 32.5, 39 28"
                     stroke="#0D9488"
-                    strokeWidth="2"
+                    strokeWidth="2.5"
                     strokeLinecap="round"
                   />
 
-                  {/* Beacon Core */}
-                  <circle cx="32" cy="32" r="5" fill="url(#header-kl-beacon)" filter="url(#header-kl-glow)" />
+                  {/* Central Emergency Beacon Pulse */}
+                  <circle cx="32" cy="31" r="5.5" fill="url(#header-kl-beacon)" filter="url(#header-kl-glow)" />
+                  <circle cx="32" cy="31" r="2" fill="#FFFFFF" />
                   <circle cx="32" cy="32" r="2" fill="#FFFFFF" />
                 </svg>
               </div>

@@ -1,41 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 184 44" width="184" height="44" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" width="200" height="48" fill="none">
   <defs>
     <!-- Background Gradient for Icon Squircle -->
-    <linearGradient id="kl-mark-grad" x1="2" y1="2" x2="42" y2="42" gradientUnits="userSpaceOnUse">
+    <linearGradient id="kl-mark-grad" x1="2" y1="2" x2="46" y2="46" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#0F766E"/>
-      <stop offset="35%" stop-color="#0D9488"/>
-      <stop offset="70%" stop-color="#06B6D4"/>
-      <stop offset="100%" stop-color="#1D4ED8"/>
+      <stop offset="30%" stop-color="#0D9488"/>
+      <stop offset="65%" stop-color="#06B6D4"/>
+      <stop offset="100%" stop-color="#2563EB"/>
     </linearGradient>
 
-    <!-- Beacon Radial Gradient -->
+    <!-- Wordmark Link Gradient -->
+    <linearGradient id="kl-txt-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0D9488"/>
+      <stop offset="60%" stop-color="#06B6D4"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+
+    <!-- Beacon Radial Glow -->
     <radialGradient id="kl-beacon" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#FDE047"/>
-      <stop offset="50%" stop-color="#F59E0B"/>
-      <stop offset="100%" stop-color="#EF4444"/>
+      <stop offset="0%" stop-color="#FEF08A"/>
+      <stop offset="40%" stop-color="#F59E0B"/>
+      <stop offset="85%" stop-color="#EF4444"/>
+      <stop offset="100%" stop-color="#DC2626" stop-opacity="0.9"/>
     </radialGradient>
 
-    <!-- Glow Filter -->
-    <filter id="kl-glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="1.2" result="blur"/>
+    <!-- Soft Ambient Elevation Filter -->
+    <filter id="kl-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="3" flood-color="#0F766E" flood-opacity="0.32"/>
+    </filter>
+
+    <filter id="kl-pulse-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
       <feComposite in="SourceGraphic" in2="blur" operator="over"/>
     </filter>
 
-    <!-- Soft Drop Shadow Filter for Mark Base -->
-    <filter id="kl-shadow" x="-15%" y="-15%" width="130%" height="130%">
-      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#0F766E" flood-opacity="0.3"/>
-    </filter>
-
-    <!-- Responsive Dark/Light Scheme Support -->
     <style>
       .kl-brand-text {
-        font-family: 'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Plus Jakarta Sans', Inter, sans-serif;
       }
       .kl-txt-kind {
         fill: #0F172A;
-      }
-      .kl-txt-link {
-        fill: #0D9488;
       }
       .kl-txt-sub {
         fill: #64748B;
@@ -44,9 +47,6 @@
         .kl-txt-kind {
           fill: #F8FAFC;
         }
-        .kl-txt-link {
-          fill: #14B8A6;
-        }
         .kl-txt-sub {
           fill: #94A3B8;
         }
@@ -54,44 +54,48 @@
     </style>
   </defs>
 
-  <!-- Squircle Base with Elevation -->
+  <!-- Squircle Base with Elevation & Dual Rim -->
   <g filter="url(#kl-shadow)">
-    <rect x="2" y="2" width="40" height="40" rx="12" fill="url(#kl-mark-grad)"/>
-    <rect x="2.5" y="2.5" width="39" height="39" rx="11.5" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="1"/>
+    <rect x="2" y="2" width="44" height="44" rx="13" fill="url(#kl-mark-grad)"/>
+    <rect x="2.5" y="2.5" width="43" height="43" rx="12.5" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="1"/>
   </g>
 
-  <!-- Community Orbitals & Heart Nexus inside Branding Mark -->
-  <g transform="translate(22, 22) scale(0.625) translate(-32, -32)">
-    <!-- Orbital Community Field Rings (Hyperlocal Aid Network) -->
-    <ellipse cx="32" cy="32" rx="22" ry="11" transform="rotate(-25 32 32)" stroke="#FFFFFF" stroke-opacity="0.4" stroke-width="2.5" stroke-dasharray="4 2"/>
-    <ellipse cx="32" cy="32" rx="22" ry="11" transform="rotate(25 32 32)" stroke="#FFFFFF" stroke-opacity="0.4" stroke-width="2.5" stroke-dasharray="4 2"/>
-    <circle cx="32" cy="32" r="18" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Rebranded Emblem: Community Radar + Interlocking Heart-Link Ribbon -->
+  <g transform="translate(24, 24)">
+    <!-- Radar Wave Arc (Proximity Detection) -->
+    <circle cx="0" cy="0" r="16.5" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.2" stroke-dasharray="3 2"/>
+    <circle cx="0" cy="0" r="20" stroke="#FFFFFF" stroke-opacity="0.1" stroke-width="1"/>
 
-    <!-- Connected Hearts & Hands Mobius Loop (KindLink Emblem) -->
-    <path d="M22 28 C18 22, 12 25, 12 32 C12 39, 24 46, 32 50 C40 46, 52 39, 52 32 C52 25, 46 22, 42 28 C39 32, 35 34, 32 34 C29 34, 25 32, 22 28 Z" fill="#FFFFFF" fill-opacity="0.96"/>
+    <!-- Interlocking Heart-Link Mobius Vector -->
+    <path d="M -7.5,-5.5 C -13,-11 -17.5,-4.5 -17.5,1.5 C -17.5,7.5 -10,13 0,17 C 10,13 17.5,7.5 17.5,1.5 C 17.5,-4.5 13,-11 7.5,-5.5 C 4,-2 0,2.5 0,2.5 C 0,2.5 -4,-2 -7.5,-5.5 Z"
+          fill="#FFFFFF"
+          fill-opacity="0.96"/>
 
-    <!-- Secondary Inner Link Arch -->
-    <path d="M23.5 30 C26 33, 29 34.5, 32 34.5 C35 34.5, 38 33, 40.5 30" stroke="#0D9488" stroke-width="2" stroke-linecap="round"/>
+    <!-- Accent Inner Ribbon Notch (Dimension and Craft) -->
+    <path d="M -5.5,-3.5 C -2.5,0.5 0,3.5 0,3.5 C 0,3.5 2.5,0.5 5.5,-3.5"
+          stroke="#0D9488"
+          stroke-width="1.8"
+          stroke-linecap="round"/>
 
-    <!-- Quantum Core Pulse / Beacon -->
-    <circle cx="32" cy="32" r="5" fill="url(#kl-beacon)" filter="url(#kl-glow)"/>
-    <circle cx="32" cy="32" r="2" fill="#FFFFFF"/>
+    <!-- Central Beacon Pulse (Live Emergency Node) -->
+    <circle cx="0" cy="-0.5" r="4.2" fill="url(#kl-beacon)" filter="url(#kl-pulse-glow)"/>
+    <circle cx="0" cy="-0.5" r="1.6" fill="#FFFFFF"/>
   </g>
 
-  <!-- Clean Typography Block -->
+  <!-- Brand Typography -->
   <g id="brand-typography">
     <!-- KindLink Brand Wordmark -->
-    <text x="50" y="26" class="kl-brand-text" font-size="22" font-weight="800" letter-spacing="-0.03em">
-      <tspan class="kl-txt-kind">Kind</tspan><tspan class="kl-txt-link">Link</tspan>
+    <text x="56" y="28" class="kl-brand-text" font-size="24" font-weight="800" letter-spacing="-0.03em">
+      <tspan class="kl-txt-kind">Kind</tspan><tspan fill="url(#kl-txt-grad)">Link</tspan>
     </text>
 
-    <!-- Subtitle / Tagline -->
-    <text x="51" y="38" class="kl-brand-text kl-txt-sub" font-size="7.5" font-weight="700" letter-spacing="0.16em">
-      MUTUAL AID NETWORK
+    <!-- Subtitle Tagline Pill -->
+    <text x="57" y="41" class="kl-brand-text kl-txt-sub" font-size="8" font-weight="700" letter-spacing="0.18em">
+      MUTUAL AID · CRISIS RADAR
     </text>
 
-    <!-- Hyperlocal Aid Orbit Accent Point -->
-    <circle cx="166" cy="16" r="2.5" fill="#06B6D4" opacity="0.85"/>
-    <circle cx="166" cy="16" r="1" fill="#FFFFFF"/>
+    <!-- Active Network Radar Indicator Dot -->
+    <circle cx="188" cy="18" r="3" fill="#06B6D4" opacity="0.9"/>
+    <circle cx="188" cy="18" r="1.2" fill="#FFFFFF"/>
   </g>
 </svg>
