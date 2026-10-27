@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v4.7.0] - 2026-10-27 - Universal Command Palette & Quick Actions Navigator (⌘K / Ctrl+K), Shell Integration & Power-User Accessibility 🚀
+
+### Summary
+Release v4.7.0 introduces the **Universal Command Palette & Quick Actions Navigator**, providing instant keyboard (`⌘K` / `Ctrl+K` / `/`) and touch access to all 15 aid categories, life-safety emergency workflows, core views, dark/light theme switching, and live neighbor request lookup, with zero layout disruption and 100% clean architecture pass.
+
+### 🌟 Key Highlights & Enhancements
+- **Universal Command Palette (`CommandPalette.tsx`)**:
+  - Global shortcut listener (`Cmd+K`, `Ctrl+K`, and `/` keypresses safely ignored inside text fields).
+  - ARIA-compliant combobox pattern with keyboard navigation (`↑`/`↓` cycling, `↵` execution, `Esc` dismissal).
+  - Portal-rendered solid `bg-card` surface utilizing KindLink's strict iOS Safari body scroll lock and overscroll containment.
+- **15 Aid Categories Instant Jump**:
+  - Direct fuzzy search across all 15 standard aid categories (Blood Donation, Medical Gear, Elderly Care, Study Books, etc.).
+  - Displays WCAG AA compliant color badges and Lucide icons; immediately applies feed category filters and redirects to Requests view with feedback toast.
+- **Life-Safety & Emergency Fast-Path**:
+  - Instant trigger for Emergency SOS (`EmergencySosModal`) and 24/7 National Emergency Helplines (112 / 102 / 1091).
+- **Core View Navigation & Preference Controls**:
+  - 1-keystroke navigation to Home, Requests, Live Map, New Request Wizard, Profile & Badges, Settings.
+  - Interactive Theme switcher (Light ↔ Dark) and direct access to Location & Language selection modals.
+- **Live Neighbor Request Lookup**:
+  - Realtime title, tag, and requester fuzzy search over locally cached help requests, opening directly in the Request Details sheet.
+- **Shell UI Integration**:
+  - Added Quick Search trigger button in `Sidebar.tsx` with `⌘K` keyboard badge.
+  - Added Quick Search menu item in `ProfileQuickMenu.tsx`.
+
+---
+
 ## [v4.6.0] - 2026-10-18 - Big Fix & Redesign: OpenFreeMap Vector Engine, Single-Surface Overlays, 15 Data-Driven Categories, Location Purge & Production Hardening 🚀
 
 ### Summary

@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   HeartHandshake,
   Atom,
+  Search,
 } from 'lucide-react';
 import { useKindLinkStore, AppView } from '@/lib/store/useKindLinkStore';
 
@@ -33,7 +34,7 @@ export function Sidebar() {
   return (
     <aside className="hidden sm:flex flex-col border-r border-border/80 bg-card/95 backdrop-blur-md transition-all duration-300 ease-in-out sm:w-20 lg:w-64 h-[calc(100dvh-var(--header-height))] sticky top-[var(--header-height)] z-20 select-none shadow-[2px_0_12px_rgba(0,0,0,0.02)]">
       {/* Ask for help CTA button */}
-      <div className="p-3 lg:p-4">
+      <div className="p-3 lg:p-4 space-y-2">
         <button
           onClick={() => setCurrentView('new')}
           className="group relative flex w-full items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 py-3.5 px-3 font-bold text-white shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/35 transition-all duration-200 active:scale-[0.98] touch-target"
@@ -42,6 +43,27 @@ export function Sidebar() {
         >
           <PlusCircle className="h-5 w-5 notranslate shrink-0 transition-transform duration-300 group-hover:rotate-90" />
           <span className="hidden lg:inline text-sm font-extrabold tracking-wide">Ask for Help</span>
+        </button>
+
+        {/* Quick Search & Command Palette Trigger (Cmd+K / Ctrl+K) */}
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('kindlink:open-command-palette'));
+            }
+          }}
+          className="group relative flex w-full items-center justify-center lg:justify-between gap-2 rounded-2xl border border-border/70 bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground px-3 py-2.5 text-xs font-semibold transition-all duration-150 touch-target active:scale-[0.98]"
+          title="Quick Search & Commands (⌘K or Ctrl+K)"
+          aria-label="Quick Search and Command Palette"
+        >
+          <div className="flex items-center gap-2">
+            <Search className="h-4 w-4 text-primary shrink-0 notranslate group-hover:scale-110 transition-transform" />
+            <span className="hidden lg:inline">Search...</span>
+          </div>
+          <kbd className="hidden lg:inline-flex items-center gap-0.5 rounded-lg border border-border/80 bg-background/80 px-1.5 py-0.5 text-[10px] font-mono font-bold text-muted-foreground shadow-xs">
+            ⌘K
+          </kbd>
         </button>
       </div>
 

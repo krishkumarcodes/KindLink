@@ -16,6 +16,7 @@ import { ProfileView } from '@/components/profile/ProfileView';
 import { SettingsView } from '@/components/settings/SettingsView';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
 import { AutoLanguageNotice } from '@/components/locale/AutoLanguageNotice';
+import { CommandPalette } from '@/components/shell/CommandPalette';
 import { initializeRealtime } from '@/lib/supabase/realtime';
 
 export default function KindLinkApp() {
@@ -222,6 +223,9 @@ export default function KindLinkApp() {
 
       {/* First-Time Auto-Language Notice Banner */}
       <AutoLanguageNotice />
+
+      {/* Global Command Palette & Quick Action Navigator */}
+      <CommandPalette />
     </div>
   );
 }

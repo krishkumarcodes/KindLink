@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/krishkumarcodes/KindLink/releases/tag/v4.5.0"><img src="https://img.shields.io/badge/Release-v4.5.0-0D9488?style=for-the-badge&logo=github&logoColor=white" alt="Release v4.5.0" /></a>
+  <a href="https://github.com/krishkumarcodes/KindLink/releases/tag/v4.7.0"><img src="https://img.shields.io/badge/Release-v4.7.0-0D9488?style=for-the-badge&logo=github&logoColor=white" alt="Release v4.7.0" /></a>
   <a href="https://kindlink-gd8e.onrender.com"><img src="https://img.shields.io/badge/Live_Site-kindlink--gd8e.onrender.com-0D9488?style=for-the-badge&logo=render&logoColor=white" alt="Live Production Site" /></a>
   <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js-14.2%20App%20Router-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js 14" /></a>
   <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5.6-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
@@ -54,7 +54,9 @@ KindLink was conceptualized, designed, and engineered from the ground up by:
 </p>
 
 ### 🌟 Key Contributions by Krish Kumar:
-- 🚀 **End-to-End System Architecture**: Engineered KindLink through iterations v1.0 through v4.5.0, integrating Next.js 14 App Router, TypeScript, and Supabase.
+- 🚀 **End-to-End System Architecture**: Engineered KindLink through iterations v1.0 through v4.7.0, integrating Next.js 14 App Router, TypeScript, and Supabase.
+- ⌨️ **Universal Command Palette & Quick Actions**: Built accessible `⌘K` / `Ctrl+K` power-user navigator across all 15 aid categories, emergency workflows, core views, and live request lookup.
+- 🗺️ **OpenFreeMap Vector Engine & GIS Radar**: Integrated key-free OpenFreeMap vector tiles with client-side dark theme restyling and automated 4-second failover cascade.
 - ⚡ **Three-Key Community Urgency Engine**: Formulated and implemented the deterministic three-key dispatch model (Urgency Level > Proximity > Waiting Time).
 - 📶 **Offline SOS & SMS Fallback Engine**: Engineered cellular carrier SMS dispatch with standardized coordinates, Google Maps deep-links, live tracking URLs, and dual iOS/Android URL schemes.
 - 🔐 **4-Digit Handover Confirmation PIN**: Designed secure physical exchange verification for medical equipment loans and educational handovers with requester PIN cards and auto-focus helper modals.

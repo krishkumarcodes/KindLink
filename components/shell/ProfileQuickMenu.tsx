@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Copy,
   Check,
+  Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
@@ -237,6 +238,27 @@ export function ProfileQuickMenu({
         >
           <FileText className="h-4 w-4 text-primary shrink-0 notranslate" />
           <span>My requests</span>
+        </button>
+
+        {/* Row 2.5: Quick Search & Commands (⌘K) */}
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            onClose();
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('kindlink:open-command-palette'));
+            }
+          }}
+          className="flex w-full items-center justify-between gap-3 px-3 h-11 min-h-[44px] rounded-2xl text-xs font-semibold text-foreground hover:bg-muted active:scale-[0.99] transition-all text-left touch-target"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <Search className="h-4 w-4 text-primary shrink-0 notranslate" />
+            <span>Quick search & commands</span>
+          </div>
+          <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded-lg border border-border/80 bg-background/80 px-1.5 py-0.5 text-[10px] font-mono font-bold text-muted-foreground shadow-xs shrink-0">
+            ⌘K
+          </kbd>
         </button>
 
         {/* Row 3: Settings and appearance (Theme, text size, language) */}
