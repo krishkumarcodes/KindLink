@@ -1671,10 +1671,18 @@ export function NewRequestWizard() {
               <button
                 type="button"
                 onClick={handleNextFromStep2}
-                className="flex items-center gap-1.5 rounded-2xl bg-primary px-6 py-3.5 text-xs font-bold text-white shadow-md shadow-primary/25 hover:bg-primary/90 transition-all active:scale-95 touch-target"
+                className="relative overflow-hidden inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 px-7 py-3.5 text-sm font-bold text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(13,148,136,0.25)] hover:brightness-105 active:scale-[0.98] transition-all duration-150 touch-target"
               >
-                <span>Urgency & Timing</span>
-                <ChevronRight className="h-4 w-4 notranslate" />
+                <span
+                  className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 via-white/10 to-transparent rounded-t-[inherit]"
+                  aria-hidden="true"
+                />
+                <span
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/15 to-transparent rounded-b-[inherit]"
+                  aria-hidden="true"
+                />
+                <span className="relative z-10 font-bold leading-none">Urgency & Timing</span>
+                <ChevronRight className="h-4 w-4 notranslate relative z-10" />
               </button>
             </div>
           </div>
@@ -1810,10 +1818,18 @@ export function NewRequestWizard() {
               <button
                 type="button"
                 onClick={handleNextFromStep3}
-                className="flex items-center gap-1.5 rounded-2xl bg-primary px-6 py-3.5 text-xs font-bold text-white shadow-md shadow-primary/25 hover:bg-primary/90 transition-all active:scale-95 touch-target"
+                className="relative overflow-hidden inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 px-7 py-3.5 text-sm font-bold text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(13,148,136,0.25)] hover:brightness-105 active:scale-[0.98] transition-all duration-150 touch-target"
               >
-                <span>Location & Contact</span>
-                <ChevronRight className="h-4 w-4 notranslate" />
+                <span
+                  className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 via-white/10 to-transparent rounded-t-[inherit]"
+                  aria-hidden="true"
+                />
+                <span
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/15 to-transparent rounded-b-[inherit]"
+                  aria-hidden="true"
+                />
+                <span className="relative z-10 font-bold leading-none">Location & Contact</span>
+                <ChevronRight className="h-4 w-4 notranslate relative z-10" />
               </button>
             </div>
           </div>
@@ -2203,10 +2219,18 @@ export function NewRequestWizard() {
               <button
                 type="button"
                 onClick={handleNextFromStep4}
-                className="flex items-center gap-1.5 rounded-2xl bg-primary px-6 py-3.5 text-xs font-bold text-white shadow-md shadow-primary/25 hover:bg-primary/90 transition-all active:scale-95 touch-target"
+                className="relative overflow-hidden inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 px-7 py-3.5 text-sm font-bold text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(13,148,136,0.25)] hover:brightness-105 active:scale-[0.98] transition-all duration-150 touch-target"
               >
-                <span>Review & Submit</span>
-                <ChevronRight className="h-4 w-4 notranslate" />
+                <span
+                  className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 via-white/10 to-transparent rounded-t-[inherit]"
+                  aria-hidden="true"
+                />
+                <span
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/15 to-transparent rounded-b-[inherit]"
+                  aria-hidden="true"
+                />
+                <span className="relative z-10 font-bold leading-none">Review & Submit</span>
+                <ChevronRight className="h-4 w-4 notranslate relative z-10" />
               </button>
             </div>
           </div>
@@ -2427,14 +2451,24 @@ export function NewRequestWizard() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="flex items-center gap-2 rounded-2xl bg-primary px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all active:scale-95 touch-target disabled:opacity-50"
+                className="relative overflow-hidden flex items-center gap-2 rounded-2xl bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600 dark:from-teal-400 dark:via-emerald-400 dark:to-teal-500 px-8 py-3.5 text-sm font-bold text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(13,148,136,0.28)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.55),0_8px_25px_rgba(13,148,136,0.38)] hover:brightness-105 transition-all active:scale-95 touch-target disabled:opacity-50"
               >
+                <span
+                  className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/70 to-transparent"
+                  aria-hidden="true"
+                />
+                <span
+                  className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 via-white/5 to-transparent rounded-t-[inherit]"
+                  aria-hidden="true"
+                />
                 {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin notranslate" />
+                  <Loader2 className="h-4 w-4 animate-spin notranslate relative z-10" />
                 ) : (
-                  <Sparkles className="h-4 w-4 notranslate" />
+                  <Sparkles className="h-4 w-4 notranslate relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
                 )}
-                <span>{isSubmitting ? 'Publishing...' : 'Publish Request'}</span>
+                <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">
+                  {isSubmitting ? 'Publishing...' : 'Publish Request'}
+                </span>
               </button>
             </div>
           </div>

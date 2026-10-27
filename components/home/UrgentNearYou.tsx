@@ -593,9 +593,13 @@ export function UrgentNearYou({
                           e.stopPropagation();
                           handleRequestClick(req);
                         }}
-                        className="h-[44px] min-h-[44px] px-4 rounded-[16px] border border-border/80 dark:border-white/15 bg-background/80 hover:bg-muted/80 backdrop-blur-sm text-xs sm:text-sm font-bold text-foreground shadow-xs hover:shadow-sm active:scale-[0.98] transition-all duration-150 touch-target flex items-center justify-center flex-1 min-[400px]:flex-initial"
+                        className="relative overflow-hidden h-[44px] min-h-[44px] px-4 rounded-[16px] border border-border/80 dark:border-white/15 bg-card/85 dark:bg-card/75 hover:bg-muted/90 backdrop-blur-md text-xs sm:text-sm font-bold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-primary/40 active:scale-[0.98] transition-all duration-150 touch-target flex items-center justify-center flex-1 min-[400px]:flex-initial"
                       >
-                        Details
+                        <span
+                          className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 dark:via-white/20 to-transparent"
+                          aria-hidden="true"
+                        />
+                        <span>Details</span>
                       </button>
                       <PrimaryHelpButton
                         category={req.category}
@@ -640,18 +644,26 @@ export function UrgentNearYou({
             <button
               type="button"
               onClick={handleBroadenRadius}
-              className="h-11 rounded-2xl border border-border bg-background px-5 text-sm font-semibold text-foreground hover:bg-muted touch-target w-full min-[480px]:flex-1 flex items-center justify-center gap-2 transition shadow-xs active:scale-98"
+              className="group/broaden relative overflow-hidden h-11 rounded-2xl border border-teal-500/35 dark:border-teal-400/35 bg-teal-500/10 dark:bg-teal-400/15 text-teal-800 dark:text-teal-200 px-5 text-sm font-bold hover:bg-teal-500/20 hover:border-teal-500/50 hover:shadow-[0_4px_16px_rgba(20,184,166,0.22)] backdrop-blur-md touch-target w-full min-[480px]:flex-1 flex items-center justify-center gap-2 transition-all duration-200 shadow-xs active:scale-[0.98]"
             >
-              <Compass className="h-4 w-4 text-primary shrink-0 notranslate" />
+              <span
+                className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-teal-400/60 to-transparent"
+                aria-hidden="true"
+              />
+              <Compass className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0 notranslate transition-transform duration-300 group-hover/broaden:rotate-45" />
               <span className="whitespace-nowrap">Broaden Search Radius (50 km)</span>
             </button>
             <button
               type="button"
               onClick={handlePostRequest}
-              className="h-11 rounded-2xl bg-primary px-5 text-sm font-semibold text-white hover:bg-primary/90 touch-target w-full min-[480px]:flex-1 flex items-center justify-center gap-2 transition shadow-sm active:scale-98"
+              className="relative overflow-hidden h-11 rounded-2xl bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600 dark:from-teal-400 dark:via-emerald-400 dark:to-teal-500 px-5 text-sm font-bold text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_4px_16px_rgba(13,148,136,0.28)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.55),0_6px_22px_rgba(13,148,136,0.38)] hover:brightness-105 touch-target w-full min-[480px]:flex-1 flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98]"
             >
-              <PlusCircle className="h-4 w-4 shrink-0 notranslate" />
-              <span className="whitespace-nowrap">Post a Request</span>
+              <span
+                className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/70 to-transparent"
+                aria-hidden="true"
+              />
+              <PlusCircle className="h-4 w-4 shrink-0 notranslate drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]" />
+              <span className="whitespace-nowrap drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">Post a Request</span>
             </button>
           </div>
         </div>

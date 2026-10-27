@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import {
   X,
@@ -108,20 +108,20 @@ const LIFECYCLE_STEPS: LifecycleStepItem[] = [
   { key: 'completed', label: 'Completed', icon: CheckCircle2, description: 'Aid fulfilled successfully' },
 ];
 
-function getCategoryConfig(category: HelpCategory, customLabel?: string) {
-  const token = getCategoryToken(category, customLabel);
-  const label = formatCategoryTitle(category, customLabel);
+function getCategoryConfig(category?: HelpCategory, customLabel?: string) {
+  const token = getCategoryToken((category || 'other') as HelpCategory, customLabel);
+  const label = formatCategoryTitle((category || 'other') as HelpCategory, customLabel);
   return {
-    label,
-    icon: token.icon,
-    badge: token.badgeBg,
-    primary: token.primary,
-    gradient: token.gradient,
-    glowTailwind: token.glowTailwind,
+    label: label || 'General Request',
+    icon: token?.icon || AlertCircle,
+    badge: token?.badgeBg || 'bg-muted text-muted-foreground border-border',
+    primary: token?.primary || '#64748b',
+    gradient: token?.gradient || 'from-slate-500 to-gray-600',
+    glowTailwind: token?.glowTailwind || 'shadow-sm',
   };
 }
 
-function getUrgencyConfig(urgency: UrgencyLevel) {
+function getUrgencyConfig(urgency?: UrgencyLevel) {
   switch (urgency) {
     case 'critical':
       return {
@@ -150,9 +150,24 @@ function getUrgencyConfig(urgency: UrgencyLevel) {
     default:
       return {
         label: String(urgency || 'MEDIUM').toUpperCase(),
-        icon: AlertCircle,
+        icon: AlertTriangle,
         badge: 'bg-muted text-muted-foreground border-border',
       };
+  }
+}
+
+function getNearbyHeading(category?: HelpCategory) {
+  switch (category) {
+    case 'blood':
+      return { title: 'Nearby hospitals & blood banks', subtitle: 'Around request location' };
+    case 'equipment':
+      return { title: 'Nearby hospitals & medical supply', subtitle: 'Around request location' };
+    case 'elderly':
+      return { title: 'Nearby hospitals & clinics', subtitle: 'Around request location' };
+    case 'transport':
+      return { title: 'Nearby hospitals & transit hubs', subtitle: 'Around request location' };
+    default:
+      return { title: 'Nearby hospitals', subtitle: 'Around request location' };
   }
 }
 
@@ -818,8 +833,8 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
   const requesterFirstName = rawContact ? rawContact.split(/\s+/)[0] : 'Community Member';
   const categoryConfig = getCategoryConfig(request.category, request.customCategoryLabel);
   const urgencyConfig = getUrgencyConfig(request.urgency);
-  const CategoryIcon = categoryConfig.icon;
-  const UrgencyIcon = urgencyConfig.icon;
+  const CategoryIcon = categoryConfig?.icon || AlertCircle;
+  const UrgencyIcon = urgencyConfig?.icon || AlertTriangle;
 
   // Format meta line "Posted by <first name> · <verified chip> · 3 h 44 min ago"
   const metaTimeAgo = request.waitingMinutes
@@ -862,20 +877,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
   })();
 
   // Category-specific heading for nearby facilities
-  const nearbyHeading = useMemo(() => {
-    switch (request.category) {
-      case 'blood':
-        return { title: 'Nearby hospitals & blood banks', subtitle: 'Around request location' };
-      case 'equipment':
-        return { title: 'Nearby hospitals & medical supply', subtitle: 'Around request location' };
-      case 'elderly':
-        return { title: 'Nearby hospitals & clinics', subtitle: 'Around request location' };
-      case 'transport':
-        return { title: 'Nearby hospitals & transit hubs', subtitle: 'Around request location' };
-      default:
-        return { title: 'Nearby hospitals', subtitle: 'Around request location' };
-    }
-  }, [request.category]);
+  const nearbyHeading = getNearbyHeading(request.category);
 
   const getStepTimestamp = (idx: number): string => {
     if (idx === 0) {

@@ -552,17 +552,25 @@ export function HomeView() {
             <button
               type="button"
               onClick={() => setCurrentView('new')}
-              className="group relative flex h-16 w-full items-center justify-center gap-3.5 rounded-2xl bg-primary px-5 text-white shadow-soft transition-all duration-200 hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 overflow-hidden touch-target select-none"
+              className="group relative flex h-16 w-full items-center justify-center gap-3.5 rounded-2xl bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600 dark:from-teal-400 dark:via-emerald-400 dark:to-teal-500 px-5 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(13,148,136,0.28)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.55),0_8px_25px_rgba(13,148,136,0.38)] hover:brightness-105 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 focus-visible:ring-offset-2 overflow-hidden touch-target select-none transition-all duration-200"
               aria-label="Ask for Help - Takes less than a minute"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white transition-transform duration-200 group-hover:scale-110">
-                <HeartHandshake className="h-5 w-5 notranslate" />
+              <span
+                className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/70 to-transparent"
+                aria-hidden="true"
+              />
+              <span
+                className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 via-white/5 to-transparent rounded-t-[inherit]"
+                aria-hidden="true"
+              />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white backdrop-blur-xs transition-transform duration-200 group-hover:scale-110 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]">
+                <HeartHandshake className="h-5 w-5 notranslate drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
               </div>
               <div className="flex flex-col items-start text-left min-w-0">
-                <span className="text-base font-bold text-white leading-tight whitespace-nowrap">
+                <span className="text-base font-bold text-white leading-tight whitespace-nowrap drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">
                   Ask for Help
                 </span>
-                <span className="text-xs text-white/80 font-normal leading-tight whitespace-nowrap">
+                <span className="text-xs text-white/90 font-medium leading-tight whitespace-nowrap drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]">
                   Takes less than a minute
                 </span>
               </div>
@@ -581,9 +589,17 @@ export function HomeView() {
                   setSosModalOpen(true);
                 }
               }}
-              className="group relative flex h-16 w-full items-center justify-center gap-3.5 rounded-2xl bg-red-600 px-5 text-white shadow-soft transition-all duration-200 hover:bg-red-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 overflow-hidden touch-target select-none"
+              className="group relative flex h-16 w-full items-center justify-center gap-3.5 rounded-2xl bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 dark:from-rose-500 dark:via-red-500 dark:to-rose-600 px-5 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.45),0_6px_22px_rgba(225,29,72,0.35)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_8px_26px_rgba(225,29,72,0.45)] hover:brightness-105 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 overflow-hidden touch-target select-none transition-all duration-200"
               aria-label="Emergency SOS - Hold for 2 seconds"
             >
+              <span
+                className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/75 to-transparent"
+                aria-hidden="true"
+              />
+              <span
+                className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 via-white/5 to-transparent rounded-t-[inherit]"
+                aria-hidden="true"
+              />
               {/* Inset pulsing ring inside container edges */}
               <span className="absolute inset-0 rounded-2xl ring-2 ring-inset ring-white/40 animate-pulse motion-reduce:animate-none pointer-events-none" />
 
@@ -595,14 +611,14 @@ export function HomeView() {
                 />
               )}
 
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white transition-transform duration-200 group-hover:scale-110 relative z-10">
-                <Siren className="h-5 w-5 notranslate" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white backdrop-blur-xs transition-transform duration-200 group-hover:scale-110 relative z-10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]">
+                <Siren className="h-5 w-5 notranslate drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
               </div>
               <div className="flex flex-col items-start text-left min-w-0 relative z-10">
-                <span className="text-base font-bold text-white leading-tight whitespace-nowrap">
+                <span className="text-base font-bold text-white leading-tight whitespace-nowrap drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">
                   Emergency SOS
                 </span>
-                <span className="text-xs text-white/80 font-normal leading-tight whitespace-nowrap">
+                <span className="text-xs text-white/90 font-medium leading-tight whitespace-nowrap drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]">
                   {isHoldingSos
                     ? `Hold (${Math.max(0, (2000 - (sosHoldProgress / 100) * 2000) / 1000).toFixed(1)}s)`
                     : 'Hold for 2 seconds'}
@@ -755,17 +771,19 @@ export function HomeView() {
         categoryStats={categoryStats}
         onSelectCategory={handleCategoryClick}
       />
-      <ErrorBoundary
-        title="Request Details"
-        message="Unable to open this request. Tap retry or select another item."
-        onReset={() => setSelectedDetailRequest(null)}
-      >
-        <RequestDetailModal
-          request={selectedDetailRequest}
-          open={Boolean(selectedDetailRequest)}
-          onClose={() => setSelectedDetailRequest(null)}
-        />
-      </ErrorBoundary>
+      {Boolean(selectedDetailRequest) && (
+        <ErrorBoundary
+          title="Request Details"
+          message="Unable to open this request. Tap retry or select another item."
+          onReset={() => setSelectedDetailRequest(null)}
+        >
+          <RequestDetailModal
+            request={selectedDetailRequest}
+            open={Boolean(selectedDetailRequest)}
+            onClose={() => setSelectedDetailRequest(null)}
+          />
+        </ErrorBoundary>
+      )}
       <HelpFlowModal
         request={helpFlowRequest}
         open={Boolean(helpFlowRequest)}

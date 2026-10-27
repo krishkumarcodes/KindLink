@@ -40,12 +40,16 @@ export function Sidebar() {
       <div className="p-3 lg:p-4 space-y-2">
         <button
           onClick={() => setCurrentView('new')}
-          className="group relative flex w-full items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 py-3.5 px-3 font-bold text-white shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/35 transition-all duration-200 active:scale-[0.98] touch-target"
+          className="group relative flex w-full items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600 dark:from-teal-400 dark:via-emerald-400 dark:to-teal-500 py-3.5 px-3 font-bold text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(13,148,136,0.28)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.55),0_8px_25px_rgba(13,148,136,0.38)] hover:brightness-105 transition-all duration-200 active:scale-[0.98] touch-target overflow-hidden"
           title="Ask for Help"
           aria-label="Create new help request"
         >
-          <PlusCircle className="h-5 w-5 notranslate shrink-0 transition-transform duration-300 group-hover:rotate-90" />
-          <span className="hidden lg:inline text-sm font-extrabold tracking-wide">Ask for Help</span>
+          <span
+            className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/70 to-transparent"
+            aria-hidden="true"
+          />
+          <PlusCircle className="h-5 w-5 notranslate shrink-0 transition-transform duration-300 group-hover:rotate-90 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
+          <span className="hidden lg:inline text-sm font-extrabold tracking-wide drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">Ask for Help</span>
         </button>
 
         {/* Quick Search & Command Palette Trigger (Cmd+K / Ctrl+K) */}

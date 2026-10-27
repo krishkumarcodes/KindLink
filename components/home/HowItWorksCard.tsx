@@ -221,10 +221,10 @@ export function HowItWorksCard({
               <button
                 type="button"
                 onClick={handleAskForHelp}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-hover hover:underline transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md py-1 px-1.5 -mr-1.5 cursor-pointer"
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 dark:from-amber-400 dark:via-rose-400 dark:to-amber-500 text-white font-bold text-xs shadow-[inset_0_1px_1px_rgba(255,255,255,0.45),0_6px_20px_rgba(244,63,94,0.32)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_8px_24px_rgba(244,63,94,0.42)] hover:brightness-105 active:scale-[0.97] transition-all duration-200 border border-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 cursor-pointer select-none"
               >
-                <span>Ask for Help</span>
-                <ArrowRight className="h-3.5 w-3.5 notranslate" aria-hidden="true" />
+                <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">Ask for Help</span>
+                <ArrowRight className="h-3.5 w-3.5 notranslate text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]" aria-hidden="true" />
               </button>
             </div>
           </div>

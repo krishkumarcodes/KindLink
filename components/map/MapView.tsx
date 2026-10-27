@@ -2127,17 +2127,19 @@ export function MapView() {
       {/* =========================================================================
           FULL DETAIL MODAL (Opens full request sheet)
           ========================================================================= */}
-      <ErrorBoundary
-        title="Request Details"
-        message="Unable to open this request from the map. Tap retry or select another item."
-        onReset={() => setDetailModalOpen(false)}
-      >
-        <RequestDetailModal
-          request={activeItem?.type === 'request' ? activeItem.data : null}
-          open={detailModalOpen}
-          onClose={() => setDetailModalOpen(false)}
-        />
-      </ErrorBoundary>
+      {detailModalOpen && activeItem?.type === 'request' && activeItem.data && (
+        <ErrorBoundary
+          title="Request Details"
+          message="Unable to open this request from the map. Tap retry or select another item."
+          onReset={() => setDetailModalOpen(false)}
+        >
+          <RequestDetailModal
+            request={activeItem.data}
+            open={detailModalOpen}
+            onClose={() => setDetailModalOpen(false)}
+          />
+        </ErrorBoundary>
+      )}
 
       {/* =========================================================================
           HELP FLOW MODAL ("I can help")

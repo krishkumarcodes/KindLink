@@ -697,10 +697,14 @@ export function RequestsView() {
               <button
                 type="button"
                 onClick={() => setCurrentView('new')}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition active:scale-95 shadow-soft"
+                className="relative overflow-hidden inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 dark:from-amber-400 dark:via-rose-400 dark:to-amber-500 text-white text-xs font-bold shadow-[inset_0_1px_1px_rgba(255,255,255,0.45),0_6px_20px_rgba(244,63,94,0.32)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_8px_24px_rgba(244,63,94,0.42)] hover:brightness-105 transition-all duration-200 active:scale-95 touch-target"
               >
-                <PlusCircle className="h-4 w-4 notranslate" />
-                <span>Ask for Help</span>
+                <span
+                  className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/70 to-transparent"
+                  aria-hidden="true"
+                />
+                <PlusCircle className="h-4 w-4 notranslate drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
+                <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">Ask for Help</span>
               </button>
             </div>
           </div>
@@ -720,10 +724,14 @@ export function RequestsView() {
               <button
                 type="button"
                 onClick={() => setCurrentView('new')}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition active:scale-95 shadow-soft"
+                className="relative overflow-hidden inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600 dark:from-teal-400 dark:via-emerald-400 dark:to-teal-500 text-white text-xs font-bold shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(13,148,136,0.28)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.55),0_8px_25px_rgba(13,148,136,0.38)] hover:brightness-105 transition-all duration-200 active:scale-95 touch-target"
               >
-                <PlusCircle className="h-4 w-4 notranslate" />
-                <span>Post a Request</span>
+                <span
+                  className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/70 to-transparent"
+                  aria-hidden="true"
+                />
+                <PlusCircle className="h-4 w-4 notranslate drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
+                <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">Post a Request</span>
               </button>
             </div>
           </div>
@@ -745,9 +753,13 @@ export function RequestsView() {
               <button
                 type="button"
                 onClick={resetAllFilters}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition active:scale-95 shadow-soft"
+                className="relative overflow-hidden inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600 dark:from-teal-400 dark:via-emerald-400 dark:to-teal-500 text-white text-xs font-bold shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(13,148,136,0.28)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.55),0_8px_25px_rgba(13,148,136,0.38)] hover:brightness-105 transition-all duration-200 active:scale-95 touch-target"
               >
-                <span>Clear all filters</span>
+                <span
+                  className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/70 to-transparent"
+                  aria-hidden="true"
+                />
+                <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">Clear all filters</span>
               </button>
             </div>
           </div>
@@ -789,17 +801,19 @@ export function RequestsView() {
       )}
 
       {/* Modals */}
-      <ErrorBoundary
-        title="Request Details"
-        message="Unable to open this request. Tap retry or select another item."
-        onReset={() => setSelectedRequestId(null)}
-      >
-        <RequestDetailModal
-          request={activeDetailRequest}
-          open={Boolean(activeDetailRequest)}
-          onClose={() => setSelectedRequestId(null)}
-        />
-      </ErrorBoundary>
+      {Boolean(activeDetailRequest) && (
+        <ErrorBoundary
+          title="Request Details"
+          message="Unable to open this request. Tap retry or select another item."
+          onReset={() => setSelectedRequestId(null)}
+        >
+          <RequestDetailModal
+            request={activeDetailRequest}
+            open={Boolean(activeDetailRequest)}
+            onClose={() => setSelectedRequestId(null)}
+          />
+        </ErrorBoundary>
+      )}
 
       <HelpFlowModal
         request={helpFlowReq}
