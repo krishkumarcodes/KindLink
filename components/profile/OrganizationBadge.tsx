@@ -10,6 +10,7 @@ import {
   X,
   Shield,
   Info,
+  Check,
 } from 'lucide-react';
 import { OrganizationType } from '@/lib/data/types';
 import { OverlayPortal } from '@/components/ui/OverlayPortal';
@@ -89,13 +90,28 @@ export function OrganizationBadge({
           e.stopPropagation();
           setIsOpen(true);
         }}
-        className={`inline-flex items-center rounded-full font-black tracking-wide bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/35 border border-indigo-300/30 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer touch-target ${sizeClasses} ${className}`}
+        className={`group relative inline-flex items-center rounded-full font-extrabold tracking-wide bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/35 border border-white/20 ring-1 ring-indigo-400/30 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer touch-target overflow-hidden select-none ${sizeClasses} ${className}`}
         title={`Click to view ${displayName} verification credentials`}
         aria-label={`${label}: ${displayName}`}
       >
+        {/* Subtle luminous sheen highlight */}
+        <span
+          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"
+          aria-hidden="true"
+        />
+
         <Building2 className="h-3.5 w-3.5 text-indigo-200 shrink-0 notranslate" />
         <span className="font-extrabold whitespace-nowrap">{label}</span>
-        <ShieldCheck className="h-3.5 w-3.5 text-emerald-300 shrink-0 notranslate" />
+
+        {/* Refined metallic badge checkmark */}
+        <span
+          className="relative inline-flex items-center justify-center h-4 w-4 rounded-full bg-gradient-to-tr from-amber-200 via-emerald-100 to-teal-300 p-[1px] shadow-2xs shrink-0"
+          title="Verified Community Authority"
+        >
+          <span className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 text-white">
+            <Check className="h-2.5 w-2.5 stroke-[3] text-emerald-100 notranslate" />
+          </span>
+        </span>
       </button>
 
       {/* Credential Details Sheet / Modal */}
@@ -126,12 +142,16 @@ export function OrganizationBadge({
 
               {/* Modal Header */}
               <div className="flex items-start gap-3.5 pr-8">
-                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20 shrink-0">
+                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20 ring-2 ring-indigo-400/20 shrink-0">
                   <Building2 className="h-6 w-6 notranslate" />
                 </div>
                 <div className="min-w-0">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider uppercase bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 mb-1">
-                    <ShieldCheck className="h-3 w-3 notranslate text-emerald-500" />
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider uppercase bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 mb-1 shadow-2xs">
+                    <span className="relative flex h-3 w-3 items-center justify-center rounded-full bg-gradient-to-tr from-amber-200 via-emerald-200 to-teal-400 p-[1px] shadow-2xs">
+                      <span className="flex h-full w-full items-center justify-center rounded-full bg-emerald-600 text-white">
+                        <Check className="h-2 w-2 stroke-[3] notranslate" />
+                      </span>
+                    </span>
                     <span>{label}</span>
                   </div>
                   <h3 className="text-lg font-extrabold text-foreground leading-snug line-clamp-2">
@@ -148,9 +168,13 @@ export function OrganizationBadge({
                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 notranslate shrink-0" />
                     <span>Verification Status</span>
                   </span>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    {organizationVerified !== false ? 'Verified & Audited' : 'Pending Verification'}
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1.5">
+                    <span className="relative flex h-3.5 w-3.5 items-center justify-center rounded-full bg-gradient-to-tr from-amber-200 via-emerald-200 to-teal-300 p-[1px] shadow-2xs">
+                      <span className="flex h-full w-full items-center justify-center rounded-full bg-emerald-600 text-white">
+                        <Check className="h-2 w-2 stroke-[3] notranslate" />
+                      </span>
+                    </span>
+                    <span>{organizationVerified !== false ? 'Verified & Audited' : 'Pending Verification'}</span>
                   </span>
                 </div>
 

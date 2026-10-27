@@ -54,6 +54,7 @@ import {
   formatCategoryTitle,
 } from '@/lib/data/categories';
 import { getCategoryToken } from '@/lib/data/categoryColors';
+import { CategoryEmblem } from '@/components/categories/CategoryEmblem';
 import { validateCustomCategoryLabel, validateTag } from '@/lib/utils/content-filter';
 
 const DRAFT_STORAGE_KEY = 'kindlink_new_request_draft_v2';
@@ -851,7 +852,6 @@ export function NewRequestWizard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {STANDARD_CATEGORIES.map((cat) => {
                 const token = getCategoryToken(cat.key);
-                const IconComponent = token.icon;
                 const isSelected = category === cat.key;
 
                 return (
@@ -861,21 +861,16 @@ export function NewRequestWizard() {
                     onClick={() => handleSelectCategory(cat.key as HelpCategory)}
                     className={`p-4 rounded-2xl border text-left transition-all duration-200 touch-target flex flex-col justify-between group active:scale-[0.98] min-h-[148px] ${
                       isSelected
-                        ? 'border-primary bg-primary/10 shadow-md ring-2 ring-primary/30 -translate-y-0.5'
+                        ? 'border-primary bg-primary/10 shadow-lg ring-2 ring-primary/30 -translate-y-0.5'
                         : 'border-border/80 bg-background hover:bg-muted/60 hover:border-border hover:-translate-y-0.5'
                     }`}
                   >
                     <div className="flex items-start justify-between w-full">
-                      <div
-                        className="h-11 w-11 rounded-2xl flex items-center justify-center shrink-0 border transition-transform group-hover:scale-105"
-                        style={{
-                          backgroundColor: token.lightBg,
-                          borderColor: token.border,
-                          color: token.primary,
-                        }}
-                      >
-                        <IconComponent className="h-5 w-5 notranslate" />
-                      </div>
+                      <CategoryEmblem
+                        category={cat.key}
+                        size="md"
+                        glow={isSelected}
+                      />
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-border/80 bg-card/80 text-foreground/80">
                           {cat.defaultUrgencyHint}
@@ -886,7 +881,7 @@ export function NewRequestWizard() {
                       </div>
                     </div>
                     <div className="mt-3">
-                      <h3 className="text-sm font-bold text-foreground leading-snug truncate">
+                      <h3 className="text-sm font-bold text-foreground leading-snug truncate group-hover:text-primary transition-colors">
                         {cat.name}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
@@ -2268,14 +2263,20 @@ export function NewRequestWizard() {
                   </h3>
                 </div>
                 <div
-                  className="px-3 py-1.5 rounded-2xl text-xs font-bold border shadow-xs shrink-0"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-bold border shadow-xs shrink-0"
                   style={{
                     backgroundColor: getCategoryToken(category, customCategoryLabel).lightBg,
                     borderColor: getCategoryToken(category, customCategoryLabel).border,
                     color: getCategoryToken(category, customCategoryLabel).primary,
                   }}
                 >
-                  {formatCategoryTitle(category, customCategoryLabel)}
+                  <CategoryEmblem
+                    category={category}
+                    customLabel={customCategoryLabel}
+                    size="xs"
+                    glow={false}
+                  />
+                  <span>{formatCategoryTitle(category, customCategoryLabel)}</span>
                 </div>
               </div>
 

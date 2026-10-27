@@ -192,13 +192,20 @@ GRANT EXECUTE ON FUNCTION public.get_hourly_activity_24h() TO anon, authenticate
 -- ------------------------------------------------------------------------------
 -- 4. PURGE OLD DEFAULT LOCATION DATA IN DATABASE
 -- ------------------------------------------------------------------------------
--- Clean profiles where home area matches old legacy college defaults
-UPDATE public.profiles
-SET
-  home_neighborhood = NULL
-WHERE home_neighborhood ILIKE '%' || 'Asansol' || '_' || 'Engineering%'
-   OR home_neighborhood ILIKE '%' || chr(65)||chr(69)||chr(67) || '%'
-   OR home_neighborhood ILIKE '%' || 'MAK' || 'AUT%';
+-- Clean profiles where home area matches old legacy college defaults (guarded if column exists)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'home_neighborhood'
+  ) THEN
+    UPDATE public.profiles
+    SET home_neighborhood = NULL
+    WHERE home_neighborhood ILIKE '%' || 'Asansol' || '_' || 'Engineering%'
+       OR home_neighborhood ILIKE '%' || chr(65)||chr(69)||chr(67) || '%'
+       OR home_neighborhood ILIKE '%' || 'MAK' || 'AUT%';
+  END IF;
+END $$;
 
 -- Clean area_name column if present
 DO $$
@@ -222,10 +229,19 @@ BEGIN
     SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'saved_places'
   ) THEN
-    DELETE FROM public.saved_places
-    WHERE label ILIKE '%' || chr(65)||chr(69)||chr(67) || '%'
-       OR label ILIKE '%' || 'Asansol' || '_' || 'Engineering%'
-       OR address_text ILIKE '%' || 'Asansol' || '_' || 'Engineering%'
-       OR address_text ILIKE '%' || chr(65)||chr(69)||chr(67) || '%';
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'saved_places' AND column_name = 'address_text'
+    ) THEN
+      DELETE FROM public.saved_places
+      WHERE label ILIKE '%' || chr(65)||chr(69)||chr(67) || '%'
+         OR label ILIKE '%' || 'Asansol' || '_' || 'Engineering%'
+         OR address_text ILIKE '%' || 'Asansol' || '_' || 'Engineering%'
+         OR address_text ILIKE '%' || chr(65)||chr(69)||chr(67) || '%';
+    ELSE
+      DELETE FROM public.saved_places
+      WHERE label ILIKE '%' || chr(65)||chr(69)||chr(67) || '%'
+         OR label ILIKE '%' || 'Asansol' || '_' || 'Engineering%';
+    END IF;
   END IF;
 END $$;

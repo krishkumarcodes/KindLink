@@ -79,7 +79,12 @@ export class MaplibreGLLayer extends BaseLayer {
     return this._glMap;
   }
 
+  public resize(): void {
+    this._update();
+  }
+
   public onAdd(map: L.Map): this {
+    (this as any)._map = map;
     if (!this._container) {
       this._initContainer(map);
     }
@@ -125,6 +130,7 @@ export class MaplibreGLLayer extends BaseLayer {
       this._container.parentNode.removeChild(this._container);
     }
     this._container = null;
+    (this as any)._map = null;
 
     return this;
   }
@@ -140,9 +146,22 @@ export class MaplibreGLLayer extends BaseLayer {
     }
   }
 
+  private _getSafeMapSize(map: L.Map): L.Point {
+    const rawSize = map.getSize();
+    const width =
+      rawSize && rawSize.x > 0
+        ? rawSize.x
+        : (typeof window !== 'undefined' ? window.innerWidth || 360 : 360);
+    const height =
+      rawSize && rawSize.y > 0
+        ? rawSize.y
+        : (typeof window !== 'undefined' ? window.innerHeight || 640 : 640);
+    return L.point(width, height);
+  }
+
   private _getSize(map: L.Map): L.Point {
     const pad = this._options.padding ?? 0.1;
-    return map.getSize().multiplyBy(1 + pad * 2);
+    return this._getSafeMapSize(map).multiplyBy(1 + pad * 2);
   }
 
   private _roundPoint(p: L.Point): L.Point {
@@ -152,11 +171,12 @@ export class MaplibreGLLayer extends BaseLayer {
   private _initContainer(map: L.Map): void {
     const container = (this._container = L.DomUtil.create('div', 'leaflet-gl-layer'));
     const pad = this._options.padding ?? 0.1;
-    const size = this._getSize(map);
-    const offset = map.getSize().multiplyBy(pad);
+    const safeMapSize = this._getSafeMapSize(map);
+    const size = safeMapSize.multiplyBy(1 + pad * 2);
+    const offset = safeMapSize.multiplyBy(pad);
 
-    container.style.width = size.x + 'px';
-    container.style.height = size.y + 'px';
+    container.style.width = Math.round(size.x) + 'px';
+    container.style.height = Math.round(size.y) + 'px';
     container.style.position = 'absolute';
     container.style.pointerEvents = 'none';
 
@@ -234,7 +254,14 @@ export class MaplibreGLLayer extends BaseLayer {
         });
       }
 
+      // Immediate size synchronization and transform
       this._transformGL(map);
+      try {
+        this._glMap.resize();
+        this._update();
+      } catch {
+        // Ignore initial resize
+      }
     } catch (err) {
       this._options.onError?.(err);
     }
@@ -248,20 +275,32 @@ export class MaplibreGLLayer extends BaseLayer {
     if (this._zooming) return;
 
     const pad = this._options.padding ?? 0.1;
-    const size = this._getSize(map);
-    const offset = map.getSize().multiplyBy(pad);
+    const safeMapSize = this._getSafeMapSize(map);
+    const size = safeMapSize.multiplyBy(1 + pad * 2);
+    const offset = safeMapSize.multiplyBy(pad);
     const topLeft = map.containerPointToLayerPoint([0, 0]).subtract(offset);
 
     L.DomUtil.setPosition(this._container, this._roundPoint(topLeft));
     this._transformGL(map);
 
+    const currentW = parseFloat(this._container.style.width || '0');
+    const currentH = parseFloat(this._container.style.height || '0');
+    const targetW = Math.round(size.x);
+    const targetH = Math.round(size.y);
+
     if (
-      this._glMap.transform &&
-      (this._glMap.transform.width !== size.x || this._glMap.transform.height !== size.y)
+      Math.abs(currentW - targetW) > 1 ||
+      Math.abs(currentH - targetH) > 1 ||
+      (this._glMap.transform &&
+        (this._glMap.transform.width !== targetW || this._glMap.transform.height !== targetH))
     ) {
-      this._container.style.width = size.x + 'px';
-      this._container.style.height = size.y + 'px';
-      this._glMap.resize();
+      this._container.style.width = targetW + 'px';
+      this._container.style.height = targetH + 'px';
+      try {
+        this._glMap.resize();
+      } catch {
+        // Ignore resize error
+      }
     }
   }
 

@@ -41,6 +41,7 @@ import { HelpFlowModal } from '../requests/HelpFlowModal';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { useTranslation } from '@/lib/i18n';
+import { CategoryEmblem } from '../categories/CategoryEmblem';
 
 // Cleanly extract first name only, stripping titles, prefixes, parentheses, suffixes, and mock names
 function extractUserFirstName(profile?: { displayName?: string; name?: string } | null): string | null {
@@ -342,7 +343,7 @@ export function HomeView() {
     {
       key: 'blood',
       title: t('categories.blood') || 'Blood Donation',
-      icon: <Droplets className="h-5 w-5 text-rose-500 notranslate" />,
+      icon: <CategoryEmblem category="blood" size="md" />,
       tintBg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20',
       borderColor: 'border-rose-500/30 hover:border-rose-500/60 hover:shadow-rose-500/10',
       urgencySummary:
@@ -361,7 +362,7 @@ export function HomeView() {
     {
       key: 'equipment',
       title: t('categories.equipment') || 'Medical Gear',
-      icon: <Stethoscope className="h-5 w-5 text-teal-500 notranslate" />,
+      icon: <CategoryEmblem category="equipment" size="md" />,
       tintBg: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20',
       borderColor: 'border-teal-500/30 hover:border-teal-500/60 hover:shadow-teal-500/10',
       urgencySummary:
@@ -382,7 +383,7 @@ export function HomeView() {
     {
       key: 'elderly',
       title: t('categories.elderly') || 'Elderly Care',
-      icon: <Users className="h-5 w-5 text-indigo-500 notranslate" />,
+      icon: <CategoryEmblem category="elderly" size="md" />,
       tintBg: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20',
       borderColor: 'border-indigo-500/30 hover:border-indigo-500/60 hover:shadow-indigo-500/10',
       urgencySummary:
@@ -403,7 +404,7 @@ export function HomeView() {
     {
       key: 'books',
       title: t('categories.books') || 'Books & Study',
-      icon: <BookOpen className="h-5 w-5 text-emerald-500 notranslate" />,
+      icon: <CategoryEmblem category="books" size="md" />,
       tintBg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20',
       borderColor: 'border-emerald-500/30 hover:border-emerald-500/60 hover:shadow-emerald-500/10',
       urgencySummary:
@@ -648,9 +649,7 @@ export function HomeView() {
                 className={`group flex flex-col justify-between p-4 rounded-3xl border ${cat.borderColor} bg-card/90 hover:bg-card hover:shadow-md hover:-translate-y-0.5 active:scale-98 transition-all duration-200 text-left min-h-[142px] touch-target`}
               >
                 <div className="flex items-start justify-between w-full">
-                  <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${cat.tintBg} transition-transform duration-200 group-hover:scale-105`}
-                  >
+                  <div className="transition-transform duration-200 group-hover:scale-105">
                     {cat.icon}
                   </div>
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-[10px] font-black text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
@@ -680,8 +679,8 @@ export function HomeView() {
             {/* Wide horizontal layout on mobile/tablet */}
             <div className="flex lg:hidden items-center justify-between w-full gap-3 my-auto">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 transition-transform duration-200 group-hover:scale-105">
-                  <Layers className="h-5 w-5 notranslate" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white shadow-md shadow-purple-500/25 ring-1 ring-inset ring-white/25 transition-transform duration-200 group-hover:scale-105">
+                  <Layers className="h-5 w-5 notranslate filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]" />
                 </div>
                 <div className="min-w-0 space-y-0.5">
                   <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors leading-snug truncate">
@@ -710,8 +709,8 @@ export function HomeView() {
 
             {/* Standard vertical layout on desktop (lg) */}
             <div className="hidden lg:flex items-start justify-between w-full">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 transition-transform duration-200 group-hover:scale-105">
-                <Layers className="h-5 w-5 notranslate" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white shadow-md shadow-purple-500/25 ring-1 ring-inset ring-white/25 transition-transform duration-200 group-hover:scale-105">
+                <Layers className="h-5 w-5 notranslate filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]" />
               </div>
               <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-[10px] font-black text-primary transition-colors">
                 {otherCategoriesStats.count} open

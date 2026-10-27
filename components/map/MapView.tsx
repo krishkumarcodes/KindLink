@@ -42,7 +42,7 @@ import { getNearestMedicalFacilities, MedicalFacility } from '@/lib/geo/hospital
 import { getRoadRoute, RoadRouteResult } from '@/lib/geo/osrm';
 import { dataAdapter } from '@/lib/data';
 import type { MapLayersState } from './LeafletInnerMap';
-import { tileFailoverCircuitBreaker } from './MapTileLayer';
+import { tileFailoverCircuitBreaker, isMobileOrTouchDevice } from './MapTileLayer';
 import { RequestDetailModal } from '../requests/RequestDetailModal';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { HelpFlowModal } from '../requests/HelpFlowModal';
@@ -52,12 +52,14 @@ import { PrimaryHelpButton, SecondaryButton } from '../requests/ActionButtons';
 function MapLoadingFallback() {
   const [timedOut, setTimedOut] = useState(false);
 
-  // Maximum 3-second safeguard timeout that forces raster map reveal if vector styles stall
+  // Maximum safeguard timeout that forces raster map reveal if vector styles stall (1.2s mobile, 2.5s desktop)
   useEffect(() => {
+    const isMobile = isMobileOrTouchDevice();
+    const timeoutMs = isMobile ? 1200 : 2500;
     const timer = setTimeout(() => {
       setTimedOut(true);
-      tileFailoverCircuitBreaker.trip('openfreemap', '3-second mobile load safeguard in fallback');
-    }, 3000);
+      tileFailoverCircuitBreaker.trip('openfreemap', `${timeoutMs}ms mobile load safeguard in fallback`);
+    }, timeoutMs);
     return () => clearTimeout(timer);
   }, []);
 
@@ -166,7 +168,7 @@ function PinPreviewContent({
   const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destCoords.lat},${destCoords.lng}`;
 
   return (
-    <div className="p-3.5 border-t border-border bg-card/95 backdrop-blur-md space-y-2.5 shrink-0 text-left">
+    <div className="p-3.5 border-t border-border/80 bg-card/95 dark:bg-slate-900/95 backdrop-blur-xl space-y-2.5 shrink-0 text-left shadow-sm">
       {/* Header Row: Title, Badges & Close Button */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1 space-y-1">
@@ -179,7 +181,7 @@ function PinPreviewContent({
               </span>
             )}
             {isFacility && fac && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-border">
+              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-200/80 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 border border-border/70">
                 {fac.type.replace('_', ' ')}
               </span>
             )}
@@ -187,15 +189,24 @@ function PinPreviewContent({
             {/* Urgency Chip / ER Status */}
             {isRequest && req && (
               <span
-                className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+                className={`inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
                   req.urgency === 'critical'
-                    ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 animate-pulse'
+                    ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30'
                     : req.urgency === 'high'
                     ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
                     : 'bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/30'
                 }`}
               >
-                {req.urgency}
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    req.urgency === 'critical'
+                      ? 'bg-rose-500 animate-ping'
+                      : req.urgency === 'high'
+                      ? 'bg-amber-500'
+                      : 'bg-teal-500'
+                  }`}
+                />
+                <span>{req.urgency}</span>
               </span>
             )}
             {isFacility && fac?.emergency && (
@@ -218,7 +229,7 @@ function PinPreviewContent({
             </span>
 
             {/* Live ETA badge */}
-            <span className="text-[11px] font-bold text-foreground flex items-center gap-1 bg-muted px-2 py-0.5 rounded-md">
+            <span className="text-[11px] font-bold text-foreground flex items-center gap-1 bg-muted/80 border border-border/50 px-2 py-0.5 rounded-full">
               <Clock className="w-3 h-3 text-primary notranslate" />
               <span>{activeRoute ? `${activeRoute.durationMinutes} min` : `~${modeEtas[travelMode]} min`}</span>
             </span>
@@ -477,13 +488,15 @@ export function MapView() {
     };
   }, []);
 
-  // Safeguard: Ensure mobile devices / slow networks never get stuck indefinitely in vector loading
+  // Safeguard: Ensure mobile devices / slow networks never get stuck indefinitely in vector loading (1.2s mobile, 2.5s desktop)
   useEffect(() => {
+    const isMobile = isMobileOrTouchDevice();
+    const timeoutMs = isMobile ? 1200 : 2500;
     const timer = setTimeout(() => {
       if (typeof window !== 'undefined' && !(window as any).__timeToFirstTile) {
-        tileFailoverCircuitBreaker.trip('openfreemap', '3-second mobile map load safeguard');
+        tileFailoverCircuitBreaker.trip('openfreemap', `${timeoutMs}ms mobile map load safeguard`);
       }
-    }, 3000);
+    }, timeoutMs);
     return () => clearTimeout(timer);
   }, []);
 
@@ -1017,25 +1030,30 @@ export function MapView() {
   ];
 
   return (
-    <div className="relative flex-1 w-full h-[calc(100dvh-7.5rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] sm:h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px))] landscape:h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px))] pb-28 sm:pb-6 overflow-hidden flex flex-col sm:flex-row landscape:flex-row bg-slate-100 dark:bg-slate-950 overscroll-none select-none">
+    <div className="relative flex-1 w-full h-[calc(100dvh-7.5rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] sm:h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px))] landscape:h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px))] overflow-hidden flex flex-col sm:flex-row landscape:flex-row bg-slate-100 dark:bg-slate-950 overscroll-none select-none">
       {/* =========================================================================
           3. LANDSCAPE & DESKTOP LAYOUT (>=640px or landscape):
              360px left side panel with Search Bar inside panel header,
              map filling remainder, controls on right.
           ========================================================================= */}
-      <div className="hidden sm:flex landscape:flex flex-col w-[360px] shrink-0 border-r border-border bg-card h-full z-20 shadow-md">
+      <div className="hidden sm:flex landscape:flex flex-col w-[360px] shrink-0 border-r border-border/80 bg-card/95 dark:bg-slate-950/95 backdrop-blur-md h-full z-20 shadow-md">
         {/* Panel Header */}
-        <div className="p-3.5 border-b border-border space-y-3">
+        <div className="p-3.5 border-b border-border/80 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-foreground">Nearby Aid &amp; Places</h2>
-            <span className="text-xs font-semibold text-muted-foreground">
-              {filteredRequests.length} req · {filteredFacilities.length} places
-            </span>
+            <h2 className="text-sm font-bold tracking-tight text-foreground">Nearby Aid &amp; Places</h2>
+            <div className="flex items-center gap-1.5">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
+                {filteredRequests.length} req
+              </span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border border-border/60">
+                {filteredFacilities.length} places
+              </span>
+            </div>
           </div>
 
           {/* Integrated 48px Search Bar inside Left Panel Header */}
           <div ref={desktopSearchContainerRef} className="relative">
-            <div className="flex items-center h-12 w-full bg-muted/60 dark:bg-muted/40 rounded-xl border border-border px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+            <div className="flex items-center h-11 w-full bg-muted/50 dark:bg-muted/30 rounded-xl border border-border/80 px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all shadow-2xs">
               <Search className="w-4 h-4 text-muted-foreground shrink-0 notranslate mr-2.5" />
               <input
                 type="text"
@@ -1065,7 +1083,7 @@ export function MapView() {
 
             {/* Desktop Search Dropdown */}
             {searchDropdownOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1.5 bg-card border border-border rounded-xl shadow-xl overflow-hidden z-40 max-h-60 overflow-y-auto p-1.5 space-y-1">
+              <div className="absolute top-full left-0 right-0 mt-1.5 bg-card/95 dark:bg-slate-900/95 backdrop-blur-md border border-border/80 rounded-2xl shadow-xl overflow-hidden z-40 max-h-60 overflow-y-auto p-1.5 space-y-1">
                 {searchResults.length > 0 && (
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-0.5 block">
@@ -1076,7 +1094,7 @@ export function MapView() {
                         key={place.placeId}
                         type="button"
                         onClick={() => handleSelectSearchedPlace(place)}
-                        className="w-full text-left p-2 rounded-lg hover:bg-muted transition flex items-center gap-2 text-xs"
+                        className="w-full text-left p-2 rounded-xl hover:bg-muted transition flex items-center gap-2 text-xs"
                       >
                         <MapPin className="w-3.5 h-3.5 text-primary shrink-0 notranslate" />
                         <div className="min-w-0 flex-1">
@@ -1091,7 +1109,7 @@ export function MapView() {
                 )}
 
                 {matchingRequests.length > 0 && (
-                  <div className="pt-1 border-t border-border">
+                  <div className="pt-1 border-t border-border/80">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-0.5 block">
                       Matching Requests
                     </span>
@@ -1104,7 +1122,7 @@ export function MapView() {
                           setSearchDropdownOpen(false);
                           setSearchQuery('');
                         }}
-                        className="w-full text-left p-2 rounded-lg hover:bg-muted transition flex items-center gap-2 text-xs"
+                        className="w-full text-left p-2 rounded-xl hover:bg-muted transition flex items-center gap-2 text-xs"
                       >
                         <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
                         <div className="min-w-0 flex-1">
@@ -1128,7 +1146,7 @@ export function MapView() {
                         key={term}
                         type="button"
                         onClick={() => setSearchQuery(term)}
-                        className="w-full text-left p-1.5 rounded-lg hover:bg-muted transition flex items-center gap-2 text-xs text-foreground"
+                        className="w-full text-left p-1.5 rounded-xl hover:bg-muted transition flex items-center gap-2 text-xs text-foreground"
                       >
                         <History className="w-3.5 h-3.5 text-muted-foreground shrink-0 notranslate" />
                         <span className="truncate">{term}</span>
@@ -1149,7 +1167,7 @@ export function MapView() {
             )}
           </div>
 
-          {/* 36px Filter Chips in Left Panel */}
+          {/* Filter Chips in Left Panel */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             {filterChips.map(({ id, label, count, icon: Icon, activeClass }) => {
               const isActive = activeFilterChip === id;
@@ -1158,10 +1176,10 @@ export function MapView() {
                   key={id}
                   type="button"
                   onClick={() => handleFilterChipClick(id)}
-                  className={`h-9 px-2.5 text-xs font-bold rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 shrink-0 touch-target ${
+                  className={`h-8 px-2.5 text-xs font-bold rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 shrink-0 touch-target ${
                     isActive
                       ? activeClass
-                      : 'bg-card text-foreground border-border hover:bg-muted shadow-xs'
+                      : 'bg-card text-foreground border-border/80 hover:bg-muted shadow-2xs'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5 shrink-0 notranslate" />
@@ -1172,8 +1190,8 @@ export function MapView() {
             })}
           </div>
 
-          {/* Tabs: Requests vs Places */}
-          <div className="grid grid-cols-2 p-1 bg-muted rounded-xl text-xs font-bold">
+          {/* Seamless Segmented Tabs: Requests vs Places */}
+          <div className="grid grid-cols-2 p-1 bg-muted/80 rounded-xl text-xs font-bold">
             <button
               type="button"
               onClick={() => setBottomSheetTab('requests')}
@@ -1212,30 +1230,51 @@ export function MapView() {
                     onClick={() => handleSelectRequest(req)}
                     className={`p-3 rounded-2xl border transition-all cursor-pointer text-left ${
                       isSelected
-                        ? 'border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20'
-                        : 'border-border bg-card hover:bg-muted/50'
+                        ? 'border-primary bg-primary/10 shadow-sm ring-1.5 ring-primary/30'
+                        : 'border-border/70 bg-card/90 dark:bg-slate-900/90 backdrop-blur-sm hover:border-primary/50 hover:bg-card hover:shadow-2xs'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1 mb-1">
+                    <div className="flex items-center justify-between gap-1 mb-1.5">
                       <div className="flex items-center gap-1.5">
+                        <span className="relative flex h-2 w-2 shrink-0">
+                          <span
+                            className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                              req.urgency === 'critical'
+                                ? 'bg-rose-400'
+                                : req.urgency === 'high'
+                                ? 'bg-amber-400'
+                                : 'bg-teal-400'
+                            }`}
+                          />
+                          <span
+                            className={`relative inline-flex rounded-full h-2 w-2 ${
+                              req.urgency === 'critical'
+                                ? 'bg-rose-500'
+                                : req.urgency === 'high'
+                                ? 'bg-amber-500'
+                                : 'bg-teal-500'
+                            }`}
+                          />
+                        </span>
                         <span
-                          className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                          className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
                             req.urgency === 'critical'
-                              ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                              ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/25'
                               : req.urgency === 'high'
-                              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                              : 'bg-teal-500/15 text-teal-600 dark:text-teal-400'
+                              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/25'
+                              : 'bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/25'
                           }`}
                         >
                           {req.urgency}
                         </span>
                         {isOwner && (
-                          <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                          <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25">
                             ★ You
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] font-semibold text-muted-foreground">
+                      <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-0.5">
+                        <MapPin className="w-3 h-3 text-muted-foreground shrink-0 notranslate" />
                         {req.distanceKm} km
                       </span>
                     </div>
@@ -1261,16 +1300,16 @@ export function MapView() {
                   onClick={() => handleSelectFacility(fac)}
                   className={`p-3 rounded-2xl border transition-all cursor-pointer text-left ${
                     isSelected
-                      ? 'border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20'
-                      : 'border-border bg-card hover:bg-muted/50'
+                      ? 'border-primary bg-primary/10 shadow-sm ring-1.5 ring-primary/30'
+                      : 'border-border/70 bg-card/90 dark:bg-slate-900/90 backdrop-blur-sm hover:border-primary/50 hover:bg-card hover:shadow-2xs'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-1 mb-1">
-                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-muted text-foreground">
+                  <div className="flex items-center justify-between gap-1 mb-1.5">
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-muted text-foreground border border-border/60">
                       {fac.type.replace('_', ' ')}
                     </span>
                     {fac.emergency && (
-                      <span className="text-[9px] font-extrabold text-rose-600 dark:text-rose-400 bg-rose-500/15 px-1.5 py-0.5 rounded">
+                      <span className="text-[9px] font-extrabold text-rose-600 dark:text-rose-400 bg-rose-500/15 border border-rose-500/25 px-1.5 py-0.5 rounded">
                         24/7 ER
                       </span>
                     )}
@@ -1347,9 +1386,9 @@ export function MapView() {
             ===================================================================== */}
         <div
           ref={searchContainerRef}
-          className="sm:hidden landscape:hidden absolute top-3 left-3 right-3 max-[359px]:top-2 max-[359px]:left-2 max-[359px]:right-2 z-30 pointer-events-auto"
+          className="sm:hidden landscape:hidden absolute top-3.5 left-3 right-3 max-[359px]:top-2.5 max-[359px]:left-2 max-[359px]:right-2 z-30 pointer-events-auto"
         >
-          <div className="relative flex items-center h-12 w-full bg-card/95 dark:bg-card/95 backdrop-blur-md rounded-2xl border border-border shadow-md px-3.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+          <div className="relative flex items-center h-12 w-full bg-card/85 dark:bg-card/85 backdrop-blur-md rounded-2xl border border-border/80 shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.3)] px-3.5 focus-within:border-primary/80 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
             <Search className="w-5 h-5 text-muted-foreground shrink-0 notranslate mr-2.5" />
             <input
               type="text"
@@ -1395,7 +1434,7 @@ export function MapView() {
 
           {/* Search Dropdown (Suggestions & Recent Searches) */}
           {searchDropdownOpen && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 bg-card border border-border rounded-2xl shadow-xl overflow-hidden z-40 max-h-72 overflow-y-auto animate-in fade-in duration-150 p-1.5 space-y-1">
+            <div className="absolute top-full left-0 right-0 mt-1.5 bg-card/95 dark:bg-slate-900/95 backdrop-blur-xl border border-border/80 rounded-2xl shadow-2xl overflow-hidden z-40 max-h-72 overflow-y-auto animate-in fade-in duration-150 p-1.5 space-y-1">
               {searchResults.length > 0 && (
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-1 block">
@@ -1421,7 +1460,7 @@ export function MapView() {
               )}
 
               {matchingRequests.length > 0 && (
-                <div className="pt-1 border-t border-border">
+                <div className="pt-1 border-t border-border/80">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-1 block">
                     Matching Requests
                   </span>
@@ -1480,12 +1519,12 @@ export function MapView() {
         </div>
 
         {/* =====================================================================
-            2. PHONE FILTER CHIPS (36px, live counts, solid high-contrast backgrounds)
+            2. PHONE FILTER CHIPS (36px, live counts, soft rounded-2xl glassmorphism)
                Horizontal scroll with smooth fade, active chip scrolled into view.
                Under 360px show icon + count.
             ===================================================================== */}
-        <div className="sm:hidden landscape:hidden absolute top-[68px] left-3 right-3 max-[359px]:top-[60px] max-[359px]:left-2 max-[359px]:right-2 z-20 pointer-events-auto">
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth py-1 px-0.5 [mask-image:linear-gradient(to_right,white_0%,white_88%,transparent_100%)]">
+        <div className="sm:hidden landscape:hidden absolute top-[70px] left-3 right-3 max-[359px]:top-[62px] max-[359px]:left-2 max-[359px]:right-2 z-20 pointer-events-auto">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth py-1 px-0.5 [mask-image:linear-gradient(to_right,white_0%,white_90%,transparent_100%)]">
             {filterChips.map(({ id, label, count, icon: Icon, activeClass }) => {
               const isActive = activeFilterChip === id;
               return (
@@ -1496,10 +1535,10 @@ export function MapView() {
                   }}
                   type="button"
                   onClick={() => handleFilterChipClick(id)}
-                  className={`h-9 px-3 text-xs font-bold rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 shrink-0 touch-target ${
+                  className={`h-9 px-3 text-xs font-bold rounded-2xl border transition-all whitespace-nowrap flex items-center gap-1.5 shrink-0 touch-target backdrop-blur-md ${
                     isActive
                       ? activeClass
-                      : 'bg-card text-foreground border-slate-300 dark:border-slate-700 hover:bg-muted shadow-xs'
+                      : 'bg-card/85 dark:bg-card/85 text-foreground border-border/80 hover:bg-muted/80 shadow-xs'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5 shrink-0 notranslate" />
@@ -1514,16 +1553,17 @@ export function MapView() {
 
         {/* =====================================================================
             2. RIGHT THUMB CONTROLS (PHONE PORTRAIT):
-               Compact vertical group (44px buttons, 40px graceful shrink on 320x568):
-               Locate me, Zoom in, Zoom out, Layers, Reset north.
+               Compact vertical group (44px buttons with frosted glass aesthetic):
+               Locate me, Reset north, Zoom in, Zoom out, Hospitals, Layers.
+               Positioned with safe clearance (bottom-28) above the peek sheet.
                Moves up as sheet grows, hides when sheet is fully open.
             ===================================================================== */}
         <div
           className={`sm:hidden landscape:hidden absolute right-3 max-[359px]:right-2 z-20 flex flex-col items-center gap-2 pointer-events-auto transition-all duration-300 ease-out ${
             bottomSheetSnap === 'peek'
-              ? 'bottom-[180px] max-[359px]:bottom-[164px] sm:bottom-[108px] opacity-100 translate-y-0'
+              ? 'bottom-28 opacity-100 translate-y-0'
               : bottomSheetSnap === 'half'
-              ? 'bottom-[calc(50%+80px)] sm:bottom-[calc(50%+14px)] opacity-100 translate-y-0'
+              ? 'bottom-[calc(50%+16px)] opacity-100 translate-y-0'
               : 'bottom-[calc(100%-96px)] opacity-0 pointer-events-none translate-y-6 scale-90'
           }`}
         >
@@ -1531,18 +1571,33 @@ export function MapView() {
           <button
             type="button"
             onClick={handleLocateMe}
-            className="w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-full bg-card/95 dark:bg-card/95 backdrop-blur-md border border-border text-foreground shadow-md flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
+            className="w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-2xl bg-card/90 dark:bg-slate-900/90 backdrop-blur-md border border-border/80 text-foreground shadow-md hover:shadow-lg flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
             title="Locate me (GPS)"
             aria-label="Locate me"
           >
             <Crosshair className="w-5 h-5 text-primary notranslate" />
           </button>
 
+          {/* Reset North / Compass */}
+          <button
+            type="button"
+            onClick={() => {
+              setMapCenter([userCoords.lat, userCoords.lng]);
+              setMapZoom(14);
+              toast.info('Map view reset to your area');
+            }}
+            className="w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-2xl bg-card/90 dark:bg-slate-900/90 backdrop-blur-md border border-border/80 text-foreground shadow-md hover:shadow-lg flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
+            title="Reset North & view"
+            aria-label="Reset North"
+          >
+            <Compass className="w-5 h-5 notranslate" />
+          </button>
+
           {/* Zoom In */}
           <button
             type="button"
             onClick={() => setMapZoom((z) => Math.min(18, z + 1))}
-            className="w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-full bg-card/95 dark:bg-card/95 backdrop-blur-md border border-border text-foreground shadow-md flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
+            className="w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-2xl bg-card/90 dark:bg-slate-900/90 backdrop-blur-md border border-border/80 text-foreground shadow-md hover:shadow-lg flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
             title="Zoom in"
             aria-label="Zoom in"
           >
@@ -1553,7 +1608,7 @@ export function MapView() {
           <button
             type="button"
             onClick={() => setMapZoom((z) => Math.max(8, z - 1))}
-            className="w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-full bg-card/95 dark:bg-card/95 backdrop-blur-md border border-border text-foreground shadow-md flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
+            className="w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-2xl bg-card/90 dark:bg-slate-900/90 backdrop-blur-md border border-border/80 text-foreground shadow-md hover:shadow-lg flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
             title="Zoom out"
             aria-label="Zoom out"
           >
@@ -1567,10 +1622,10 @@ export function MapView() {
               toggleLayer('hospitals');
               toast.info(layers.hospitals ? 'Hospitals hidden' : 'Hospitals visible');
             }}
-            className={`w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-full border shadow-md flex items-center justify-center active:scale-95 transition-all touch-target ${
+            className={`w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-2xl border shadow-md hover:shadow-lg flex items-center justify-center active:scale-95 transition-all touch-target ${
               layers.hospitals
                 ? 'bg-rose-600 text-white border-rose-700 shadow-rose-600/20'
-                : 'bg-card/95 dark:bg-card/95 backdrop-blur-md border-border text-foreground hover:bg-muted'
+                : 'bg-card/90 dark:bg-slate-900/90 backdrop-blur-md border-border/80 text-foreground hover:bg-muted'
             }`}
             title="Toggle Hospitals"
             aria-label="Toggle hospitals"
@@ -1583,31 +1638,16 @@ export function MapView() {
           <button
             type="button"
             onClick={() => setLayersMenuOpen((open) => !open)}
-            className={`w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-full border shadow-md flex items-center justify-center active:scale-95 transition-all touch-target ${
+            className={`w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-2xl border shadow-md hover:shadow-lg flex items-center justify-center active:scale-95 transition-all touch-target ${
               layersMenuOpen
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'bg-card/95 dark:bg-card/95 backdrop-blur-md border-border text-foreground hover:bg-muted'
+                ? 'bg-primary text-primary-foreground border-primary shadow-primary/20'
+                : 'bg-card/90 dark:bg-slate-900/90 backdrop-blur-md border-border/80 text-foreground hover:bg-muted'
             }`}
             title="Map Layers & Overlays"
             aria-label="Layers"
             aria-expanded={layersMenuOpen}
           >
             <Layers className="w-5 h-5 notranslate" />
-          </button>
-
-          {/* Reset North / Compass */}
-          <button
-            type="button"
-            onClick={() => {
-              setMapCenter([userCoords.lat, userCoords.lng]);
-              setMapZoom(14);
-              toast.info('Map view reset to your area');
-            }}
-            className="w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-full bg-card/95 dark:bg-card/95 backdrop-blur-md border border-border text-foreground shadow-md flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
-            title="Reset North & view"
-            aria-label="Reset North"
-          >
-            <Compass className="w-5 h-5 notranslate" />
           </button>
         </div>
 
@@ -1620,49 +1660,11 @@ export function MapView() {
           <button
             type="button"
             onClick={handleLocateMe}
-            className="w-11 h-11 rounded-full bg-card/95 dark:bg-card/95 backdrop-blur-md border border-border text-foreground shadow-md flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
+            className="w-11 h-11 rounded-2xl bg-card/90 dark:bg-slate-900/90 backdrop-blur-md border border-border/80 text-foreground shadow-md hover:shadow-lg flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
             title="Locate me (GPS)"
             aria-label="Locate me"
           >
             <Crosshair className="w-5 h-5 text-primary notranslate" />
-          </button>
-
-          {/* Zoom In */}
-          <button
-            type="button"
-            onClick={() => setMapZoom((z) => Math.min(18, z + 1))}
-            className="w-11 h-11 rounded-full bg-card/95 dark:bg-card/95 backdrop-blur-md border border-border text-foreground shadow-md flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
-            title="Zoom in"
-            aria-label="Zoom in"
-          >
-            <Plus className="w-5 h-5 notranslate" />
-          </button>
-
-          {/* Zoom Out */}
-          <button
-            type="button"
-            onClick={() => setMapZoom((z) => Math.max(8, z - 1))}
-            className="w-11 h-11 rounded-full bg-card/95 dark:bg-card/95 backdrop-blur-md border border-border text-foreground shadow-md flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
-            title="Zoom out"
-            aria-label="Zoom out"
-          >
-            <Minus className="w-5 h-5 notranslate" />
-          </button>
-
-          {/* Layers Menu Button */}
-          <button
-            type="button"
-            onClick={() => setLayersMenuOpen((open) => !open)}
-            className={`w-11 h-11 rounded-full border shadow-md flex items-center justify-center active:scale-95 transition-all touch-target ${
-              layersMenuOpen
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'bg-card/95 dark:bg-card/95 backdrop-blur-md border-border text-foreground hover:bg-muted'
-            }`}
-            title="Map Layers & Overlays"
-            aria-label="Layers"
-            aria-expanded={layersMenuOpen}
-          >
-            <Layers className="w-5 h-5 notranslate" />
           </button>
 
           {/* Reset North / Compass */}
@@ -1673,11 +1675,49 @@ export function MapView() {
               setMapZoom(14);
               toast.info('Map view reset to your area');
             }}
-            className="w-11 h-11 rounded-full bg-card/95 dark:bg-card/95 backdrop-blur-md border border-border text-foreground shadow-md flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
+            className="w-11 h-11 rounded-2xl bg-card/90 dark:bg-slate-900/90 backdrop-blur-md border border-border/80 text-foreground shadow-md hover:shadow-lg flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
             title="Reset North & view"
             aria-label="Reset North"
           >
             <Compass className="w-5 h-5 notranslate" />
+          </button>
+
+          {/* Zoom In */}
+          <button
+            type="button"
+            onClick={() => setMapZoom((z) => Math.min(18, z + 1))}
+            className="w-11 h-11 rounded-2xl bg-card/90 dark:bg-slate-900/90 backdrop-blur-md border border-border/80 text-foreground shadow-md hover:shadow-lg flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
+            title="Zoom in"
+            aria-label="Zoom in"
+          >
+            <Plus className="w-5 h-5 notranslate" />
+          </button>
+
+          {/* Zoom Out */}
+          <button
+            type="button"
+            onClick={() => setMapZoom((z) => Math.max(8, z - 1))}
+            className="w-11 h-11 rounded-2xl bg-card/90 dark:bg-slate-900/90 backdrop-blur-md border border-border/80 text-foreground shadow-md hover:shadow-lg flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
+            title="Zoom out"
+            aria-label="Zoom out"
+          >
+            <Minus className="w-5 h-5 notranslate" />
+          </button>
+
+          {/* Layers Menu Button */}
+          <button
+            type="button"
+            onClick={() => setLayersMenuOpen((open) => !open)}
+            className={`w-11 h-11 rounded-2xl border shadow-md hover:shadow-lg flex items-center justify-center active:scale-95 transition-all touch-target ${
+              layersMenuOpen
+                ? 'bg-primary text-primary-foreground border-primary shadow-primary/20'
+                : 'bg-card/90 dark:bg-slate-900/90 backdrop-blur-md border-border/80 text-foreground hover:bg-muted'
+            }`}
+            title="Map Layers & Overlays"
+            aria-label="Layers"
+            aria-expanded={layersMenuOpen}
+          >
+            <Layers className="w-5 h-5 notranslate" />
           </button>
         </div>
 
@@ -1864,13 +1904,13 @@ export function MapView() {
         {/* =====================================================================
             2. PHONE DRAGGABLE BOTTOM SHEET:
                3 Snap Points:
-               - Peek: 96px (80px on 320x568 <= 18% of map), 'X requests · Y places nearby'
+               - Peek: 96px (80px on 320x568 <= 18% of map), live request & place count pills
                - Half: 50%
                - Full: below search bar (calc(100% - 112px))
                Drag only from handle/header. List scrolls only when sheet is at Half or Full.
             ===================================================================== */}
         <div
-          className={`sm:hidden landscape:hidden absolute left-0 right-0 bottom-[72px] sm:bottom-4 z-30 bg-card border-t border-border shadow-2xl rounded-t-3xl transition-all duration-300 ease-out pointer-events-auto flex flex-col select-none ${
+          className={`sm:hidden landscape:hidden absolute left-0 right-0 bottom-0 z-30 bg-card/95 dark:bg-slate-950/95 backdrop-blur-xl border-t border-border/80 shadow-[0_-12px_40px_rgba(0,0,0,0.15)] rounded-t-3xl transition-all duration-300 ease-out pointer-events-auto flex flex-col select-none ${
             bottomSheetSnap === 'peek'
               ? 'h-[96px] max-[359px]:h-[80px]'
               : bottomSheetSnap === 'half'
@@ -1889,13 +1929,17 @@ export function MapView() {
             }
             className="w-full pt-2.5 pb-2 px-4 cursor-grab active:cursor-grabbing flex flex-col items-center select-none touch-none shrink-0"
           >
-            <div className="w-10 h-1.5 rounded-full bg-muted-foreground/30 mb-2" />
+            <div className="w-12 h-1.5 rounded-full bg-muted-foreground/30 hover:bg-muted-foreground/50 transition-colors mb-2.5" />
             <div className="w-full flex items-center justify-between text-xs">
-              <span className="font-bold text-foreground">
-                {filteredRequests.length} {filteredRequests.length === 1 ? 'request' : 'requests'} ·{' '}
-                {filteredFacilities.length} {filteredFacilities.length === 1 ? 'place' : 'places'} nearby
-              </span>
-              <div className="flex items-center gap-1 text-muted-foreground font-semibold">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/25">
+                  {filteredRequests.length} {filteredRequests.length === 1 ? 'req' : 'requests'}
+                </span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/60">
+                  {filteredFacilities.length} {filteredFacilities.length === 1 ? 'place' : 'places'}
+                </span>
+              </div>
+              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-muted/70 text-[11px] font-semibold text-muted-foreground shrink-0">
                 <span>
                   {bottomSheetSnap === 'peek'
                     ? 'Swipe up'
@@ -1904,9 +1948,9 @@ export function MapView() {
                     : 'Collapse'}
                 </span>
                 {bottomSheetSnap === 'peek' ? (
-                  <ChevronUp className="w-4 h-4 notranslate" />
+                  <ChevronUp className="w-3.5 h-3.5 notranslate" />
                 ) : (
-                  <ChevronDown className="w-4 h-4 notranslate" />
+                  <ChevronDown className="w-3.5 h-3.5 notranslate" />
                 )}
               </div>
             </div>
@@ -1937,8 +1981,8 @@ export function MapView() {
           {bottomSheetSnap !== 'peek' && (
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
               {/* Sheet Tabs */}
-              <div className="px-4 py-1.5 border-b border-border shrink-0">
-                <div className="grid grid-cols-2 p-1 bg-muted rounded-xl text-xs font-bold">
+              <div className="px-4 py-1.5 border-b border-border/80 shrink-0">
+                <div className="grid grid-cols-2 p-1 bg-muted/80 rounded-xl text-xs font-bold">
                   <button
                     type="button"
                     onClick={() => setBottomSheetTab('requests')}
@@ -1964,52 +2008,111 @@ export function MapView() {
                 </div>
               </div>
 
-              {/* Scrollable list (overscroll-contain locks document scroll) */}
-              <div className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-2">
+              {/* Scrollable list (overscroll-contain locks document scroll) with watery crystal styling */}
+              <div className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-2.5">
                 {bottomSheetTab === 'requests' ? (
                   filteredRequests.length > 0 ? (
-                    filteredRequests.map((req) => (
-                      <div
-                        key={req.id}
-                        onClick={() => handleSelectRequest(req)}
-                        className="p-2.5 rounded-xl border border-border bg-card hover:bg-muted/50 cursor-pointer"
-                      >
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-bold text-foreground line-clamp-1">{req.title}</span>
-                          <span className="text-[11px] font-semibold text-muted-foreground shrink-0 ml-2">
-                            {req.distanceKm} km
-                          </span>
+                    filteredRequests.map((req) => {
+                      const isSelected = activeItem?.type === 'request' && activeItem.data.id === req.id;
+                      const isOwner = isRequestOwner(req, userProfile);
+                      return (
+                        <div
+                          key={req.id}
+                          onClick={() => handleSelectRequest(req)}
+                          className={`p-3 rounded-2xl border transition-all cursor-pointer text-left ${
+                            isSelected
+                              ? 'border-primary bg-primary/10 shadow-sm ring-1.5 ring-primary/30'
+                              : 'border-border/70 bg-card/90 dark:bg-slate-900/90 backdrop-blur-sm hover:border-primary/50 hover:bg-card hover:shadow-2xs'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1 mb-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="relative flex h-2 w-2 shrink-0">
+                                <span
+                                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                                    req.urgency === 'critical'
+                                      ? 'bg-rose-400'
+                                      : req.urgency === 'high'
+                                      ? 'bg-amber-400'
+                                      : 'bg-teal-400'
+                                  }`}
+                                />
+                                <span
+                                  className={`relative inline-flex rounded-full h-2 w-2 ${
+                                    req.urgency === 'critical'
+                                      ? 'bg-rose-500'
+                                      : req.urgency === 'high'
+                                      ? 'bg-amber-500'
+                                      : 'bg-teal-500'
+                                  }`}
+                                />
+                              </span>
+                              <span
+                                className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                                  req.urgency === 'critical'
+                                    ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/25'
+                                    : req.urgency === 'high'
+                                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/25'
+                                    : 'bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/25'
+                                }`}
+                              >
+                                {req.urgency}
+                              </span>
+                              {isOwner && (
+                                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25">
+                                  ★ You
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-0.5">
+                              <MapPin className="w-3 h-3 text-muted-foreground shrink-0 notranslate" />
+                              {req.distanceKm} km
+                            </span>
+                          </div>
+                          <h4 className="text-xs font-bold text-foreground line-clamp-1">{req.title}</h4>
+                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
+                            {req.locationName}
+                          </p>
                         </div>
-                        <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
-                          {req.locationName}
-                        </p>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="p-4 text-center text-xs text-muted-foreground">
                       No requests match this filter.
                     </div>
                   )
                 ) : filteredFacilities.length > 0 ? (
-                  filteredFacilities.map((fac) => (
-                    <div
-                      key={fac.id}
-                      onClick={() => handleSelectFacility(fac)}
-                      className="p-2.5 rounded-xl border border-border bg-card hover:bg-muted/50 cursor-pointer"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-foreground line-clamp-1">{fac.name}</span>
-                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-muted">
-                          {fac.type.replace('_', ' ')}
-                        </span>
+                  filteredFacilities.map((fac) => {
+                    const isSelected = activeItem?.type === 'facility' && activeItem.data.id === fac.id;
+                    return (
+                      <div
+                        key={fac.id}
+                        onClick={() => handleSelectFacility(fac)}
+                        className={`p-3 rounded-2xl border transition-all cursor-pointer text-left ${
+                          isSelected
+                            ? 'border-primary bg-primary/10 shadow-sm ring-1.5 ring-primary/30'
+                            : 'border-border/70 bg-card/90 dark:bg-slate-900/90 backdrop-blur-sm hover:border-primary/50 hover:bg-card hover:shadow-2xs'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1 mb-1.5">
+                          <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-muted text-foreground border border-border/60">
+                            {fac.type.replace('_', ' ')}
+                          </span>
+                          {fac.emergency && (
+                            <span className="text-[9px] font-extrabold text-rose-600 dark:text-rose-400 bg-rose-500/15 border border-rose-500/25 px-1.5 py-0.5 rounded">
+                              24/7 ER
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="text-xs font-bold text-foreground line-clamp-1">{fac.name}</h4>
+                        {fac.address && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
+                            {fac.address}
+                          </p>
+                        )}
                       </div>
-                      {fac.address && (
-                        <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
-                          {fac.address}
-                        </p>
-                      )}
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="p-4 text-center text-xs text-muted-foreground">
                     No places found in this area.

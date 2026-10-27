@@ -538,19 +538,23 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
               Profile Photo
             </h3>
             <div className="p-4 rounded-2xl bg-muted/30 border border-border flex flex-col sm:flex-row items-center gap-4">
-              {/* Square Preview */}
+              {/* Square Preview with Luminous Multi-Stop Gradient */}
               <div className="relative shrink-0">
-                {avatarPreview ? (
-                  <img
-                    src={avatarPreview}
-                    alt="Profile Avatar Preview"
-                    className="w-24 h-24 rounded-2xl object-cover border-2 border-primary/30 shadow-md"
-                  />
-                ) : (
-                  <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-600 text-white text-3xl font-black shadow-md flex items-center justify-center select-none">
-                    {displayName.charAt(0).toUpperCase() || 'K'}
+                <div className="p-[2.5px] rounded-3xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-400 shadow-md shadow-teal-500/20 ring-2 ring-teal-500/10">
+                  <div className="w-24 h-24 rounded-[21px] bg-card overflow-hidden flex items-center justify-center">
+                    {avatarPreview ? (
+                      <img
+                        src={avatarPreview}
+                        alt="Profile Avatar Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-teal-600 to-emerald-600 text-white text-3xl font-black shadow-inner flex items-center justify-center select-none">
+                        {displayName.charAt(0).toUpperCase() || 'K'}
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
                 {/* Perfect circle camera badge (40px with 3px ring-background, 44px tap target area, centered on corner) */}
                 <button
                   type="button"

@@ -76,7 +76,7 @@ export const STANDARD_CATEGORIES: RequestCategory[] = [
     key: 'elderly',
     name: 'Elderly Care',
     description: 'Compassionate neighbourhood accompaniment, medicine pickup, grocery support, and check-ins for seniors.',
-    icon: 'Users',
+    icon: 'HeartHandshake',
     colour: '#4F46E5',
     defaultUrgencyHint: 'Scheduled or flexible',
     responseExpectation: 'Flexible / Scheduled',

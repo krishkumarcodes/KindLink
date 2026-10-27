@@ -72,6 +72,34 @@ function MapController({
 
   useEffect(() => {
     map.invalidateSize();
+
+    // Multi-stage timers ensure map size invalidates properly across mobile safe-area / layout transitions
+    const timers = [
+      setTimeout(() => map.invalidateSize(), 50),
+      setTimeout(() => map.invalidateSize(), 150),
+      setTimeout(() => map.invalidateSize(), 300),
+      setTimeout(() => map.invalidateSize(), 600),
+      setTimeout(() => map.invalidateSize(), 1200),
+    ];
+
+    let observer: ResizeObserver | null = null;
+    const container = map.getContainer();
+    if (typeof ResizeObserver !== 'undefined' && container) {
+      observer = new ResizeObserver(() => {
+        if (container.clientWidth > 0 && container.clientHeight > 0) {
+          map.invalidateSize();
+        }
+      });
+      observer.observe(container);
+      if (container.parentElement) {
+        observer.observe(container.parentElement);
+      }
+    }
+
+    return () => {
+      timers.forEach(clearTimeout);
+      if (observer) observer.disconnect();
+    };
   }, [map]);
 
   useEffect(() => {

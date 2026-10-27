@@ -242,29 +242,64 @@ export function Header() {
               )}
             </button>
 
-            {/* Profile Avatar Button: 36-40px with small verified checkmark */}
-            <button
-              ref={avatarButtonRef}
-              type="button"
-              onClick={() => {
-                if (notifOpen) setNotifOpen(false);
-                setProfileMenuOpen((prev) => !prev);
-              }}
-              className="relative inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl border border-border/70 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-all touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 shrink-0"
-              aria-label="Open profile and user menu"
-              aria-expanded={profileMenuOpen}
-              title="User Profile Menu"
-            >
-              <span>{initials}</span>
-              {userProfile.verificationState === 'verified' && (
-                <span
-                  className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-600 text-[8px] font-bold text-white ring-2 ring-card"
-                  title="Verified Volunteer"
+            {/* Profile Avatar Button: 36-40px with luminous multi-stop border gradient, status pulse pip, and verified badge */}
+            {(() => {
+              const isOrg = Boolean(userProfile.isOrganization || userProfile.organizationVerified);
+              const isVerified = userProfile.verificationState === 'verified';
+              return (
+                <button
+                  ref={avatarButtonRef}
+                  type="button"
+                  onClick={() => {
+                    if (notifOpen) setNotifOpen(false);
+                    setProfileMenuOpen((prev) => !prev);
+                  }}
+                  className={`relative inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl p-[2px] transition-all duration-200 touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 shrink-0 select-none ${
+                    isOrg
+                      ? 'bg-gradient-to-tr from-violet-600 via-indigo-500 to-purple-500 shadow-xs shadow-indigo-500/20 hover:shadow-indigo-500/40 ring-1 ring-indigo-400/20'
+                      : isVerified
+                      ? 'bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-400 shadow-xs shadow-teal-500/20 hover:shadow-teal-500/40 ring-1 ring-teal-400/20'
+                      : 'bg-gradient-to-tr from-border via-primary/30 to-border hover:from-primary/40 hover:to-primary/30'
+                  }`}
+                  aria-label="Open profile and user menu"
+                  aria-expanded={profileMenuOpen}
+                  title="User Profile Menu"
                 >
-                  ✓
-                </span>
-              )}
-            </button>
+                  <div className="relative flex h-full w-full items-center justify-center rounded-[9px] sm:rounded-[10px] bg-card overflow-hidden">
+                    {userProfile.avatarUrl ? (
+                      <img
+                        src={userProfile.avatarUrl}
+                        alt={userProfile.name || 'User'}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-teal-600 via-teal-500 to-emerald-600 text-white font-extrabold text-[11px] sm:text-xs tracking-tight">
+                        <span>{initials}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Corner Status Pip & Refined Verified Shield */}
+                  {isVerified ? (
+                    <span
+                      className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-700 text-[8px] font-black text-white ring-2 ring-card shadow-xs"
+                      title={isOrg ? 'Verified Organization' : 'Verified Volunteer'}
+                    >
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 motion-reduce:animate-none" />
+                      <span className="relative">✓</span>
+                    </span>
+                  ) : (
+                    <span
+                      className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5 items-center justify-center"
+                      title="Active Responder"
+                    >
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 ring-1.5 ring-card" />
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
           </div>
         </div>
       </header>

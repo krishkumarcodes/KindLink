@@ -104,50 +104,92 @@ export function ProfileQuickMenu({
       role="menu"
       ariaLabel="Profile Quick Menu"
       style={{
-        width: 'min(270px, calc(100vw - 24px))',
-        maxHeight: 'calc(100dvh - 76px)',
+        width: 'min(280px, calc(100vw - 20px))',
+        maxHeight: 'calc(100dvh - 72px)',
       }}
-      className="p-2.5 sm:p-3 select-none max-h-[calc(100dvh-76px)] overflow-y-auto overscroll-contain"
+      className="p-3 sm:p-3.5 select-none max-h-[calc(100dvh-72px)] overflow-y-auto overscroll-contain backdrop-blur-xl bg-card/95 supports-[backdrop-filter]:bg-card/95 border border-border/80 shadow-2xl rounded-3xl"
     >
       {/* 1. User Header Summary: Avatar + Name (up to 2 lines) + @username (1-tap copy) + ONE verification chip */}
-      <div className="flex items-start gap-2.5 p-1.5 pb-2.5 border-b border-border/80">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-white font-black text-xs sm:text-sm shadow-xs select-none">
-          {initials}
-        </div>
+      {(() => {
+        const isOrg = Boolean(userProfile.isOrganization || userProfile.organizationVerified);
+        const isVerified = userProfile.verificationState === 'verified';
+        return (
+          <div className="flex items-start gap-3 p-1 pb-3 border-b border-border/80">
+            {/* Luminous multi-stop border gradient Avatar with status pulse pip */}
+            <div className="relative shrink-0">
+              <div
+                className={`p-[2px] rounded-2xl transition-all ${
+                  isOrg
+                    ? 'bg-gradient-to-tr from-violet-600 via-indigo-500 to-purple-500 shadow-sm shadow-indigo-500/25 ring-1 ring-indigo-400/30'
+                    : isVerified
+                    ? 'bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-400 shadow-sm shadow-teal-500/20 ring-1 ring-teal-400/30'
+                    : 'bg-gradient-to-tr from-border via-primary/30 to-border'
+                }`}
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-card overflow-hidden">
+                  {userProfile.avatarUrl ? (
+                    <img
+                      src={userProfile.avatarUrl}
+                      alt={userProfile.name || 'User'}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-teal-600 via-teal-500 to-emerald-600 text-white font-black text-xs sm:text-sm shadow-inner">
+                      {initials}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-        <div className="min-w-0 flex-1">
-          {/* Full display name (wraps up to 2 lines) */}
-          <div className="font-extrabold text-xs sm:text-sm text-foreground line-clamp-2 leading-snug break-words">
-            {userProfile.name || 'KindLink Member'}
-          </div>
-
-          {/* @username with 1-tap copy button */}
-          <button
-            type="button"
-            onClick={handleCopyUsername}
-            className="group/copy flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-0.5 touch-target py-0.5 text-left"
-            title="Click to copy handle"
-            aria-label={`Copy handle @${userProfile.username || 'volunteer'}`}
-          >
-            <span className="font-mono text-[11px] font-semibold text-primary/90">
-              @{userProfile.username || 'volunteer'}
-            </span>
-            {copied ? (
-              <Check className="h-3 w-3 text-emerald-500 shrink-0 notranslate animate-in zoom-in-75" />
-            ) : (
-              <Copy className="h-3 w-3 opacity-60 group-hover/copy:opacity-100 shrink-0 notranslate transition-opacity" />
-            )}
-          </button>
-
-          {/* ONE verification chip (DO NOT show organisation here) */}
-          {userProfile.verificationState === 'verified' && (
-            <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              <ShieldCheck className="h-3 w-3 shrink-0 notranslate" />
-              <span>Verified Volunteer</span>
+              {/* Status pulse pip: live online / community responder */}
+              <span
+                className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center"
+                title="Active Responder"
+              >
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 ring-2 ring-card" />
+              </span>
             </div>
-          )}
-        </div>
-      </div>
+
+            <div className="min-w-0 flex-1">
+              {/* Full display name (wraps up to 2 lines) */}
+              <div className="font-extrabold text-xs sm:text-sm text-foreground line-clamp-2 leading-snug break-words">
+                {userProfile.name || 'KindLink Member'}
+              </div>
+
+              {/* @username with 1-tap copy button */}
+              <button
+                type="button"
+                onClick={handleCopyUsername}
+                className="group/copy flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-0.5 touch-target py-0.5 text-left"
+                title="Click to copy handle"
+                aria-label={`Copy handle @${userProfile.username || 'volunteer'}`}
+              >
+                <span className="font-mono text-[11px] font-semibold text-primary/90">
+                  @{userProfile.username || 'volunteer'}
+                </span>
+                {copied ? (
+                  <Check className="h-3 w-3 text-emerald-500 shrink-0 notranslate animate-in zoom-in-75" />
+                ) : (
+                  <Copy className="h-3 w-3 opacity-60 group-hover/copy:opacity-100 shrink-0 notranslate transition-opacity" />
+                )}
+              </button>
+
+              {/* ONE verification chip with refined metallic checkmark (DO NOT show organisation here) */}
+              {isVerified && (
+                <div className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 shadow-2xs">
+                  <span className="relative flex h-3 w-3 items-center justify-center rounded-full bg-gradient-to-tr from-amber-200 via-emerald-200 to-teal-400 p-[1px] shadow-2xs">
+                    <span className="flex h-full w-full items-center justify-center rounded-full bg-emerald-600 text-white">
+                      <ShieldCheck className="h-2 w-2 stroke-[2.8] notranslate" />
+                    </span>
+                  </span>
+                  <span>{isOrg ? 'Verified Org' : 'Verified Volunteer'}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 2. Real Store Data Stats: "Helps given" and "Trust score" */}
       <div className="my-2 grid grid-cols-2 gap-1.5 p-1.5 rounded-xl bg-muted/40 border border-border/60">

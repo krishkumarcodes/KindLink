@@ -21,6 +21,7 @@ import { formatWaitingDuration } from '@/lib/utils/formatTime';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { dataAdapter } from '@/lib/data';
 import { getCategoryToken } from '@/lib/data/categoryColors';
+import { CategoryEmblem } from '@/components/categories/CategoryEmblem';
 import { PrimaryHelpButton, SecondaryButton } from './ActionButtons';
 import { EndorsementChip } from './EndorsementChip';
 
@@ -129,15 +130,12 @@ export function RequestCard({
         {/* Top Badges Row */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className="flex h-8 w-8 items-center justify-center rounded-xl bg-background border shadow-xs group-hover:border-primary/30 transition"
-              style={{ borderColor: categoryToken.border }}
-            >
-              <CategoryIcon
-                className="h-4 w-4 notranslate"
-                style={{ color: categoryToken.primary }}
-              />
-            </span>
+            <CategoryEmblem
+              category={request.category}
+              customLabel={request.customCategoryLabel}
+              size="sm"
+              glow={true}
+            />
             <span
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider border ${getUrgencyBadge(
                 request.urgency

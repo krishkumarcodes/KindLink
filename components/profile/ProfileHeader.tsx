@@ -14,6 +14,7 @@ import {
   Copy,
   Award,
   Pin,
+  Camera,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
@@ -192,27 +193,63 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
             1. CLEAN IDENTITY BLOCK: Avatar, Display Name, @username, Verification Chip
            ========================================================================= */}
 
-        {/* Centered Avatar with Corner Verification Shield */}
+        {/* Centered Avatar with Corner Verification Shield & Quick Camera Edit */}
         <div className="relative inline-flex items-center justify-center shrink-0">
-          {userProfile.avatarUrl ? (
-            <img
-              src={userProfile.avatarUrl}
-              alt={displayName}
-              className="h-24 w-24 sm:h-28 sm:w-28 rounded-3xl object-cover border-2 border-primary/30 shadow-soft ring-4 ring-background"
-            />
-          ) : (
-            <div className="flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-3xl bg-gradient-to-br from-teal-600 via-teal-500 to-emerald-600 text-white text-3xl sm:text-4xl font-black shadow-soft ring-4 ring-background">
-              {initial}
-            </div>
-          )}
+          {/* Luminous multi-stop border gradient glow ring */}
+          <div
+            className={`relative p-[3px] rounded-3xl transition-all duration-300 group ${
+              Boolean(userProfile.isOrganization || userProfile.organizationVerified)
+                ? 'bg-gradient-to-tr from-violet-600 via-indigo-500 to-purple-500 shadow-xl shadow-indigo-500/25 ring-4 ring-indigo-500/10'
+                : userProfile.verificationState === 'verified'
+                ? 'bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-400 shadow-xl shadow-teal-500/25 ring-4 ring-teal-500/10'
+                : 'bg-gradient-to-tr from-primary/50 via-teal-500/30 to-primary/20 shadow-md ring-4 ring-primary/10'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={onEditProfile}
+              className="relative flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-[21px] sm:rounded-[22px] bg-card overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-primary touch-target group/avatar cursor-pointer"
+              title="Click to edit profile photo"
+              aria-label="Edit profile photo"
+            >
+              {userProfile.avatarUrl ? (
+                <img
+                  src={userProfile.avatarUrl}
+                  alt={displayName}
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover/avatar:scale-105"
+                />
+              ) : (
+                <div className="relative flex h-full w-full items-center justify-center bg-gradient-to-br from-teal-600 via-teal-500 to-emerald-600 text-white text-3xl sm:text-4xl font-black shadow-inner overflow-hidden">
+                  <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 via-white/10 to-transparent" aria-hidden="true" />
+                  <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/20 to-transparent" aria-hidden="true" />
+                  <span className="relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">{initial}</span>
+                </div>
+              )}
+
+              {/* Camera Hover / Focus Edit Overlay */}
+              <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px] opacity-0 group-hover/avatar:opacity-100 group-focus-visible/avatar:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center gap-1 text-white">
+                <Camera className="h-6 w-6 stroke-[2.2] notranslate drop-shadow-md animate-in zoom-in-75 duration-150" />
+                <span className="text-[10px] font-extrabold tracking-wider uppercase drop-shadow-xs">Edit Photo</span>
+              </div>
+            </button>
+
+            {/* Top-Right Active Community Responder Status Pulse Pip */}
+            <span
+              className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center pointer-events-none"
+              title="Active Community Responder"
+            >
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 ring-2 ring-background" />
+            </span>
+          </div>
 
           {/* Overlapping corner verification shield badge */}
           <div
-            className={`absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-2xl shadow-xs text-white ring-2 ring-background ${
+            className={`absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-2xl shadow-xs text-white ring-2 ring-background transition-transform duration-200 pointer-events-none select-none ${
               userProfile.verificationState === 'verified'
-                ? 'bg-emerald-500'
+                ? 'bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-500'
                 : userProfile.verificationState === 'pending'
-                ? 'bg-amber-500'
+                ? 'bg-gradient-to-tr from-amber-500 via-amber-600 to-orange-500'
                 : 'bg-muted-foreground/80'
             }`}
             title={`Verification: ${userProfile.verificationState}`}
@@ -262,15 +299,19 @@ export function ProfileHeader({ onEditProfile, onSelectTab }: ProfileHeaderProps
           <span
             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide border shadow-2xs ${
               userProfile.verificationState === 'verified'
-                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25'
                 : userProfile.verificationState === 'pending'
-                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25'
                 : 'bg-muted text-muted-foreground border-border'
             }`}
           >
             {userProfile.verificationState === 'verified' ? (
               <>
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500 notranslate shrink-0 stroke-[2.2]" />
+                <span className="relative flex h-3.5 w-3.5 items-center justify-center rounded-full bg-gradient-to-tr from-amber-200 via-emerald-200 to-teal-400 p-[1px] shadow-2xs">
+                  <span className="flex h-full w-full items-center justify-center rounded-full bg-emerald-600 text-white">
+                    <ShieldCheck className="h-2.5 w-2.5 stroke-[2.8] notranslate" />
+                  </span>
+                </span>
                 <span>Verified</span>
               </>
             ) : userProfile.verificationState === 'pending' ? (

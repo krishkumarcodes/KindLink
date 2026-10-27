@@ -306,25 +306,47 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
         <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-r from-teal-500/15 via-teal-600/10 to-indigo-500/15" />
 
         <div className="relative pt-6 flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
-          {/* Avatar */}
+          {/* Avatar with luminous multi-stop border gradient and status pulse pip */}
           <div className="relative shrink-0">
-            {member.avatarUrl ? (
-              <img
-                src={member.avatarUrl}
-                alt={member.displayName}
-                className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-cover border-4 border-card shadow-soft"
-              />
-            ) : (
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-primary/10 border-4 border-card shadow-soft flex items-center justify-center text-primary text-3xl font-extrabold uppercase">
-                {member.displayName.slice(0, 2) || member.username.slice(0, 2)}
+            <div
+              className={`p-[2.5px] rounded-3xl transition-all ${
+                Boolean(member.organisation)
+                  ? 'bg-gradient-to-tr from-violet-600 via-indigo-500 to-purple-500 shadow-md shadow-indigo-500/20 ring-2 ring-indigo-500/10'
+                  : member.verificationStatus === 'verified'
+                  ? 'bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-400 shadow-md shadow-teal-500/20 ring-2 ring-teal-500/10'
+                  : 'bg-gradient-to-tr from-border via-primary/30 to-border ring-2 ring-primary/5'
+              }`}
+            >
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-[21px] sm:rounded-[22px] bg-card overflow-hidden flex items-center justify-center">
+                {member.avatarUrl ? (
+                  <img
+                    src={member.avatarUrl}
+                    alt={member.displayName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-teal-600 via-teal-500 to-emerald-600 text-white flex items-center justify-center text-3xl font-extrabold uppercase shadow-inner">
+                    {member.displayName.slice(0, 2) || member.username.slice(0, 2)}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+
+            {/* Status pulse pip: live online / community responder */}
+            <span
+              className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center pointer-events-none"
+              title="Active Community Responder"
+            >
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 ring-2 ring-background" />
+            </span>
+
             {member.verificationStatus === 'verified' && (
               <div
-                className="absolute -bottom-1 -right-1 p-1.5 bg-emerald-500 text-white rounded-xl shadow-md border-2 border-card"
+                className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-500 text-white rounded-2xl shadow-md ring-2 ring-background pointer-events-none"
                 title="Verified Volunteer"
               >
-                <ShieldCheck className="h-4 w-4 notranslate" />
+                <ShieldCheck className="h-4 w-4 stroke-[2.2] notranslate" />
               </div>
             )}
           </div>

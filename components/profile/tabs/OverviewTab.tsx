@@ -13,6 +13,7 @@ import {
   Trash2,
   MessageCircle,
   ShieldAlert,
+  ShieldCheck,
   ChevronRight,
   ChevronDown,
   ChevronUp,
@@ -20,6 +21,8 @@ import {
   Info,
   X,
   Loader2,
+  Star,
+  HeartHandshake,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
@@ -112,6 +115,139 @@ export function OverviewTab({ onEditProfile, onSelectTab }: OverviewTabProps) {
 
   return (
     <div className="space-y-6">
+      {/* =========================================================================
+          0. OVERVIEW USER IDENTITY CARD
+             - Luminous multi-stop border gradient avatar with status pulse pip
+             - Verified volunteer or organization metallic badge
+             - Quick community stats & handle
+             - Clean layout with zero overlap or clipping
+          ========================================================================= */}
+      {(() => {
+        const isOrg = Boolean(userProfile.isOrganization || userProfile.organizationVerified);
+        const isVerified = userProfile.verificationState === 'verified';
+        const displayName =
+          userProfile.displayName ||
+          userProfile.name ||
+          (userProfile.username ? `@${userProfile.username}` : 'KindLink Member');
+        const displayUsername = userProfile.username || 'volunteer';
+        const initial = (displayName.charAt(0) || 'K').toUpperCase();
+
+        return (
+          <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-soft">
+            {/* Subtle luminous accent glow */}
+            <div
+              className={`pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full blur-3xl opacity-40 ${
+                isOrg
+                  ? 'bg-gradient-to-br from-violet-600 via-indigo-500 to-transparent'
+                  : isVerified
+                  ? 'bg-gradient-to-br from-emerald-500 via-teal-400 to-transparent'
+                  : 'bg-gradient-to-br from-primary/30 via-teal-500/20 to-transparent'
+              }`}
+            />
+
+            <div className="relative flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 text-center sm:text-left">
+              {/* Avatar with luminous multi-stop border gradient and corner status pip */}
+              <div className="relative shrink-0">
+                <div
+                  className={`p-[2.5px] rounded-2xl transition-all ${
+                    isOrg
+                      ? 'bg-gradient-to-tr from-violet-600 via-indigo-500 to-purple-500 shadow-md shadow-indigo-500/20 ring-2 ring-indigo-500/10'
+                      : isVerified
+                      ? 'bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-400 shadow-md shadow-teal-500/20 ring-2 ring-teal-500/10'
+                      : 'bg-gradient-to-tr from-border via-primary/30 to-border ring-2 ring-primary/5'
+                  }`}
+                >
+                  <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-[13px] sm:rounded-[14px] bg-card overflow-hidden">
+                    {userProfile.avatarUrl ? (
+                      <img
+                        src={userProfile.avatarUrl}
+                        alt={displayName}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-teal-600 via-teal-500 to-emerald-600 text-white font-black text-2xl sm:text-3xl shadow-inner">
+                        {initial}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Status pulse pip: live online / community responder */}
+                <span
+                  className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center"
+                  title="Live Community Responder"
+                >
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 ring-2 ring-card" />
+                </span>
+              </div>
+
+              {/* Identity & Verification Info */}
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                      <h2 className="text-lg sm:text-xl font-extrabold text-foreground tracking-tight break-words">
+                        {displayName}
+                      </h2>
+                      {/* Refined metallic verification chip */}
+                      {isVerified ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 shadow-2xs">
+                          <span className="relative flex h-3 w-3 items-center justify-center rounded-full bg-gradient-to-tr from-amber-200 via-emerald-200 to-teal-400 p-[1px] shadow-2xs">
+                            <span className="flex h-full w-full items-center justify-center rounded-full bg-emerald-600 text-white">
+                              <ShieldCheck className="h-2 w-2 stroke-[2.8] notranslate" />
+                            </span>
+                          </span>
+                          <span>{isOrg ? 'Verified Org' : 'Verified Volunteer'}</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-muted text-muted-foreground border border-border">
+                          <ShieldAlert className="h-3 w-3 notranslate shrink-0" />
+                          <span>Standard Member</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-xs font-mono font-semibold text-muted-foreground mt-0.5">
+                      @{displayUsername}
+                    </p>
+                  </div>
+
+                  {/* Edit profile action */}
+                  <button
+                    type="button"
+                    onClick={onEditProfile}
+                    className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl border border-border bg-background hover:bg-muted text-foreground text-xs font-bold transition shadow-xs touch-target self-center sm:self-start shrink-0"
+                  >
+                    <Edit3 className="h-3.5 w-3.5 text-muted-foreground notranslate shrink-0" />
+                    <span>Edit Profile</span>
+                  </button>
+                </div>
+
+                {/* Quick stats mini-row */}
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-muted/40 border border-border/60">
+                    <HeartHandshake className="h-3.5 w-3.5 text-primary notranslate shrink-0" />
+                    <span className="font-bold text-foreground">{userProfile.helpsCount ?? 0}</span>
+                    <span>helps given</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-muted/40 border border-border/60">
+                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500 notranslate shrink-0" />
+                    <span className="font-bold text-foreground">{(userProfile.rating ?? 5.0).toFixed(1)}</span>
+                    <span>rating</span>
+                  </span>
+                  {userAreaName && userAreaName !== 'Set your area' && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-muted/40 border border-border/60 max-w-[200px] truncate">
+                      <MapPin className="h-3.5 w-3.5 text-rose-500 notranslate shrink-0" />
+                      <span className="truncate font-semibold text-foreground">{userAreaName}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {/* =========================================================================
           1. COMMUNITY BIO CARD
              - Preserved line breaks

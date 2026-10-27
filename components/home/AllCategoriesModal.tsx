@@ -14,6 +14,7 @@ import {
 import { HelpCategory } from '@/lib/data/types';
 import { STANDARD_CATEGORIES, CATEGORY_ICON_MAP } from '@/lib/data/categories';
 import { getCategoryToken } from '@/lib/data/categoryColors';
+import { CategoryEmblem } from '@/components/categories/CategoryEmblem';
 
 interface AllCategoriesModalProps {
   open: boolean;
@@ -147,29 +148,19 @@ export function AllCategoriesModal({
             filteredCategories.map((cat) => {
               const stats = categoryStats[cat.key] || { count: 0, criticalCount: 0, highCount: 0 };
               const token = getCategoryToken(cat.key);
-              const IconComp = CATEGORY_ICON_MAP[cat.icon] || Heart;
 
               return (
                 <div
                   key={cat.key}
-                  className="p-4 sm:p-5 rounded-3xl border bg-card/60 transition-all hover:bg-card hover:shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                  style={{ borderColor: `${token.primary}30` }}
+                  className="p-4 sm:p-5 rounded-3xl border bg-card/75 backdrop-blur-xs transition-all hover:bg-card hover:shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+                  style={{ borderColor: `${token.primary}35` }}
                 >
-                  <div className="space-y-2 flex-1 min-w-0">
-                    <div className="flex items-start gap-3">
-                      <div
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border"
-                        style={{
-                          backgroundColor: token.lightBg,
-                          borderColor: token.border,
-                          color: token.primary,
-                        }}
-                      >
-                        <IconComp className="h-5 w-5 notranslate" />
-                      </div>
+                  <div className="space-y-2.5 flex-1 min-w-0">
+                    <div className="flex items-start gap-3.5">
+                      <CategoryEmblem category={cat.key} size="lg" glow={true} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-base font-bold text-foreground">{cat.name}</h3>
+                          <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">{cat.name}</h3>
                           <span
                             className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border"
                             style={{
@@ -187,23 +178,23 @@ export function AllCategoriesModal({
                             </span>
                           )}
                         </div>
-                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
-                          <Clock className="h-3 w-3 notranslate text-primary shrink-0" />
+                        <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5">
+                          <Clock className="h-3.5 w-3.5 notranslate text-primary shrink-0" />
                           <span>Response expectation: {cat.responseExpectation}</span>
                         </span>
                       </div>
                     </div>
 
-                    <p className="text-xs text-muted-foreground leading-relaxed sm:pl-14">
+                    <p className="text-xs text-muted-foreground leading-relaxed sm:pl-16">
                       {cat.description}
                     </p>
 
                     {cat.suggestedTags && cat.suggestedTags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 sm:pl-14 pt-1">
+                      <div className="flex flex-wrap gap-1.5 sm:pl-16 pt-1">
                         {cat.suggestedTags.map((tag) => (
                           <span
                             key={tag}
-                            className="px-2 py-0.5 rounded-lg bg-muted text-[10px] font-mono text-muted-foreground"
+                            className="px-2.5 py-0.5 rounded-lg bg-muted/80 text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors"
                           >
                             #{tag}
                           </span>
@@ -218,7 +209,7 @@ export function AllCategoriesModal({
                       onSelectCategory(cat.key);
                       onClose();
                     }}
-                    className="sm:self-center shrink-0 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl text-white text-xs font-bold transition active:scale-95 touch-target shadow-xs"
+                    className="sm:self-center shrink-0 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl text-white text-xs font-bold transition-all active:scale-95 touch-target shadow-md hover:shadow-lg hover:brightness-105"
                     style={{
                       backgroundColor: token.primary,
                     }}

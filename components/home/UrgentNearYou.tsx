@@ -25,6 +25,7 @@ import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { formatWaitingTime } from '@/lib/utils/formatTime';
 import { PrimaryHelpButton } from '@/components/requests/ActionButtons';
 import { getCategoryToken } from '@/lib/data/categoryColors';
+import { CategoryEmblem } from '@/components/categories/CategoryEmblem';
 import {
   formatCategoryTitle,
   getCategoryByKey,
@@ -379,13 +380,13 @@ export function UrgentNearYou({
                   <div className="flex flex-col min-[400px]:flex-row min-[400px]:items-center justify-between gap-3">
                     {/* Left: Category icon in tinted circle + Content details */}
                     <div className="flex items-start gap-3 min-w-0 flex-1">
-                      {/* Category icon in a tinted circle */}
-                      <div
-                        className="h-10 w-10 rounded-full flex items-center justify-center shrink-0 border"
-                        style={circleStyle}
-                      >
-                        {categoryChip.icon}
-                      </div>
+                      {/* Category icon with bespoke multi-stop gradient emblem */}
+                      <CategoryEmblem
+                        category={req.category}
+                        customLabel={req.customCategoryLabel}
+                        size="md"
+                        glow={true}
+                      />
 
                       {/* Content column */}
                       <div className="min-w-0 flex-1 space-y-1.5">

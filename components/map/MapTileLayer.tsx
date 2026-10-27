@@ -67,7 +67,7 @@ interface MapRuntimeConfig {
 // ============================================================================
 export const CIRCUIT_BREAKER_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
 export const PRIMARY_FAILOVER_TIMEOUT_MS = 4000; // 4-second failover chain timeout on desktop
-export const MOBILE_FAILOVER_TIMEOUT_MS = 2500; // 2.5-second failover timeout on mobile / touch / constrained WebGL
+export const MOBILE_FAILOVER_TIMEOUT_MS = 1500; // 1.5-second failover timeout on mobile / touch / constrained WebGL
 const STORAGE_PREFIX = 'kindlink_map_circuit_';
 
 /**
@@ -311,7 +311,7 @@ export function MapTileLayer({
   const [runtimeConfig, setRuntimeConfig] = useState<MapRuntimeConfig>(
     resolvedConfig || DEFAULT_CONFIG
   );
-  const [, setCircuitVersion] = useState(0);
+  const [circuitVersion, setCircuitVersion] = useState(0);
   const [firstTileLoaded, setFirstTileLoaded] = useState(false);
 
   const isDark =
@@ -383,7 +383,7 @@ export function MapTileLayer({
 
     // 5) All failed
     return 'none';
-  }, [baseMapMode, maptilerApiKey, webGLAvailable, setCircuitVersion]);
+  }, [baseMapMode, maptilerApiKey, webGLAvailable, circuitVersion]);
 
   const isFallback = activeProvider !== 'openfreemap';
 
@@ -420,6 +420,7 @@ export function MapTileLayer({
       setTimeout(() => map.invalidateSize(), 150),
       setTimeout(() => map.invalidateSize(), 300),
       setTimeout(() => map.invalidateSize(), 600),
+      setTimeout(() => map.invalidateSize(), 1200),
     ];
 
     let observer: ResizeObserver | null = null;
@@ -429,6 +430,7 @@ export function MapTileLayer({
         if (container.clientWidth > 0 && container.clientHeight > 0) {
           map.invalidateSize();
           if (glLayerRef.current) {
+            glLayerRef.current.resize?.();
             glLayerRef.current.getGLMap()?.resize();
           }
         }
@@ -494,7 +496,7 @@ export function MapTileLayer({
     ? MOBILE_FAILOVER_TIMEOUT_MS
     : PRIMARY_FAILOVER_TIMEOUT_MS;
 
-  // 10. Failover Timer: 2.5s on mobile/touch/constrained WebGL, 4s on desktop
+  // 10. Failover Timer: 1.5s on mobile/touch/constrained WebGL, 4s on desktop
   useEffect(() => {
     if (activeProvider === 'openfreemap') {
       const timer = setTimeout(() => {
@@ -502,11 +504,37 @@ export function MapTileLayer({
           tileFailoverCircuitBreaker.trip(
             'openfreemap',
             isConstrainedMobile
-              ? '2.5-second mobile/constrained vector tile load timeout elapsed'
+              ? '1.5-second mobile/constrained vector tile load timeout elapsed'
               : '4-second tile load timeout elapsed'
           );
         }
       }, vectorFailoverTimeout);
+
+      return () => clearTimeout(timer);
+    }
+
+    if (activeProvider === 'maptiler') {
+      const timer = setTimeout(() => {
+        if (!firstTileLoaded) {
+          tileFailoverCircuitBreaker.trip(
+            'maptiler',
+            'MapTiler tile load timeout elapsed'
+          );
+        }
+      }, vectorFailoverTimeout);
+
+      return () => clearTimeout(timer);
+    }
+
+    if (activeProvider === 'carto') {
+      const timer = setTimeout(() => {
+        if (!firstTileLoaded) {
+          tileFailoverCircuitBreaker.trip(
+            'carto',
+            'CartoDB tile load timeout elapsed (3s)'
+          );
+        }
+      }, 3000);
 
       return () => clearTimeout(timer);
     }
@@ -637,69 +665,79 @@ export function MapTileLayer({
 
     // C) CARTODB (Tertiary Clean Vector-Styled Raster Fallback)
     if (activeProvider === 'carto') {
-      const cartoUrl = isDark
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-      const layer = new (ReferrerTileLayer as any)(cartoUrl, {
-        subdomains: 'abcd',
-        tileSize: 256,
-        zoomOffset: 0,
-        detectRetina: true,
-        minZoom: runtimeConfig.minZoom ?? 4,
-        maxZoom: runtimeConfig.maxZoom ?? 19,
-        bounds: L.latLngBounds(runtimeConfig.bounds || INDIA_BOUNDS),
-        crossOrigin: true,
-      });
+      try {
+        const cartoUrl = isDark
+          ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+          : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+        const layer = new (ReferrerTileLayer as any)(cartoUrl, {
+          subdomains: 'abcd',
+          tileSize: 256,
+          zoomOffset: 0,
+          detectRetina: true,
+          minZoom: runtimeConfig.minZoom ?? 4,
+          maxZoom: runtimeConfig.maxZoom ?? 19,
+          bounds: L.latLngBounds(runtimeConfig.bounds || INDIA_BOUNDS),
+          crossOrigin: true,
+        });
 
-      let errorCount = 0;
-      layer.on('tileerror', () => {
-        errorCount++;
-        if (errorCount >= 2) {
-          tileFailoverCircuitBreaker.trip('carto', 'CartoDB tile server unreachable (2+ errors)');
-        }
-      });
+        let errorCount = 0;
+        layer.on('tileerror', () => {
+          errorCount++;
+          if (errorCount >= 2) {
+            tileFailoverCircuitBreaker.trip('carto', 'CartoDB tile server unreachable (2+ errors)');
+          }
+        });
 
-      layer.on('tileload', recordTileSuccess);
-      layer.addTo(map);
-      tileLayerRef.current = layer;
+        layer.on('tileload', recordTileSuccess);
+        layer.addTo(map);
+        tileLayerRef.current = layer;
+      } catch (err) {
+        console.warn('[MapEngine] Failed to initialize CartoDB layer:', err);
+        tileFailoverCircuitBreaker.trip('carto', 'CartoDB initialization failure');
+      }
       return;
     }
 
     // D) OPENSTREETMAP (Quaternary Last Resort)
     if (activeProvider === 'osm') {
-      const osmUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-      const layer = new (ReferrerTileLayer as any)(osmUrl, {
-        tileSize: 256,
-        zoomOffset: 0,
-        detectRetina: false,
-        minZoom: runtimeConfig.minZoom ?? 4,
-        maxZoom: runtimeConfig.maxZoom ?? 19,
-        bounds: L.latLngBounds(runtimeConfig.bounds || INDIA_BOUNDS),
-        crossOrigin: true,
-      });
+      try {
+        const osmUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+        const layer = new (ReferrerTileLayer as any)(osmUrl, {
+          tileSize: 256,
+          zoomOffset: 0,
+          detectRetina: false,
+          minZoom: runtimeConfig.minZoom ?? 4,
+          maxZoom: runtimeConfig.maxZoom ?? 19,
+          bounds: L.latLngBounds(runtimeConfig.bounds || INDIA_BOUNDS),
+          crossOrigin: true,
+        });
 
-      let errorCount = 0;
-      layer.on('tileerror', () => {
-        errorCount++;
-        if (errorCount >= 2) {
-          tileFailoverCircuitBreaker.trip('osm', 'OSM tile server unreachable (2+ errors)');
+        let errorCount = 0;
+        layer.on('tileerror', () => {
+          errorCount++;
+          if (errorCount >= 2) {
+            tileFailoverCircuitBreaker.trip('osm', 'OSM tile server unreachable (2+ errors)');
+          }
+        });
+
+        layer.on('tileload', recordTileSuccess);
+        layer.addTo(map);
+        tileLayerRef.current = layer;
+
+        // Apply CSS Dark Filter for OSM raster tiles in dark mode
+        const container = layer.getContainer();
+        if (container) {
+          if (isDark) {
+            container.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
+            container.classList.add('osm-dark-tiles');
+          } else {
+            container.style.filter = '';
+            container.classList.remove('osm-dark-tiles');
+          }
         }
-      });
-
-      layer.on('tileload', recordTileSuccess);
-      layer.addTo(map);
-      tileLayerRef.current = layer;
-
-      // Apply CSS Dark Filter for OSM raster tiles in dark mode
-      const container = layer.getContainer();
-      if (container) {
-        if (isDark) {
-          container.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
-          container.classList.add('osm-dark-tiles');
-        } else {
-          container.style.filter = '';
-          container.classList.remove('osm-dark-tiles');
-        }
+      } catch (err) {
+        console.warn('[MapEngine] Failed to initialize OSM layer:', err);
+        tileFailoverCircuitBreaker.trip('osm', 'OSM initialization failure');
       }
     }
   }, [

@@ -58,11 +58,12 @@ import { HelpFlowModal } from './HelpFlowModal';
 import { dataAdapter } from '@/lib/data';
 import { createClient } from '@/lib/supabase/client';
 import { OverlayPortal, useBodyScrollLock } from '@/components/ui/OverlayPortal';
+import { getCategoryToken } from '@/lib/data/categoryColors';
+import { formatCategoryTitle } from '@/lib/data/categories';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { formatTimeAgo, formatMinutesAgo } from '@/lib/utils/formatTime';
 import { OffersReceivedSection } from './OffersReceivedSection';
 import { StickyActionBar } from './StickyActionBar';
-import { getCategoryToken } from '@/lib/data/categoryColors';
 import { EndorsementChip } from './EndorsementChip';
 import { HandoverPinModal } from './HandoverPinModal';
 import { useSharedTicker } from '@/lib/utils/useSharedTicker';
@@ -106,45 +107,17 @@ const LIFECYCLE_STEPS: LifecycleStepItem[] = [
   { key: 'completed', label: 'Completed', icon: CheckCircle2, description: 'Aid fulfilled successfully' },
 ];
 
-function getCategoryConfig(category: HelpCategory) {
-  switch (category) {
-    case 'blood':
-      return {
-        label: 'Blood Need',
-        icon: Droplet,
-        badge: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30',
-      };
-    case 'equipment':
-      return {
-        label: 'Medical Gear',
-        icon: Package,
-        badge: 'bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/30',
-      };
-    case 'elderly':
-      return {
-        label: 'Elderly Care',
-        icon: HeartHandshake,
-        badge: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30',
-      };
-    case 'books':
-      return {
-        label: 'Books & Notes',
-        icon: BookOpen,
-        badge: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
-      };
-    case 'transport':
-      return {
-        label: 'Emergency Transit',
-        icon: Car,
-        badge: 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30',
-      };
-    default:
-      return {
-        label: String(category || 'General').replace('_', ' '),
-        icon: AlertTriangle,
-        badge: 'bg-muted text-foreground border-border',
-      };
-  }
+function getCategoryConfig(category: HelpCategory, customLabel?: string) {
+  const token = getCategoryToken(category, customLabel);
+  const label = formatCategoryTitle(category, customLabel);
+  return {
+    label,
+    icon: token.icon,
+    badge: token.badgeBg,
+    primary: token.primary,
+    gradient: token.gradient,
+    glowTailwind: token.glowTailwind,
+  };
 }
 
 function getUrgencyConfig(urgency: UrgencyLevel) {
@@ -842,7 +815,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
 
   const rawContact = typeof request.contactName === 'string' ? request.contactName.trim() : '';
   const requesterFirstName = rawContact ? rawContact.split(/\s+/)[0] : 'Community Member';
-  const categoryConfig = getCategoryConfig(request.category);
+  const categoryConfig = getCategoryConfig(request.category, request.customCategoryLabel);
   const urgencyConfig = getUrgencyConfig(request.urgency);
   const CategoryIcon = categoryConfig.icon;
   const UrgencyIcon = urgencyConfig.icon;
