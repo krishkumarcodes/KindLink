@@ -58,6 +58,7 @@ import { HelpFlowModal } from './HelpFlowModal';
 import { dataAdapter } from '@/lib/data';
 import { createClient } from '@/lib/supabase/client';
 import { OverlayPortal, useBodyScrollLock } from '@/components/ui/OverlayPortal';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { formatTimeAgo, formatMinutesAgo } from '@/lib/utils/formatTime';
 import { OffersReceivedSection } from './OffersReceivedSection';
 import { StickyActionBar } from './StickyActionBar';
@@ -139,7 +140,7 @@ function getCategoryConfig(category: HelpCategory) {
       };
     default:
       return {
-        label: (category as string).replace('_', ' '),
+        label: String(category || 'General').replace('_', ' '),
         icon: AlertTriangle,
         badge: 'bg-muted text-foreground border-border',
       };
@@ -174,7 +175,7 @@ function getUrgencyConfig(urgency: UrgencyLevel) {
       };
     default:
       return {
-        label: (urgency as string).toUpperCase(),
+        label: String(urgency || 'MEDIUM').toUpperCase(),
         icon: AlertCircle,
         badge: 'bg-muted text-muted-foreground border-border',
       };
@@ -484,9 +485,14 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
 
     let isMounted = true;
     setLoadingRoute(true);
+    const reqLat = Number(request.latitude) || 23.6889;
+    const reqLng = Number(request.longitude) || 86.9661;
+    const userLat = Number(userCoords?.lat) || 23.6889;
+    const userLng = Number(userCoords?.lng) || 86.9661;
+
     getRoadRoute(
-      { lat: userCoords.lat, lng: userCoords.lng },
-      { lat: request.latitude, lng: request.longitude },
+      { lat: userLat, lng: userLng },
+      { lat: reqLat, lng: reqLng },
       travelMode
     )
       .then((res) => {
@@ -501,8 +507,8 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
 
     setLoadingHospitals(true);
     getNearestMedicalFacilities({
-      lat: request.latitude,
-      lng: request.longitude,
+      lat: reqLat,
+      lng: reqLng,
       radiusMeters: 6000,
       limit: 3,
     })
@@ -519,7 +525,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     return () => {
       isMounted = false;
     };
-  }, [open, request, travelMode, userCoords.lat, userCoords.lng]);
+  }, [open, request, travelMode, userCoords?.lat, userCoords?.lng]);
 
   // Keyboard navigation & escape handling
   useEffect(() => {
@@ -540,7 +546,8 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
 
   if (!open || !request) return null;
 
-  const etaMinutes = calculateETA(request.distanceKm, travelMode);
+  const safeDistanceKm = typeof request.distanceKm === 'number' && !isNaN(request.distanceKm) ? request.distanceKm : 0;
+  const etaMinutes = calculateETA(safeDistanceKm, travelMode);
 
   // Accept Offer Handler
   const handleAcceptOffer = async (offer: VolunteerOffer) => {
@@ -830,7 +837,11 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
     activeStepIdx = 0;
   }
 
-  const requesterFirstName = (request.contactName || 'Community Member').trim().split(/\s+/)[0];
+  const safeStepIdx = Math.max(0, Math.min(LIFECYCLE_STEPS.length - 1, activeStepIdx));
+  const activeStepItem = LIFECYCLE_STEPS[safeStepIdx] || LIFECYCLE_STEPS[0];
+
+  const rawContact = typeof request.contactName === 'string' ? request.contactName.trim() : '';
+  const requesterFirstName = rawContact ? rawContact.split(/\s+/)[0] : 'Community Member';
   const categoryConfig = getCategoryConfig(request.category);
   const urgencyConfig = getUrgencyConfig(request.urgency);
   const CategoryIcon = categoryConfig.icon;
@@ -969,7 +980,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                 {/* Status Chip */}
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
                   <span className="h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-pulse" />
-                  <span className="capitalize">{LIFECYCLE_STEPS[activeStepIdx].label}</span>
+                  <span className="capitalize">{activeStepItem.label}</span>
                 </span>
 
                 {/* Your Request Badge */}
@@ -1048,7 +1059,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                   <span>Progress</span>
                 </span>
                 <span className="text-primary font-black uppercase text-[11px] bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
-                  {LIFECYCLE_STEPS[activeStepIdx].label}
+                  {activeStepItem.label}
                 </span>
               </div>
 
@@ -1061,13 +1072,13 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                   <div
                     className="absolute left-4 top-4 h-1 bg-primary rounded-full transition-all duration-300 -z-0"
                     style={{
-                      width: `calc(${(activeStepIdx / (LIFECYCLE_STEPS.length - 1)) * 100}% - 2rem)`,
+                      width: `calc(${(safeStepIdx / (LIFECYCLE_STEPS.length - 1)) * 100}% - 2rem)`,
                     }}
                   />
 
                   {LIFECYCLE_STEPS.map((step, idx) => {
-                    const isCompleted = idx < activeStepIdx;
-                    const isCurrent = idx === activeStepIdx;
+                    const isCompleted = idx < safeStepIdx;
+                    const isCurrent = idx === safeStepIdx;
                     const StepIcon = step.icon;
 
                     return (
@@ -1129,13 +1140,13 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                   <div
                     className="absolute left-2 top-1/2 -translate-y-1/2 h-1 bg-primary rounded-full transition-all duration-300 -z-0"
                     style={{
-                      width: `calc(${(activeStepIdx / (LIFECYCLE_STEPS.length - 1)) * 100}% - 1rem)`,
+                      width: `calc(${(safeStepIdx / (LIFECYCLE_STEPS.length - 1)) * 100}% - 1rem)`,
                     }}
                   />
 
                   {LIFECYCLE_STEPS.map((step, idx) => {
-                    const isCompleted = idx < activeStepIdx;
-                    const isCurrent = idx === activeStepIdx;
+                    const isCompleted = idx < safeStepIdx;
+                    const isCurrent = idx === safeStepIdx;
 
                     return (
                       <div
@@ -1158,8 +1169,8 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                 {/* One clear line "Step X of 6 · <Status>" and time of last update */}
                 <div className="flex items-center justify-between text-xs pt-0.5">
                   <span className="font-bold text-foreground">
-                    Step {activeStepIdx + 1} of 6 ·{' '}
-                    <span className="text-primary">{LIFECYCLE_STEPS[activeStepIdx].label}</span>
+                    Step {safeStepIdx + 1} of 6 ·{' '}
+                    <span className="text-primary">{activeStepItem.label}</span>
                   </span>
                   <span className="text-[11px] text-muted-foreground font-medium">
                     {lastUpdateTrackerText}
@@ -1708,7 +1719,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                                 )}
                               </div>
                               <p className="text-[11px] text-muted-foreground line-clamp-1">
-                                📍 {facility.distanceKm.toFixed(1)} km away
+                                📍 {typeof facility.distanceKm === 'number' && !isNaN(facility.distanceKm) ? facility.distanceKm.toFixed(1) : '0.0'} km away
                                 {facility.address ? ` · ${facility.address}` : ''}
                               </p>
                             </div>
@@ -1752,13 +1763,18 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                 4. OFFERS RECEIVED SECTION (Owner View)
                ===================================================================== */}
             {isRequester && (
-              <OffersReceivedSection
-                request={request}
-                offers={offers}
-                actionInProgress={actionInProgress}
-                onAcceptOffer={handleAcceptOffer}
-                onDeclineOffer={handleDeclineOffer}
-              />
+              <ErrorBoundary
+                title="Volunteer Offers"
+                message="Could not load volunteer offers for this request. Tap retry to attempt again."
+              >
+                <OffersReceivedSection
+                  request={request}
+                  offers={offers}
+                  actionInProgress={actionInProgress}
+                  onAcceptOffer={handleAcceptOffer}
+                  onDeclineOffer={handleDeclineOffer}
+                />
+              </ErrorBoundary>
             )}
 
             {/* =====================================================================
@@ -1799,20 +1815,27 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                 {isRequester ? (
                   <div className="p-3.5 rounded-2xl bg-card border border-border/80 flex flex-col sm:flex-row items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      {(request.handoverPin || '4821').split('').map((digit, idx) => (
-                        <div
-                          key={idx}
-                          className="w-11 h-13 sm:w-12 sm:h-14 rounded-xl border-2 border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-mono font-black text-2xl flex items-center justify-center shadow-xs"
-                        >
-                          {digit}
-                        </div>
-                      ))}
+                      {String(request.handoverPin || '4821')
+                        .padStart(4, '0')
+                        .slice(0, 4)
+                        .split('')
+                        .map((digit, idx) => (
+                          <div
+                            key={idx}
+                            className="w-11 h-13 sm:w-12 sm:h-14 rounded-xl border-2 border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-mono font-black text-2xl flex items-center justify-center shadow-xs"
+                          >
+                            {digit}
+                          </div>
+                        ))}
                     </div>
 
                     <button
                       type="button"
                       onClick={() => {
-                        navigator.clipboard.writeText(request.handoverPin || '4821');
+                        const pinToCopy = String(request.handoverPin || '4821').padStart(4, '0').slice(0, 4);
+                        if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                          navigator.clipboard.writeText(pinToCopy).catch(() => {});
+                        }
                         toast.success('Handover PIN copied to clipboard');
                       }}
                       className="px-3.5 py-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition flex items-center gap-1.5 touch-target"
@@ -1878,13 +1901,15 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                 {transitLocation && (
                   <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs">
                     <span className="text-emerald-700 dark:text-emerald-300 font-semibold">
-                      Helper en route: ({transitLocation.lat.toFixed(4)}, {transitLocation.lng.toFixed(4)})
+                      Helper en route: ({Number(transitLocation.lat ?? 0).toFixed(4)}, {Number(transitLocation.lng ?? 0).toFixed(4)})
                     </span>
                     <span className="text-[10px] text-muted-foreground">
-                      {new Date(transitLocation.updatedAt).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {transitLocation.updatedAt && !isNaN(new Date(transitLocation.updatedAt).getTime())
+                        ? new Date(transitLocation.updatedAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : 'Recently'}
                     </span>
                   </div>
                 )}

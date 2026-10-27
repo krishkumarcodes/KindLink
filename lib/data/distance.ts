@@ -36,20 +36,24 @@ export function calculateDistance(
  * Calculates estimated travel time in minutes based on distance and travel mode
  */
 export function calculateETA(distanceKm: number, mode: TravelMode = 'bike'): number {
+  const safeDistance = typeof distanceKm === 'number' && !isNaN(distanceKm) ? Math.max(0, distanceKm) : 0;
   const speedKmh = TRAVEL_SPEEDS[mode] || 15;
-  const hours = distanceKm / speedKmh;
+  const hours = safeDistance / speedKmh;
   const minutes = Math.max(1, Math.round(hours * 60));
-  return minutes;
+  return Number.isFinite(minutes) ? minutes : 1;
 }
 
 /**
  * Formats estimated time into clean friendly human-readable text
  */
 export function formatETA(minutes: number): string {
+  if (!Number.isFinite(minutes) || minutes < 1) {
+    return '1 min';
+  }
   if (minutes < 60) {
-    return `${minutes} min`;
+    return `${Math.round(minutes)} min`;
   }
   const hrs = Math.floor(minutes / 60);
-  const rem = minutes % 60;
+  const rem = Math.round(minutes % 60);
   return rem === 0 ? `${hrs} hr` : `${hrs}h ${rem}m`;
 }

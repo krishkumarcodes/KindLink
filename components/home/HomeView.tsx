@@ -39,6 +39,7 @@ import { CommunityPulse } from './CommunityPulse';
 import { RequestDetailModal } from '../requests/RequestDetailModal';
 import { HelpFlowModal } from '../requests/HelpFlowModal';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { useTranslation } from '@/lib/i18n';
 
 // Cleanly extract first name only, stripping titles, prefixes, parentheses, suffixes, and mock names
@@ -755,11 +756,17 @@ export function HomeView() {
         categoryStats={categoryStats}
         onSelectCategory={handleCategoryClick}
       />
-      <RequestDetailModal
-        request={selectedDetailRequest}
-        open={Boolean(selectedDetailRequest)}
-        onClose={() => setSelectedDetailRequest(null)}
-      />
+      <ErrorBoundary
+        title="Request Details"
+        message="Unable to open this request. Tap retry or select another item."
+        onReset={() => setSelectedDetailRequest(null)}
+      >
+        <RequestDetailModal
+          request={selectedDetailRequest}
+          open={Boolean(selectedDetailRequest)}
+          onClose={() => setSelectedDetailRequest(null)}
+        />
+      </ErrorBoundary>
       <HelpFlowModal
         request={helpFlowRequest}
         open={Boolean(helpFlowRequest)}

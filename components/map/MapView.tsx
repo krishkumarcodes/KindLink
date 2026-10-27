@@ -43,6 +43,7 @@ import { getRoadRoute, RoadRouteResult } from '@/lib/geo/osrm';
 import { dataAdapter } from '@/lib/data';
 import type { MapLayersState } from './LeafletInnerMap';
 import { RequestDetailModal } from '../requests/RequestDetailModal';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { HelpFlowModal } from '../requests/HelpFlowModal';
 import { PrimaryHelpButton, SecondaryButton } from '../requests/ActionButtons';
 
@@ -1976,11 +1977,17 @@ export function MapView() {
       {/* =========================================================================
           FULL DETAIL MODAL (Opens full request sheet)
           ========================================================================= */}
-      <RequestDetailModal
-        request={activeItem?.type === 'request' ? activeItem.data : null}
-        open={detailModalOpen}
-        onClose={() => setDetailModalOpen(false)}
-      />
+      <ErrorBoundary
+        title="Request Details"
+        message="Unable to open this request from the map. Tap retry or select another item."
+        onReset={() => setDetailModalOpen(false)}
+      >
+        <RequestDetailModal
+          request={activeItem?.type === 'request' ? activeItem.data : null}
+          open={detailModalOpen}
+          onClose={() => setDetailModalOpen(false)}
+        />
+      </ErrorBoundary>
 
       {/* =========================================================================
           HELP FLOW MODAL ("I can help")

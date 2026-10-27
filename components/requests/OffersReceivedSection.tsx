@@ -191,13 +191,13 @@ export function OffersReceivedSection({
                       className="h-10 w-10 rounded-2xl flex items-center justify-center font-bold text-sm text-white shrink-0 shadow-xs"
                       style={{ backgroundColor: categoryToken.primary }}
                     >
-                      {offer.helperName.charAt(0).toUpperCase()}
+                      {(offer.helperName || 'Volunteer').charAt(0).toUpperCase()}
                     </div>
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-sm font-bold text-foreground truncate">
-                          {offer.helperName}
+                          {offer.helperName || 'Verified Volunteer'}
                         </span>
                         <ShieldCheck
                           className="h-4 w-4 text-emerald-500 shrink-0 notranslate"
@@ -205,7 +205,7 @@ export function OffersReceivedSection({
                         />
                       </div>
                       <span className="text-[11px] text-muted-foreground block truncate">
-                        Offered {offer.createdAt}
+                        Offered {offer.createdAt || 'recently'}
                       </span>
                     </div>
                   </div>
@@ -222,14 +222,14 @@ export function OffersReceivedSection({
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground pt-0.5">
                   <span className="inline-flex items-center gap-1 font-semibold text-foreground">
                     <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 notranslate" />
-                    <span>{offer.helperRating.toFixed(1)}</span>
+                    <span>{typeof offer.helperRating === 'number' && !isNaN(offer.helperRating) ? offer.helperRating.toFixed(1) : '5.0'}</span>
                   </span>
 
                   <span className="text-border">•</span>
 
                   <span className="inline-flex items-center gap-1">
                     <MapPin className="h-3.5 w-3.5 text-primary notranslate" />
-                    <span>{offer.helperDistanceKm ?? 1.2} km away</span>
+                    <span>{typeof offer.helperDistanceKm === 'number' && !isNaN(offer.helperDistanceKm) ? offer.helperDistanceKm.toFixed(1) : '1.2'} km away</span>
                   </span>
 
                   <span className="text-border">•</span>
@@ -237,7 +237,7 @@ export function OffersReceivedSection({
                   <span className="inline-flex items-center gap-1">
                     <Clock className="h-3.5 w-3.5 text-primary notranslate" />
                     <span>
-                      {offer.helperEtaMinutes
+                      {typeof offer.helperEtaMinutes === 'number' && !isNaN(offer.helperEtaMinutes)
                         ? `Can arrive in ~${offer.helperEtaMinutes}m`
                         : 'Ready immediately'}
                     </span>
@@ -355,7 +355,7 @@ export function OffersReceivedSection({
 
             <div className="text-center space-y-1.5">
               <h3 id="accept-confirm-title" className="text-lg font-bold text-foreground">
-                Accept {confirmAcceptOffer.helperName} as your helper?
+                Accept {confirmAcceptOffer.helperName || 'Volunteer'} as your helper?
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 They will see your phone number so you can coordinate help quickly and safely.
@@ -368,10 +368,10 @@ export function OffersReceivedSection({
               </div>
               <div className="min-w-0">
                 <span className="font-bold text-foreground block">
-                  {request.contactName}: {request.phone}
+                  {request.contactName || 'Requester'}: {request.phone || 'Available for coordination'}
                 </span>
                 <span className="text-[11px] text-muted-foreground">
-                  Shared exclusively with {confirmAcceptOffer.helperName}
+                  Shared exclusively with {confirmAcceptOffer.helperName || 'Helper'}
                 </span>
               </div>
             </div>
@@ -428,7 +428,7 @@ export function OffersReceivedSection({
             <div className="flex items-start justify-between">
               <div>
                 <h3 id="decline-confirm-title" className="text-base font-bold text-foreground">
-                  Decline offer from {declineOfferTarget.helperName}?
+                  Decline offer from {declineOfferTarget.helperName || 'Volunteer'}?
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Select an optional reason to let the volunteer know:

@@ -33,6 +33,7 @@ import { RequestDetailModal } from './RequestDetailModal';
 import { HelpFlowModal } from './HelpFlowModal';
 import { useTranslation } from '@/lib/i18n';
 import { ModalOverlay } from '@/components/ui/OverlayPortal';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { SwitchRow } from '@/components/ui/Switch';
 import { STANDARD_CATEGORIES, CATEGORY_ICON_MAP } from '@/lib/data/categories';
 import { getCategoryToken } from '@/lib/data/categoryColors';
@@ -788,11 +789,17 @@ export function RequestsView() {
       )}
 
       {/* Modals */}
-      <RequestDetailModal
-        request={activeDetailRequest}
-        open={Boolean(activeDetailRequest)}
-        onClose={() => setSelectedRequestId(null)}
-      />
+      <ErrorBoundary
+        title="Request Details"
+        message="Unable to open this request. Tap retry or select another item."
+        onReset={() => setSelectedRequestId(null)}
+      >
+        <RequestDetailModal
+          request={activeDetailRequest}
+          open={Boolean(activeDetailRequest)}
+          onClose={() => setSelectedRequestId(null)}
+        />
+      </ErrorBoundary>
 
       <HelpFlowModal
         request={helpFlowReq}
