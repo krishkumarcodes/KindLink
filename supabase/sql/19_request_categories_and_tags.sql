@@ -103,7 +103,6 @@ ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS tags text[] DEFAULT '{}'::t
 CREATE INDEX IF NOT EXISTS requests_category_text_idx ON public.requests (category);
 CREATE INDEX IF NOT EXISTS requests_custom_category_label_idx ON public.requests (custom_category_label) WHERE custom_category_label IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_requests_tags ON public.requests USING GIN (tags);
-CREATE INDEX IF NOT EXISTS requests_tags_gin_idx ON public.requests USING gin(tags);
 
 -- ------------------------------------------------------------------------------
 -- 3. SEED THE 15 CATEGORIES (5 EXISTING + 10 NEW)

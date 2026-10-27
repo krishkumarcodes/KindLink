@@ -241,7 +241,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
 
   const isAlreadyEndorsedByMe = Boolean(
     request?.endorsedByOrgNames?.some(
-      (name) => name.toLowerCase() === myOrgName.toLowerCase()
+      (name) => typeof name === 'string' && name.toLowerCase() === myOrgName.toLowerCase()
     )
   );
 
@@ -1226,7 +1226,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                 </div>
                 <div className="my-1.5">
                   <span className="text-base sm:text-lg font-extrabold text-foreground tracking-tight block truncate">
-                    {routeResult?.distanceKm ? `${routeResult.distanceKm} km` : `${request.distanceKm} km`}
+                    {routeResult?.distanceKm ? `${routeResult.distanceKm} km` : typeof request.distanceKm === 'number' ? `${request.distanceKm} km` : '0 km'}
                   </span>
                 </div>
                 <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium truncate">
@@ -1349,7 +1349,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                       </h4>
                       <p className="text-[11px] text-muted-foreground">
                         {Boolean(request.isOrganizationEndorsed || (request.endorsementsCount && request.endorsementsCount > 0))
-                          ? `Endorsed by: ${(request.endorsedByOrgNames && request.endorsedByOrgNames.length > 0) ? request.endorsedByOrgNames.join(', ') : 'Accredited Community Partner'}`
+                          ? `Endorsed by: ${(request.endorsedByOrgNames && request.endorsedByOrgNames.length > 0) ? request.endorsedByOrgNames.filter(Boolean).join(', ') : 'Accredited Community Partner'}`
                           : 'No organizations have endorsed this request yet.'}
                       </p>
                     </div>
@@ -1523,31 +1523,33 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
                     <div>
                       <p className="text-xs font-bold text-foreground">
-                        {contactInfo?.name || request.contactName}
+                        {contactInfo?.name || request.contactName || 'Requester'}
                       </p>
                       <p className="text-xs text-muted-foreground font-mono">
-                        {contactInfo?.phone || request.phone}
+                        {contactInfo?.phone || request.phone || 'Contact available once shared'}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={`tel:${(contactInfo?.phone || request.phone).replace(/[^0-9+]/g, '')}`}
-                        className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold transition-colors shadow-xs touch-target focus-visible:ring-2 focus-visible:ring-emerald-500"
-                      >
-                        <Phone className="h-3.5 w-3.5 notranslate" />
-                        <span>Call</span>
-                      </a>
-                      <a
-                        href={`https://wa.me/${(contactInfo?.phone || request.phone).replace(/[^0-9]/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white px-3.5 py-2 text-xs font-bold transition-colors shadow-xs touch-target focus-visible:ring-2 focus-visible:ring-emerald-500"
-                      >
-                        <MessageCircle className="h-3.5 w-3.5 notranslate" />
-                        <span>WhatsApp</span>
-                      </a>
-                    </div>
+                    {Boolean(contactInfo?.phone || request.phone) && (
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`tel:${String(contactInfo?.phone || request.phone || '').replace(/[^0-9+]/g, '')}`}
+                          className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold transition-colors shadow-xs touch-target focus-visible:ring-2 focus-visible:ring-emerald-500"
+                        >
+                          <Phone className="h-3.5 w-3.5 notranslate" />
+                          <span>Call</span>
+                        </a>
+                        <a
+                          href={`https://wa.me/${String(contactInfo?.phone || request.phone || '').replace(/[^0-9]/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white px-3.5 py-2 text-xs font-bold transition-colors shadow-xs touch-target focus-visible:ring-2 focus-visible:ring-emerald-500"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5 notranslate" />
+                          <span>WhatsApp</span>
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -1577,7 +1579,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                   <span className="truncate">
                     You to this request:{' '}
                     <strong className="text-foreground font-semibold">
-                      {routeResult?.distanceKm ? `${routeResult.distanceKm} km` : `${request.distanceKm} km`}
+                      {routeResult?.distanceKm ? `${routeResult.distanceKm} km` : typeof request.distanceKm === 'number' ? `${request.distanceKm} km` : '0 km'}
                       {' · '}
                       {formatETA(etaMinutes)} by {travelMode}
                     </strong>
@@ -1595,14 +1597,14 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
               <div className="pt-0.5">
                 <RequestRouteMiniMap
                   requestId={request.id}
-                  origin={[userCoords.lat, userCoords.lng]}
-                  destination={[request.latitude, request.longitude]}
+                  origin={[userCoords?.lat ?? 23.6889, userCoords?.lng ?? 86.9661]}
+                  destination={[Number(request.latitude) || 23.6889, Number(request.longitude) || 86.9661]}
                   routeCoordinates={
                     routeResult?.coordinates && routeResult.coordinates.length > 0
                       ? routeResult.coordinates
                       : [
-                          [userCoords.lat, userCoords.lng],
-                          [request.latitude, request.longitude],
+                          [userCoords?.lat ?? 23.6889, userCoords?.lng ?? 86.9661],
+                          [Number(request.latitude) || 23.6889, Number(request.longitude) || 86.9661],
                         ]
                   }
                   isStraightLine={Boolean(routeResult?.isFallback || routeResult?.source === 'straight-line')}
@@ -1710,7 +1712,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                                       : 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
                                   }`}
                                 >
-                                  {facility.type.replace('_', ' ')}
+                                  {facility.type ? facility.type.replace('_', ' ') : 'Facility'}
                                 </span>
                                 {facility.emergency && (
                                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
@@ -1727,7 +1729,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                             <div className="flex items-center gap-2 shrink-0">
                               {facility.phone && (
                                 <a
-                                  href={`tel:${facility.phone.replace(/[^0-9+]/g, '')}`}
+                                  href={`tel:${String(facility.phone).replace(/[^0-9+]/g, '')}`}
                                   className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition shadow-xs touch-target"
                                   title="Call Facility"
                                 >

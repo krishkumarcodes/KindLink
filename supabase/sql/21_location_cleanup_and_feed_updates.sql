@@ -15,13 +15,23 @@
 -- ==============================================================================
 
 -- ------------------------------------------------------------------------------
--- 1. DROP LEGACY NEARBY_REQUESTS SIGNATURES (if any)
+-- 1. DROP LEGACY NEARBY_REQUESTS SIGNATURES (Safe execution)
 -- ------------------------------------------------------------------------------
-DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, public.help_category, integer, integer);
-DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, public.help_category, integer, integer, uuid);
 DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, text, integer, integer);
 DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, text, text, integer, integer);
 DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, text, text, integer, integer, uuid);
+
+DO $$
+BEGIN
+  BEGIN
+    EXECUTE 'DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, public.help_category, integer, integer)';
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+  BEGIN
+    EXECUTE 'DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, public.help_category, integer, integer, uuid)';
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+END $$;
 
 -- ------------------------------------------------------------------------------
 -- 2. CREATE UPDATED DATA-DRIVEN NEARBY_REQUESTS FUNCTION
