@@ -77,25 +77,35 @@ export function StickyActionBar({
             <button
               type="button"
               onClick={onOpenRating}
-              style={{ backgroundColor: categoryToken.primary }}
-              className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap min-w-0"
+              style={{
+                backgroundColor: categoryToken.primary,
+                boxShadow: `inset 0 1px 1px rgba(255,255,255,0.4), 0 6px 20px rgba(0,0,0,0.12), 0 4px 14px 0 ${categoryToken.glow}`,
+              }}
+              className={`relative overflow-hidden flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm bg-gradient-to-r ${categoryToken.gradient} shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(0,0,0,0.12)] shadow-md ${categoryToken.glowTailwind || ''} hover:brightness-105 active:scale-[0.98] transition-all duration-150 touch-target flex items-center justify-center gap-2 whitespace-nowrap min-w-0`}
             >
-              <Star className="h-5 w-5 fill-white notranslate shrink-0" />
-              <span>Rate helper</span>
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 via-white/10 to-transparent rounded-t-[inherit]" aria-hidden="true" />
+              <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/15 to-transparent rounded-b-[inherit]" aria-hidden="true" />
+              <Star className="relative z-10 h-5 w-5 fill-white notranslate shrink-0 stroke-[2.2] filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.25)]" />
+              <span className="relative z-10 font-bold leading-none">Rate helper</span>
             </button>
           ) : isAcceptedHelper ? (
             <button
               type="button"
               onClick={onOpenRating}
-              style={{ backgroundColor: categoryToken.primary }}
-              className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap min-w-0"
+              style={{
+                backgroundColor: categoryToken.primary,
+                boxShadow: `inset 0 1px 1px rgba(255,255,255,0.4), 0 6px 20px rgba(0,0,0,0.12), 0 4px 14px 0 ${categoryToken.glow}`,
+              }}
+              className={`relative overflow-hidden flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm bg-gradient-to-r ${categoryToken.gradient} shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(0,0,0,0.12)] shadow-md ${categoryToken.glowTailwind || ''} hover:brightness-105 active:scale-[0.98] transition-all duration-150 touch-target flex items-center justify-center gap-2 whitespace-nowrap min-w-0`}
             >
-              <Star className="h-5 w-5 fill-white notranslate shrink-0" />
-              <span>Rate requester</span>
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 via-white/10 to-transparent rounded-t-[inherit]" aria-hidden="true" />
+              <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/15 to-transparent rounded-b-[inherit]" aria-hidden="true" />
+              <Star className="relative z-10 h-5 w-5 fill-white notranslate shrink-0 stroke-[2.2] filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.25)]" />
+              <span className="relative z-10 font-bold leading-none">Rate requester</span>
             </button>
           ) : (
             <div className="flex-1 h-[52px] rounded-[16px] bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-300 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 whitespace-nowrap min-w-0 px-3">
-              <CheckCircle2 className="h-5 w-5 notranslate text-emerald-600 shrink-0" />
+              <CheckCircle2 className="h-5 w-5 notranslate text-emerald-600 shrink-0 stroke-[2.2]" />
               <span className="truncate">Task successfully completed</span>
             </div>
           )}
@@ -124,15 +134,20 @@ export function StickyActionBar({
                 type="button"
                 disabled={Boolean(actionInProgress)}
                 onClick={() => onAdvanceStatus('completed')}
-                style={{ backgroundColor: categoryToken.primary }}
-                className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-60 min-w-0"
+                style={{
+                  backgroundColor: categoryToken.primary,
+                  boxShadow: `inset 0 1px 1px rgba(255,255,255,0.4), 0 6px 20px rgba(0,0,0,0.12), 0 4px 14px 0 ${categoryToken.glow}`,
+                }}
+                className={`relative overflow-hidden flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm bg-gradient-to-r ${categoryToken.gradient} shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(0,0,0,0.12)] shadow-md ${categoryToken.glowTailwind || ''} hover:brightness-105 active:scale-[0.98] transition-all duration-150 touch-target flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100 min-w-0`}
               >
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 via-white/10 to-transparent rounded-t-[inherit]" aria-hidden="true" />
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/15 to-transparent rounded-b-[inherit]" aria-hidden="true" />
                 {actionInProgress === 'completed' ? (
-                  <Loader2 className="h-5 w-5 animate-spin notranslate" />
+                  <Loader2 className="relative z-10 h-5 w-5 animate-spin notranslate stroke-[2.2]" />
                 ) : (
-                  <CheckCircle2 className="h-5 w-5 notranslate" />
+                  <CheckCircle2 className="relative z-10 h-5 w-5 notranslate stroke-[2.2] filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.25)]" />
                 )}
-                <span>Mark completed</span>
+                <span className="relative z-10 font-bold leading-none">Mark completed</span>
               </button>
 
               <SecondaryButton
@@ -184,7 +199,7 @@ export function StickyActionBar({
                 <button
                   type="button"
                   onClick={() => setConfirmCancelOpen(false)}
-                  className="flex-1 h-[48px] rounded-[16px] border border-border text-xs font-semibold hover:bg-muted transition touch-target"
+                  className="flex-1 h-[48px] rounded-[16px] backdrop-blur-md bg-card/85 dark:bg-card/75 border border-border/80 dark:border-white/15 text-xs font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_8px_rgba(0,0,0,0.04)] hover:border-primary/40 hover:bg-muted/80 hover:shadow-md hover:shadow-primary/10 active:scale-[0.98] transition-all duration-150 touch-target"
                 >
                   Keep Request
                 </button>
@@ -194,9 +209,11 @@ export function StickyActionBar({
                     setConfirmCancelOpen(false);
                     await onCancelRequest();
                   }}
-                  className="flex-1 h-[48px] rounded-[16px] bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs touch-target"
+                  className="relative overflow-hidden flex-1 h-[48px] rounded-[16px] bg-gradient-to-r from-rose-600 via-rose-600 to-red-600 text-white text-xs font-bold shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(244,63,94,0.3)] shadow-md shadow-rose-500/25 hover:brightness-105 active:scale-[0.98] transition-all duration-150 touch-target"
                 >
-                  Confirm Cancel
+                  <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 via-white/10 to-transparent rounded-t-[inherit]" aria-hidden="true" />
+                  <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/15 to-transparent rounded-b-[inherit]" aria-hidden="true" />
+                  <span className="relative z-10">Confirm Cancel</span>
                 </button>
               </div>
             </div>
@@ -216,15 +233,20 @@ export function StickyActionBar({
               type="button"
               disabled={Boolean(actionInProgress)}
               onClick={() => onAdvanceStatus('on_the_way')}
-              style={{ backgroundColor: categoryToken.primary }}
-              className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-60 min-w-0"
+              style={{
+                backgroundColor: categoryToken.primary,
+                boxShadow: `inset 0 1px 1px rgba(255,255,255,0.4), 0 6px 20px rgba(0,0,0,0.12), 0 4px 14px 0 ${categoryToken.glow}`,
+              }}
+              className={`relative overflow-hidden flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm bg-gradient-to-r ${categoryToken.gradient} shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(0,0,0,0.12)] shadow-md ${categoryToken.glowTailwind || ''} hover:brightness-105 active:scale-[0.98] transition-all duration-150 touch-target flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100 min-w-0`}
             >
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 via-white/10 to-transparent rounded-t-[inherit]" aria-hidden="true" />
+              <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/15 to-transparent rounded-b-[inherit]" aria-hidden="true" />
               {actionInProgress === 'on_the_way' ? (
-                <Loader2 className="h-5 w-5 animate-spin notranslate" />
+                <Loader2 className="relative z-10 h-5 w-5 animate-spin notranslate stroke-[2.2]" />
               ) : (
-                <Navigation className="h-5 w-5 notranslate" />
+                <Navigation className="relative z-10 h-5 w-5 notranslate stroke-[2.2] filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.25)]" />
               )}
-              <span>On the way</span>
+              <span className="relative z-10 font-bold leading-none">On the way</span>
             </button>
           )}
 
@@ -233,15 +255,20 @@ export function StickyActionBar({
               type="button"
               disabled={Boolean(actionInProgress)}
               onClick={() => onAdvanceStatus('arrived')}
-              style={{ backgroundColor: categoryToken.primary }}
-              className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-60 min-w-0"
+              style={{
+                backgroundColor: categoryToken.primary,
+                boxShadow: `inset 0 1px 1px rgba(255,255,255,0.4), 0 6px 20px rgba(0,0,0,0.12), 0 4px 14px 0 ${categoryToken.glow}`,
+              }}
+              className={`relative overflow-hidden flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm bg-gradient-to-r ${categoryToken.gradient} shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(0,0,0,0.12)] shadow-md ${categoryToken.glowTailwind || ''} hover:brightness-105 active:scale-[0.98] transition-all duration-150 touch-target flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100 min-w-0`}
             >
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 via-white/10 to-transparent rounded-t-[inherit]" aria-hidden="true" />
+              <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/15 to-transparent rounded-b-[inherit]" aria-hidden="true" />
               {actionInProgress === 'arrived' ? (
-                <Loader2 className="h-5 w-5 animate-spin notranslate" />
+                <Loader2 className="relative z-10 h-5 w-5 animate-spin notranslate stroke-[2.2]" />
               ) : (
-                <MapPin className="h-5 w-5 notranslate" />
+                <MapPin className="relative z-10 h-5 w-5 notranslate stroke-[2.2] filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.25)]" />
               )}
-              <span>Arrived</span>
+              <span className="relative z-10 font-bold leading-none">Arrived</span>
             </button>
           )}
 
@@ -250,15 +277,20 @@ export function StickyActionBar({
               type="button"
               disabled={Boolean(actionInProgress)}
               onClick={() => onAdvanceStatus('completed')}
-              style={{ backgroundColor: categoryToken.primary }}
-              className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-60 min-w-0"
+              style={{
+                backgroundColor: categoryToken.primary,
+                boxShadow: `inset 0 1px 1px rgba(255,255,255,0.4), 0 6px 20px rgba(0,0,0,0.12), 0 4px 14px 0 ${categoryToken.glow}`,
+              }}
+              className={`relative overflow-hidden flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm bg-gradient-to-r ${categoryToken.gradient} shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(0,0,0,0.12)] shadow-md ${categoryToken.glowTailwind || ''} hover:brightness-105 active:scale-[0.98] transition-all duration-150 touch-target flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100 min-w-0`}
             >
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 via-white/10 to-transparent rounded-t-[inherit]" aria-hidden="true" />
+              <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/15 to-transparent rounded-b-[inherit]" aria-hidden="true" />
               {actionInProgress === 'completed' ? (
-                <Loader2 className="h-5 w-5 animate-spin notranslate" />
+                <Loader2 className="relative z-10 h-5 w-5 animate-spin notranslate stroke-[2.2]" />
               ) : (
-                <CheckCircle2 className="h-5 w-5 notranslate" />
+                <CheckCircle2 className="relative z-10 h-5 w-5 notranslate stroke-[2.2] filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.25)]" />
               )}
-              <span>Mark completed</span>
+              <span className="relative z-10 font-bold leading-none">Mark completed</span>
             </button>
           )}
 
@@ -275,7 +307,7 @@ export function StickyActionBar({
         <div className="space-y-2.5 max-w-2xl mx-auto">
           {/* Banner row: "Offer sent · waiting for a reply" */}
           <div className="w-full py-2 px-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center gap-2 text-amber-700 dark:text-amber-300 font-bold text-xs sm:text-sm">
-            <Clock className="h-4 w-4 shrink-0 notranslate text-amber-500" />
+            <Clock className="h-4 w-4 shrink-0 notranslate text-amber-500 stroke-[2.2]" />
             <span className="truncate">Offer sent · waiting for a reply</span>
           </div>
 
@@ -309,7 +341,7 @@ export function StickyActionBar({
                 <button
                   type="button"
                   onClick={() => setConfirmWithdrawOpen(false)}
-                  className="flex-1 h-[48px] rounded-[16px] border border-border text-xs font-semibold hover:bg-muted transition touch-target"
+                  className="flex-1 h-[48px] rounded-[16px] backdrop-blur-md bg-card/85 dark:bg-card/75 border border-border/80 dark:border-white/15 text-xs font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_8px_rgba(0,0,0,0.04)] hover:border-primary/40 hover:bg-muted/80 hover:shadow-md hover:shadow-primary/10 active:scale-[0.98] transition-all duration-150 touch-target"
                 >
                   Keep Offer
                 </button>
@@ -319,9 +351,11 @@ export function StickyActionBar({
                     setConfirmWithdrawOpen(false);
                     await onWithdrawOffer(myPendingOffer.id);
                   }}
-                  className="flex-1 h-[48px] rounded-[16px] bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs touch-target"
+                  className="relative overflow-hidden flex-1 h-[48px] rounded-[16px] bg-gradient-to-r from-rose-600 via-rose-600 to-red-600 text-white text-xs font-bold shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(244,63,94,0.3)] shadow-md shadow-rose-500/25 hover:brightness-105 active:scale-[0.98] transition-all duration-150 touch-target"
                 >
-                  Confirm Withdraw
+                  <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 via-white/10 to-transparent rounded-t-[inherit]" aria-hidden="true" />
+                  <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/15 to-transparent rounded-b-[inherit]" aria-hidden="true" />
+                  <span className="relative z-10">Confirm Withdraw</span>
                 </button>
               </div>
             </div>
@@ -339,11 +373,16 @@ export function StickyActionBar({
           <button
             type="button"
             onClick={onGetVerified}
-            style={{ backgroundColor: categoryToken.primary }}
-            className="flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-[0.98] transition-all touch-target flex items-center justify-center gap-2 whitespace-nowrap min-w-0"
+            style={{
+              backgroundColor: categoryToken.primary,
+              boxShadow: `inset 0 1px 1px rgba(255,255,255,0.4), 0 6px 20px rgba(0,0,0,0.12), 0 4px 14px 0 ${categoryToken.glow}`,
+            }}
+            className={`relative overflow-hidden flex-1 h-[52px] rounded-[16px] text-white font-bold text-sm bg-gradient-to-r ${categoryToken.gradient} shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(0,0,0,0.12)] shadow-md ${categoryToken.glowTailwind || ''} hover:brightness-105 active:scale-[0.98] transition-all duration-150 touch-target flex items-center justify-center gap-2 whitespace-nowrap min-w-0`}
           >
-            <ShieldAlert className="h-5 w-5 notranslate shrink-0" />
-            <span className="truncate">Get verified to help</span>
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 via-white/10 to-transparent rounded-t-[inherit]" aria-hidden="true" />
+            <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/15 to-transparent rounded-b-[inherit]" aria-hidden="true" />
+            <ShieldAlert className="relative z-10 h-5 w-5 notranslate shrink-0 stroke-[2.2] filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.25)]" />
+            <span className="relative z-10 font-bold truncate leading-none">Get verified to help</span>
           </button>
 
           <ShareButton onShare={onShare} />

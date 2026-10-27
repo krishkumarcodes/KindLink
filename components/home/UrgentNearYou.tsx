@@ -350,43 +350,65 @@ export function UrgentNearYou({
                   }
                 }}
                 style={{ borderLeftColor: categoryToken.primary, borderLeftWidth: '4px' }}
-                className={`group relative flex overflow-hidden rounded-2xl border border-white/30 dark:border-white/10 bg-card/80 dark:bg-card/75 backdrop-blur-md shadow-[0_4px_20px_rgb(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgb(0,0,0,0.2)] hover:shadow-md hover:border-teal-500/40 dark:hover:border-teal-500/50 transition-all duration-200 cursor-pointer ${
+                className={`group relative flex overflow-hidden rounded-3xl border border-white/40 dark:border-white/12 bg-card/85 dark:bg-card/75 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.25)] hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer ${
                   isNew ? 'animate-urgent-slide-in' : ''
                 }`}
                 aria-label={`Urgent request: ${req.title}, urgency ${req.urgency}, distance ${req.distanceKm} kilometers`}
               >
-                {/* Crystal glass top edge refraction highlight */}
+                {/* Specular top rim highlight */}
                 <div
-                  className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/20 to-transparent z-10"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/25 to-transparent z-10"
+                  aria-hidden="true"
+                />
+
+                {/* Translucent watery caustic ambient tint */}
+                <div
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-primary/[0.03] dark:from-white/[0.05] dark:via-transparent dark:to-primary/[0.04] z-0"
                   aria-hidden="true"
                 />
 
                 {/* Watery crystal sheen overlay */}
                 <div
-                  className="crystal-card-sheen"
+                  className="crystal-card-sheen crystal-card-ambient-sheen"
+                  aria-hidden="true"
+                />
+
+                {/* Ambient crystal corner refraction */}
+                <div
+                  className="pointer-events-none absolute -top-12 -right-12 w-28 h-28 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500 ease-out z-0 opacity-20 dark:opacity-25"
+                  style={{
+                    background: `radial-gradient(circle, ${categoryToken.glow} 0%, transparent 70%)`,
+                  }}
                   aria-hidden="true"
                 />
 
                 {/* Coloured urgency bar on the left */}
                 <div
-                  className={`w-1.5 self-stretch shrink-0 rounded-l-2xl ${getUrgencyBarColor(
+                  className={`w-1.5 self-stretch shrink-0 rounded-l-3xl relative z-10 ${getUrgencyBarColor(
                     req.urgency
                   )}`}
                   aria-hidden="true"
                 />
 
                 {/* Card Body */}
-                <div className="flex-1 p-3.5 sm:p-4 min-w-0">
+                <div className="flex-1 p-3.5 sm:p-4 min-w-0 relative z-10">
                   <div className="flex flex-col min-[400px]:flex-row min-[400px]:items-center justify-between gap-3">
                     {/* Left: Category icon in tinted circle + Content details */}
                     <div className="flex items-start gap-3 min-w-0 flex-1">
-                      {/* Category icon with bespoke multi-stop gradient emblem */}
-                      <CategoryEmblem
-                        category={req.category}
-                        customLabel={req.customCategoryLabel}
-                        size="md"
-                        glow={true}
-                      />
+                      {/* Category icon with bespoke multi-stop gradient emblem and ambient glow */}
+                      <div className="relative shrink-0">
+                        <div
+                          className="pointer-events-none absolute -inset-1.5 rounded-full blur-md opacity-40 group-hover:opacity-75 transition-opacity duration-300"
+                          style={{ backgroundColor: categoryToken.primary }}
+                          aria-hidden="true"
+                        />
+                        <CategoryEmblem
+                          category={req.category}
+                          customLabel={req.customCategoryLabel}
+                          size="md"
+                          glow={true}
+                        />
+                      </div>
 
                       {/* Content column */}
                       <div className="min-w-0 flex-1 space-y-1.5">
@@ -564,14 +586,14 @@ export function UrgentNearYou({
                     </div>
 
                     {/* 2 Action Buttons: Details + Category-colored Help Button */}
-                    <div className="flex items-center gap-2 w-full min-[400px]:w-auto shrink-0 pt-2 min-[400px]:pt-0">
+                    <div className="flex items-center gap-2.5 w-full min-[400px]:w-auto shrink-0 pt-2 min-[400px]:pt-0">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleRequestClick(req);
                         }}
-                        className="px-3.5 py-2.5 rounded-2xl border border-border/80 bg-background hover:bg-muted text-xs font-bold text-foreground transition active:scale-95 touch-target flex-1 min-[400px]:flex-initial"
+                        className="h-[44px] min-h-[44px] px-4 rounded-[16px] border border-border/80 dark:border-white/15 bg-background/80 hover:bg-muted/80 backdrop-blur-sm text-xs sm:text-sm font-bold text-foreground shadow-xs hover:shadow-sm active:scale-[0.98] transition-all duration-150 touch-target flex items-center justify-center flex-1 min-[400px]:flex-initial"
                       >
                         Details
                       </button>
@@ -583,7 +605,7 @@ export function UrgentNearYou({
                           e.stopPropagation();
                           handleRequestClick(req);
                         }}
-                        className="flex-1 min-[400px]:flex-initial min-[400px]:px-5 px-4 shrink-0"
+                        className="h-[44px] min-h-[44px] rounded-[16px] flex-1 min-[400px]:flex-initial min-[400px]:px-5 px-4 shrink-0"
                         aria-label={`Help with request: ${req.title}`}
                       />
                     </div>

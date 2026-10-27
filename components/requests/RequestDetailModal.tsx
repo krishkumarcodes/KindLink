@@ -33,6 +33,7 @@ import {
   Users,
   Flame,
   Calendar,
+  Target,
   ChevronDown,
   RotateCw,
   ThumbsUp,
@@ -1160,49 +1161,73 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                ===================================================================== */}
             <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
               {/* Tile 1: Waiting */}
-              <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/80 shadow-xs flex flex-col justify-between">
-                <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                  <Clock className="h-3.5 w-3.5 text-primary notranslate shrink-0" />
-                  <span>Waiting</span>
+              <div className="relative overflow-hidden p-3 sm:p-3.5 rounded-2xl bg-card/80 dark:bg-card/75 border border-border/80 dark:border-white/12 shadow-xs hover:shadow-sm backdrop-blur-sm flex flex-col justify-between transition-all duration-200 group">
+                <div
+                  className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-teal-400/40 dark:via-teal-300/30 to-transparent"
+                  aria-hidden="true"
+                />
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex items-center justify-center h-6 w-6 rounded-lg bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-500/25 shadow-[0_0_10px_rgba(20,184,166,0.25)] shrink-0">
+                    <Clock className="h-3.5 w-3.5 notranslate stroke-[2.2]" />
+                  </div>
+                  <span className="text-muted-foreground text-[10px] sm:text-[11px] font-bold uppercase tracking-wider truncate">
+                    Waiting
+                  </span>
                 </div>
-                <div className="my-1.5">
-                  <span className="text-base sm:text-lg font-extrabold text-foreground tracking-tight block">
+                <div className="my-1.5 min-w-0">
+                  <span className="text-base sm:text-lg font-extrabold text-foreground tracking-tight block truncate">
                     {waitingTileValue}
                   </span>
                 </div>
-                <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium truncate">
+                <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium truncate block">
                   {waitingSinceFormatted}
                 </span>
               </div>
 
               {/* Tile 2: Needed by */}
-              <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/80 shadow-xs flex flex-col justify-between">
-                <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                  <Calendar className="h-3.5 w-3.5 text-amber-500 notranslate shrink-0" />
-                  <span>Needed by</span>
+              <div className="relative overflow-hidden p-3 sm:p-3.5 rounded-2xl bg-card/80 dark:bg-card/75 border border-border/80 dark:border-white/12 shadow-xs hover:shadow-sm backdrop-blur-sm flex flex-col justify-between transition-all duration-200 group">
+                <div
+                  className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-amber-400/40 dark:via-amber-300/30 to-transparent"
+                  aria-hidden="true"
+                />
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex items-center justify-center h-6 w-6 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25 shadow-[0_0_10px_rgba(245,158,11,0.25)] shrink-0">
+                    <Target className="h-3.5 w-3.5 notranslate stroke-[2.2]" />
+                  </div>
+                  <span className="text-muted-foreground text-[10px] sm:text-[11px] font-bold uppercase tracking-wider truncate">
+                    Needed by
+                  </span>
                 </div>
-                <div className="my-1.5">
+                <div className="my-1.5 min-w-0">
                   <span className="text-base sm:text-lg font-extrabold text-foreground tracking-tight block truncate">
                     {neededByTileValue}
                   </span>
                 </div>
-                <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium truncate">
+                <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium truncate block">
                   {request.neededByTime || request.scheduledTime ? 'Target timing' : 'Flexible schedule'}
                 </span>
               </div>
 
               {/* Tile 3: Distance */}
-              <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/80 shadow-xs flex flex-col justify-between">
-                <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                  <Navigation className="h-3.5 w-3.5 text-emerald-500 notranslate shrink-0" />
-                  <span>Distance</span>
+              <div className="relative overflow-hidden p-3 sm:p-3.5 rounded-2xl bg-card/80 dark:bg-card/75 border border-border/80 dark:border-white/12 shadow-xs hover:shadow-sm backdrop-blur-sm flex flex-col justify-between transition-all duration-200 group">
+                <div
+                  className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-sky-400/40 dark:via-sky-300/30 to-transparent"
+                  aria-hidden="true"
+                />
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex items-center justify-center h-6 w-6 rounded-lg bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/25 shadow-[0_0_10px_rgba(14,165,233,0.25)] shrink-0">
+                    <Navigation className="h-3.5 w-3.5 notranslate stroke-[2.2]" />
+                  </div>
+                  <span className="text-muted-foreground text-[10px] sm:text-[11px] font-bold uppercase tracking-wider truncate">
+                    Distance
+                  </span>
                 </div>
-                <div className="my-1.5">
+                <div className="my-1.5 min-w-0">
                   <span className="text-base sm:text-lg font-extrabold text-foreground tracking-tight block truncate">
                     {routeResult?.distanceKm ? `${routeResult.distanceKm} km` : typeof request.distanceKm === 'number' ? `${request.distanceKm} km` : '0 km'}
                   </span>
                 </div>
-                <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium truncate">
+                <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium truncate block">
                   {formatETA(etaMinutes)} · {travelMode}
                 </span>
               </div>
@@ -1215,19 +1240,19 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
               {request.category === 'blood' && (
                 <>
                   {request.bloodGroup && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20 font-bold">
-                      <Droplet className="h-3.5 w-3.5 notranslate text-rose-600 dark:text-rose-400" />
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-500/15 via-rose-500/10 to-red-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/30 font-bold shadow-[0_0_10px_rgba(244,63,94,0.12)]">
+                      <Droplet className="h-3.5 w-3.5 notranslate text-rose-600 dark:text-rose-400 shrink-0" />
                       <span>Blood Group: {request.bloodGroup}</span>
                     </span>
                   )}
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20 font-bold">
-                    <PlusCircle className="h-3.5 w-3.5 notranslate text-rose-600 dark:text-rose-400" />
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-500/15 via-rose-500/10 to-red-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/30 font-bold shadow-[0_0_10px_rgba(244,63,94,0.12)]">
+                    <PlusCircle className="h-3.5 w-3.5 notranslate text-rose-600 dark:text-rose-400 shrink-0" />
                     <span>
                       {request.unitsNeeded || 1} {(request.unitsNeeded || 1) === 1 ? 'unit needed' : 'units needed'}
                     </span>
                   </span>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/80 text-foreground border border-border font-bold">
-                    <Hospital className="h-3.5 w-3.5 notranslate text-primary" />
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-card/80 dark:bg-card/75 text-foreground border border-border/80 dark:border-white/12 font-bold backdrop-blur-sm shadow-2xs">
+                    <Hospital className="h-3.5 w-3.5 notranslate text-primary shrink-0" />
                     <span>{request.hospitalName || 'Asansol District Hospital'}</span>
                   </span>
                 </>
@@ -1235,12 +1260,12 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
 
               {request.category === 'equipment' && (
                 <>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20 font-bold">
-                    <Package className="h-3.5 w-3.5 notranslate text-teal-600 dark:text-teal-400" />
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-500/15 via-teal-500/10 to-emerald-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/30 font-bold shadow-[0_0_10px_rgba(20,184,166,0.12)]">
+                    <Package className="h-3.5 w-3.5 notranslate text-teal-600 dark:text-teal-400 shrink-0" />
                     <span>Item: {request.itemType || 'Medical Equipment'}</span>
                   </span>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/80 text-foreground border border-border font-bold">
-                    <Clock className="h-3.5 w-3.5 notranslate text-muted-foreground" />
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-card/80 dark:bg-card/75 text-foreground border border-border/80 dark:border-white/12 font-bold backdrop-blur-sm shadow-2xs">
+                    <Clock className="h-3.5 w-3.5 notranslate text-muted-foreground shrink-0" />
                     <span>Duration: {request.itemDuration || '3 days'}</span>
                   </span>
                 </>
@@ -1248,12 +1273,12 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
 
               {request.category === 'elderly' && (
                 <>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 font-bold">
-                    <HeartHandshake className="h-3.5 w-3.5 notranslate text-blue-600 dark:text-blue-400" />
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-500/15 via-indigo-500/10 to-sky-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/30 font-bold shadow-[0_0_10px_rgba(59,130,246,0.12)]">
+                    <HeartHandshake className="h-3.5 w-3.5 notranslate text-blue-600 dark:text-blue-400 shrink-0" />
                     <span>Task: {request.elderlyAidType || 'Companion Assistance'}</span>
                   </span>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/80 text-foreground border border-border font-bold">
-                    <Clock className="h-3.5 w-3.5 notranslate text-muted-foreground" />
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-card/80 dark:bg-card/75 text-foreground border border-border/80 dark:border-white/12 font-bold backdrop-blur-sm shadow-2xs">
+                    <Clock className="h-3.5 w-3.5 notranslate text-muted-foreground shrink-0" />
                     <span>Time: {request.scheduledTime || request.elderlyDuration || 'Scheduled'}</span>
                   </span>
                 </>
@@ -1262,18 +1287,18 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
               {request.category === 'books' && (
                 <>
                   {request.booksClassSubject && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 font-bold">
-                      <BookOpen className="h-3.5 w-3.5 notranslate text-amber-600 dark:text-amber-400" />
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-yellow-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-bold shadow-[0_0_10px_rgba(245,158,11,0.12)]">
+                      <BookOpen className="h-3.5 w-3.5 notranslate text-amber-600 dark:text-amber-400 shrink-0" />
                       <span>Subject/Class: {request.booksClassSubject}</span>
                     </span>
                   )}
                   {request.bookTitle && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/80 text-foreground border border-border font-bold">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-card/80 dark:bg-card/75 text-foreground border border-border/80 dark:border-white/12 font-bold backdrop-blur-sm shadow-2xs">
                       <span>Book: {request.bookTitle}</span>
                     </span>
                   )}
                   {request.bookCondition && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-muted text-muted-foreground text-[11px] font-semibold border border-border">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-muted/90 text-muted-foreground text-[11px] font-semibold border border-border/80">
                       <span>Condition: {request.bookCondition}</span>
                     </span>
                   )}
@@ -1282,19 +1307,19 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
 
               {request.category === 'transport' && (
                 <>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/20 font-bold">
-                    <Navigation className="h-3.5 w-3.5 notranslate text-violet-600 dark:text-violet-400" />
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-violet-500/15 via-purple-500/10 to-indigo-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/30 font-bold shadow-[0_0_10px_rgba(139,92,246,0.12)]">
+                    <Navigation className="h-3.5 w-3.5 notranslate text-violet-600 dark:text-violet-400 shrink-0" />
                     <span>
                       Route: {request.pickupAddress || request.locationName} → {request.dropAddress || 'Drop site'}
                     </span>
                   </span>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/80 text-foreground border border-border font-bold">
-                    <Users className="h-3.5 w-3.5 notranslate text-muted-foreground" />
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-card/80 dark:bg-card/75 text-foreground border border-border/80 dark:border-white/12 font-bold backdrop-blur-sm shadow-2xs">
+                    <Users className="h-3.5 w-3.5 notranslate text-muted-foreground shrink-0" />
                     <span>
                       {request.passengerCount || 1} {(request.passengerCount || 1) === 1 ? 'passenger' : 'passengers'}
                     </span>
                   </span>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/80 text-foreground border border-border font-bold">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-card/80 dark:bg-card/75 text-foreground border border-border/80 dark:border-white/12 font-bold backdrop-blur-sm shadow-2xs">
                     <span>{request.wheelchairAccessible ? 'Wheelchair Ready' : 'Standard Access'}</span>
                   </span>
                 </>
@@ -1305,18 +1330,26 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                 COMMUNITY ORGANIZATION ENDORSEMENTS & ACTION
                ===================================================================== */}
             {(isOrgAccount || Boolean(request.isOrganizationEndorsed || (request.endorsementsCount && request.endorsementsCount > 0))) && (
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-500/10 via-violet-500/5 to-purple-500/10 border border-indigo-500/25 shadow-xs space-y-3">
-                <div className="flex items-center justify-between gap-2">
+              <div className="relative overflow-hidden p-4 rounded-2xl bg-gradient-to-br from-indigo-500/[0.08] via-purple-500/[0.04] to-violet-500/[0.08] dark:from-indigo-950/40 dark:via-purple-950/25 dark:to-violet-950/40 border border-indigo-500/30 dark:border-indigo-400/30 shadow-[0_4px_24px_rgba(99,102,241,0.12)] space-y-3">
+                {/* Micro-specular top rim sheen */}
+                <div
+                  className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-indigo-300/70 dark:via-indigo-300/50 to-transparent z-10"
+                  aria-hidden="true"
+                />
+
+                <div className="relative z-10 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5">
-                    <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                      <ShieldCheck className="h-5 w-5 notranslate text-emerald-300" />
+                    <div className="relative overflow-hidden h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-600 via-indigo-500 to-purple-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/25 ring-1 ring-inset ring-white/25">
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 to-transparent" aria-hidden="true" />
+                      <ShieldCheck className="relative z-10 h-5 w-5 notranslate text-emerald-300 drop-shadow-xs" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5 flex-wrap">
                         <span>Community Organization Endorsement</span>
                         {Boolean(request.isOrganizationEndorsed || (request.endorsementsCount && request.endorsementsCount > 0)) && (
-                          <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded-md bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30">
-                            Verified Need
+                          <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/35 shadow-[0_0_8px_rgba(99,102,241,0.25)]">
+                            <Check className="h-2.5 w-2.5 stroke-[3] notranslate" />
+                            <span>Verified Need</span>
                           </span>
                         )}
                       </h4>
@@ -1335,7 +1368,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
 
                 {/* For verified organization accounts: Render an "Endorse this Request" action button */}
                 {isOrgAccount && (
-                  <div className="pt-2 border-t border-indigo-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                  <div className="relative z-10 pt-2 border-t border-indigo-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Building2 className="h-3.5 w-3.5 text-indigo-500 notranslate shrink-0" />
                       <span>
@@ -1347,25 +1380,26 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                       type="button"
                       disabled={isEndorsing}
                       onClick={handleToggleEndorsement}
-                      className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold shadow-soft transition-all active:scale-[0.98] touch-target ${
+                      className={`relative overflow-hidden w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] touch-target ring-1 ring-inset ring-white/20 ${
                         isAlreadyEndorsedByMe
-                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500/30'
-                          : 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-indigo-500/20'
+                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border border-emerald-500/30 shadow-md shadow-emerald-500/20'
+                          : 'bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 hover:from-indigo-500 hover:via-violet-500 hover:to-purple-500 text-white shadow-md shadow-indigo-500/25'
                       }`}
                       title={isAlreadyEndorsedByMe ? 'Click to withdraw endorsement' : 'Click to endorse this emergency request'}
                     >
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent rounded-t-[inherit]" aria-hidden="true" />
                       {isEndorsing ? (
-                        <Loader2 className="h-4 w-4 animate-spin notranslate" />
+                        <Loader2 className="relative z-10 h-4 w-4 animate-spin notranslate" />
                       ) : isAlreadyEndorsedByMe ? (
                         <>
-                          <Check className="h-4 w-4 stroke-[2.5] notranslate" />
-                          <span>Endorsed by your organization</span>
+                          <Check className="relative z-10 h-4 w-4 stroke-[2.5] notranslate" />
+                          <span className="relative z-10">Endorsed by your organization</span>
                         </>
                       ) : (
                         <>
-                          <ThumbsUp className="h-4 w-4 notranslate" />
-                          <ShieldCheck className="h-4 w-4 notranslate" />
-                          <span>Endorse this Request</span>
+                          <ThumbsUp className="relative z-10 h-4 w-4 notranslate" />
+                          <ShieldCheck className="relative z-10 h-4 w-4 notranslate" />
+                          <span className="relative z-10">Endorse this Request</span>
                         </>
                       )}
                     </button>
@@ -1482,18 +1516,26 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
               {/* Contact Row */}
               {isMatched ? (
                 /* Unmasked Contact info for matched pair */
-                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-2.5">
-                  <div className="flex items-center justify-between">
+                <div className="relative overflow-hidden p-4 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-emerald-500/15 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-emerald-950/40 border border-emerald-500/30 dark:border-emerald-400/30 shadow-[0_4px_24px_rgba(16,185,129,0.12)] space-y-3">
+                  {/* Top specular highlight */}
+                  <div
+                    className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-emerald-300/70 dark:via-emerald-300/40 to-transparent z-10"
+                    aria-hidden="true"
+                  />
+
+                  <div className="relative z-10 flex items-center justify-between">
                     <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
-                      <ShieldCheck className="h-4 w-4 notranslate" />
+                      <div className="flex items-center justify-center h-5 w-5 rounded-md bg-emerald-500/20 border border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.3)]">
+                        <ShieldCheck className="h-3.5 w-3.5 notranslate text-emerald-600 dark:text-emerald-400" />
+                      </div>
                       <span>Verified Matched Pair · Direct Contact Unlocked</span>
                     </span>
-                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
                       Private Channel
                     </span>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
+                  <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
                     <div>
                       <p className="text-xs font-bold text-foreground">
                         {contactInfo?.name || request.contactName || 'Requester'}
@@ -1507,19 +1549,21 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                       <div className="flex items-center gap-2">
                         <a
                           href={`tel:${String(contactInfo?.phone || request.phone || '').replace(/[^0-9+]/g, '')}`}
-                          className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold transition-colors shadow-xs touch-target focus-visible:ring-2 focus-visible:ring-emerald-500"
+                          className="relative overflow-hidden flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-3.5 py-2 text-xs font-bold transition-all shadow-md shadow-emerald-600/20 ring-1 ring-inset ring-white/20 active:scale-95 touch-target focus-visible:ring-2 focus-visible:ring-emerald-500"
                         >
-                          <Phone className="h-3.5 w-3.5 notranslate" />
-                          <span>Call</span>
+                          <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent rounded-t-[inherit]" aria-hidden="true" />
+                          <Phone className="relative z-10 h-3.5 w-3.5 notranslate" />
+                          <span className="relative z-10">Call</span>
                         </a>
                         <a
                           href={`https://wa.me/${String(contactInfo?.phone || request.phone || '').replace(/[^0-9]/g, '')}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white px-3.5 py-2 text-xs font-bold transition-colors shadow-xs touch-target focus-visible:ring-2 focus-visible:ring-emerald-500"
+                          className="relative overflow-hidden flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white px-3.5 py-2 text-xs font-bold transition-all shadow-md shadow-emerald-500/20 ring-1 ring-inset ring-white/20 active:scale-95 touch-target focus-visible:ring-2 focus-visible:ring-emerald-500"
                         >
-                          <MessageCircle className="h-3.5 w-3.5 notranslate" />
-                          <span>WhatsApp</span>
+                          <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent rounded-t-[inherit]" aria-hidden="true" />
+                          <MessageCircle className="relative z-10 h-3.5 w-3.5 notranslate" />
+                          <span className="relative z-10">WhatsApp</span>
                         </a>
                       </div>
                     )}
@@ -1545,7 +1589,13 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
             {/* =====================================================================
                 PROXIMITY, ROUTE PREVIEW & TRAVEL MODE (Strictly ONE Route Card)
                ===================================================================== */}
-            <div data-section="route-card" className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs space-y-3">
+            <div data-section="route-card" className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-card/85 dark:bg-card/80 border border-border/80 dark:border-white/12 shadow-sm backdrop-blur-sm space-y-3">
+              {/* Crystal glass top edge refraction highlight */}
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/25 to-transparent z-10"
+                aria-hidden="true"
+              />
+
               <div className="flex items-center justify-between text-xs flex-wrap gap-1.5">
                 <span className="font-bold text-foreground flex items-center gap-1.5 min-w-0">
                   <Navigation className="h-4 w-4 text-primary shrink-0 notranslate" />
@@ -1598,10 +1648,10 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                   <button
                     key={mode}
                     onClick={() => handleTravelModeChange(mode)}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold border transition touch-target ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold border transition touch-target active:scale-95 ${
                       travelMode === mode
-                        ? 'border-primary bg-primary text-white shadow-xs font-bold'
-                        : 'border-border bg-background text-muted-foreground hover:bg-muted'
+                        ? 'border-transparent bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 text-white shadow-md shadow-teal-600/25 ring-1 ring-inset ring-white/20 font-bold'
+                        : 'border-border/80 dark:border-white/10 bg-background/80 hover:bg-muted text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     {mode === 'bike' && <Bike className="h-3.5 w-3.5 notranslate" />}
@@ -1616,7 +1666,13 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
             {/* =====================================================================
                 NEARBY HOSPITALS & EMERGENCY PLACES (Collapsible, separated rows)
                ===================================================================== */}
-            <div data-section="nearby-places" className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs space-y-3">
+            <div data-section="nearby-places" className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-card/85 dark:bg-card/80 border border-border/80 dark:border-white/12 shadow-sm backdrop-blur-sm space-y-3">
+              {/* Crystal glass top edge refraction highlight */}
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/25 to-transparent z-10"
+                aria-hidden="true"
+              />
+
               {/* Header row: title and toggle on one row, subtitle on its own row below so nothing is cut */}
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-0.5 min-w-0">
@@ -1653,7 +1709,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                     /* Skeleton loading state */
                     <div className="space-y-2 pt-1 animate-pulse">
                       {[1, 2].map((i) => (
-                        <div key={i} className="p-3 rounded-xl bg-muted/40 border border-border/60 flex items-center justify-between">
+                        <div key={i} className="p-3.5 rounded-xl bg-muted/40 border border-border/60 flex items-center justify-between">
                           <div className="space-y-1.5 flex-1">
                             <div className="h-3.5 w-36 bg-muted-foreground/20 rounded" />
                             <div className="h-2.5 w-24 bg-muted-foreground/15 rounded" />
@@ -1663,14 +1719,18 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                       ))}
                     </div>
                   ) : nearbyHospitals.length > 0 ? (
-                    <div className="space-y-2 pt-1">
+                    <div className="space-y-2.5 pt-1">
                       {nearbyHospitals.slice(0, 3).map((facility) => {
                         const mapDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${facility.latitude},${facility.longitude}`;
                         return (
                           <div
                             key={facility.id}
-                            className="p-3 rounded-xl bg-muted/40 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs"
+                            className="relative overflow-hidden p-3.5 rounded-xl bg-card/90 dark:bg-card/75 border border-border/80 dark:border-white/10 hover:border-teal-500/30 transition-all duration-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs group"
                           >
+                            <div
+                              className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 dark:via-white/20 to-transparent"
+                              aria-hidden="true"
+                            />
                             <div className="space-y-1 min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="font-bold text-foreground">{facility.name}</span>
@@ -1688,33 +1748,38 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                                   {facility.type ? facility.type.replace('_', ' ') : 'Facility'}
                                 </span>
                                 {facility.emergency && (
-                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20">
                                     24/7
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11px] text-muted-foreground line-clamp-1">
-                                📍 {typeof facility.distanceKm === 'number' && !isNaN(facility.distanceKm) ? facility.distanceKm.toFixed(1) : '0.0'} km away
-                                {facility.address ? ` · ${facility.address}` : ''}
-                              </p>
+                              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground flex-wrap">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/80 text-[11px] font-semibold text-muted-foreground border border-border/60">
+                                  📍 {typeof facility.distanceKm === 'number' && !isNaN(facility.distanceKm) ? facility.distanceKm.toFixed(1) : '0.0'} km away
+                                </span>
+                                {facility.address && (
+                                  <span className="truncate max-w-[200px] sm:max-w-[280px]">· {facility.address}</span>
+                                )}
+                              </div>
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0">
                               {facility.phone && (
                                 <a
                                   href={`tel:${String(facility.phone).replace(/[^0-9+]/g, '')}`}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition shadow-xs touch-target"
+                                  className="relative overflow-hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[11px] font-bold transition shadow-xs touch-target ring-1 ring-inset ring-white/20 active:scale-95"
                                   title="Call Facility"
                                 >
-                                  <Phone className="h-3 w-3 notranslate" />
-                                  <span>Call</span>
+                                  <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent rounded-t-[inherit]" aria-hidden="true" />
+                                  <Phone className="relative z-10 h-3 w-3 notranslate" />
+                                  <span className="relative z-10">Call</span>
                                 </a>
                               )}
                               <a
                                 href={mapDirectionsUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-[11px] font-bold transition shadow-xs touch-target"
+                                className="relative overflow-hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border/80 bg-card hover:bg-muted text-foreground text-[11px] font-bold transition shadow-xs touch-target hover:border-teal-500/40 active:scale-95"
                                 title="Get Directions"
                               >
                                 <ExternalLink className="h-3 w-3 notranslate" />

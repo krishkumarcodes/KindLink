@@ -473,9 +473,15 @@ export function HelpFlowModal({
                 }
               : undefined
           }
-          className="relative w-full sm:max-w-xl h-auto max-h-[85dvh] flex flex-col bg-card text-card-foreground rounded-t-3xl sm:rounded-3xl border-t sm:border border-border/80 shadow-[0_20px_60px_rgba(0,0,0,0.4)] overflow-hidden outline-none animate-in slide-in-from-bottom duration-200 sm:slide-in-from-bottom-0 sm:zoom-in-95"
+          className="relative w-full sm:max-w-xl h-auto max-h-[85dvh] flex flex-col bg-card text-card-foreground rounded-t-3xl sm:rounded-3xl border-t sm:border border-border/80 dark:border-white/12 shadow-[0_25px_60px_rgba(0,0,0,0.45)] overflow-hidden outline-none animate-in slide-in-from-bottom duration-200 sm:slide-in-from-bottom-0 sm:zoom-in-95"
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Micro-specular top rim sheen */}
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/25 to-transparent z-30"
+            aria-hidden="true"
+          />
+
           {/* =====================================================================
               1. STICKY TITLE BAR (Solid bg-card with Integrated Drag Handle)
              ===================================================================== */}
@@ -485,14 +491,13 @@ export function HelpFlowModal({
             <div className="px-4 sm:px-6 pb-3.5 pt-0.5 sm:pt-3.5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-xs"
-                  style={{
-                    backgroundColor: categoryToken.lightBg,
-                    color: categoryToken.primary,
-                    borderColor: categoryToken.border,
-                  }}
+                  className={`relative overflow-hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl shadow-md ${categoryToken.glowTailwind} ring-1 ring-inset ring-white/25 text-white bg-gradient-to-br ${categoryToken.gradient}`}
                 >
-                  <CategoryIcon className="h-5 w-5 notranslate" />
+                  <span
+                    className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 to-transparent rounded-t-[inherit]"
+                    aria-hidden="true"
+                  />
+                  <CategoryIcon className="relative z-10 h-5 w-5 notranslate filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)] stroke-[2.2]" />
                 </div>
                 <div className="min-w-0">
                   <h2 id={titleId} className="text-base sm:text-lg font-black text-foreground truncate">
@@ -523,8 +528,12 @@ export function HelpFlowModal({
             {/* SUCCESS STATE VIEW */}
             {isSuccess ? (
               <div className="py-6 space-y-5 text-center animate-in fade-in zoom-in-95 duration-200">
-                <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 mx-auto ring-8 ring-emerald-500/10">
-                  <CheckCircle2 className="h-9 w-9 notranslate" />
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white mx-auto shadow-lg shadow-emerald-500/30 ring-4 ring-emerald-500/20">
+                  <span
+                    className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent rounded-t-[inherit]"
+                    aria-hidden="true"
+                  />
+                  <CheckCircle2 className="relative z-10 h-9 w-9 notranslate stroke-[2.2]" />
                 </div>
 
                 <div className="space-y-1.5 max-w-sm mx-auto">
@@ -537,7 +546,11 @@ export function HelpFlowModal({
                 </div>
 
                 {/* Offer Summary Card */}
-                <div className="p-4 rounded-2xl bg-muted/50 border border-border/80 text-left space-y-2 max-w-md mx-auto text-xs">
+                <div className="relative overflow-hidden p-4 rounded-2xl bg-card/80 dark:bg-card/75 border border-border/80 dark:border-white/12 text-left space-y-2 max-w-md mx-auto text-xs backdrop-blur-sm shadow-xs">
+                  <div
+                    className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 dark:via-white/20 to-transparent"
+                    aria-hidden="true"
+                  />
                   <div className="flex items-center justify-between text-muted-foreground">
                     <span>Target ETA</span>
                     <strong className="text-foreground font-bold">{arrivalTime}</strong>
@@ -551,7 +564,7 @@ export function HelpFlowModal({
                   {message.trim() && (
                     <div className="pt-2 border-t border-border/60">
                       <span className="text-[11px] text-muted-foreground block mb-0.5">Your Note:</span>
-                      <p className="text-foreground italic bg-background/80 p-2 rounded-xl border border-border/60">
+                      <p className="text-foreground italic bg-background/80 p-2.5 rounded-xl border border-border/60">
                         &ldquo;{message.trim()}&rdquo;
                       </p>
                     </div>
@@ -563,20 +576,27 @@ export function HelpFlowModal({
                   <button
                     type="button"
                     onClick={() => setStoryModalOpen(true)}
-                    style={{ backgroundColor: categoryToken.primary }}
-                    className="w-full py-3.5 px-5 rounded-2xl text-white font-bold text-xs sm:text-sm shadow-md hover:brightness-105 transition-all active:scale-95 touch-target flex items-center justify-center gap-2"
+                    className={`relative overflow-hidden w-full py-3.5 px-5 rounded-2xl text-white font-bold text-xs sm:text-sm shadow-md ${categoryToken.glowTailwind} ring-1 ring-inset ring-white/25 bg-gradient-to-r ${categoryToken.gradient} hover:brightness-105 transition-all active:scale-[0.98] touch-target flex items-center justify-center gap-2`}
                   >
-                    <Share2 className="h-4 w-4 notranslate shrink-0" />
-                    <span>Share Emergency Story Card (Status &amp; Stories)</span>
+                    <span
+                      className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 to-transparent rounded-t-[inherit]"
+                      aria-hidden="true"
+                    />
+                    <Share2 className="relative z-10 h-4 w-4 notranslate shrink-0" />
+                    <span className="relative z-10">Share Emergency Story Card (Status &amp; Stories)</span>
                   </button>
 
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 w-full">
                     <button
                       type="button"
                       onClick={onClose}
-                      className="w-full sm:flex-1 py-3 px-5 rounded-2xl bg-muted hover:bg-muted/80 text-foreground font-bold text-xs sm:text-sm border border-border/80 transition-all active:scale-95 touch-target"
+                      className="relative overflow-hidden w-full sm:flex-1 py-3 px-5 rounded-2xl bg-card/80 dark:bg-card/75 hover:bg-muted text-foreground font-bold text-xs sm:text-sm border border-border/80 dark:border-white/15 backdrop-blur-sm shadow-xs transition-all active:scale-[0.98] touch-target"
                     >
-                      Back to Request
+                      <span
+                        className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/50 dark:via-white/20 to-transparent"
+                        aria-hidden="true"
+                      />
+                      <span className="relative z-10">Back to Request</span>
                     </button>
 
                     <button

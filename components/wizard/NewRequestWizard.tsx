@@ -925,10 +925,18 @@ export function NewRequestWizard() {
               <button
                 type="button"
                 onClick={handleNextFromStep1}
-                className="flex items-center gap-2 rounded-2xl bg-primary px-7 py-3.5 text-sm font-bold text-white shadow-md shadow-primary/25 hover:bg-primary/90 transition-all active:scale-95 touch-target"
+                className="relative overflow-hidden inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 px-7 py-3.5 text-sm font-bold text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_6px_20px_rgba(13,148,136,0.25)] shadow-md shadow-teal-500/25 hover:brightness-105 active:scale-[0.98] transition-all duration-150 touch-target"
               >
-                <span>Continue to Details</span>
-                <ChevronRight className="h-4 w-4 notranslate" />
+                <span
+                  className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 via-white/10 to-transparent rounded-t-[inherit]"
+                  aria-hidden="true"
+                />
+                <span
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/15 to-transparent rounded-b-[inherit]"
+                  aria-hidden="true"
+                />
+                <span className="relative z-10 font-bold leading-none">Continue to Details</span>
+                <ChevronRight className="relative z-10 h-4 w-4 notranslate stroke-[2.2] filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.25)]" />
               </button>
             </div>
           </div>

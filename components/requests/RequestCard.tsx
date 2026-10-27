@@ -99,17 +99,17 @@ export function RequestCard({
   return (
     <div
       onClick={() => onSelect(request)}
-      className="group relative overflow-hidden rounded-3xl border border-white/30 dark:border-white/10 bg-card/80 dark:bg-card/75 backdrop-blur-md p-5 shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.25)] hover:border-teal-500/40 hover:shadow-teal-500/10 hover:-translate-y-1 transition-all duration-300 cursor-pointer text-left flex flex-col justify-between"
+      className="group relative overflow-hidden rounded-3xl border border-white/40 dark:border-white/12 bg-card/85 dark:bg-card/75 backdrop-blur-md p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 transition-all duration-300 cursor-pointer text-left flex flex-col justify-between"
     >
-      {/* Crystal glass top edge refraction highlight */}
+      {/* Specular top rim highlight */}
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/20 to-transparent z-10"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/25 to-transparent z-10"
         aria-hidden="true"
       />
 
       {/* Translucent watery caustic ambient tint */}
       <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-teal-500/[0.04] dark:from-white/[0.06] dark:via-transparent dark:to-teal-400/[0.05] z-0"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-primary/[0.04] dark:from-white/[0.06] dark:via-transparent dark:to-primary/[0.05] z-0"
         aria-hidden="true"
       />
 
@@ -121,7 +121,10 @@ export function RequestCard({
 
       {/* Ambient crystal corner refraction */}
       <div
-        className="pointer-events-none absolute -top-14 -right-14 w-36 h-36 rounded-full bg-gradient-to-br from-teal-400/15 via-sky-400/10 to-transparent blur-2xl group-hover:scale-125 transition-transform duration-500 ease-out z-0"
+        className="pointer-events-none absolute -top-14 -right-14 w-36 h-36 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500 ease-out z-0 opacity-25 dark:opacity-30"
+        style={{
+          background: `radial-gradient(circle, ${categoryToken.glow} 0%, transparent 70%)`,
+        }}
         aria-hidden="true"
       />
 
@@ -130,14 +133,22 @@ export function RequestCard({
         {/* Top Badges Row */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <CategoryEmblem
-              category={request.category}
-              customLabel={request.customCategoryLabel}
-              size="sm"
-              glow={true}
-            />
+            {/* Subtle ambient radial glow behind CategoryEmblem */}
+            <div className="relative shrink-0">
+              <div
+                className="pointer-events-none absolute -inset-1.5 rounded-full blur-md opacity-40 group-hover:opacity-75 transition-opacity duration-300"
+                style={{ backgroundColor: categoryToken.primary }}
+                aria-hidden="true"
+              />
+              <CategoryEmblem
+                category={request.category}
+                customLabel={request.customCategoryLabel}
+                size="sm"
+                glow={true}
+              />
+            </div>
             <span
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider border ${getUrgencyBadge(
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider border backdrop-blur-xs ${getUrgencyBadge(
                 request.urgency
               )}`}
             >
@@ -149,7 +160,7 @@ export function RequestCard({
           {/* Header Actions: Owner Badge & Story Card Share */}
           <div className="flex items-center gap-1.5 shrink-0">
             {isUserOwner && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/25 shadow-xs shrink-0">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/25 shadow-xs shrink-0">
                 <User className="h-3 w-3 notranslate" />
                 <span>Your request</span>
               </span>
@@ -161,7 +172,7 @@ export function RequestCard({
                 e.stopPropagation();
                 setStoryModalOpen(true);
               }}
-              className="h-8 w-8 rounded-xl flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/80 transition-all active:scale-95 border border-border/60 bg-background/50 shadow-2xs"
+              className="h-8 w-8 rounded-xl flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/80 transition-all active:scale-95 border border-border/60 dark:border-white/10 bg-background/60 backdrop-blur-xs shadow-2xs"
               title="Share Story Card (WhatsApp Status / Instagram Story)"
               aria-label="Share Story Card"
             >
@@ -171,7 +182,7 @@ export function RequestCard({
         </div>
 
         {/* Title & Description */}
-        <h3 className="text-base font-bold text-foreground group-hover:text-primary transition line-clamp-2">
+        <h3 className="text-base font-bold text-foreground group-hover:text-primary transition line-clamp-2 leading-snug">
           {request.title}
         </h3>
         <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
@@ -181,17 +192,20 @@ export function RequestCard({
         {/* Dynamic Detail Tag */}
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
           {request.bloodGroup && (
-            <span className="px-2.5 py-1 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold border border-rose-500/20">
-              🩸 {request.bloodGroup} ({request.unitsNeeded || 1} units)
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold border border-rose-500/25 shadow-2xs backdrop-blur-xs">
+              <span>🩸</span>
+              <span>{request.bloodGroup}</span>
+              <span className="text-[10px] opacity-80 font-semibold">({request.unitsNeeded || 1} {request.unitsNeeded === 1 ? 'unit' : 'units'})</span>
             </span>
           )}
           {request.itemType && (
-            <span className="px-2.5 py-1 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 font-bold border border-teal-500/20">
-              🩺 {request.itemType}
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 font-bold border border-teal-500/25 shadow-2xs backdrop-blur-xs">
+              <span>🩺</span>
+              <span>{request.itemType}</span>
             </span>
           )}
           {request.verified && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] border border-emerald-500/20">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] border border-emerald-500/25 shadow-2xs backdrop-blur-xs">
               <ShieldCheck className="h-3.5 w-3.5 notranslate" />
               <span>{request.verificationBadge}</span>
             </span>
@@ -212,13 +226,13 @@ export function RequestCard({
           </div>
 
           <div className="flex items-center gap-2 text-[11px] flex-wrap shrink-0">
-            <span className="flex items-center gap-1 font-semibold text-foreground whitespace-nowrap">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-muted/60 dark:bg-muted/40 font-semibold text-foreground border border-border/60 text-[11px] whitespace-nowrap shadow-2xs backdrop-blur-xs">
               <Navigation className="h-3 w-3 text-primary notranslate shrink-0" />
               <span>{request.distanceKm} km ({formatETA(etaMinutes)})</span>
             </span>
             <span className="text-muted-foreground/60">•</span>
             {/* Clear Human Waiting Time Badge */}
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-muted/80 text-[10px] font-bold text-foreground/80 border border-border/60 whitespace-nowrap">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-muted/80 dark:bg-muted/50 text-[11px] font-bold text-foreground/85 border border-border/70 dark:border-white/10 whitespace-nowrap shadow-2xs backdrop-blur-xs">
               <Clock className="h-3 w-3 text-primary notranslate shrink-0" />
               <span>{formatWaitingDuration(request.waitingMinutes, request.createdAt)}</span>
             </span>
@@ -269,10 +283,15 @@ export function RequestCard({
                     toast.error(err?.message || 'Failed to complete request');
                   }
                 }}
-                className="w-full min-h-[44px] rounded-[16px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 touch-target"
+                className="relative overflow-hidden w-full h-[44px] min-h-[44px] rounded-[16px] bg-gradient-to-r from-emerald-500 via-emerald-600 to-green-600 hover:brightness-105 text-white font-bold text-xs shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_4px_14px_rgba(0,0,0,0.12)] active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 touch-target"
               >
-                <CheckCircle2 className="h-4 w-4 notranslate" />
-                <span>Mark Completed</span>
+                {/* Specular top rim highlight */}
+                <span
+                  className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/70 to-transparent z-10"
+                  aria-hidden="true"
+                />
+                <CheckCircle2 className="h-4 w-4 notranslate relative z-10" />
+                <span className="relative z-10">Mark Completed</span>
               </button>
             ) : (
               <SecondaryButton
