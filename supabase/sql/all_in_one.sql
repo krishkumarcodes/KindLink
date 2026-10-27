@@ -4920,8 +4920,10 @@ GRANT EXECUTE ON FUNCTION public.promote_custom_category_to_standard(
 -- 1. DROP LEGACY NEARBY_REQUESTS SIGNATURES (if any)
 -- ------------------------------------------------------------------------------
 DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, public.help_category, integer, integer);
+DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, public.help_category, integer, integer, uuid);
 DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, text, integer, integer);
 DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, text, text, integer, integer);
+DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, text, text, integer, integer, uuid);
 
 -- ------------------------------------------------------------------------------
 -- 2. CREATE UPDATED DATA-DRIVEN NEARBY_REQUESTS FUNCTION
@@ -4933,7 +4935,8 @@ CREATE OR REPLACE FUNCTION public.nearby_requests(
   filter_cat text DEFAULT NULL,
   filter_tag text DEFAULT NULL,
   page_limit integer DEFAULT 50,
-  page_offset integer DEFAULT 0
+  page_offset integer DEFAULT 0,
+  p_user_id uuid DEFAULT NULL
 )
 RETURNS TABLE (
   id uuid,
@@ -5034,7 +5037,7 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.nearby_requests(
-  double precision, double precision, double precision, text, text, integer, integer
+  double precision, double precision, double precision, text, text, integer, integer, uuid
 ) TO anon, authenticated, service_role;
 
 -- ------------------------------------------------------------------------------
@@ -5690,8 +5693,10 @@ GRANT EXECUTE ON FUNCTION public.promote_custom_category_to_standard(
 -- 1. DROP LEGACY NEARBY_REQUESTS SIGNATURES (if any)
 -- ------------------------------------------------------------------------------
 DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, public.help_category, integer, integer);
+DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, public.help_category, integer, integer, uuid);
 DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, text, integer, integer);
 DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, text, text, integer, integer);
+DROP FUNCTION IF EXISTS public.nearby_requests(double precision, double precision, double precision, text, text, integer, integer, uuid);
 
 -- ------------------------------------------------------------------------------
 -- 2. CREATE UPDATED DATA-DRIVEN NEARBY_REQUESTS FUNCTION
@@ -5703,7 +5708,8 @@ CREATE OR REPLACE FUNCTION public.nearby_requests(
   filter_cat text DEFAULT NULL,
   filter_tag text DEFAULT NULL,
   page_limit integer DEFAULT 50,
-  page_offset integer DEFAULT 0
+  page_offset integer DEFAULT 0,
+  p_user_id uuid DEFAULT NULL
 )
 RETURNS TABLE (
   id uuid,
@@ -5804,7 +5810,7 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.nearby_requests(
-  double precision, double precision, double precision, text, text, integer, integer
+  double precision, double precision, double precision, text, text, integer, integer, uuid
 ) TO anon, authenticated, service_role;
 
 -- ------------------------------------------------------------------------------
@@ -6433,6 +6439,9 @@ BEGIN
   -- nearby_requests overloads
   BEGIN
     ALTER FUNCTION public.nearby_requests(double precision, double precision, double precision, text, text, integer, integer) SET statement_timeout = '5s';
+  EXCEPTION WHEN others THEN NULL; END;
+  BEGIN
+    ALTER FUNCTION public.nearby_requests(double precision, double precision, double precision, text, text, integer, integer, uuid) SET statement_timeout = '5s';
   EXCEPTION WHEN others THEN NULL; END;
   BEGIN
     ALTER FUNCTION public.nearby_requests(double precision, double precision, double precision, public.help_category, integer, integer) SET statement_timeout = '5s';

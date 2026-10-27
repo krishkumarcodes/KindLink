@@ -37,6 +37,8 @@ import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { LanguageModal } from '../shell/LanguageModal';
+import { InstallAppModal } from '@/components/pwa/InstallAppModal';
+import { usePwaInstall } from '@/lib/pwa/usePwaInstall';
 import {
   getCurrentLanguageCode,
   SUPPORTED_LANGUAGES,
@@ -47,10 +49,15 @@ import { SwitchRow } from '@/components/ui/Switch';
 export function SettingsView() {
   const { theme, setTheme } = useTheme();
   const { userProfile, updateUserProfile } = useKindLinkStore();
+  const {
+    isInstalled,
+    triggerInstall,
+    isModalOpen: pwaModalOpen,
+    closeInstallModal: closePwaModal,
+  } = usePwaInstall();
 
   // Modals
   const [langModalOpen, setLangModalOpen] = useState(false);
-  const [iosPwaModalOpen, setIosPwaModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [showUnblockGuide, setShowUnblockGuide] = useState(false);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
@@ -142,9 +149,6 @@ export function SettingsView() {
     return '07:00';
   });
 
-  // PWA states
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
 
   // Sign out other devices loading
   const [revokingOthers, setRevokingOthers] = useState(false);
@@ -291,24 +295,12 @@ export function SettingsView() {
     return () => window.removeEventListener('kindlink:locale-change', onLocaleChange);
   }, [langModalOpen]);
 
-  // Sync PWA & Notification permission & Deletion status
+  // Sync Notification permission
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      if (window.matchMedia('(display-mode: standalone)').matches) {
-        setIsPwaInstalled(true);
-      }
-
       if ('Notification' in window) {
         setNotificationPermission(Notification.permission);
       }
-
-      const handleBeforeInstallPrompt = (e: Event) => {
-        e.preventDefault();
-        setDeferredPrompt(e);
-      };
-
-      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     }
   }, []);
 
@@ -475,17 +467,7 @@ export function SettingsView() {
 
   // PWA install trigger
   const handleInstallPwa = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
-      if (choice.outcome === 'accepted') {
-        setIsPwaInstalled(true);
-        toast.success('KindLink installation initiated!');
-      }
-      setDeferredPrompt(null);
-    } else {
-      setIosPwaModalOpen(true);
-    }
+    await triggerInstall();
   };
 
   const currentLang = SUPPORTED_LANGUAGES.find((l) => l.code === langCode);
@@ -1084,7 +1066,7 @@ export function SettingsView() {
             <div>
               <h2 className="text-sm sm:text-base font-bold text-foreground">KindLink Mobile App</h2>
               <p className="text-xs text-muted-foreground">
-                {isPwaInstalled
+                {isInstalled
                   ? 'KindLink is installed on your device.'
                   : 'Add to your home screen for fast one-tap access and quick emergency alerts.'}
               </p>
@@ -1093,11 +1075,19 @@ export function SettingsView() {
 
           <button
             onClick={handleInstallPwa}
-            disabled={isPwaInstalled}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-soft transition disabled:opacity-60 touch-target self-start sm:self-auto shrink-0"
+            disabled={isInstalled}
+            className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold shadow-soft transition touch-target self-start sm:self-auto shrink-0 ${
+              isInstalled
+                ? 'bg-muted text-muted-foreground cursor-default'
+                : 'bg-primary hover:bg-primary-hover text-white'
+            }`}
           >
-            <Download className="h-4 w-4 notranslate" />
-            <span>{isPwaInstalled ? 'Already Installed' : 'Install App'}</span>
+            {isInstalled ? (
+              <Check className="h-4 w-4 text-emerald-500 notranslate" />
+            ) : (
+              <Download className="h-4 w-4 notranslate" />
+            )}
+            <span>{isInstalled ? 'Already Installed ✓' : 'Install App'}</span>
           </button>
         </div>
 
@@ -1427,61 +1417,8 @@ export function SettingsView() {
       {/* LANGUAGE MODAL (Saved on this device and your account) */}
       <LanguageModal open={langModalOpen} onClose={() => setLangModalOpen(false)} />
 
-      {/* IOS / PWA INSTRUCTIONS MODAL */}
-      {iosPwaModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
-        >
-          <div className="w-full max-w-sm rounded-3xl bg-card border border-border p-6 shadow-2xl text-left space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600">
-                  <Smartphone className="h-5 w-5 notranslate" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-foreground">Install KindLink</h3>
-                  <p className="text-xs text-muted-foreground">Home screen quick access</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIosPwaModalOpen(false)}
-                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition"
-                aria-label="Close modal"
-              >
-                <X className="h-5 w-5 notranslate" />
-              </button>
-            </div>
-
-            <div className="space-y-2.5 text-xs">
-              <div className="p-3.5 rounded-2xl bg-background border border-border space-y-1">
-                <strong className="text-foreground block">🍏 On Safari (iOS / iPhone):</strong>
-                <ol className="list-decimal list-inside text-muted-foreground text-[11px] space-y-1">
-                  <li>Tap the <strong>Share</strong> button (📤) in Safari bottom bar.</li>
-                  <li>Scroll down and tap <strong>&quot;Add to Home Screen&quot;</strong> (+).</li>
-                  <li>Tap <strong>&quot;Add&quot;</strong> in the top right corner.</li>
-                </ol>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-background border border-border space-y-1">
-                <strong className="text-foreground block">🤖 On Chrome / Android:</strong>
-                <ol className="list-decimal list-inside text-muted-foreground text-[11px] space-y-1">
-                  <li>Tap the browser menu (⋮) in the top-right.</li>
-                  <li>Tap <strong>&quot;Install app&quot;</strong> or <strong>&quot;Add to Home screen&quot;</strong>.</li>
-                </ol>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setIosPwaModalOpen(false)}
-              className="w-full py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-soft transition touch-target"
-            >
-              Got it
-            </button>
-          </div>
-        </div>
-      )}
+      {/* PWA INSTALLATION MODAL */}
+      <InstallAppModal open={pwaModalOpen} onClose={closePwaModal} />
 
       {/* REQUEST ACCOUNT DELETION MODAL */}
       {deleteModalOpen && (

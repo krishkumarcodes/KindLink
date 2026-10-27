@@ -131,10 +131,10 @@ export function useFocusTrap(
 // 3. Click / Tap Outside Handler
 // -------------------------------------------------------------
 export function useClickOutside(
-  ref: React.RefObject<HTMLElement>,
+  ref: React.RefObject<HTMLElement | null>,
   onClickOutside: () => void,
   active = true,
-  ignoreRef?: React.RefObject<HTMLElement>
+  ignoreRef?: React.RefObject<HTMLElement | null>
 ) {
   useEffect(() => {
     if (!active || typeof document === 'undefined') return;
@@ -143,7 +143,38 @@ export function useClickOutside(
       const target = e.target as Node | null;
       if (!target || !ref.current) return;
       if (ref.current.contains(target)) return;
-      if (ignoreRef?.current && ignoreRef.current.contains(target)) return;
+
+      if (ignoreRef?.current) {
+        if (
+          ignoreRef.current.contains(target) ||
+          (e.composedPath && e.composedPath().includes(ignoreRef.current))
+        ) {
+          return;
+        }
+
+        // Bounding box hit-test to guarantee touch-targets and outer button padding ignore outside click
+        const rect = ignoreRef.current.getBoundingClientRect();
+        const clientX =
+          'touches' in e && e.touches[0]
+            ? e.touches[0].clientX
+            : (e as MouseEvent).clientX;
+        const clientY =
+          'touches' in e && e.touches[0]
+            ? e.touches[0].clientY
+            : (e as MouseEvent).clientY;
+
+        if (
+          clientX !== undefined &&
+          clientY !== undefined &&
+          clientX >= rect.left &&
+          clientX <= rect.right &&
+          clientY >= rect.top &&
+          clientY <= rect.bottom
+        ) {
+          return;
+        }
+      }
+
       onClickOutside();
     };
 
@@ -379,13 +410,6 @@ export function AnchoredPopover({
 
   return (
     <OverlayPortal>
-      {/* Invisible backdrop to capture outside clicks safely on touch devices */}
-      <div
-        className="fixed inset-0 z-40 bg-transparent"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
       {/* Popover container with collision detection */}
       <div
         ref={popoverRef}

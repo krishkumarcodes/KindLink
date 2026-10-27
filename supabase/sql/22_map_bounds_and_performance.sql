@@ -545,6 +545,9 @@ BEGIN
     ALTER FUNCTION public.nearby_requests(double precision, double precision, double precision, text, text, integer, integer) SET statement_timeout = '5s';
   EXCEPTION WHEN others THEN NULL; END;
   BEGIN
+    ALTER FUNCTION public.nearby_requests(double precision, double precision, double precision, text, text, integer, integer, uuid) SET statement_timeout = '5s';
+  EXCEPTION WHEN others THEN NULL; END;
+  BEGIN
     ALTER FUNCTION public.nearby_requests(double precision, double precision, double precision, public.help_category, integer, integer) SET statement_timeout = '5s';
   EXCEPTION WHEN others THEN NULL; END;
   BEGIN

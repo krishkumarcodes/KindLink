@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v4.8.1] - 2026-10-27 - App Install Everywhere, Profile Popup Toggle, Notification Persistence & Requests Feed Fixes 🛠️
+
+### Summary
+Release v4.8.1 delivers critical bug fixes and reliability upgrades:
+1. **Universal Multi-Platform "Install App" Everywhere**: Cross-platform PWA install hook (`usePwaInstall`) and responsive bottom sheet/dialog (`InstallAppModal`) supporting Android/Chrome native prompt, step-by-step iOS Safari guide (Share -> Add to Home Screen), desktop guidance, and standalone PWA detection across Profile Quick Menu, Settings, Sidebar, and Header.
+2. **Profile Avatar Popup Toggle Fix**: Fixed outside click & backdrop event conflicts in `AnchoredPopover` and `Header.tsx` so clicking the avatar button cleanly toggles the profile menu open and closed on mobile touch and desktop click.
+3. **Notification Clear & Dismiss Persistence**: Added `deleteNotification` and `clearAllNotifications` to data adapters with local storage fallback (`kindlink_dismissed_notifications`). Fixed auto-refetch loop in `NotificationCenter` so dismissed notifications never return after clearing. Added a 1-tap "Clear all" button.
+4. **Requests Feed & Own Request Visibility**: Fixed parameter mismatch in `nearby_requests` RPC and added automatic direct table query fallback in `supabase-adapter.ts`. Updated `RequestsView.tsx` to display author requests in community feeds badged with `Your Request` and `Manage` button, preventing empty feed states after posting.
+5. **Acoustic Emergency Siren in SOS**: Added Web Audio API emergency siren (750Hz–960Hz wail cycle) requiring zero network assets with quick header toggle and automatic cleanup on safety mark.
+
+---
+
 ## [v4.8.0] - 2026-10-27 - Site-Wide Performance & Efficiency Hardening, Mobile Map Rebuild, Spatial Bounds RPC & Real-User Monitoring 🚀
 
 ### Summary

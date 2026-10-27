@@ -12,6 +12,7 @@ import {
 } from './types';
 import { createClient } from '../supabase/client';
 import { ASANSOL_CENTER } from './mock-requests';
+import { calculateDistance } from './distance';
 
 class SupabaseDataAdapter implements DataAdapter {
   private getSupabase() {
@@ -120,7 +121,8 @@ class SupabaseDataAdapter implements DataAdapter {
 
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { data, error } = await supabase.rpc('nearby_requests', {
+    // Pass only the standard 7 parameters matching nearby_requests signature
+    const rpcParams: Record<string, any> = {
       lat,
       lng,
       radius_km: radius,
@@ -128,11 +130,72 @@ class SupabaseDataAdapter implements DataAdapter {
       filter_tag: options?.tag || null,
       page_limit: 100,
       page_offset: 0,
-      p_user_id: user?.id || null,
-    });
+    };
+
+    let { data, error } = await supabase.rpc('nearby_requests', rpcParams);
+
+    // If error indicates p_user_id is expected by a legacy signature, retry with p_user_id
+    if (error && (error.message?.includes('p_user_id') || error.code === 'PGRST202')) {
+      const res = await supabase.rpc('nearby_requests', {
+        ...rpcParams,
+        p_user_id: user?.id || null,
+      });
+      if (!res.error && res.data) {
+        data = res.data;
+        error = null;
+      }
+    }
 
     if (error || !data) {
-      console.warn('Fallback to empty requests on Supabase RPC error:', error?.message);
+      console.warn('Fallback to direct table query on Supabase RPC error:', error?.message);
+      let rows: any[] | null = null;
+
+      // Primary fallback: direct query on 'requests' table
+      const reqRes = await supabase
+        .from('requests')
+        .select('*')
+        .in('status', ['open', 'accepted'])
+        .limit(100);
+
+      if (!reqRes.error && reqRes.data) {
+        rows = reqRes.data;
+      } else {
+        // Secondary fallback: query 'help_requests' view/table if 'requests' fails
+        const helpRes = await supabase
+          .from('help_requests')
+          .select('*')
+          .in('status', ['open', 'accepted'])
+          .limit(100);
+        if (!helpRes.error && helpRes.data) {
+          rows = helpRes.data;
+        }
+      }
+
+      if (rows && rows.length > 0) {
+        const mapped = rows.map((r) => {
+          const req = this.mapDbRowToHelpRequest(r);
+          if (!req.distanceKm || req.distanceKm === 0) {
+            req.distanceKm = calculateDistance(lat, lng, req.latitude, req.longitude);
+          }
+          return req;
+        });
+
+        return mapped
+          .filter((r) => {
+            if (cat && r.category !== cat) return false;
+            if (options?.tag && !r.tags?.some((t) => t.toLowerCase() === options.tag?.toLowerCase())) return false;
+            if (radius && r.distanceKm > radius) return false;
+            return true;
+          })
+          .sort((a, b) => {
+            const urgencyOrder: Record<string, number> = { critical: 1, high: 2, medium: 3, low: 4 };
+            const uA = urgencyOrder[a.urgency] || 5;
+            const uB = urgencyOrder[b.urgency] || 5;
+            if (uA !== uB) return uA - uB;
+            return a.distanceKm - b.distanceKm;
+          });
+      }
+
       return [];
     }
 
@@ -969,6 +1032,18 @@ class SupabaseDataAdapter implements DataAdapter {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     await supabase.from('notifications').update({ is_read: true }).eq('user_id', user.id);
+  }
+
+  async deleteNotification(id: string): Promise<void> {
+    const supabase = this.getSupabase();
+    await supabase.from('notifications').delete().eq('id', id);
+  }
+
+  async clearAllNotifications(): Promise<void> {
+    const supabase = this.getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from('notifications').delete().eq('user_id', user.id);
   }
 
   async submitRating(requestId: string, rateeId: string, stars: number, comment?: string): Promise<{ success: boolean; error?: string }> {

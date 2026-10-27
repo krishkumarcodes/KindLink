@@ -136,11 +136,10 @@ export function RequestsView() {
 
       // Ownership enforcement:
       // Tab 'my_requests' shows ONLY the user's own requests.
-      // Tabs 'urgent', 'nearest', 'newest' (help lists) EXCLUDE the user's own requests.
+      // Volunteer tabs ('urgent', 'nearest', 'newest') show all active community requests,
+      // with the user's own request clearly distinguished with a 'Your Request' badge.
       if (activeFeedTab === 'my_requests') {
         if (!isOwner) return false;
-      } else {
-        if (isOwner) return false;
       }
 
       // 1. Categories Multi-Select

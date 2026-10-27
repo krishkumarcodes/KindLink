@@ -36,6 +36,9 @@ import {
   Shield,
   Wifi,
   WifiOff,
+  Volume2,
+  VolumeX,
+  Siren,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -230,6 +233,72 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
   const lastHapticPulseRef = useRef<number>(0);
   const elapsedTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Audio Siren generator using Web Audio API (100% offline & zero network dependencies)
+  const [isSirenPlaying, setIsSirenPlaying] = useState(false);
+  const sirenAudioRef = useRef<{
+    ctx: AudioContext;
+    osc: OscillatorNode;
+    gain: GainNode;
+    intervalId: NodeJS.Timeout;
+  } | null>(null);
+
+  const stopAudioSiren = useCallback(() => {
+    if (sirenAudioRef.current) {
+      clearInterval(sirenAudioRef.current.intervalId);
+      try {
+        sirenAudioRef.current.osc.stop();
+        sirenAudioRef.current.ctx.close();
+      } catch {}
+      sirenAudioRef.current = null;
+    }
+    setIsSirenPlaying(false);
+  }, []);
+
+  const startAudioSiren = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      stopAudioSiren();
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      gain.gain.setValueAtTime(0.35, ctx.currentTime);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+
+      let high = true;
+      osc.frequency.setValueAtTime(750, ctx.currentTime);
+      const intervalId = setInterval(() => {
+        high = !high;
+        if (ctx.state === 'running') {
+          osc.frequency.setTargetAtTime(high ? 960 : 700, ctx.currentTime, 0.08);
+        }
+      }, 450);
+
+      sirenAudioRef.current = { ctx, osc, gain, intervalId };
+      setIsSirenPlaying(true);
+    } catch (err) {
+      console.warn('AudioContext emergency siren initialization error:', err);
+    }
+  }, [stopAudioSiren]);
+
+  const toggleAudioSiren = useCallback(() => {
+    if (isSirenPlaying) {
+      stopAudioSiren();
+      toast.info('Emergency audio siren stopped');
+    } else {
+      startAudioSiren();
+      toast.error('Emergency Siren Active!', {
+        description: 'Loud two-tone audio siren playing to attract immediate attention.',
+      });
+    }
+  }, [isSirenPlaying, startAudioSiren, stopAudioSiren]);
+
   // Check login state
   useEffect(() => {
     async function checkAuth() {
@@ -318,6 +387,7 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
   }, [status, userCoords?.lat, userCoords?.lng]);
 
   const resetAll = useCallback(() => {
+    stopAudioSiren();
     if (holdTimerRef.current) clearInterval(holdTimerRef.current);
     if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
     holdTimerRef.current = null;
@@ -330,7 +400,7 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
     setIsSubmitting(false);
     setKeyboardConfirmOpen(false);
     setIsLowSignal(false);
-  }, []);
+  }, [stopAudioSiren]);
 
   // Desktop detection
   useEffect(() => {
@@ -359,13 +429,14 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
     }
   }, [open, resetAll]);
 
-  // Clean up timers on unmount
+  // Clean up timers & siren on unmount
   useEffect(() => {
     return () => {
+      stopAudioSiren();
       if (holdTimerRef.current) clearInterval(holdTimerRef.current);
       if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
     };
-  }, []);
+  }, [stopAudioSiren]);
 
   const triggerActivation = useCallback(async () => {
     setIsSubmitting(true);
@@ -755,14 +826,38 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground touch-target transition-all active:scale-95 border border-border"
-            aria-label="Close dialog"
-          >
-            <X className="h-5 w-5 notranslate" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Audible Siren Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleAudioSiren}
+              className={`flex h-10 px-2.5 items-center justify-center gap-1.5 rounded-2xl touch-target transition-all active:scale-95 border ${
+                isSirenPlaying
+                  ? 'bg-amber-500 text-slate-950 border-amber-600 animate-pulse font-black shadow-md ring-2 ring-amber-400'
+                  : 'bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border-border'
+              }`}
+              aria-label={isSirenPlaying ? 'Mute audio siren' : 'Sound emergency siren'}
+              title={isSirenPlaying ? 'Mute audio siren' : 'Sound emergency audio siren'}
+            >
+              {isSirenPlaying ? (
+                <VolumeX className="h-4 w-4 notranslate text-slate-950" />
+              ) : (
+                <Volume2 className="h-4 w-4 notranslate text-rose-500" />
+              )}
+              <span className="text-xs font-bold hidden min-[360px]:inline">
+                {isSirenPlaying ? 'Mute' : 'Siren'}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground touch-target transition-all active:scale-95 border border-border"
+              aria-label="Close dialog"
+            >
+              <X className="h-5 w-5 notranslate" />
+            </button>
+          </div>
         </div>
 
         {/* SCROLLABLE CONTAINER WITH NATURAL HEIGHT & SAFE-AREA INSET PADDING */}
@@ -1523,22 +1618,63 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
                 </div>
               </div>
 
-              {/* ACTION BUTTONS: Call 112, I am safe, Add details */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {/* Active Audio Siren Alert Banner */}
+              {isSirenPlaying && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/20 border-2 border-amber-500/50 text-amber-950 dark:text-amber-200 flex items-center justify-between gap-2.5 text-xs font-black animate-pulse shadow-md">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Volume2 className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 notranslate" />
+                    <span className="truncate">Audible emergency siren sounding loudly!</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={stopAudioSiren}
+                    className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shrink-0 active:scale-95 transition"
+                  >
+                    Mute Siren
+                  </button>
+                </div>
+              )}
+
+              {/* ACTION BUTTONS: Call 112, Siren Alarm, I am safe, Add details */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {/* Call 112 */}
                 <a
                   href="tel:112"
-                  className="py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition touch-target"
+                  className="py-3 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition touch-target"
                 >
                   <Phone className="h-4 w-4 notranslate" />
                   <span>Call 112</span>
                 </a>
 
+                {/* Audio Siren Toggle */}
+                <button
+                  type="button"
+                  onClick={toggleAudioSiren}
+                  className={`py-3 px-3 rounded-xl font-black text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition touch-target ${
+                    isSirenPlaying
+                      ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 animate-pulse ring-2 ring-amber-400'
+                      : 'bg-card border border-border hover:bg-muted text-foreground'
+                  }`}
+                  aria-label={isSirenPlaying ? 'Mute emergency siren' : 'Sound emergency siren'}
+                >
+                  {isSirenPlaying ? (
+                    <>
+                      <VolumeX className="h-4 w-4 notranslate text-slate-950" />
+                      <span>Mute</span>
+                    </>
+                  ) : (
+                    <>
+                      <Volume2 className="h-4 w-4 notranslate text-rose-500 animate-pulse" />
+                      <span>Siren</span>
+                    </>
+                  )}
+                </button>
+
                 {/* I am safe */}
                 <button
                   type="button"
                   onClick={handleMarkSafe}
-                  className="py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition touch-target"
+                  className="py-3 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition touch-target"
                 >
                   <CheckCircle2 className="h-4 w-4 notranslate" />
                   <span>I am Safe</span>
@@ -1548,10 +1684,10 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
                 <button
                   type="button"
                   onClick={() => setDetailsModalOpen(true)}
-                  className="py-3 px-4 rounded-xl border border-border bg-card hover:bg-muted text-foreground font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 active:scale-95 transition touch-target"
+                  className="py-3 px-3 rounded-xl border border-border bg-card hover:bg-muted text-foreground font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 active:scale-95 transition touch-target"
                 >
                   <Plus className="h-4 w-4 text-primary notranslate" />
-                  <span>Add Details</span>
+                  <span>Details</span>
                 </button>
               </div>
 

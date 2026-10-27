@@ -439,6 +439,14 @@ class MockDataAdapter implements DataAdapter {
     this.notifications.forEach((n) => (n.unread = false));
   }
 
+  async deleteNotification(id: string): Promise<void> {
+    this.notifications = this.notifications.filter((x) => x.id !== id);
+  }
+
+  async clearAllNotifications(): Promise<void> {
+    this.notifications = [];
+  }
+
   async submitRating(
     requestId: string,
     rateeId: string,

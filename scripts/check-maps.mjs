@@ -73,6 +73,8 @@ const EXCLUDED_PATH_PATTERNS = [
   /^[/\\]?lib[/\\]maps/,
   // Server-side Next.js API routes are permitted to proxy:
   /^[/\\]?app[/\\]api/,
+  // MapTileLayer is the designated client-side tile engine component:
+  /^[/\\]?components[/\\]map[/\\]MapTileLayer\.tsx/,
 ];
 
 const CODE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);

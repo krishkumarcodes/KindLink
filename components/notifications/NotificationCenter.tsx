@@ -21,6 +21,7 @@ import {
   Navigation,
   ChevronRight,
   RotateCcw,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
@@ -357,6 +358,7 @@ export function NotificationCenter({
     markNotificationRead,
     markAllNotificationsRead,
     dismissNotification,
+    clearAllNotifications,
     setSelectedRequestId,
     setCurrentView,
     fetchLiveNotifications,
@@ -480,17 +482,19 @@ export function NotificationCenter({
     };
   }, [open, updatePosition]);
 
-  // Initial fetch if notifications list is currently empty
+  // Initial fetch only once per session opening, never re-fetch just because user cleared all notifications
+  const hasInitiallyFetchedRef = useRef(false);
   useEffect(() => {
     if (!open) return;
-    if (notifications.length === 0) {
+    if (!hasInitiallyFetchedRef.current) {
+      hasInitiallyFetchedRef.current = true;
       setIsLoading(true);
       setFetchError(false);
       fetchLiveNotifications()
         .catch(() => setFetchError(true))
         .finally(() => setIsLoading(false));
     }
-  }, [open, notifications.length, fetchLiveNotifications]);
+  }, [open, fetchLiveNotifications]);
 
   const handleRetryFetch = async () => {
     setIsLoading(true);
@@ -700,6 +704,15 @@ export function NotificationCenter({
     }
   };
 
+  const handleClearAll = async () => {
+    try {
+      await clearAllNotifications();
+      toast.success('All notifications cleared');
+    } catch {
+      toast.error('Failed to clear notifications');
+    }
+  };
+
   const handleDismissItem = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -893,6 +906,18 @@ export function NotificationCenter({
             >
               <CheckCheck className="h-3.5 w-3.5 notranslate text-primary" />
               <span className="hidden min-[380px]:inline">Mark all read</span>
+            </button>
+          )}
+
+          {notifications.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl border border-border bg-muted/60 hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 transition-all text-xs font-semibold flex items-center gap-1.5 touch-target active:scale-95 shadow-xs"
+              title="Clear all notifications"
+            >
+              <Trash2 className="h-3.5 w-3.5 notranslate text-muted-foreground hover:text-rose-600" />
+              <span className="hidden min-[420px]:inline">Clear all</span>
             </button>
           )}
 

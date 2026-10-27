@@ -188,6 +188,10 @@ export interface DataAdapter {
 
   markAllNotificationsRead(): Promise<void>;
 
+  deleteNotification(id: string): Promise<void>;
+
+  clearAllNotifications(): Promise<void>;
+
   submitRating(
     requestId: string,
     rateeId: string,

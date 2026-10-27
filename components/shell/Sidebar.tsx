@@ -12,11 +12,14 @@ import {
   HeartHandshake,
   Atom,
   Search,
+  Download,
 } from 'lucide-react';
 import { useKindLinkStore, AppView } from '@/lib/store/useKindLinkStore';
+import { usePwaInstall } from '@/lib/pwa/usePwaInstall';
 
 export function Sidebar() {
   const { currentView, setCurrentView, requests } = useKindLinkStore();
+  const { isInstalled, triggerInstall } = usePwaInstall();
 
   const navItems: { view: AppView; label: string; icon: React.ReactNode; badge?: number }[] = [
     { view: 'home', label: 'Home', icon: <Home className="h-5 w-5 notranslate shrink-0" /> },
@@ -117,8 +120,39 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Community Project Credit Tag */}
-      <div className="p-3 lg:p-4 border-t border-border/80 mt-auto">
+      {/* Community Project Credit Tag & Install App Trigger */}
+      <div className="p-3 lg:p-4 border-t border-border/80 mt-auto space-y-2.5">
+        {/* Install App Action in Sidebar if not already installed */}
+        {!isInstalled && (
+          <>
+            <button
+              type="button"
+              onClick={() => triggerInstall()}
+              className="group hidden lg:flex w-full items-center gap-2.5 px-3 py-2.5 rounded-2xl border border-teal-500/25 bg-teal-500/10 hover:bg-teal-500/20 text-teal-700 dark:text-teal-300 font-bold text-xs transition-all shadow-xs touch-target text-left"
+              title="Install KindLink App"
+              aria-label="Install KindLink App on this device"
+            >
+              <Download className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0 notranslate group-hover:translate-y-0.5 transition-transform" />
+              <div className="flex flex-col min-w-0">
+                <span className="leading-tight">Install App</span>
+                <span className="text-[10px] font-normal text-muted-foreground truncate">
+                  Fast home screen access
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => triggerInstall()}
+              className="lg:hidden flex items-center justify-center h-10 w-10 mx-auto rounded-xl border border-teal-500/25 bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 transition-colors touch-target"
+              title="Install KindLink App"
+              aria-label="Install KindLink App on this device"
+            >
+              <Download className="h-4 w-4 notranslate" />
+            </button>
+          </>
+        )}
+
         <div className="rounded-2xl bg-gradient-to-br from-muted/80 to-muted/40 p-3.5 hidden lg:block border border-border/80 shadow-xs backdrop-blur-xs">
           <div className="flex items-center gap-2 text-primary font-bold text-xs mb-1">
             <HeartHandshake className="h-3.5 w-3.5 notranslate text-primary" />

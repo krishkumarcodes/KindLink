@@ -41,7 +41,7 @@ export interface MapTileLayerProps {
   onTimeToFirstTile?: (latencyMs: number) => void;
 }
 
-export type ActiveTileProvider = 'openfreemap' | 'maptiler' | 'osm' | 'none';
+export type ActiveTileProvider = 'openfreemap' | 'maptiler' | 'carto' | 'osm' | 'none';
 
 interface MapRuntimeConfig {
   provider?: string;
@@ -103,7 +103,7 @@ class TileFailoverCircuitBreaker {
   constructor() {
     if (typeof window !== 'undefined') {
       try {
-        ['openfreemap', 'maptiler', 'osm'].forEach((p) => {
+        ['openfreemap', 'maptiler', 'carto', 'osm'].forEach((p) => {
           const saved = sessionStorage.getItem(`${STORAGE_PREFIX}${p}`);
           if (saved) {
             const timestamp = parseInt(saved, 10);
@@ -162,7 +162,7 @@ class TileFailoverCircuitBreaker {
     this.retryTimers.clear();
     if (typeof window !== 'undefined') {
       try {
-        ['openfreemap', 'maptiler', 'osm'].forEach((p) =>
+        ['openfreemap', 'maptiler', 'carto', 'osm'].forEach((p) =>
           sessionStorage.removeItem(`${STORAGE_PREFIX}${p}`)
         );
       } catch {
@@ -317,12 +317,17 @@ export function MapTileLayer({
       return 'maptiler';
     }
 
-    // 3) Tertiary / Last Resort: OpenStreetMap Standard Raster
+    // 3) Tertiary: CartoDB Positron / Dark Matter (zero API key required)
+    if (!tileFailoverCircuitBreaker.isTripped('carto')) {
+      return 'carto';
+    }
+
+    // 4) Quaternary / Last Resort: OpenStreetMap Standard Raster
     if (!tileFailoverCircuitBreaker.isTripped('osm')) {
       return 'osm';
     }
 
-    // 4) All failed
+    // 5) All failed
     return 'none';
   }, [baseMapMode, maptilerApiKey, webGLAvailable, setCircuitVersion]);
 
@@ -457,7 +462,20 @@ export function MapTileLayer({
       return;
     }
 
-    // B) In-place CSS filter update for OSM when switching dark/light theme
+    // B) In-place URL update for CartoDB when switching dark/light theme
+    if (
+      activeProvider === 'carto' &&
+      activeProviderRef.current === 'carto' &&
+      tileLayerRef.current
+    ) {
+      const nextCartoUrl = isDark
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+      tileLayerRef.current.setUrl(nextCartoUrl);
+      return;
+    }
+
+    // C) In-place CSS filter update for OSM when switching dark/light theme
     if (
       activeProvider === 'osm' &&
       activeProviderRef.current === 'osm' &&
@@ -549,7 +567,37 @@ export function MapTileLayer({
       return;
     }
 
-    // C) OPENSTREETMAP (Tertiary Last Resort)
+    // C) CARTODB (Tertiary Clean Vector-Styled Raster Fallback)
+    if (activeProvider === 'carto') {
+      const cartoUrl = isDark
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+      const layer = new (ReferrerTileLayer as any)(cartoUrl, {
+        subdomains: 'abcd',
+        tileSize: 256,
+        zoomOffset: 0,
+        detectRetina: true,
+        minZoom: runtimeConfig.minZoom ?? 4,
+        maxZoom: runtimeConfig.maxZoom ?? 19,
+        bounds: L.latLngBounds(runtimeConfig.bounds || INDIA_BOUNDS),
+        crossOrigin: true,
+      });
+
+      let errorCount = 0;
+      layer.on('tileerror', () => {
+        errorCount++;
+        if (errorCount >= 4) {
+          tileFailoverCircuitBreaker.trip('carto', 'CartoDB tile server unreachable');
+        }
+      });
+
+      layer.on('tileload', recordTileSuccess);
+      layer.addTo(map);
+      tileLayerRef.current = layer;
+      return;
+    }
+
+    // D) OPENSTREETMAP (Quaternary Last Resort)
     if (activeProvider === 'osm') {
       const osmUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
       const layer = new (ReferrerTileLayer as any)(osmUrl, {
@@ -698,7 +746,7 @@ export function MapTileLayer({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
             </span>
-            <span>Using backup map ({activeProvider === 'maptiler' ? 'MapTiler' : 'OpenStreetMap'})</span>
+            <span>Using backup map ({activeProvider === 'maptiler' ? 'MapTiler' : activeProvider === 'carto' ? 'CartoDB' : 'OpenStreetMap'})</span>
           </div>
         </div>
       )}
@@ -774,6 +822,27 @@ export function MapTileLayer({
                 className="hover:underline font-medium text-slate-800 dark:text-slate-200"
               >
                 OpenStreetMap contributors
+              </a>
+            </>
+          ) : activeProvider === 'carto' ? (
+            <>
+              &copy;{' '}
+              <a
+                href="https://www.openstreetmap.org/copyright"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline font-medium text-slate-800 dark:text-slate-200"
+              >
+                OpenStreetMap contributors
+              </a>
+              , &copy;{' '}
+              <a
+                href="https://carto.com/attributions"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline font-medium text-slate-800 dark:text-slate-200"
+              >
+                CARTO
               </a>
             </>
           ) : (

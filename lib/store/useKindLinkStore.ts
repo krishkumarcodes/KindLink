@@ -128,8 +128,39 @@ interface KindLinkState {
   updateVerificationState: (state: VerificationState, docName?: string, docType?: string) => void;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
-  dismissNotification: (id: string) => void;
+  dismissNotification: (id: string) => Promise<void> | void;
+  clearAllNotifications: () => Promise<void>;
   addNotification: (notif: NotificationItem) => void;
+}
+
+const DISMISSED_NOTIFS_KEY = 'kindlink_dismissed_notifications';
+
+function getDismissedNotificationIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(DISMISSED_NOTIFS_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveDismissedNotificationId(id: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    const set = getDismissedNotificationIds();
+    set.add(id);
+    localStorage.setItem(DISMISSED_NOTIFS_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
+
+function saveAllDismissedNotificationIds(ids: string[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    const set = getDismissedNotificationIds();
+    ids.forEach((id) => set.add(id));
+    localStorage.setItem(DISMISSED_NOTIFS_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
 }
 
 export const useKindLinkStore = create<KindLinkState>()(
@@ -237,9 +268,11 @@ export const useKindLinkStore = create<KindLinkState>()(
         try {
           const notifs = await dataAdapter.getNotifications();
           if (notifs) {
+            const dismissed = getDismissedNotificationIds();
+            const filtered = notifs.filter((n) => !dismissed.has(n.id));
             set({
-              notifications: notifs,
-              unreadNotificationCount: notifs.filter((n) => n.unread).length,
+              notifications: filtered,
+              unreadNotificationCount: filtered.filter((n) => n.unread).length,
             });
           }
         } catch {
@@ -286,6 +319,7 @@ export const useKindLinkStore = create<KindLinkState>()(
             await fetchLiveStats();
             set({
               selectedRequestId: res.id,
+              activeFeedTab: 'my_requests',
               currentView: 'requests',
             });
           }
@@ -310,6 +344,7 @@ export const useKindLinkStore = create<KindLinkState>()(
           set((state) => ({
             requests: [newRequest, ...state.requests],
             selectedRequestId: newRequest.id,
+            activeFeedTab: 'my_requests',
             currentView: 'requests',
           }));
         }
@@ -605,13 +640,29 @@ export const useKindLinkStore = create<KindLinkState>()(
         });
       },
 
-      dismissNotification: (id) => {
+      dismissNotification: async (id) => {
+        saveDismissedNotificationId(id);
         const { notifications } = get();
         const updated = notifications.filter((n) => n.id !== id);
         set({
           notifications: updated,
           unreadNotificationCount: updated.filter((n) => n.unread).length,
         });
+        try {
+          await dataAdapter.deleteNotification(id);
+        } catch {}
+      },
+
+      clearAllNotifications: async () => {
+        const { notifications } = get();
+        saveAllDismissedNotificationIds(notifications.map((n) => n.id));
+        set({
+          notifications: [],
+          unreadNotificationCount: 0,
+        });
+        try {
+          await dataAdapter.clearAllNotifications();
+        } catch {}
       },
 
       addNotification: (notif) => {

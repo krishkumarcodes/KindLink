@@ -15,6 +15,7 @@ import { NotificationCenter } from '@/components/notifications/NotificationCente
 import { EmergencySosModal } from './EmergencySosModal';
 import { LocationModal } from './LocationModal';
 import { ProfileQuickMenu } from './ProfileQuickMenu';
+import { InstallAppModal } from '@/components/pwa/InstallAppModal';
 
 export function Header() {
   const {
@@ -248,7 +249,11 @@ export function Header() {
             <button
               ref={bellButtonRef}
               type="button"
-              onClick={() => (notifOpen ? setNotifOpen(false) : setNotifOpen(true))}
+              onClick={() => {
+                if (profileMenuOpen) setProfileMenuOpen(false);
+                setNotifOpen((prev) => !prev);
+                // setNotifOpen(true) toggle trigger
+              }}
               className="relative inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl border border-border/70 bg-muted/40 hover:bg-muted text-foreground transition-colors touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
               aria-label={`Notifications, ${unreadCount} unread`}
               title="Notifications"
@@ -266,7 +271,10 @@ export function Header() {
             <button
               ref={avatarButtonRef}
               type="button"
-              onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+              onClick={() => {
+                if (notifOpen) setNotifOpen(false);
+                setProfileMenuOpen((prev) => !prev);
+              }}
               className="relative inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl border border-border/70 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-all touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 shrink-0"
               aria-label="Open profile and user menu"
               aria-expanded={profileMenuOpen}
@@ -310,6 +318,7 @@ export function Header() {
       <LanguageModal open={langOpen} onClose={() => setLangOpen(false)} />
       <EmergencySosModal open={sosOpen} onClose={() => setSosOpen(false)} />
       <LocationModal open={locationOpen} onClose={() => setLocationOpen(false)} />
+      <InstallAppModal />
     </>
   );
 }

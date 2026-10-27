@@ -19,6 +19,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { getCurrentLanguageCode } from '@/lib/translate/googleTranslate';
 import { AnchoredPopover } from '@/components/ui/OverlayPortal';
+import { usePwaInstall } from '@/lib/pwa/usePwaInstall';
 
 export interface ProfileQuickMenuProps {
   open: boolean;
@@ -26,15 +27,6 @@ export interface ProfileQuickMenuProps {
   anchorRef: React.RefObject<HTMLElement>;
   onOpenSos: () => void;
   onOpenLanguage: () => void;
-}
-
-// Global cached install prompt event for PWA installation
-let cachedInstallPrompt: any = null;
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeinstallprompt', (e: Event) => {
-    e.preventDefault();
-    cachedInstallPrompt = e;
-  });
 }
 
 export function ProfileQuickMenu({
@@ -45,32 +37,13 @@ export function ProfileQuickMenu({
   onOpenLanguage,
 }: ProfileQuickMenuProps) {
   const { userProfile, setCurrentView } = useKindLinkStore();
+  const { isInstalled, triggerInstall } = usePwaInstall();
   const [copied, setCopied] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<any>(cachedInstallPrompt);
   const [currentLangCode, setCurrentLangCode] = useState('en');
 
-  // Sync install prompt and language code
+  // Sync language code
   useEffect(() => {
     setCurrentLangCode(getCurrentLanguageCode());
-
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      cachedInstallPrompt = e;
-      setInstallPrompt(e);
-    };
-
-    const handleAppInstalled = () => {
-      cachedInstallPrompt = null;
-      setInstallPrompt(null);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
   }, [open]);
 
   // Handle username 1-tap copy
@@ -92,21 +65,7 @@ export function ProfileQuickMenu({
   // Handle PWA installation
   const handleInstallApp = async () => {
     onClose();
-    if (!installPrompt) {
-      toast.info('App is already installed or install prompt is not supported by your browser.');
-      return;
-    }
-    try {
-      await installPrompt.prompt();
-      const choice = await installPrompt.userChoice;
-      if (choice?.outcome === 'accepted') {
-        toast.success('KindLink installed successfully!');
-        cachedInstallPrompt = null;
-        setInstallPrompt(null);
-      }
-    } catch {
-      toast.error('Could not complete app installation');
-    }
+    await triggerInstall();
   };
 
   // Handle sign out
@@ -299,8 +258,8 @@ export function ProfileQuickMenu({
           </span>
         </button>
 
-        {/* Row 5: Install app (when install prompt available or PWA installable) */}
-        {installPrompt && (
+        {/* Row 5: Install app or App Installed indicator */}
+        {!isInstalled ? (
           <button
             type="button"
             role="menuitem"
@@ -310,6 +269,18 @@ export function ProfileQuickMenu({
             <Download className="h-4 w-4 text-primary shrink-0 notranslate" />
             <span>Install app</span>
           </button>
+        ) : (
+          <div
+            className="flex w-full items-center justify-between px-3 h-11 min-h-[44px] rounded-2xl text-xs font-semibold text-muted-foreground bg-muted/30 select-none"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <Download className="h-4 w-4 text-emerald-500 shrink-0 notranslate" />
+              <span>KindLink App</span>
+            </div>
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 shrink-0">
+              Installed ✓
+            </span>
+          </div>
         )}
 
         {/* Row 6: Sign out */}
