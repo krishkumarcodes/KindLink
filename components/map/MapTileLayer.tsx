@@ -214,6 +214,7 @@ let cachedConfigPromise: Promise<MapRuntimeConfig> | null = null;
 let resolvedConfig: MapRuntimeConfig | null = null;
 
 export function fetchMapRuntimeConfig(): Promise<MapRuntimeConfig> {
+  if (typeof window === 'undefined') return Promise.resolve(DEFAULT_CONFIG);
   if (resolvedConfig) return Promise.resolve(resolvedConfig);
   if (cachedConfigPromise) return cachedConfigPromise;
 
@@ -248,7 +249,9 @@ export function MapTileLayer({
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const glLayerRef = useRef<MaplibreGLLayer | null>(null);
   const activeProviderRef = useRef<ActiveTileProvider | null>(null);
-  const mountTimeRef = useRef<number>(performance.now());
+  const mountTimeRef = useRef<number>(
+    typeof performance !== 'undefined' ? performance.now() : 0
+  );
   const firstTileReportedRef = useRef<boolean>(false);
 
   const [runtimeConfig, setRuntimeConfig] = useState<MapRuntimeConfig>(
@@ -463,8 +466,10 @@ export function MapTileLayer({
             tileFailoverCircuitBreaker.trip('openfreemap', 'MapLibre style/tile error');
           },
         });
-        glLayer.addTo(map);
-        glLayerRef.current = glLayer;
+        if (glLayer && map) {
+          glLayer.addTo(map);
+          glLayerRef.current = glLayer;
+        }
       } catch (err) {
         console.warn('[MapEngine] Failed to initialize OpenFreeMap layer:', err);
         tileFailoverCircuitBreaker.trip('openfreemap', 'Initialization failure');
@@ -575,7 +580,7 @@ export function MapTileLayer({
   }, [map]);
 
   const handleRetryAll = () => {
-    mountTimeRef.current = performance.now();
+    mountTimeRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
     firstTileReportedRef.current = false;
     setFirstTileLoaded(false);
     tileFailoverCircuitBreaker.resetAll();

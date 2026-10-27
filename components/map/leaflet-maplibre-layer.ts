@@ -16,6 +16,8 @@ export function isWebGLSupported(): boolean {
   }
 }
 
+export type MapLibreGLModule = typeof import('maplibre-gl');
+
 /**
  * Dynamically loads maplibre-gl if available in node_modules or global scope.
  */
@@ -26,7 +28,7 @@ export async function getMapLibre(): Promise<any | null> {
   }
   try {
     const ml = await import('maplibre-gl');
-    return ml.default || ml;
+    return (ml as any)?.default || ml;
   } catch {
     return null;
   }
@@ -40,15 +42,17 @@ export interface MaplibreGLLayerOptions extends L.LayerOptions {
   onError?: (err: any) => void;
 }
 
+const BaseLayer = (typeof L !== 'undefined' && L?.Layer ? L.Layer : class {}) as typeof L.Layer;
+
 /**
  * Leaflet Layer that embeds a MapLibre GL map instance inside Leaflet's tilePane.
  * Keeps all Leaflet markers, polylines, circles, and clustering 100% intact.
  */
-export class MaplibreGLLayer extends L.Layer {
+export class MaplibreGLLayer extends BaseLayer {
   private _container: HTMLDivElement | null = null;
   private _glMap: any = null;
   private _options: MaplibreGLLayerOptions;
-  private _offset: L.Point = new L.Point(0, 0);
+  private _offset: L.Point = typeof L !== 'undefined' && L?.Point ? new L.Point(0, 0) : ({ x: 0, y: 0 } as any);
   private _zooming = false;
   private _throttledUpdate: any = null;
 
@@ -60,11 +64,15 @@ export class MaplibreGLLayer extends L.Layer {
       pane: 'tilePane',
       ...options,
     };
-    this._throttledUpdate = L.Util.throttle(
-      this._update,
-      this._options.updateInterval || 32,
-      this
-    );
+    if (typeof L !== 'undefined' && L?.Util?.throttle) {
+      this._throttledUpdate = L.Util.throttle(
+        this._update,
+        this._options.updateInterval || 32,
+        this
+      );
+    } else {
+      this._throttledUpdate = this._update.bind(this);
+    }
   }
 
   public getGLMap(): any {
@@ -262,5 +270,8 @@ export class MaplibreGLLayer extends L.Layer {
 }
 
 export function maplibreGLLayer(options: MaplibreGLLayerOptions): MaplibreGLLayer {
+  if (typeof window === 'undefined') {
+    return null as unknown as MaplibreGLLayer;
+  }
   return new MaplibreGLLayer(options);
 }

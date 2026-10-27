@@ -1,3 +1,8 @@
+// Polyfill process.versions.webcontainer on Android/Termux so Next.js uses @next/swc-wasm-nodejs
+if (process.platform === 'android' && !process.versions.webcontainer) {
+  process.versions.webcontainer = '1';
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
@@ -10,6 +15,23 @@ const nextConfig = {
   },
   experimental: {
     useWasmBinary: true,
+    serverComponentsExternalPackages: ['maplibre-gl'],
+  },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = [...(config.externals || []), 'maplibre-gl'];
+    } else {
+      config.resolve = config.resolve || {};
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false,
+        stream: false,
+        constants: false,
+      };
+    }
+    return config;
   },
   async redirects() {
     return [

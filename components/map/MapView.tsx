@@ -41,7 +41,7 @@ import { searchPlaces, PlaceSearchResult } from '@/lib/geo/search';
 import { reverseGeocode } from '@/lib/geo/reverse-geocode';
 import { getNearestMedicalFacilities, MedicalFacility, MedicalAmenityType } from '@/lib/geo/hospitals';
 import { getRoadRoute, RoadRouteResult } from '@/lib/geo/osrm';
-import { MapLayersState } from './LeafletInnerMap';
+import type { MapLayersState } from './LeafletInnerMap';
 import { RequestDetailModal } from '../requests/RequestDetailModal';
 import { HelpFlowModal } from '../requests/HelpFlowModal';
 import { PrimaryHelpButton, SecondaryButton } from '../requests/ActionButtons';
