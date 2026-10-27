@@ -389,13 +389,16 @@ export function clearGoogleTransCookie() {
   const host = window.location.hostname;
   const expired = '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
   document.cookie = `googtrans${expired}`;
-  if (host && host !== 'localhost' && !/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
-    const parts = host.split('.');
-    if (parts.length > 1) {
-      const rootDomain = '.' + parts.slice(-2).join('.');
-      document.cookie = `googtrans${expired} domain=${rootDomain};`;
-    }
+  if (host) {
+    document.cookie = `googtrans${expired} domain=${host};`;
     document.cookie = `googtrans${expired} domain=.${host};`;
+    if (host !== 'localhost' && !/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+      const parts = host.split('.');
+      if (parts.length > 1) {
+        const rootDomain = '.' + parts.slice(-2).join('.');
+        document.cookie = `googtrans${expired} domain=${rootDomain};`;
+      }
+    }
   }
 }
 
@@ -619,7 +622,6 @@ export function loadGoogleTranslateScript(): Promise<void> {
                   includedLanguages:
                     'en,hi,bn,bho,mai,ne,ur,sat,or,as,mr,gu,pa,ta,te,kn,ml,fr,es,de,pt,it,ru,zh-CN,ja,ko,ar,id,tr',
                   autoDisplay: false,
-                  layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
                 },
                 'google_translate_element'
               );
@@ -706,12 +708,37 @@ export function changeLanguageInstantly(langCode: string, source: LanguageSource
     new CustomEvent('kindlink:locale-change', { detail: { locale: targetCode, source } })
   );
 
-  // If changing to non-English, ensure widget script is loaded
-  if (targetCode !== 'en') {
-    loadGoogleTranslateScript();
+  // If changing back to English ('en')
+  if (targetCode === 'en') {
+    clearGoogleTransCookie();
+    document.documentElement.classList.remove('translated-ltr', 'translated-rtl');
+    const select = document.querySelector('.goog-te-combo') as HTMLSelectElement | null;
+    if (select) {
+      const opt = select.querySelector('option[value=""]') || select.querySelector('option[value="en"]');
+      if (opt) {
+        select.value = opt.getAttribute('value') || '';
+      } else {
+        select.selectedIndex = 0;
+      }
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    const wasTranslated =
+      document.documentElement.classList.contains('translated-ltr') ||
+      document.documentElement.classList.contains('translated-rtl') ||
+      document.querySelector('font') !== null;
+    if (wasTranslated) {
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+      return;
+    }
+    return;
   }
 
-  // 4. Trigger hidden select element if legacy widget is mounted
+  // If changing to non-English, ensure widget script is loaded
+  loadGoogleTranslateScript();
+
+  // 4. Trigger select element for instant in-place translation
   const triggerSelect = (select: HTMLSelectElement) => {
     let matched = false;
     for (let i = 0; i < select.options.length; i++) {
@@ -719,15 +746,6 @@ export function changeLanguageInstantly(langCode: string, source: LanguageSource
         select.selectedIndex = i;
         matched = true;
         break;
-      }
-    }
-    if (!matched && targetCode === 'en') {
-      for (let i = 0; i < select.options.length; i++) {
-        if (select.options[i].value === '' || select.options[i].value === 'en') {
-          select.selectedIndex = i;
-          matched = true;
-          break;
-        }
       }
     }
     if (!matched) {
@@ -739,51 +757,21 @@ export function changeLanguageInstantly(langCode: string, source: LanguageSource
   let selectElem = document.querySelector('.goog-te-combo') as HTMLSelectElement | null;
   if (selectElem) {
     triggerSelect(selectElem);
-  }
-
-  const startTime = Date.now();
-
-  // Retry finding .goog-te-combo if it wasn't ready yet
-  if (!selectElem) {
+  } else {
+    // Fast polling: check every 40ms for the combo element to mount
+    const startTime = Date.now();
     const pollInterval = setInterval(() => {
       selectElem = document.querySelector('.goog-te-combo') as HTMLSelectElement | null;
       if (selectElem) {
         clearInterval(pollInterval);
         triggerSelect(selectElem);
-      }
-      if (Date.now() - startTime > 2500) {
+      } else if (Date.now() - startTime > 1600) {
         clearInterval(pollInterval);
-      }
-    }, 100);
-  }
-
-  // 5. 3-second fallback timer
-  setTimeout(() => {
-    if (targetCode === 'en') {
-      document.documentElement.classList.remove('translated-ltr', 'translated-rtl');
-      clearGoogleTransCookie();
-      return;
-    }
-
-    const hasTranslatedClass =
-      document.documentElement.classList.contains('translated-ltr') ||
-      document.documentElement.classList.contains('translated-rtl');
-
-    if (!hasTranslatedClass) {
-      // Reload once safely with guard in sessionStorage
-      const fallbackKey = `kindlink_reload_${targetCode}`;
-      try {
-        const lastFallback = sessionStorage.getItem('kindlink_last_fallback_reload');
-        if (lastFallback !== fallbackKey) {
-          sessionStorage.setItem('kindlink_last_fallback_reload', fallbackKey);
-          setLanguageCookies(targetCode, source);
-          window.location.reload();
-        }
-      } catch {
+        // Fallback: single reload with googtrans cookie active for automatic translation
         window.location.reload();
       }
-    }
-  }, 3000);
+    }, 40);
+  }
 }
 
 /**

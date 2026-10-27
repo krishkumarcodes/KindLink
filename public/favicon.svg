@@ -1,38 +1,43 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none">
   <defs>
-    <linearGradient id="fav-bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+    <linearGradient id="fav-bg" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#0F766E"/>
-      <stop offset="40%" stop-color="#0D9488"/>
-      <stop offset="80%" stop-color="#06B6D4"/>
+      <stop offset="25%" stop-color="#0D9488"/>
+      <stop offset="65%" stop-color="#06B6D4"/>
       <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="fav-rim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#06B6D4" stop-opacity="0.3"/>
     </linearGradient>
     <radialGradient id="fav-beacon" cx="50%" cy="50%" r="50%">
       <stop offset="0%" stop-color="#FEF08A"/>
-      <stop offset="50%" stop-color="#F59E0B"/>
-      <stop offset="100%" stop-color="#EF4444"/>
+      <stop offset="35%" stop-color="#F59E0B"/>
+      <stop offset="75%" stop-color="#EF4444"/>
+      <stop offset="100%" stop-color="#DC2626"/>
     </radialGradient>
   </defs>
 
-  <rect width="64" height="64" rx="18" fill="url(#fav-bg)"/>
-  <rect x="1" y="1" width="62" height="62" rx="17" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="1.5"/>
+  <rect x="3" y="3" width="58" height="58" rx="16" fill="url(#fav-bg)"/>
+  <rect x="3.5" y="3.5" width="57" height="57" rx="15.5" stroke="url(#fav-rim)" stroke-width="1"/>
 
-  <!-- Compact Heart-Link Silhouette -->
-  <path d="M 22.5 25.5
-           C 15.5 18.5, 10 25.5, 10 33
-           C 10 40.5, 19.5 48, 32 53
-           C 44.5 48, 54 40.5, 54 33
-           C 54 25.5, 48.5 18.5, 41.5 25.5
-           C 37 30, 32 35, 32 35
-           C 32 35, 27 30, 22.5 25.5 Z"
+  <!-- Orbital Rings -->
+  <circle cx="32" cy="32" r="23" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="1.2" stroke-dasharray="3 2"/>
+  <ellipse cx="32" cy="32" rx="23" ry="11" transform="rotate(-26 32 32)" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.5" stroke-dasharray="3.5 2"/>
+  <ellipse cx="32" cy="32" rx="23" ry="11" transform="rotate(26 32 32)" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.5" stroke-dasharray="3.5 2"/>
+
+  <!-- Interlocking Heart-Link -->
+  <path d="M 23 25 C 16 18, 10 25, 10 32.5 C 10 40, 19.5 48, 32 53 C 44.5 48, 54 40, 54 32.5 C 54 25, 48 18, 41 25 C 36.5 29.5, 32 34.5, 32 34.5 C 32 34.5, 27.5 29.5, 23 25 Z"
         fill="#FFFFFF"
-        fill-opacity="0.96"/>
+        fill-opacity="0.97"/>
 
-  <path d="M 25 28 C 28.5 32.5, 32 36, 32 36 C 32 36, 35.5 32.5, 39 28"
+  <!-- Inner Notch -->
+  <path d="M 25 27.5 C 28.5 32, 32 35.5, 32 35.5 C 32 35.5, 35.5 32, 39 27.5"
         stroke="#0D9488"
-        stroke-width="2.5"
+        stroke-width="2.4"
         stroke-linecap="round"/>
 
-  <!-- Radiant Core -->
-  <circle cx="32" cy="31" r="5.5" fill="url(#fav-beacon)"/>
-  <circle cx="32" cy="31" r="2.2" fill="#FFFFFF"/>
+  <!-- Beacon Core -->
+  <circle cx="32" cy="30.5" r="5.2" fill="url(#fav-beacon)"/>
+  <circle cx="32" cy="30.5" r="1.8" fill="#FFFFFF"/>
 </svg>

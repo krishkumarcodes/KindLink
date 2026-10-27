@@ -1,35 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" width="200" height="48" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" width="220" height="52" fill="none">
   <defs>
     <!-- Background Gradient for Icon Squircle -->
-    <linearGradient id="kl-mark-grad" x1="2" y1="2" x2="46" y2="46" gradientUnits="userSpaceOnUse">
+    <linearGradient id="kl-mark-grad" x1="2" y1="2" x2="48" y2="48" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#0F766E"/>
-      <stop offset="30%" stop-color="#0D9488"/>
+      <stop offset="25%" stop-color="#0D9488"/>
       <stop offset="65%" stop-color="#06B6D4"/>
       <stop offset="100%" stop-color="#2563EB"/>
     </linearGradient>
 
-    <!-- Wordmark Link Gradient -->
+    <!-- Top-Light Specular Rim Gradient -->
+    <linearGradient id="kl-rim-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.6"/>
+      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#06B6D4" stop-opacity="0.4"/>
+    </linearGradient>
+
+    <!-- Wordmark Link Vibrant Gradient -->
     <linearGradient id="kl-txt-grad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#0D9488"/>
-      <stop offset="60%" stop-color="#06B6D4"/>
+      <stop offset="50%" stop-color="#06B6D4"/>
       <stop offset="100%" stop-color="#3B82F6"/>
     </linearGradient>
 
-    <!-- Beacon Radial Glow -->
+    <!-- Luminous Emergency Beacon Flare -->
     <radialGradient id="kl-beacon" cx="50%" cy="50%" r="50%">
       <stop offset="0%" stop-color="#FEF08A"/>
-      <stop offset="40%" stop-color="#F59E0B"/>
-      <stop offset="85%" stop-color="#EF4444"/>
-      <stop offset="100%" stop-color="#DC2626" stop-opacity="0.9"/>
+      <stop offset="35%" stop-color="#F59E0B"/>
+      <stop offset="75%" stop-color="#EF4444"/>
+      <stop offset="100%" stop-color="#DC2626" stop-opacity="0.95"/>
     </radialGradient>
 
     <!-- Soft Ambient Elevation Filter -->
     <filter id="kl-shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="2.5" stdDeviation="3" flood-color="#0F766E" flood-opacity="0.32"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#0F766E" flood-opacity="0.36"/>
     </filter>
 
-    <filter id="kl-pulse-glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+    <filter id="kl-pulse-glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="1.8" result="blur"/>
       <feComposite in="SourceGraphic" in2="blur" operator="over"/>
     </filter>
 
@@ -54,48 +61,51 @@
     </style>
   </defs>
 
-  <!-- Squircle Base with Elevation & Dual Rim -->
+  <!-- Squircle Base with Elevation & Refined Glass Dual Rim -->
   <g filter="url(#kl-shadow)">
-    <rect x="2" y="2" width="44" height="44" rx="13" fill="url(#kl-mark-grad)"/>
-    <rect x="2.5" y="2.5" width="43" height="43" rx="12.5" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="1"/>
+    <rect x="3" y="3" width="46" height="46" rx="14" fill="url(#kl-mark-grad)"/>
+    <rect x="3.5" y="3.5" width="45" height="45" rx="13.5" stroke="url(#kl-rim-grad)" stroke-width="1.2"/>
   </g>
 
   <!-- Rebranded Emblem: Community Radar + Interlocking Heart-Link Ribbon -->
-  <g transform="translate(24, 24)">
-    <!-- Radar Wave Arc (Proximity Detection) -->
-    <circle cx="0" cy="0" r="16.5" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.2" stroke-dasharray="3 2"/>
-    <circle cx="0" cy="0" r="20" stroke="#FFFFFF" stroke-opacity="0.1" stroke-width="1"/>
+  <g transform="translate(26, 26)">
+    <!-- Radar Orbitals & Proximity Scan Rings -->
+    <circle cx="0" cy="0" r="17.5" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="1.2" stroke-dasharray="3.5 2"/>
+    <circle cx="0" cy="0" r="21" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="1"/>
+    <ellipse cx="0" cy="0" rx="20" ry="10" transform="rotate(-26)" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.5" stroke-dasharray="4 2"/>
+    <ellipse cx="0" cy="0" rx="20" ry="10" transform="rotate(26)" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.5" stroke-dasharray="4 2"/>
 
     <!-- Interlocking Heart-Link Mobius Vector -->
-    <path d="M -7.5,-5.5 C -13,-11 -17.5,-4.5 -17.5,1.5 C -17.5,7.5 -10,13 0,17 C 10,13 17.5,7.5 17.5,1.5 C 17.5,-4.5 13,-11 7.5,-5.5 C 4,-2 0,2.5 0,2.5 C 0,2.5 -4,-2 -7.5,-5.5 Z"
+    <path d="M -8.5,-6 C -14,-11.5 -19,-5 -19,1 C -19,7.5 -11,13.5 0,17.5 C 11,13.5 19,7.5 19,1 C 19,-5 14,-11.5 8.5,-6 C 4.5,-2 0,2.5 0,2.5 C 0,2.5 -4.5,-2 -8.5,-6 Z"
           fill="#FFFFFF"
-          fill-opacity="0.96"/>
+          fill-opacity="0.97"/>
 
     <!-- Accent Inner Ribbon Notch (Dimension and Craft) -->
-    <path d="M -5.5,-3.5 C -2.5,0.5 0,3.5 0,3.5 C 0,3.5 2.5,0.5 5.5,-3.5"
+    <path d="M -6,-4 C -3,0 0,3.5 0,3.5 C 0,3.5 3,0 6,-4"
           stroke="#0D9488"
-          stroke-width="1.8"
+          stroke-width="2"
           stroke-linecap="round"/>
 
-    <!-- Central Beacon Pulse (Live Emergency Node) -->
-    <circle cx="0" cy="-0.5" r="4.2" fill="url(#kl-beacon)" filter="url(#kl-pulse-glow)"/>
-    <circle cx="0" cy="-0.5" r="1.6" fill="#FFFFFF"/>
+    <!-- Central Emergency Beacon Pulse -->
+    <circle cx="0" cy="-0.5" r="4.6" fill="url(#kl-beacon)" filter="url(#kl-pulse-glow)"/>
+    <circle cx="0" cy="-0.5" r="1.8" fill="#FFFFFF"/>
   </g>
 
   <!-- Brand Typography -->
   <g id="brand-typography">
     <!-- KindLink Brand Wordmark -->
-    <text x="56" y="28" class="kl-brand-text" font-size="24" font-weight="800" letter-spacing="-0.03em">
+    <text x="60" y="30" class="kl-brand-text" font-size="25" font-weight="900" letter-spacing="-0.035em">
       <tspan class="kl-txt-kind">Kind</tspan><tspan fill="url(#kl-txt-grad)">Link</tspan>
     </text>
 
     <!-- Subtitle Tagline Pill -->
-    <text x="57" y="41" class="kl-brand-text kl-txt-sub" font-size="8" font-weight="700" letter-spacing="0.18em">
+    <text x="61" y="43" class="kl-brand-text kl-txt-sub" font-size="8" font-weight="800" letter-spacing="0.19em">
       MUTUAL AID · CRISIS RADAR
     </text>
 
-    <!-- Active Network Radar Indicator Dot -->
-    <circle cx="188" cy="18" r="3" fill="#06B6D4" opacity="0.9"/>
-    <circle cx="188" cy="18" r="1.2" fill="#FFFFFF"/>
+    <!-- Active Network Radar Indicator Dot with Pulse Ring -->
+    <circle cx="206" cy="19" r="4.5" stroke="#06B6D4" stroke-opacity="0.35" stroke-width="1.2"/>
+    <circle cx="206" cy="19" r="2.8" fill="#06B6D4"/>
+    <circle cx="206" cy="19" r="1.1" fill="#FFFFFF"/>
   </g>
 </svg>

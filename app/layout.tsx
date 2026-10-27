@@ -157,7 +157,7 @@ export default function RootLayout({
         {/* Hidden Google Translate Mount Element (visually hidden, not display:none) */}
         <div
           id="google_translate_element"
-          className="fixed bottom-0 left-0 opacity-0 pointer-events-none w-0 h-0 overflow-hidden -z-50"
+          className="fixed bottom-0 left-0 opacity-0 pointer-events-none w-px h-px overflow-hidden -z-50"
           aria-hidden="true"
           tabIndex={-1}
         />

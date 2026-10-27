@@ -20,6 +20,7 @@ import {
   LanguageOption,
   changeLanguageInstantly,
   getCurrentLanguageCode,
+  loadGoogleTranslateScript,
 } from '@/lib/translate/googleTranslate';
 import { useBodyScrollLock } from '@/components/ui/OverlayPortal';
 
@@ -67,6 +68,9 @@ export function LanguageModal({ open, onClose }: LanguageModalProps) {
   // Handle open state and Escape key
   useEffect(() => {
     if (!open) return;
+
+    // Pre-load Google Translate script immediately upon opening so translation is instant on tap
+    loadGoogleTranslateScript().catch(() => {});
 
     setSearchQuery('');
     setTranslatingCode(null);

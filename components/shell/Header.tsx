@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Bell,
-  Globe,
   MapPin,
   Siren,
 } from 'lucide-react';
@@ -30,25 +29,9 @@ export function Header() {
   const [sosOpen, setSosOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [currentLangCode, setCurrentLangCode] = useState('en');
 
   const bellButtonRef = useRef<HTMLButtonElement>(null);
   const avatarButtonRef = useRef<HTMLButtonElement>(null);
-
-  // Sync current language code for display badge
-  useEffect(() => {
-    setCurrentLangCode(getCurrentLanguageCode());
-    const handleLocaleChange = (e: Event) => {
-      const custom = e as CustomEvent<{ locale?: string }>;
-      if (custom.detail?.locale) {
-        setCurrentLangCode(custom.detail.locale);
-      }
-    };
-    window.addEventListener('kindlink:locale-change', handleLocaleChange);
-    return () => {
-      window.removeEventListener('kindlink:locale-change', handleLocaleChange);
-    };
-  }, [langOpen]);
 
   const unreadCount = unreadNotificationCount;
 
@@ -108,78 +91,81 @@ export function Header() {
                       gradientUnits="userSpaceOnUse"
                     >
                       <stop offset="0%" stopColor="#0F766E" />
-                      <stop offset="40%" stopColor="#0D9488" />
-                      <stop offset="75%" stopColor="#06B6D4" />
+                      <stop offset="25%" stopColor="#0D9488" />
+                      <stop offset="65%" stopColor="#06B6D4" />
                       <stop offset="100%" stopColor="#2563EB" />
                     </linearGradient>
+                    <linearGradient id="header-kl-rim" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.55" />
+                      <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.3" />
+                    </linearGradient>
                     <radialGradient id="header-kl-beacon" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stopColor="#FDE047" />
-                      <stop offset="50%" stopColor="#F59E0B" />
-                      <stop offset="100%" stopColor="#EF4444" />
+                      <stop offset="0%" stopColor="#FEF08A" />
+                      <stop offset="35%" stopColor="#F59E0B" />
+                      <stop offset="75%" stopColor="#EF4444" />
+                      <stop offset="100%" stopColor="#DC2626" />
                     </radialGradient>
-                    <filter id="header-kl-glow" x="-20%" y="-20%" width="140%" height="140%">
+                    <filter id="header-kl-glow" x="-30%" y="-30%" width="160%" height="160%">
                       <feGaussianBlur stdDeviation="1.5" result="blur" />
                       <feComposite in="SourceGraphic" in2="blur" operator="over" />
                     </filter>
                   </defs>
 
                   {/* Squircle Base with Elevation & Refined Dual Rim */}
-                  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#header-kl-grad)" />
+                  <rect x="3" y="3" width="58" height="58" rx="16" fill="url(#header-kl-grad)" />
                   <rect
-                    x="2.5"
-                    y="2.5"
-                    width="59"
-                    height="59"
+                    x="3.5"
+                    y="3.5"
+                    width="57"
+                    height="57"
                     rx="15.5"
-                    stroke="#FFFFFF"
-                    strokeOpacity="0.3"
+                    stroke="url(#header-kl-rim)"
                     strokeWidth="1"
                   />
 
                   {/* Rebranded Community Radar Rings */}
-                  <circle cx="32" cy="32" r="22" stroke="#FFFFFF" strokeOpacity="0.14" strokeWidth="1.5" strokeDasharray="4 2" />
+                  <circle cx="32" cy="32" r="23" stroke="#FFFFFF" strokeOpacity="0.15" strokeWidth="1.2" strokeDasharray="3 2" />
                   <ellipse
                     cx="32"
                     cy="32"
-                    rx="22"
+                    rx="23"
                     ry="11"
-                    transform="rotate(-28 32 32)"
+                    transform="rotate(-26 32 32)"
                     stroke="#FFFFFF"
-                    strokeOpacity="0.35"
-                    strokeWidth="2.5"
-                    strokeDasharray="4 2"
+                    strokeOpacity="0.18"
+                    strokeWidth="1.5"
+                    strokeDasharray="3.5 2"
                   />
                   <ellipse
                     cx="32"
                     cy="32"
-                    rx="22"
+                    rx="23"
                     ry="11"
-                    transform="rotate(28 32 32)"
+                    transform="rotate(26 32 32)"
                     stroke="#FFFFFF"
-                    strokeOpacity="0.35"
-                    strokeWidth="2.5"
-                    strokeDasharray="4 2"
+                    strokeOpacity="0.18"
+                    strokeWidth="1.5"
+                    strokeDasharray="3.5 2"
                   />
 
                   {/* Rebranded Interlocking Heart-Link Vector */}
                   <path
-                    d="M 22.5 25.5 C 15.5 18.5, 10 25.5, 10 33 C 10 40.5, 19.5 48, 32 53 C 44.5 48, 54 40.5, 54 33 C 54 25.5, 48.5 18.5, 41.5 25.5 C 37 30, 32 35, 32 35 C 32 35, 27 30, 22.5 25.5 Z"
+                    d="M 23 25 C 16 18, 10 25, 10 32.5 C 10 40, 19.5 48, 32 53 C 44.5 48, 54 40, 54 32.5 C 54 25, 48 18, 41 25 C 36.5 29.5, 32 34.5, 32 34.5 C 32 34.5, 27.5 29.5, 23 25 Z"
                     fill="#FFFFFF"
-                    fillOpacity="0.96"
+                    fillOpacity="0.97"
                   />
 
                   {/* Inner Dimension Arch */}
                   <path
-                    d="M 25 28 C 28.5 32.5, 32 36, 32 36 C 32 36, 35.5 32.5, 39 28"
+                    d="M 25 27.5 C 28.5 32, 32 35.5, 32 35.5 C 32 35.5, 35.5 32, 39 27.5"
                     stroke="#0D9488"
-                    strokeWidth="2.5"
+                    strokeWidth="2.4"
                     strokeLinecap="round"
                   />
 
                   {/* Central Emergency Beacon Pulse */}
-                  <circle cx="32" cy="31" r="5.5" fill="url(#header-kl-beacon)" filter="url(#header-kl-glow)" />
-                  <circle cx="32" cy="31" r="2" fill="#FFFFFF" />
-                  <circle cx="32" cy="32" r="2" fill="#FFFFFF" />
+                  <circle cx="32" cy="30.5" r="5.2" fill="url(#header-kl-beacon)" filter="url(#header-kl-glow)" />
+                  <circle cx="32" cy="30.5" r="1.8" fill="#FFFFFF" />
                 </svg>
               </div>
 
@@ -216,13 +202,13 @@ export function Header() {
             </button>
           </div>
 
-          {/* RIGHT: SOS Button + Language Button + Notification Bell + Profile Avatar */}
-          <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 shrink-0">
-            {/* SOS Button: Pill 36-40px high with siren icon and "SOS", red and prominent */}
+          {/* RIGHT: SOS Button + Notification Bell + Profile Avatar */}
+          <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-2.5 shrink-0">
+            {/* SOS Button: Minimal, sleek emergency jewel pill */}
             <button
               type="button"
               onClick={() => setSosOpen(true)}
-              className="relative overflow-hidden inline-flex items-center justify-center gap-1.5 h-9 sm:h-10 px-2.5 xs:px-3 sm:px-3.5 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold text-xs shadow-sm shadow-red-600/25 transition-all duration-150 touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 shrink-0 group"
+              className="relative overflow-hidden inline-flex items-center justify-center gap-1.5 h-9 sm:h-10 px-3 xs:px-3.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold text-xs shadow-sm shadow-red-600/25 border border-white/20 transition-all duration-150 touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 active:scale-95 shrink-0 group select-none"
               aria-label="Emergency SOS"
               title="Emergency SOS"
             >
@@ -234,19 +220,7 @@ export function Header() {
               <span className="tracking-wider font-black text-xs">SOS</span>
             </button>
 
-            {/* Language Selector Button: 40px button with globe icon and 2-letter uppercase code */}
-            <button
-              type="button"
-              onClick={() => setLangOpen(true)}
-              className="inline-flex items-center justify-center gap-1 h-9 sm:h-10 px-1.5 xs:px-2 sm:px-2.5 rounded-xl border border-border/70 bg-muted/40 hover:bg-muted text-foreground transition-colors touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
-              aria-label={`Switch language. Current: ${currentLangCode.toUpperCase()}`}
-              title="Change Language"
-            >
-              <Globe className="h-4 w-4 text-primary shrink-0 notranslate" />
-              <span className="notranslate text-[11px] font-bold uppercase tracking-wider">{currentLangCode}</span>
-            </button>
-
-            {/* Notifications Bell Button: 40px with red unread count badge */}
+            {/* Notifications Bell Button */}
             <button
               ref={bellButtonRef}
               type="button"
@@ -255,7 +229,7 @@ export function Header() {
                 setNotifOpen((prev) => !prev);
                 // setNotifOpen(true) toggle trigger
               }}
-              className="relative inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl border border-border/70 bg-muted/40 hover:bg-muted text-foreground transition-colors touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
+              className="relative inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl border border-border/70 bg-muted/40 hover:bg-muted text-foreground transition-all hover:border-primary/40 touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 shrink-0"
               aria-label={`Notifications, ${unreadCount} unread`}
               title="Notifications"
               aria-expanded={notifOpen}
