@@ -42,6 +42,7 @@ import { getNearestMedicalFacilities, MedicalFacility } from '@/lib/geo/hospital
 import { getRoadRoute, RoadRouteResult } from '@/lib/geo/osrm';
 import { dataAdapter } from '@/lib/data';
 import type { MapLayersState } from './LeafletInnerMap';
+import { tileFailoverCircuitBreaker } from './MapTileLayer';
 import { RequestDetailModal } from '../requests/RequestDetailModal';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { HelpFlowModal } from '../requests/HelpFlowModal';
@@ -49,14 +50,31 @@ import { PrimaryHelpButton, SecondaryButton } from '../requests/ActionButtons';
 
 // Skeleton fallback shimmer while Leaflet bundle and tiles load
 function MapLoadingFallback() {
+  const [timedOut, setTimedOut] = useState(false);
+
+  // Maximum 3-second safeguard timeout that forces raster map reveal if vector styles stall
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTimedOut(true);
+      tileFailoverCircuitBreaker.trip('openfreemap', '3-second mobile load safeguard in fallback');
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="h-full w-full relative flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-900 select-none">
       <div className="absolute inset-0 map-skeleton-shimmer" />
       <div className="relative z-10 flex flex-col items-center gap-3 p-6 text-center max-w-sm rounded-2xl bg-card/85 backdrop-blur-md border border-border shadow-lg">
         <div className="h-10 w-10 animate-spin rounded-full border-3 border-teal-500/20 border-t-teal-600" />
         <div className="space-y-1">
-          <p className="text-sm font-bold text-foreground">Loading Map Engine...</p>
-          <p className="text-xs text-muted-foreground">Connecting to OpenFreeMap vector styles</p>
+          <p className="text-sm font-bold text-foreground">
+            {timedOut ? 'Revealing Raster Tiles...' : 'Loading Map Engine...'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {timedOut
+              ? 'Connected via high-performance raster fallback'
+              : 'Connecting to OpenFreeMap vector styles'}
+          </p>
         </div>
       </div>
     </div>
@@ -457,6 +475,16 @@ export function MapView() {
       document.documentElement.style.overscrollBehavior = prevHtmlOverscroll;
       document.body.style.overscrollBehavior = prevBodyOverscroll;
     };
+  }, []);
+
+  // Safeguard: Ensure mobile devices / slow networks never get stuck indefinitely in vector loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (typeof window !== 'undefined' && !(window as any).__timeToFirstTile) {
+        tileFailoverCircuitBreaker.trip('openfreemap', '3-second mobile map load safeguard');
+      }
+    }, 3000);
+    return () => clearTimeout(timer);
   }, []);
 
   // 2. Load preferences from localStorage on mount
@@ -989,7 +1017,7 @@ export function MapView() {
   ];
 
   return (
-    <div className="relative flex-1 w-full h-[calc(100dvh-7.5rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] sm:h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px))] landscape:h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px))] overflow-hidden flex flex-col sm:flex-row landscape:flex-row bg-slate-100 dark:bg-slate-950 overscroll-none select-none">
+    <div className="relative flex-1 w-full h-[calc(100dvh-7.5rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] sm:h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px))] landscape:h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px))] pb-28 sm:pb-6 overflow-hidden flex flex-col sm:flex-row landscape:flex-row bg-slate-100 dark:bg-slate-950 overscroll-none select-none">
       {/* =========================================================================
           3. LANDSCAPE & DESKTOP LAYOUT (>=640px or landscape):
              360px left side panel with Search Bar inside panel header,
@@ -1493,9 +1521,9 @@ export function MapView() {
         <div
           className={`sm:hidden landscape:hidden absolute right-3 max-[359px]:right-2 z-20 flex flex-col items-center gap-2 pointer-events-auto transition-all duration-300 ease-out ${
             bottomSheetSnap === 'peek'
-              ? 'bottom-[108px] max-[359px]:bottom-[92px] opacity-100 translate-y-0'
+              ? 'bottom-[180px] max-[359px]:bottom-[164px] sm:bottom-[108px] opacity-100 translate-y-0'
               : bottomSheetSnap === 'half'
-              ? 'bottom-[calc(50%+14px)] opacity-100 translate-y-0'
+              ? 'bottom-[calc(50%+80px)] sm:bottom-[calc(50%+14px)] opacity-100 translate-y-0'
               : 'bottom-[calc(100%-96px)] opacity-0 pointer-events-none translate-y-6 scale-90'
           }`}
         >
@@ -1530,6 +1558,25 @@ export function MapView() {
             aria-label="Zoom out"
           >
             <Minus className="w-5 h-5 notranslate" />
+          </button>
+
+          {/* Quick Hospital Toggle */}
+          <button
+            type="button"
+            onClick={() => {
+              toggleLayer('hospitals');
+              toast.info(layers.hospitals ? 'Hospitals hidden' : 'Hospitals visible');
+            }}
+            className={`w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-full border shadow-md flex items-center justify-center active:scale-95 transition-all touch-target ${
+              layers.hospitals
+                ? 'bg-rose-600 text-white border-rose-700 shadow-rose-600/20'
+                : 'bg-card/95 dark:bg-card/95 backdrop-blur-md border-border text-foreground hover:bg-muted'
+            }`}
+            title="Toggle Hospitals"
+            aria-label="Toggle hospitals"
+            aria-pressed={layers.hospitals}
+          >
+            <Building2 className="w-5 h-5 notranslate" />
           </button>
 
           {/* Layers Menu Button */}
@@ -1763,7 +1810,7 @@ export function MapView() {
             PLACE SEARCH RESULT CARD (When a place from search is selected)
             ===================================================================== */}
         {activeItem?.type === 'searched_place' && (
-          <div className="/* bottom-24 safe clearance check for layout guard */ absolute bottom-24 sm:bottom-6 left-3 right-3 sm:left-4 sm:right-auto sm:w-96 z-30 pointer-events-auto">
+          <div className="/* bottom-24 safe clearance check for layout guard */ absolute bottom-28 sm:bottom-6 left-3 right-3 sm:left-4 sm:right-auto sm:w-96 z-30 pointer-events-auto">
             <div className="bg-card border border-border rounded-2xl p-4 shadow-xl space-y-3 animate-in slide-in-from-bottom">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -1823,7 +1870,7 @@ export function MapView() {
                Drag only from handle/header. List scrolls only when sheet is at Half or Full.
             ===================================================================== */}
         <div
-          className={`sm:hidden landscape:hidden absolute left-0 right-0 bottom-0 z-30 bg-card border-t border-border shadow-2xl rounded-t-3xl transition-all duration-300 ease-out pointer-events-auto flex flex-col select-none ${
+          className={`sm:hidden landscape:hidden absolute left-0 right-0 bottom-[72px] sm:bottom-4 z-30 bg-card border-t border-border shadow-2xl rounded-t-3xl transition-all duration-300 ease-out pointer-events-auto flex flex-col select-none ${
             bottomSheetSnap === 'peek'
               ? 'h-[96px] max-[359px]:h-[80px]'
               : bottomSheetSnap === 'half'

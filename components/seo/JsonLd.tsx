@@ -28,7 +28,7 @@ export function buildOrganizationSchema() {
     logo: `${SITE_URL}/logo.svg`,
     image: `${SITE_URL}/og-image.png`,
     description:
-      'Verified community mutual aid platform for urgent tasks in Asansol and neighboring areas. Driven by urgency, distance, and community trust.',
+      'Verified community mutual aid & emergency response network for urgent local tasks in Asansol and neighboring areas. Connect with trusted neighbours for blood donation, medical help, and urgent local support.',
     sameAs: [
       'https://github.com/krishkumarcodes/KindLink',
       'https://twitter.com/KindLinkHQ',
@@ -59,7 +59,7 @@ export function buildWebSiteSchema() {
     alternateName: ['Kind Link', 'KindLink Community Aid'],
     url: SITE_URL,
     description:
-      'Verified community mutual aid network for Asansol. Connect urgent help requests with nearby verified volunteers.',
+      'Verified community mutual aid & emergency response network for urgent local tasks in Asansol and neighboring areas. Connect with trusted neighbours for blood donation, medical help, and urgent local support.',
     potentialAction: {
       '@type': 'SearchAction',
       target: `${SITE_URL}/help?q={search_term_string}`,

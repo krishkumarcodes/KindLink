@@ -66,8 +66,62 @@ interface MapRuntimeConfig {
 // Constants & Defaults
 // ============================================================================
 export const CIRCUIT_BREAKER_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
-export const PRIMARY_FAILOVER_TIMEOUT_MS = 4000; // 4-second failover chain timeout
+export const PRIMARY_FAILOVER_TIMEOUT_MS = 4000; // 4-second failover chain timeout on desktop
+export const MOBILE_FAILOVER_TIMEOUT_MS = 2500; // 2.5-second failover timeout on mobile / touch / constrained WebGL
 const STORAGE_PREFIX = 'kindlink_map_circuit_';
+
+/**
+ * Detect mobile devices or touch screens where WebGL performance or slow network might cause hang
+ */
+export function isMobileOrTouchDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  const isTouch = 'ontouchstart' in window || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
+  const isSmallScreen = window.innerWidth <= 768;
+  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+  const isMobileUa = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  return isTouch || isSmallScreen || isMobileUa;
+}
+
+/**
+ * Detects if WebGL context is constrained, software-emulated, or low-power
+ */
+export function isWebGLConstrained(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')) as WebGLRenderingContext | null;
+    if (!gl) return true;
+    const dbgRenderInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    if (dbgRenderInfo) {
+      const renderer = (gl.getParameter(dbgRenderInfo.UNMASKED_RENDERER_WEBGL) || '').toLowerCase();
+      if (/swiftshader|llvmpipe|software|mesa/i.test(renderer)) {
+        return true;
+      }
+    }
+    const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    if (typeof maxTextureSize === 'number' && maxTextureSize < 4096) {
+      return true;
+    }
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Checks for slow network conditions (2G/3G/Save-Data)
+ */
+export function isSlowNetwork(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const conn = (navigator as any).connection;
+  if (conn) {
+    if (conn.saveData) return true;
+    if (conn.effectiveType && (conn.effectiveType === '2g' || conn.effectiveType === 'slow-2g' || conn.effectiveType === '3g')) {
+      return true;
+    }
+  }
+  return false;
+}
 
 export const INDIA_BOUNDS: [[number, number], [number, number]] = [
   [6.5, 68.0],
@@ -431,18 +485,32 @@ export function MapTileLayer({
     return `https://api.maptiler.com/maps/${style}/{z}/{x}/{y}{r}.png?key=${maptilerApiKey}`;
   }, [activeProvider, isDark, runtimeConfig.styleDark, runtimeConfig.styleLight, baseMapMode, maptilerApiKey]);
 
-  // 10. Failover Timer: 4-second timeout for primary layer
+  // Mobile/constrained WebGL detection for responsive failover
+  const isConstrainedMobile = useMemo(() => {
+    return isMobileOrTouchDevice() || isWebGLConstrained() || isSlowNetwork();
+  }, []);
+
+  const vectorFailoverTimeout = isConstrainedMobile
+    ? MOBILE_FAILOVER_TIMEOUT_MS
+    : PRIMARY_FAILOVER_TIMEOUT_MS;
+
+  // 10. Failover Timer: 2.5s on mobile/touch/constrained WebGL, 4s on desktop
   useEffect(() => {
     if (activeProvider === 'openfreemap') {
       const timer = setTimeout(() => {
         if (!firstTileLoaded) {
-          tileFailoverCircuitBreaker.trip('openfreemap', '4-second tile load timeout elapsed');
+          tileFailoverCircuitBreaker.trip(
+            'openfreemap',
+            isConstrainedMobile
+              ? '2.5-second mobile/constrained vector tile load timeout elapsed'
+              : '4-second tile load timeout elapsed'
+          );
         }
-      }, PRIMARY_FAILOVER_TIMEOUT_MS);
+      }, vectorFailoverTimeout);
 
       return () => clearTimeout(timer);
     }
-  }, [activeProvider, firstTileLoaded]);
+  }, [activeProvider, firstTileLoaded, vectorFailoverTimeout, isConstrainedMobile]);
 
   // 11. Manage Map Layer Mounting & Failover Cascade
   useEffect(() => {
@@ -556,8 +624,8 @@ export function MapTileLayer({
       let errorCount = 0;
       layer.on('tileerror', (e: any) => {
         errorCount++;
-        if (errorCount >= 3) {
-          tileFailoverCircuitBreaker.trip('maptiler', 'Repeated tile errors');
+        if (errorCount >= 2) {
+          tileFailoverCircuitBreaker.trip('maptiler', 'Repeated tile errors (2+)');
         }
       });
 
@@ -586,8 +654,8 @@ export function MapTileLayer({
       let errorCount = 0;
       layer.on('tileerror', () => {
         errorCount++;
-        if (errorCount >= 4) {
-          tileFailoverCircuitBreaker.trip('carto', 'CartoDB tile server unreachable');
+        if (errorCount >= 2) {
+          tileFailoverCircuitBreaker.trip('carto', 'CartoDB tile server unreachable (2+ errors)');
         }
       });
 
@@ -613,8 +681,8 @@ export function MapTileLayer({
       let errorCount = 0;
       layer.on('tileerror', () => {
         errorCount++;
-        if (errorCount >= 4) {
-          tileFailoverCircuitBreaker.trip('osm', 'OSM tile server unreachable');
+        if (errorCount >= 2) {
+          tileFailoverCircuitBreaker.trip('osm', 'OSM tile server unreachable (2+ errors)');
         }
       });
 
@@ -692,39 +760,18 @@ export function MapTileLayer({
         />
       )}
 
-      {/* Level 4 Failure State: Friendly "Map could not load" Card */}
+      {/* Unobtrusive "Refresh tiles" pill in the corner when tile loading is interrupted */}
       {activeProvider === 'none' && (
-        <div className="absolute inset-0 z-[500] flex items-center justify-center p-4 bg-background/90 backdrop-blur-sm pointer-events-auto select-none">
-          <div className="max-w-xs w-full bg-card border border-border rounded-2xl p-4 shadow-xl text-center space-y-3 animate-in fade-in zoom-in-95">
-            <div className="mx-auto w-10 h-10 rounded-full bg-amber-500/15 flex items-center justify-center text-amber-600 dark:text-amber-400">
-              <AlertCircle className="w-5 h-5 notranslate" />
-            </div>
-            <div className="space-y-1">
-              <h4 className="text-sm font-bold text-foreground">Map could not load</h4>
-              <p className="text-xs text-muted-foreground">
-                Unable to load map tiles. Please verify your internet connection.
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 pt-1">
-              <button
-                type="button"
-                onClick={handleRetryAll}
-                className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition active:scale-95 shadow-xs"
-              >
-                <RefreshCw className="w-3.5 h-3.5 notranslate" />
-                <span>Retry Map</span>
-              </button>
-              <a
-                href={googleMapsFallbackUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-muted hover:bg-muted/80 text-foreground text-xs font-medium transition"
-              >
-                <span>Open in Google Maps</span>
-                <ExternalLink className="w-3.5 h-3.5 notranslate" />
-              </a>
-            </div>
-          </div>
+        <div className="absolute top-20 right-3 sm:top-4 sm:right-20 z-[450] pointer-events-auto animate-in fade-in duration-200">
+          <button
+            type="button"
+            onClick={handleRetryAll}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-md backdrop-blur-md transition-all active:scale-95"
+            aria-label="Refresh map tiles"
+          >
+            <RefreshCw className="w-3.5 h-3.5 notranslate" />
+            <span>Refresh tiles</span>
+          </button>
         </div>
       )}
 

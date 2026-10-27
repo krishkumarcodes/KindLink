@@ -30,9 +30,9 @@ import {
 import { constructMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = constructMetadata({
-  title: 'Help is Just Next Door | Verified Community Aid in Asansol',
+  title: 'KindLink - Help is just next door | Local Mutual Aid & Crisis Response',
   description:
-    'Verified community mutual aid platform for Asansol, Durgapur, and neighboring districts. Rapid blood matching, medical equipment sharing, and elderly support.',
+    'Verified community mutual aid & emergency response network for urgent local tasks in Asansol and neighboring areas. Connect with trusted neighbours for blood donation, medical help, and urgent local support.',
   path: '/',
 });
 

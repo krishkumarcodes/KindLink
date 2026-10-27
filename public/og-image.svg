@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" fill="none">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="og-bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#080D1A"/>
+      <stop offset="50%" stop-color="#0B132B"/>
+      <stop offset="100%" stop-color="#07101E"/>
+    </linearGradient>
+
+    <!-- Top Accent Bar Gradient -->
+    <linearGradient id="og-bar-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0D9488"/>
+      <stop offset="35%" stop-color="#06B6D4"/>
+      <stop offset="70%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+
+    <!-- Brand Emblem Squircle Gradient -->
+    <linearGradient id="og-mark-grad" x1="0" y1="0" x2="72" y2="72" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0F766E"/>
+      <stop offset="30%" stop-color="#0D9488"/>
+      <stop offset="65%" stop-color="#06B6D4"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+
+    <!-- Wordmark Link Gradient -->
+    <linearGradient id="og-txt-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14B8A6"/>
+      <stop offset="60%" stop-color="#06B6D4"/>
+      <stop offset="100%" stop-color="#38BDF8"/>
+    </linearGradient>
+
+    <!-- Beacon Radial Glow -->
+    <radialGradient id="og-beacon" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FEF08A"/>
+      <stop offset="40%" stop-color="#F59E0B"/>
+      <stop offset="85%" stop-color="#EF4444"/>
+      <stop offset="100%" stop-color="#DC2626"/>
+    </radialGradient>
+
+    <!-- Ambient Glow Blobs -->
+    <radialGradient id="og-glow-teal" cx="15%" cy="15%" r="50%">
+      <stop offset="0%" stop-color="#0D9488" stop-opacity="0.32"/>
+      <stop offset="100%" stop-color="#0D9488" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="og-glow-blue" cx="85%" cy="80%" r="55%">
+      <stop offset="0%" stop-color="#2563EB" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#2563EB" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Card Background Gradient -->
+    <linearGradient id="card-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#131D33" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#0E172A" stop-opacity="0.85"/>
+    </linearGradient>
+
+    <style>
+      .og-font {
+        font-family: Roboto, 'DejaVu Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+      }
+    </style>
+  </defs>
+
+  <!-- Base Canvas -->
+  <rect width="1200" height="630" fill="url(#og-bg)"/>
+
+  <!-- Ambient Glows -->
+  <rect width="1200" height="630" fill="url(#og-glow-teal)"/>
+  <rect width="1200" height="630" fill="url(#og-glow-blue)"/>
+
+  <!-- Top Accent Bar -->
+  <rect x="0" y="0" width="1200" height="6" fill="url(#og-bar-grad)"/>
+
+  <!-- Subtle Outer Frame -->
+  <rect x="24" y="24" width="1152" height="582" rx="24" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="1" fill="none"/>
+
+  <!-- Radar Orbit Rings in Background -->
+  <g opacity="0.14" transform="translate(1000, 190)">
+    <circle cx="0" cy="0" r="260" stroke="#06B6D4" stroke-width="1.5" stroke-dasharray="6 6" fill="none"/>
+    <circle cx="0" cy="0" r="180" stroke="#0D9488" stroke-width="1.5" fill="none"/>
+    <circle cx="0" cy="0" r="100" stroke="#3B82F6" stroke-width="1" stroke-dasharray="4 4" fill="none"/>
+    <circle cx="0" cy="0" r="30" stroke="#14B8A6" stroke-width="1" fill="none"/>
+  </g>
+
+  <!-- ================= BRAND HEADER ================= -->
+  <g transform="translate(70, 60)">
+    <!-- Squircle Logo Container (72x72) -->
+    <rect x="0" y="0" width="72" height="72" rx="21" fill="url(#og-mark-grad)"/>
+    <rect x="1" y="1" width="70" height="70" rx="20" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="1.5"/>
+
+    <!-- Rebranded Heart-Link & Emergency Beacon Emblem Inside Squircle -->
+    <g transform="translate(36, 36) scale(1.5)">
+      <!-- Radar Orbit Arc -->
+      <circle cx="0" cy="0" r="16" stroke="#FFFFFF" stroke-opacity="0.2" stroke-width="1" stroke-dasharray="3 2"/>
+
+      <!-- Interlocking Heart-Link Vector -->
+      <path d="M -7.5,-5.5 C -13,-11 -17.5,-4.5 -17.5,1.5 C -17.5,7.5 -10,13 0,17 C 10,13 17.5,7.5 17.5,1.5 C 17.5,-4.5 13,-11 7.5,-5.5 C 4,-2 0,2.5 0,2.5 C 0,2.5 -4,-2 -7.5,-5.5 Z"
+            fill="#FFFFFF"
+            fill-opacity="0.96"/>
+
+      <!-- Accent Ribbon Inner Notch -->
+      <path d="M -5.5,-3.5 C -2.5,0.5 0,3.5 0,3.5 C 0,3.5 2.5,0.5 5.5,-3.5"
+            stroke="#0D9488"
+            stroke-width="1.8"
+            stroke-linecap="round"/>
+
+      <!-- Central Emergency Beacon Pulse -->
+      <circle cx="0" cy="-0.5" r="4.2" fill="url(#og-beacon)"/>
+      <circle cx="0" cy="-0.5" r="1.6" fill="#FFFFFF"/>
+    </g>
+
+    <!-- Wordmark -->
+    <text x="88" y="45" class="og-font" font-size="42" font-weight="800" letter-spacing="-0.03em">
+      <tspan fill="#FFFFFF">Kind</tspan><tspan fill="url(#og-txt-grad)">Link</tspan>
+    </text>
+
+    <!-- Tagline Sub-label -->
+    <text x="90" y="65" class="og-font" font-size="12" font-weight="700" fill="#94A3B8" letter-spacing="0.2em">
+      LOCAL MUTUAL AID &amp; CRISIS NETWORK
+    </text>
+  </g>
+
+  <!-- Top Right Status Badge -->
+  <g transform="translate(850, 68)">
+    <rect x="0" y="0" width="280" height="44" rx="22" fill="#134E4A" fill-opacity="0.4" stroke="#0D9488" stroke-opacity="0.4" stroke-width="1"/>
+    <circle cx="24" cy="22" r="5" fill="#14B8A6"/>
+    <circle cx="24" cy="22" r="2.5" fill="#FFFFFF"/>
+    <text x="38" y="27" class="og-font" font-size="13" font-weight="700" fill="#2DD4BF" letter-spacing="0.06em">
+      LIVE ASANSOL NETWORK
+    </text>
+  </g>
+
+  <!-- ================= HERO OVERVIEW CONTENT ================= -->
+  <g transform="translate(70, 195)">
+    <!-- Category Pill -->
+    <rect x="0" y="0" width="284" height="32" rx="16" fill="#0D9488" fill-opacity="0.15" stroke="#14B8A6" stroke-opacity="0.35" stroke-width="1"/>
+    <text x="16" y="21" class="og-font" font-size="13" font-weight="700" fill="#2DD4BF" letter-spacing="0.05em">
+      ⚡ HYPERLOCAL CRISIS RESPONSE
+    </text>
+
+    <!-- Main Title Slogan -->
+    <text x="0" y="82" class="og-font" font-size="52" font-weight="900" fill="#FFFFFF" letter-spacing="-0.03em">
+      Help is just next door.
+    </text>
+
+    <!-- Overview Subheading & Description -->
+    <text x="0" y="122" class="og-font" font-size="21" font-weight="500" fill="#CBD5E1">
+      Verified community mutual aid &amp; emergency response network for urgent local tasks
+    </text>
+    <text x="0" y="152" class="og-font" font-size="21" font-weight="500" fill="#94A3B8">
+      in Asansol and neighboring areas. Connect with trusted neighbours for urgent support.
+    </text>
+  </g>
+
+  <!-- ================= 4 PILLAR OVERVIEW CARDS ================= -->
+  <!-- Card 1: Verified Mutual Aid -->
+  <g transform="translate(70, 395)">
+    <rect x="0" y="0" width="248" height="132" rx="18" fill="url(#card-bg)" stroke="#1E293B" stroke-width="1.5"/>
+    <rect x="0" y="0" width="248" height="3" rx="1.5" fill="#0D9488"/>
+    <circle cx="32" cy="34" r="16" fill="#0D9488" fill-opacity="0.2"/>
+    <text x="32" y="39" text-anchor="middle" class="og-font" font-size="16">🛡️</text>
+    <text x="60" y="40" class="og-font" font-size="16" font-weight="700" fill="#FFFFFF">Verified Aid</text>
+    <text x="20" y="78" class="og-font" font-size="13" font-weight="400" fill="#94A3B8">Identity-checked</text>
+    <text x="20" y="98" class="og-font" font-size="13" font-weight="400" fill="#94A3B8">community volunteers</text>
+  </g>
+
+  <!-- Card 2: Emergency SOS Alerts -->
+  <g transform="translate(340, 395)">
+    <rect x="0" y="0" width="248" height="132" rx="18" fill="url(#card-bg)" stroke="#1E293B" stroke-width="1.5"/>
+    <rect x="0" y="0" width="248" height="3" rx="1.5" fill="#EF4444"/>
+    <circle cx="32" cy="34" r="16" fill="#EF4444" fill-opacity="0.2"/>
+    <text x="32" y="39" text-anchor="middle" class="og-font" font-size="16">🚨</text>
+    <text x="60" y="40" class="og-font" font-size="16" font-weight="700" fill="#FFFFFF">Emergency SOS</text>
+    <text x="20" y="78" class="og-font" font-size="13" font-weight="400" fill="#94A3B8">Rapid blood &amp; critical</text>
+    <text x="20" y="98" class="og-font" font-size="13" font-weight="400" fill="#94A3B8">medical dispatch alerts</text>
+  </g>
+
+  <!-- Card 3: Real-time Dispatch -->
+  <g transform="translate(610, 395)">
+    <rect x="0" y="0" width="248" height="132" rx="18" fill="url(#card-bg)" stroke="#1E293B" stroke-width="1.5"/>
+    <rect x="0" y="0" width="248" height="3" rx="1.5" fill="#06B6D4"/>
+    <circle cx="32" cy="34" r="16" fill="#06B6D4" fill-opacity="0.2"/>
+    <text x="32" y="39" text-anchor="middle" class="og-font" font-size="16">⚡</text>
+    <text x="60" y="40" class="og-font" font-size="16" font-weight="700" fill="#FFFFFF">Real-time Dispatch</text>
+    <text x="20" y="78" class="og-font" font-size="13" font-weight="400" fill="#94A3B8">Urgency-driven local</text>
+    <text x="20" y="98" class="og-font" font-size="13" font-weight="400" fill="#94A3B8">routing and response</text>
+  </g>
+
+  <!-- Card 4: Hyperlocal Radius -->
+  <g transform="translate(880, 395)">
+    <rect x="0" y="0" width="250" height="132" rx="18" fill="url(#card-bg)" stroke="#1E293B" stroke-width="1.5"/>
+    <rect x="0" y="0" width="250" height="3" rx="1.5" fill="#3B82F6"/>
+    <circle cx="32" cy="34" r="16" fill="#3B82F6" fill-opacity="0.2"/>
+    <text x="32" y="39" text-anchor="middle" class="og-font" font-size="16">📍</text>
+    <text x="60" y="40" class="og-font" font-size="16" font-weight="700" fill="#FFFFFF">Hyperlocal Radius</text>
+    <text x="20" y="78" class="og-font" font-size="13" font-weight="400" fill="#94A3B8">1–15 km neighbourhood</text>
+    <text x="20" y="98" class="og-font" font-size="13" font-weight="400" fill="#94A3B8">proximity boundary</text>
+  </g>
+
+  <!-- ================= FOOTER BAR ================= -->
+  <line x1="70" y1="558" x2="1130" y2="558" stroke="#1E293B" stroke-width="1"/>
+
+  <text x="70" y="588" class="og-font" font-size="15" font-weight="600" fill="#64748B">
+    🛡️ 100% Free · Community-driven Mutual Aid &amp; Crisis Response
+  </text>
+
+  <text x="1130" y="588" text-anchor="end" class="og-font" font-size="16" font-weight="700" fill="#14B8A6">
+    kindlink-gd8e.onrender.com
+  </text>
+</svg>

@@ -98,9 +98,34 @@ export function RequestCard({
   return (
     <div
       onClick={() => onSelect(request)}
-      className="group rounded-3xl border border-border/80 dark:border-white/10 bg-card/95 backdrop-blur-xs p-5 shadow-soft hover:-translate-y-0.5 hover:shadow-xl hover:shadow-teal-950/25 hover:border-primary/50 dark:hover:border-primary/60 transition-all duration-200 cursor-pointer text-left flex flex-col justify-between"
+      className="group relative overflow-hidden rounded-3xl border border-white/30 dark:border-white/10 bg-card/80 dark:bg-card/75 backdrop-blur-md p-5 shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.25)] hover:border-teal-500/40 hover:shadow-teal-500/10 hover:-translate-y-1 transition-all duration-300 cursor-pointer text-left flex flex-col justify-between"
     >
-      <div>
+      {/* Crystal glass top edge refraction highlight */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/20 to-transparent z-10"
+        aria-hidden="true"
+      />
+
+      {/* Translucent watery caustic ambient tint */}
+      <div
+        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-teal-500/[0.04] dark:from-white/[0.06] dark:via-transparent dark:to-teal-400/[0.05] z-0"
+        aria-hidden="true"
+      />
+
+      {/* Watery crystal sheen light sweep */}
+      <div
+        className="crystal-card-sheen crystal-card-ambient-sheen"
+        aria-hidden="true"
+      />
+
+      {/* Ambient crystal corner refraction */}
+      <div
+        className="pointer-events-none absolute -top-14 -right-14 w-36 h-36 rounded-full bg-gradient-to-br from-teal-400/15 via-sky-400/10 to-transparent blur-2xl group-hover:scale-125 transition-transform duration-500 ease-out z-0"
+        aria-hidden="true"
+      />
+
+      {/* Card Content (Relative z-10 for touch interactions and zero overlap) */}
+      <div className="relative z-10">
         {/* Top Badges Row */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2 flex-wrap">
@@ -178,7 +203,7 @@ export function RequestCard({
       </div>
 
       {/* Footer Info Row */}
-      <div className="mt-5 pt-4 border-t border-border/80 flex flex-col gap-3 text-xs">
+      <div className="relative z-10 mt-5 pt-4 border-t border-border/80 dark:border-white/10 flex flex-col gap-3 text-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           {/* Location text wraps cleanly to 2 lines without premature truncation */}
           <div className="flex items-start gap-1.5 font-medium min-w-0">

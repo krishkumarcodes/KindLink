@@ -141,10 +141,26 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
     fetch24hStats();
   }, [fetch24hStats]);
 
-  // Sync lastUpdatedTime on liveStats change
+  // Track requests version hash so any store update (status change, new request, deletion) automatically refreshes stats
+  const requestsVersion = useMemo(() => {
+    return (requests || []).map((r) => `${r.id}-${r.status}`).join(':');
+  }, [requests]);
+
+  // Fetch live stats on initial mount and whenever requests change in the store
+  useEffect(() => {
+    fetchLiveStats();
+  }, [fetchLiveStats, requestsVersion]);
+
+  // Periodic live refresh every 30s so pulse stays live in background
+  const statsPeriodicTick = useSharedTicker(30000);
+  useEffect(() => {
+    fetchLiveStats();
+  }, [fetchLiveStats, statsPeriodicTick]);
+
+  // Sync lastUpdatedTime whenever liveStats or requests change
   useEffect(() => {
     setLastUpdatedTime(Date.now());
-  }, [liveStats]);
+  }, [liveStats, requestsVersion]);
 
   // Close card tooltips on outside click
   useEffect(() => {
@@ -166,7 +182,14 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
 
     const events: string[] = [];
 
-    requests.forEach((req) => {
+    // Sort newest requests first so latest activity is prioritized
+    const sorted = [...requests].sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    sorted.forEach((req) => {
       // Determine clean general locality (no private names or exact house/street coordinates)
       const rawLoc = req.locationName || '';
       let cleanLoc = 'Asansol';
@@ -242,15 +265,48 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
             events.push(`Textbook exchange requested near ${cleanLoc}, ${timeAgo}`);
           }
           break;
-        default:
-          events.push(`Community aid request active near ${cleanLoc}, ${timeAgo}`);
+        case 'medicines':
+          if (isCompleted) {
+            events.push(`Medicine delivery was completed near ${cleanLoc}, ${timeAgo}`);
+          } else if (isAccepted) {
+            events.push(`Prescription assistance was accepted near ${cleanLoc}, ${timeAgo}`);
+          } else {
+            events.push(`Urgent medicines requested near ${cleanLoc}, ${timeAgo}`);
+          }
+          break;
+        case 'food':
+          if (isCompleted) {
+            events.push(`Food and grocery support completed near ${cleanLoc}, ${timeAgo}`);
+          } else if (isAccepted) {
+            events.push(`Grocery assistance was accepted near ${cleanLoc}, ${timeAgo}`);
+          } else {
+            events.push(`Food relief assistance requested near ${cleanLoc}, ${timeAgo}`);
+          }
+          break;
+        default: {
+          const catName = req.category ? req.category.replace(/_/g, ' ') : 'aid';
+          if (isCompleted) {
+            events.push(`${catName.charAt(0).toUpperCase() + catName.slice(1)} request completed near ${cleanLoc}, ${timeAgo}`);
+          } else if (isAccepted) {
+            events.push(`${catName.charAt(0).toUpperCase() + catName.slice(1)} offer accepted near ${cleanLoc}, ${timeAgo}`);
+          } else {
+            events.push(`Community ${catName} request active near ${cleanLoc}, ${timeAgo}`);
+          }
+        }
       }
     });
 
     return events.length > 0
-      ? events.slice(0, 8)
+      ? events.slice(0, 10)
       : ['Activity will show here as neighbours help each other.'];
   }, [requests]);
+
+  // Clamp event index if list shrinks
+  useEffect(() => {
+    if (currentEventIndex >= anonymizedEvents.length) {
+      setCurrentEventIndex(0);
+    }
+  }, [anonymizedEvents.length, currentEventIndex]);
 
   // Event ticker rotation every 6 seconds, paused on hover/tap, respects reduced motion
   useEffect(() => {
@@ -315,6 +371,17 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
   const helpersNearby = liveStats?.helpersNearby;
   const actsOfHelp = liveStats?.actsOfHelp;
 
+  const completedFromRequests = useMemo(() => {
+    return (requests || []).filter((r) => r.status === 'completed').length;
+  }, [requests]);
+
+  const displayedActsOfHelp =
+    actsOfHelp !== undefined && actsOfHelp !== null
+      ? Math.max(actsOfHelp, completedFromRequests)
+      : completedFromRequests > 0
+      ? completedFromRequests
+      : '—';
+
   const hasAvgRespData = avgResp !== null && avgResp !== undefined && avgResp > 0;
   const hasTrustData = rawTrust !== null && rawTrust !== undefined;
 
@@ -353,7 +420,7 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
       iconColor: 'text-rose-600 dark:text-rose-400',
       iconBorder: 'border-rose-500/20',
       cardBorder: 'border-rose-500/30 hover:border-rose-500/60',
-      value: actsOfHelp !== undefined && actsOfHelp !== null ? String(actsOfHelp) : '—',
+      value: String(displayedActsOfHelp),
       caption: 'Completed so far',
       tooltipTitle: 'Acts of help',
       tooltipText: 'Total completed mutual aid acts delivered safely across our local community.',
@@ -413,9 +480,9 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
       <div className="h-11 min-h-[44px] h-auto w-full rounded-2xl border border-border/80 bg-card/85 dark:bg-card/50 backdrop-blur-xs p-2 sm:px-3.5 flex flex-wrap items-center justify-between gap-2 min-w-0 shadow-xs">
         {/* Left: Pulsing green dot + single status string */}
         <div className="flex items-center gap-2 min-w-0 shrink">
-          <span className="relative flex h-2 w-2 shrink-0">
+          <span className="relative flex h-2.5 w-2.5 shrink-0 items-center justify-center">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
           </span>
           <span className="text-xs font-semibold text-foreground truncate select-none">
             <span className="hidden min-[380px]:inline">{liveStatus.long}</span>

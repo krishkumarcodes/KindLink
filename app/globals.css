@@ -151,6 +151,50 @@ body {
   min-width: 44px;
 }
 
+/* Safe Area Inset Utility Classes for Mobile Viewports */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* -------------------------------------------------------------
+   POPOVER & OVERLAY TRANSITION ANIMATIONS
+   ------------------------------------------------------------- */
+@keyframes popover-zoom-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes popover-zoom-fade-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+.animate-in.zoom-in-95,
+.zoom-in-95 {
+  animation: popover-zoom-fade-in 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-out.zoom-out-95,
+.zoom-out-95 {
+  animation: popover-zoom-fade-out 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* -------------------------------------------------------------
    ACCESSIBILITY: SCALABLE TEXT SIZES & ELDERLY MODE
    ------------------------------------------------------------- */
@@ -300,6 +344,96 @@ html[data-low-end="true"] [class*="shadow-soft"] {
 
 .animate-urgent-slide-in {
   animation: urgent-slide-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* -------------------------------------------------------------
+   CRYSTAL & WATERY REFRACTION ANIMATIONS FOR REQUEST CARDS
+   ------------------------------------------------------------- */
+@keyframes crystal-water-glide {
+  0% {
+    transform: translate3d(-120%, -120%, 0) rotate(22deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.65;
+  }
+  85% {
+    opacity: 0.65;
+  }
+  100% {
+    transform: translate3d(140%, 140%, 0) rotate(22deg);
+    opacity: 0;
+  }
+}
+
+.crystal-card-sheen {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 28%,
+    rgba(255, 255, 255, 0.05) 38%,
+    rgba(45, 212, 191, 0.12) 46%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(56, 189, 248, 0.14) 54%,
+    rgba(255, 255, 255, 0.06) 62%,
+    transparent 72%
+  );
+  transform: translate3d(-120%, -120%, 0) rotate(22deg);
+  transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
+  z-index: 1;
+}
+
+.dark .crystal-card-sheen {
+  background: linear-gradient(
+    115deg,
+    transparent 28%,
+    rgba(255, 255, 255, 0.03) 38%,
+    rgba(20, 184, 166, 0.14) 46%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(56, 189, 248, 0.12) 54%,
+    rgba(255, 255, 255, 0.03) 62%,
+    transparent 72%
+  );
+}
+
+/* Sweep across on card hover */
+.group:hover .crystal-card-sheen {
+  transform: translate3d(120%, 120%, 0) rotate(22deg);
+}
+
+/* Ambient watery caustic shimmer on mount / idle pulse */
+.crystal-card-ambient-sheen {
+  animation: crystal-water-glide 7s cubic-bezier(0.4, 0, 0.2, 1) infinite 1.5s;
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .crystal-card-sheen,
+  .crystal-card-ambient-sheen {
+    animation: none !important;
+    transition: none !important;
+    display: none !important;
+  }
+}
+
+html[data-reduce-motion="true"] .crystal-card-sheen,
+html[data-reduce-motion="true"] .crystal-card-ambient-sheen {
+  animation: none !important;
+  transition: none !important;
+  display: none !important;
+}
+
+/* Low-end device mode: disable heavy watery sheen */
+html.low-end-device .crystal-card-sheen,
+html.low-end-device .crystal-card-ambient-sheen,
+html[data-low-end="true"] .crystal-card-sheen,
+html[data-low-end="true"] .crystal-card-ambient-sheen {
+  display: none !important;
 }
 
 /* Leaflet map fix inside container */

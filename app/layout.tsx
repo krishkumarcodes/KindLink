@@ -22,11 +22,11 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'KindLink - Help is just next door',
+    default: 'KindLink - Help is just next door | Local Mutual Aid & Crisis Response',
     template: '%s | KindLink',
   },
   description:
-    'Verified community mutual aid platform for urgent tasks in Asansol and neighboring areas. Driven by urgency, distance, and community trust.',
+    'Verified community mutual aid & emergency response network for urgent local tasks in Asansol and neighboring areas. Connect with trusted neighbours for blood donation, medical help, and urgent local support.',
   applicationName: 'KindLink',
   authors: [{ name: 'KindLink Community Network' }],
   generator: 'Next.js',
@@ -57,23 +57,24 @@ export const metadata: Metadata = {
     locale: 'en_IN',
     url: SITE_URL,
     siteName: 'KindLink',
-    title: 'KindLink - Help is just next door',
+    title: 'KindLink - Help is just next door | Local Mutual Aid & Crisis Response',
     description:
-      'Verified community mutual aid platform for urgent tasks in Asansol and neighboring areas. Driven by urgency, distance, and community trust.',
+      'Verified community mutual aid & emergency response network for urgent local tasks in Asansol and neighboring areas. Connect with trusted neighbours for blood donation, medical help, and urgent local support.',
     images: [
       {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: 'KindLink - Local Mutual Aid & Community Support',
+        type: 'image/png',
+        alt: 'KindLink - Hyperlocal Mutual Aid & Crisis Network',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'KindLink - Help is just next door',
+    title: 'KindLink - Help is just next door | Local Mutual Aid & Crisis Response',
     description:
-      'Verified community mutual aid platform for urgent tasks in Asansol and neighboring areas. Driven by urgency, distance, and community trust.',
+      'Verified community mutual aid & emergency response network for urgent local tasks in Asansol and neighboring areas. Connect with trusted neighbours for blood donation, medical help, and urgent local support.',
     images: [`${SITE_URL}/og-image.png`],
   },
   verification: {

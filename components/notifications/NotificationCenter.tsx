@@ -765,7 +765,7 @@ export function NotificationCenter({
           transition: isSwiped ? 'none' : 'transform 0.2s ease-out',
         }}
         onClick={() => handleItemClick(item)}
-        className={`group relative p-3 sm:p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer text-left select-none overflow-hidden touch-manipulation animate-in fade-in slide-in-from-top-1 duration-200 ${
+        className={`group relative p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 cursor-pointer text-left select-none overflow-hidden touch-manipulation animate-in fade-in slide-in-from-top-1 duration-200 ${
           isHighlight
             ? 'ring-2 ring-primary animate-pulse'
             : ''
@@ -777,7 +777,7 @@ export function NotificationCenter({
             : 'border-border/70 bg-card/60 dark:bg-slate-900/40 hover:bg-muted/70 hover:border-border'
         }`}
       >
-        <div className="flex items-start gap-3 min-w-0">
+        <div className="flex items-start gap-3 sm:gap-3.5 min-w-0">
           {/* Typed colored icon circle or Shared Circular Badge Medal */}
           {visual.type === 'badge' ? (
             <div className="shrink-0 mt-0.5" title={visual.badgeLabel}>
@@ -791,7 +791,7 @@ export function NotificationCenter({
             </div>
           ) : (
             <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-transform duration-200 group-hover:scale-105 mt-0.5 ${visual.bgCircle}`}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition-transform duration-200 group-hover:scale-105 mt-0.5 ${visual.bgCircle}`}
               title={visual.badgeLabel}
             >
               {visual.icon}
@@ -800,8 +800,8 @@ export function NotificationCenter({
 
           {/* Title, descriptive body, and action */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-1.5 flex-wrap">
-              <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
                 {item.unread && (
                   <span
                     className="h-2 w-2 rounded-full bg-rose-600 dark:bg-rose-500 shrink-0 shadow-[0_0_6px_rgba(225,29,72,0.8)] animate-pulse"
@@ -819,7 +819,7 @@ export function NotificationCenter({
             </div>
 
             {/* 1-2 line descriptive body */}
-            <p className="text-xs text-muted-foreground line-clamp-2 mt-1 leading-relaxed break-words">
+            <p className="text-xs text-muted-foreground line-clamp-3 mt-1.5 leading-relaxed break-words">
               {item.message}
             </p>
 
@@ -832,14 +832,14 @@ export function NotificationCenter({
                     e.stopPropagation();
                     handleItemClick(item, visual.actionLabel);
                   }}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold transition-all shadow-xs touch-target active:scale-95 ${
+                  className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs touch-target active:scale-95 ${
                     visual.isEmergency
                       ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20'
                       : 'bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/20'
                   }`}
                 >
                   <span>{visual.actionLabel}</span>
-                  <ChevronRight className="h-3 w-3 notranslate" />
+                  <ChevronRight className="h-3.5 w-3.5 notranslate" />
                 </button>
 
                 {visual.isEmergency && (
@@ -856,11 +856,11 @@ export function NotificationCenter({
           <button
             type="button"
             onClick={(e) => handleDismissItem(item.id, e)}
-            className="shrink-0 h-7 w-7 rounded-xl flex items-center justify-center text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 transition-colors opacity-80 sm:opacity-0 group-hover:opacity-100 touch-target focus:opacity-100"
+            className="shrink-0 h-8 w-8 rounded-xl flex items-center justify-center text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 transition-colors opacity-90 sm:opacity-0 group-hover:opacity-100 touch-target focus:opacity-100"
             title="Dismiss notification"
             aria-label="Dismiss notification"
           >
-            <X className="h-3.5 w-3.5 notranslate" />
+            <X className="h-4 w-4 notranslate" />
           </button>
         </div>
       </div>
@@ -869,22 +869,19 @@ export function NotificationCenter({
 
   const content = (
     <div className="flex flex-col h-full max-h-full overflow-hidden text-card-foreground bg-card">
-      {/* Mobile Drag Handle */}
-      <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto my-2 sm:hidden shrink-0" />
-
-      {/* Sticky Header: Title, unread count pill, "Mark all read" button, settings gear button, close */}
-      <div className="sticky top-0 z-20 px-3.5 py-3 sm:px-4 sm:py-3.5 border-b border-border bg-card shrink-0 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="relative flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
-            <Bell className="h-4 w-4 notranslate" />
+      {/* Sticky Header: Title, unread count pill, settings gear button, prominent close */}
+      <div className="sticky top-0 z-20 px-4 py-3 sm:px-4 sm:py-3.5 border-b border-border bg-card shrink-0 flex items-center justify-between gap-2.5 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] sm:pt-3.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="relative flex h-10 w-10 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
+            <Bell className="h-5 w-5 sm:h-4 sm:w-4 notranslate" />
             {unreadNotificationCount > 0 && (
               <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white ring-2 ring-card shadow-[0_0_8px_rgba(225,29,72,0.5)] animate-pulse">
                 {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
               </span>
             )}
           </div>
-          <div className="min-w-0 flex items-center gap-1.5">
-            <h2 className="text-sm sm:text-base font-bold text-foreground truncate">
+          <div className="min-w-0 flex items-center gap-2">
+            <h2 className="text-base font-extrabold text-foreground truncate tracking-tight">
               Notifications
             </h2>
             {unreadNotificationCount > 0 && (
@@ -895,58 +892,68 @@ export function NotificationCenter({
           </div>
         </div>
 
-        {/* Header Actions */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {unreadNotificationCount > 0 && (
-            <button
-              type="button"
-              onClick={handleMarkAllRead}
-              className="px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl border border-border bg-muted/60 hover:bg-muted text-muted-foreground hover:text-primary transition-all text-xs font-semibold flex items-center gap-1.5 touch-target active:scale-95 shadow-xs"
-              title="Mark all as read"
-            >
-              <CheckCheck className="h-3.5 w-3.5 notranslate text-primary" />
-              <span className="hidden min-[380px]:inline">Mark all read</span>
-            </button>
-          )}
-
-          {notifications.length > 0 && (
-            <button
-              type="button"
-              onClick={handleClearAll}
-              className="px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl border border-border bg-muted/60 hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 transition-all text-xs font-semibold flex items-center gap-1.5 touch-target active:scale-95 shadow-xs"
-              title="Clear all notifications"
-            >
-              <Trash2 className="h-3.5 w-3.5 notranslate text-muted-foreground hover:text-rose-600" />
-              <span className="hidden min-[420px]:inline">Clear all</span>
-            </button>
-          )}
-
-          {/* Working Notification Settings Sheet Trigger */}
+        {/* Header Actions: Prominent and comfortable to tap on mobile */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Notification Settings Sheet Trigger */}
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
-            className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-border bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors touch-target"
+            className="flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-2xl border border-border bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors touch-target"
             title="Notification Settings"
             aria-label="Notification Settings"
           >
-            <Settings className="h-4 w-4 notranslate" />
+            <Settings className="h-4.5 w-4.5 sm:h-4 sm:w-4 notranslate" />
           </button>
 
-          {/* Close button */}
+          {/* Prominent Close button: Comfortable 44px touch target on mobile */}
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-colors touch-target"
+            className="flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-2xl bg-muted/80 hover:bg-muted text-foreground transition-all touch-target active:scale-95 shadow-xs border border-border/70"
             aria-label="Close notifications"
+            title="Close notifications"
           >
-            <X className="h-4 w-4 notranslate" />
+            <X className="h-5 w-5 sm:h-4 sm:w-4 notranslate" />
           </button>
         </div>
       </div>
 
-      {/* Wrapping Filter Chips: All, Requests, Offers, Updates, Emergency */}
-      <div className="px-3.5 py-2.5 border-b border-border bg-card shrink-0">
-        <div className="flex flex-wrap items-center gap-1.5">
+      {/* Header Action Bar: Mark all read & Clear all (Never cramped, hidden, or truncated) */}
+      {(unreadNotificationCount > 0 || notifications.length > 0) && (
+        <div className="px-4 py-2 border-b border-border/60 bg-muted/25 flex items-center justify-between gap-2 shrink-0">
+          <div>
+            {unreadNotificationCount > 0 && (
+              <button
+                type="button"
+                onClick={handleMarkAllRead}
+                className="px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground hover:text-primary transition-all text-xs font-semibold flex items-center gap-1.5 touch-target active:scale-95 shadow-xs"
+                title="Mark all as read"
+              >
+                <CheckCheck className="h-3.5 w-3.5 notranslate text-primary" />
+                <span>Mark all read</span>
+              </button>
+            )}
+          </div>
+
+          <div>
+            {notifications.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearAll}
+                className="px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 transition-all text-xs font-semibold flex items-center gap-1.5 touch-target active:scale-95 shadow-xs"
+                title="Clear all notifications"
+              >
+                <Trash2 className="h-3.5 w-3.5 notranslate text-muted-foreground hover:text-rose-600" />
+                <span>Clear all</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Scrollable Filter Chips: All, Requests, Offers, Updates, Emergency */}
+      <div className="px-4 py-2.5 border-b border-border bg-card shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5 py-0.5">
           {FILTER_ITEMS.map((item) => {
             const isActive = activeFilter === item.key;
             const count = categoryCounts[item.key] || 0;
@@ -955,9 +962,9 @@ export function NotificationCenter({
                 key={item.key}
                 type="button"
                 onClick={() => setActiveFilter(item.key)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all touch-target ${
+                className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all touch-target ${
                   isActive
-                    ? `${item.activeColor} shadow-xs`
+                    ? `${item.activeColor} shadow-xs scale-[1.02]`
                     : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/40'
                 }`}
               >
@@ -977,39 +984,39 @@ export function NotificationCenter({
         </div>
       </div>
 
-      {/* Push Notification Card with Full Text Wrapping (Never Truncated) */}
+      {/* Push Notification Card with Full Text Wrapping (Never Truncated or Cramped) */}
       {showPushBanner && (
-        <div className="relative mx-3.5 mt-3 p-3.5 rounded-2xl bg-muted/40 border border-border shadow-xs text-left shrink-0">
+        <div className="relative mx-4 mt-3 p-4 rounded-2xl bg-muted/40 border border-border shadow-xs text-left shrink-0">
           <button
             type="button"
             onClick={handleDismissPushBanner}
-            className="absolute top-2.5 right-2.5 p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors touch-target"
+            className="absolute top-3 right-3 p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors touch-target"
             aria-label="Dismiss push prompt"
           >
             <X className="h-4 w-4 notranslate" />
           </button>
 
-          <div className="flex items-start gap-3 pr-6">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs mt-0.5">
-              <Bell className="h-4 w-4 notranslate" />
+          <div className="flex items-start gap-3.5 pr-8">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs mt-0.5">
+              <Bell className="h-5 w-5 notranslate" />
             </div>
             <div className="min-w-0 flex-1 space-y-1">
-              <h4 className="text-xs sm:text-sm font-bold text-foreground leading-snug break-words">
+              <h4 className="text-sm font-bold text-foreground leading-snug break-words">
                 Enable Push Notifications
               </h4>
-              <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed break-words">
+              <p className="text-xs text-muted-foreground leading-relaxed break-words">
                 Get notified instantly for nearby urgent requests, volunteer offers, and community alerts.
               </p>
             </div>
           </div>
 
-          <div className="mt-3 pt-1">
+          <div className="mt-3.5 pt-1">
             <button
               type="button"
               onClick={handleEnablePush}
-              className="w-full py-2 px-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold transition shadow-xs touch-target flex items-center justify-center gap-1.5"
+              className="w-full py-2.5 px-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold transition shadow-xs touch-target flex items-center justify-center gap-2 active:scale-98"
             >
-              <Bell className="h-3.5 w-3.5 notranslate" />
+              <Bell className="h-4 w-4 notranslate" />
               <span>Enable notifications</span>
             </button>
           </div>
@@ -1017,7 +1024,7 @@ export function NotificationCenter({
       )}
 
       {/* Scrollable Notification List / States */}
-      <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4 space-y-4 bg-card">
+      <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-4 space-y-3.5 bg-card">
         {isLoading && notifications.length === 0 ? (
           /* Skeleton Loading State */
           <div className="space-y-3 p-1">
@@ -1127,11 +1134,11 @@ export function NotificationCenter({
       </div>
 
       {/* Sticky Footer with Close Button */}
-      <div className="sticky bottom-0 z-20 p-3.5 border-t border-border bg-card shrink-0">
+      <div className="sticky bottom-0 z-20 p-4 border-t border-border bg-card shrink-0 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] sm:pb-3.5">
         <button
           type="button"
           onClick={onClose}
-          className="w-full py-2.5 rounded-xl bg-secondary text-secondary-foreground font-bold text-xs hover:bg-secondary/80 transition-colors touch-target shadow-xs"
+          className="w-full py-3 rounded-2xl bg-secondary text-secondary-foreground font-bold text-sm hover:bg-secondary/80 transition-colors touch-target shadow-xs active:scale-98"
         >
           Close
         </button>
@@ -1167,17 +1174,17 @@ export function NotificationCenter({
           top: `${popoverCoords!.top}px`,
           left: `${popoverCoords!.left}px`,
           width: `${popoverCoords!.width}px`,
-          maxHeight: `${popoverCoords!.maxHeight}px`,
+          maxHeight: `${Math.min(popoverCoords!.maxHeight, typeof window !== 'undefined' ? window.innerHeight * 0.88 : 600)}px`,
         }}
-        className="z-50 rounded-3xl bg-card border border-border shadow-[0_25px_60px_rgba(0,0,0,0.35)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-card-foreground"
+        className="z-50 rounded-3xl bg-card border border-border shadow-[0_25px_60px_rgba(0,0,0,0.35)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-card-foreground sm:rounded-3xl sm:max-w-md sm:h-auto sm:max-h-[88dvh]"
       >
         {content}
       </div>
     </>
-  ) : (
-    /* Phones / Dialog mode: Centered panel in the middle of the screen with dimmed, blurred backdrop */
+  ) : isDesktop ? (
+    /* Desktop centered dialog fallback */
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/75 backdrop-blur-sm animate-in fade-in duration-150"
       role="dialog"
       aria-modal="true"
       aria-label="Notifications panel"
@@ -1189,14 +1196,21 @@ export function NotificationCenter({
       />
       <div
         ref={popoverRef}
-        style={{
-          maxHeight: '85dvh',
-          width: 'min(100% - 24px, 460px)',
-        }}
-        className="relative flex flex-col overflow-hidden rounded-3xl bg-card border border-border shadow-[0_25px_50px_rgba(0,0,0,0.4)] animate-in zoom-in-95 duration-200 text-card-foreground"
+        className="relative flex flex-col overflow-hidden w-full max-w-md rounded-3xl bg-card border border-border shadow-[0_25px_50px_rgba(0,0,0,0.4)] animate-in zoom-in-95 duration-150 text-card-foreground sm:rounded-3xl sm:max-w-md sm:h-auto sm:max-h-[88dvh]"
       >
         {content}
       </div>
+    </div>
+  ) : (
+    /* Mobile/small screens (<640px): completely FULL SCREEN */
+    <div
+      ref={popoverRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Notifications panel"
+      className="fixed inset-0 w-full h-[100dvh] max-h-[100dvh] rounded-none z-50 flex flex-col bg-card backdrop-blur-md pb-safe animate-in fade-in duration-150 text-card-foreground overflow-hidden"
+    >
+      {content}
     </div>
   );
 

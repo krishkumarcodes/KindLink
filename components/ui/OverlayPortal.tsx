@@ -401,16 +401,44 @@ export function AnchoredPopover({
   role = 'region',
 }: AnchoredPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
-  const position = useAnchorPosition(anchorRef, popoverRef, open, { align, offset, margin });
+  const [isRendered, setIsRendered] = useState(open);
+  const [isClosing, setIsClosing] = useState(false);
+  const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  useFocusTrap(popoverRef, open, onClose, anchorRef);
-  useClickOutside(popoverRef, onClose, open, anchorRef);
+  useEffect(() => {
+    if (open) {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
+      setIsRendered(true);
+      setIsClosing(false);
+    } else if (isRendered) {
+      setIsClosing(true);
+      closeTimerRef.current = setTimeout(() => {
+        setIsRendered(false);
+        setIsClosing(false);
+        closeTimerRef.current = null;
+      }, 150);
+    }
 
-  if (!open) return null;
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, [open, isRendered]);
+
+  const position = useAnchorPosition(anchorRef, popoverRef, isRendered, { align, offset, margin });
+
+  useFocusTrap(popoverRef, open && !isClosing, onClose, anchorRef);
+  useClickOutside(popoverRef, onClose, open && !isClosing, anchorRef);
+
+  if (!isRendered) return null;
 
   return (
     <OverlayPortal>
-      {/* Popover container with collision detection */}
+      {/* Popover container with collision detection and smooth exit transitions */}
       <div
         ref={popoverRef}
         role={role}
@@ -425,7 +453,11 @@ export function AnchoredPopover({
           maxHeight: `${position.maxHeight}px`,
           ...style,
         }}
-        className={`z-50 overflow-y-auto overscroll-contain outline-none rounded-3xl border border-border/80 bg-card shadow-2xl text-card-foreground animate-in fade-in zoom-in-95 duration-150 motion-reduce:transition-none motion-reduce:animate-none ${className}`}
+        className={`z-50 overflow-y-auto overscroll-contain outline-none rounded-3xl border border-border/80 bg-card shadow-2xl text-card-foreground ${
+          isClosing
+            ? 'animate-out fade-out-0 zoom-out-95 duration-150 pointer-events-none'
+            : 'animate-in fade-in zoom-in-95 duration-150'
+        } motion-reduce:transition-none motion-reduce:animate-none ${className}`}
       >
         {children}
       </div>

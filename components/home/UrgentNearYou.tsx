@@ -349,11 +349,23 @@ export function UrgentNearYou({
                   }
                 }}
                 style={{ borderLeftColor: categoryToken.primary, borderLeftWidth: '4px' }}
-                className={`group relative flex overflow-hidden rounded-2xl border border-border/80 dark:border-white/10 bg-card/95 backdrop-blur-xs shadow-soft hover:shadow-md hover:border-primary/40 dark:hover:border-primary/50 transition-all duration-200 cursor-pointer ${
+                className={`group relative flex overflow-hidden rounded-2xl border border-white/30 dark:border-white/10 bg-card/80 dark:bg-card/75 backdrop-blur-md shadow-[0_4px_20px_rgb(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgb(0,0,0,0.2)] hover:shadow-md hover:border-teal-500/40 dark:hover:border-teal-500/50 transition-all duration-200 cursor-pointer ${
                   isNew ? 'animate-urgent-slide-in' : ''
                 }`}
                 aria-label={`Urgent request: ${req.title}, urgency ${req.urgency}, distance ${req.distanceKm} kilometers`}
               >
+                {/* Crystal glass top edge refraction highlight */}
+                <div
+                  className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/20 to-transparent z-10"
+                  aria-hidden="true"
+                />
+
+                {/* Watery crystal sheen overlay */}
+                <div
+                  className="crystal-card-sheen"
+                  aria-hidden="true"
+                />
+
                 {/* Coloured urgency bar on the left */}
                 <div
                   className={`w-1.5 self-stretch shrink-0 rounded-l-2xl ${getUrgencyBarColor(

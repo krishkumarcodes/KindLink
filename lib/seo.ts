@@ -6,9 +6,9 @@ export const SITE_URL = (
 
 export const SITE_NAME = 'KindLink';
 export const SITE_TAGLINE = 'Help is just next door';
-export const SITE_TITLE = 'KindLink - Help is just next door';
+export const SITE_TITLE = 'KindLink - Help is just next door | Local Mutual Aid & Crisis Response';
 export const SITE_DESCRIPTION =
-  'Verified community mutual aid platform for urgent tasks in Asansol and neighboring areas. Ranked by urgency, driven by trust.';
+  'Verified community mutual aid & emergency response network for urgent local tasks in Asansol and neighboring areas. Connect with trusted neighbours for blood donation, medical help, and urgent local support.';
 
 export interface MetadataOptions {
   title?: string;
@@ -30,15 +30,21 @@ export function constructMetadata({
     ? image
     : `${SITE_URL}${image.startsWith('/') ? image : `/${image}`}`;
 
+  const resolvedTitle = title
+    ? (title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`)
+    : SITE_TITLE;
+
   return {
-    title: title ? `${title} | ${SITE_NAME}` : SITE_TITLE,
+    title: {
+      absolute: resolvedTitle,
+    },
     description,
     metadataBase: new URL(SITE_URL),
     alternates: {
       canonical: fullUrl,
     },
     openGraph: {
-      title: title ? `${title} | ${SITE_NAME}` : SITE_TITLE,
+      title: resolvedTitle,
       description,
       url: fullUrl,
       siteName: SITE_NAME,
@@ -49,13 +55,14 @@ export function constructMetadata({
           url: fullImageUrl,
           width: 1200,
           height: 630,
-          alt: title ? `${title} | ${SITE_NAME}` : SITE_TITLE,
+          type: 'image/png',
+          alt: 'KindLink - Hyperlocal Mutual Aid & Crisis Network',
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title: title ? `${title} | ${SITE_NAME}` : SITE_TITLE,
+      title: resolvedTitle,
       description,
       images: [fullImageUrl],
     },
