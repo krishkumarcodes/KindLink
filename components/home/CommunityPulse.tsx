@@ -15,7 +15,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
-import { Last24HoursSheet } from './Last24HoursSheet';
+import dynamic from 'next/dynamic';
+import { useSharedTicker } from '@/lib/utils/useSharedTicker';
+
+const Last24HoursSheet = dynamic(
+  () => import('./Last24HoursSheet').then((mod) => mod.Last24HoursSheet),
+  { ssr: false }
+);
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { HelpRequest } from '@/lib/data/types';
 import { Last24HoursData, HourlyStat } from '@/app/api/stats/24h/route';
@@ -43,9 +49,10 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
   const [twentyFourHourData, setTwentyFourHourData] = useState<Last24HoursData | null>(null);
   const [isLoading24h, setIsLoading24h] = useState(false);
 
-  // Ticking LIVE relative timestamp
-  const [secondsSinceUpdate, setSecondsSinceUpdate] = useState<number>(0);
-  const [lastUpdatedTime, setLastUpdatedTime] = useState<number>(Date.now());
+  // Ticking LIVE relative timestamp driven by unified shared ticker (pauses when hidden)
+  const tickerNow = useSharedTicker(1000);
+  const [lastUpdatedTime, setLastUpdatedTime] = useState<number>(() => Date.now());
+  const secondsSinceUpdate = Math.max(0, Math.floor((tickerNow - lastUpdatedTime) / 1000));
 
   // Activity ticker rotation state
   const [currentEventIndex, setCurrentEventIndex] = useState(0);
@@ -137,16 +144,7 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
   // Sync lastUpdatedTime on liveStats change
   useEffect(() => {
     setLastUpdatedTime(Date.now());
-    setSecondsSinceUpdate(0);
   }, [liveStats]);
-
-  // Keep ticking every second
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setSecondsSinceUpdate(Math.floor((Date.now() - lastUpdatedTime) / 1000));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [lastUpdatedTime]);
 
   // Close card tooltips on outside click
   useEffect(() => {
@@ -586,12 +584,14 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
       </div>
 
       {/* Last 24 Hours Sheet Modal */}
-      <Last24HoursSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        data={twentyFourHourData}
-        isLoading={isLoading24h}
-      />
+      {sheetOpen && (
+        <Last24HoursSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          data={twentyFourHourData}
+          isLoading={isLoading24h}
+        />
+      )}
     </div>
   );
 }

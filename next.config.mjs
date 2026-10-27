@@ -16,6 +16,7 @@ const nextConfig = {
   experimental: {
     useWasmBinary: true,
     serverComponentsExternalPackages: ['maplibre-gl'],
+    optimizePackageImports: ['lucide-react', 'framer-motion'],
   },
   webpack: (config, { isServer }) => {
     if (isServer) {

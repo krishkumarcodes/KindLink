@@ -13,14 +13,24 @@ function MapRedirectContent() {
   useEffect(() => {
     const requestId = searchParams.get('request');
     const route = searchParams.get('route');
+    const lat = searchParams.get('lat');
+    const lng = searchParams.get('lng');
+    const z = searchParams.get('z');
+
     if (requestId) {
       setSelectedRequestId(requestId);
     }
     setCurrentView('map');
+
     const query = new URLSearchParams();
     if (requestId) query.set('request', requestId);
     if (route) query.set('route', route);
-    const targetUrl = query.toString() ? `/app?${query.toString()}` : '/app';
+    if (lat) query.set('lat', lat);
+    if (lng) query.set('lng', lng);
+    if (z) query.set('z', z);
+    query.set('view', 'map');
+
+    const targetUrl = `/app?${query.toString()}`;
     router.replace(targetUrl);
   }, [searchParams, router, setCurrentView, setSelectedRequestId]);
 

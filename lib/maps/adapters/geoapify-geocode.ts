@@ -120,45 +120,62 @@ export class GeoapifyGeocodeProvider implements GeocodeProvider {
   }
 
   private async executeFetch(urlString: string, signal?: AbortSignal): Promise<GeocodeResult[]> {
-    return geoapifyThrottle.schedule(async () => {
-      const res = await fetch(urlString, {
-        headers: { Accept: 'application/json' },
-        signal,
-      });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      controller.abort(new Error('Geoapify request timed out after 5000ms'));
+    }, 5000);
 
-      if (!res.ok) {
-        throw Object.assign(new Error(`Geoapify HTTP ${res.status}: ${res.statusText}`), {
-          status: res.status,
+    const onSignalAbort = () => controller.abort();
+    if (signal) {
+      signal.addEventListener('abort', onSignalAbort, { once: true });
+    }
+
+    try {
+      return await geoapifyThrottle.schedule(async () => {
+        const res = await fetch(urlString, {
+          headers: { Accept: 'application/json' },
+          signal: controller.signal,
         });
-      }
 
-      const data: GeoapifyResponse = await res.json();
-      const features = data.features || [];
+        if (!res.ok) {
+          throw Object.assign(new Error(`Geoapify HTTP ${res.status}: ${res.statusText}`), {
+            status: res.status,
+          });
+        }
 
-      return features.map((f, idx) => {
-        const [lng, lat] = f.geometry.coordinates;
-        const props = f.properties || {};
-        const fallbackName = props.formatted?.split(',')[0]?.trim() || 'Location';
+        const data: GeoapifyResponse = await res.json();
+        const features = data.features || [];
 
-        return {
-          id: props.place_id || `geoapify-${lat}-${lng}-${idx}`,
-          name: props.name || fallbackName,
-          displayName: props.formatted || fallbackName,
-          lat,
-          lng,
-          type: props.result_type,
-          suburb: props.suburb || props.district,
-          city: props.city,
-          state: props.state,
-          country: props.country,
-          postcode: props.postcode,
-          boundingBox: f.bbox ? [f.bbox[1], f.bbox[3], f.bbox[0], f.bbox[2]] : undefined,
-          confidence: props.rank?.confidence,
-          sourceProvider: this.id,
-          raw: f,
-        };
+        return features.map((f, idx) => {
+          const [lng, lat] = f.geometry.coordinates;
+          const props = f.properties || {};
+          const fallbackName = props.formatted?.split(',')[0]?.trim() || 'Location';
+
+          return {
+            id: props.place_id || `geoapify-${lat}-${lng}-${idx}`,
+            name: props.name || fallbackName,
+            displayName: props.formatted || fallbackName,
+            lat,
+            lng,
+            type: props.result_type,
+            suburb: props.suburb || props.district,
+            city: props.city,
+            state: props.state,
+            country: props.country,
+            postcode: props.postcode,
+            boundingBox: f.bbox ? [f.bbox[1], f.bbox[3], f.bbox[0], f.bbox[2]] : undefined,
+            confidence: props.rank?.confidence,
+            sourceProvider: this.id,
+            raw: f,
+          };
+        });
       });
-    });
+    } finally {
+      clearTimeout(timeout);
+      if (signal) {
+        signal.removeEventListener('abort', onSignalAbort);
+      }
+    }
   }
 }
 

@@ -582,6 +582,105 @@ export function setupDynamicContentTranslateObserver() {
   });
 }
 
+declare global {
+  interface Window {
+    googleTranslateElementInit?: () => void;
+    __googleTranslateInitialized?: boolean;
+    __googleTranslateScriptLoaded?: boolean;
+    google?: any;
+  }
+}
+
+/**
+ * Lazy loads the Google Translate script dynamically on demand.
+ */
+export function loadGoogleTranslateScript(): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve();
+  if (window.__googleTranslateScriptLoaded && window.__googleTranslateInitialized) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    // 1. Ensure init callback is registered on window
+    if (!window.googleTranslateElementInit) {
+      window.googleTranslateElementInit = function () {
+        if (window.__googleTranslateInitialized) return;
+        function init() {
+          const el = document.getElementById('google_translate_element');
+          if (!el) {
+            setTimeout(init, 50);
+            return;
+          }
+          try {
+            if (window.google && window.google.translate && window.google.translate.TranslateElement) {
+              new window.google.translate.TranslateElement(
+                {
+                  pageLanguage: 'en',
+                  includedLanguages:
+                    'en,hi,bn,bho,mai,ne,ur,sat,or,as,mr,gu,pa,ta,te,kn,ml,fr,es,de,pt,it,ru,zh-CN,ja,ko,ar,id,tr',
+                  autoDisplay: false,
+                  layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
+                },
+                'google_translate_element'
+              );
+              window.__googleTranslateInitialized = true;
+            }
+          } catch (e) {
+            console.error('[Google Translate Init Error]', e);
+          }
+        }
+        init();
+      };
+    }
+
+    // 2. Check if script tag already exists
+    if (document.getElementById('google-translate-script')) {
+      window.__googleTranslateScriptLoaded = true;
+      resolve();
+      return;
+    }
+
+    // 3. Dynamically insert script
+    const script = document.createElement('script');
+    script.id = 'google-translate-script';
+    script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+    script.async = true;
+    script.onload = () => {
+      window.__googleTranslateScriptLoaded = true;
+      resolve();
+    };
+    script.onerror = () => {
+      resolve();
+    };
+    document.body.appendChild(script);
+  });
+}
+
+/**
+ * Lazy loads Google Translate only when language != 'en' and browser is idle.
+ * Completely skips loading on initial visits for English users.
+ */
+export function initGoogleTranslateIfNonEnglish(initialLocale?: string) {
+  if (typeof window === 'undefined') return;
+
+  const code = initialLocale || getCurrentLanguageCode();
+  if (code && code !== 'en') {
+    // Idle load
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(
+        () => {
+          loadGoogleTranslateScript();
+        },
+        { timeout: 3500 }
+      );
+    } else {
+      setTimeout(() => {
+        loadGoogleTranslateScript();
+      }, 1200);
+    }
+  }
+}
+
 /**
  * Triggers instant native and widget language change without reloading,
  * with a 3-second fallback to cookie persistence & single reload.
@@ -606,6 +705,11 @@ export function changeLanguageInstantly(langCode: string, source: LanguageSource
   window.dispatchEvent(
     new CustomEvent('kindlink:locale-change', { detail: { locale: targetCode, source } })
   );
+
+  // If changing to non-English, ensure widget script is loaded
+  if (targetCode !== 'en') {
+    loadGoogleTranslateScript();
+  }
 
   // 4. Trigger hidden select element if legacy widget is mounted
   const triggerSelect = (select: HTMLSelectElement) => {

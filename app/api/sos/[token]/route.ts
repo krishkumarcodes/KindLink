@@ -8,10 +8,14 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: { token: string } }
 ) {
+  const privateHeaders = {
+    'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+  };
+
   try {
     const token = params.token;
     if (!token) {
-      return NextResponse.json({ success: false, error: 'Token is required' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Token is required' }, { status: 400, headers: privateHeaders });
     }
 
     const event = dataAdapter.getSosByToken
@@ -22,7 +26,7 @@ export async function GET(
       return NextResponse.json({
         success: true,
         event,
-      });
+      }, { headers: privateHeaders });
     }
 
     // Resilient fallback for responders viewing valid emergency token
@@ -42,11 +46,11 @@ export async function GET(
         userName: 'KindLink Citizen',
         userPhone: '',
       },
-    });
+    }, { headers: privateHeaders });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || 'Internal server error' },
-      { status: 500 }
+      { status: 500, headers: privateHeaders }
     );
   }
 }

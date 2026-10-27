@@ -37,14 +37,27 @@ import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { dataAdapter } from '@/lib/data';
 import { EmergencyContact } from '@/lib/data/types';
-import { EditProfileModal } from './EditProfileModal';
-import { EmergencyContactModal } from './EmergencyContactModal';
-import { PhoneInput } from './PhoneInput';
+import dynamic from 'next/dynamic';
+
+const EditProfileModal = dynamic(
+  () => import('./EditProfileModal').then((mod) => mod.EditProfileModal),
+  { ssr: false }
+);
+
+const EmergencyContactModal = dynamic(
+  () => import('./EmergencyContactModal').then((mod) => mod.EmergencyContactModal),
+  { ssr: false }
+);
+
+const ReviewsModal = dynamic(
+  () => import('./ReviewsModal').then((mod) => mod.ReviewsModal),
+  { ssr: false }
+);
+
 import { SettingsView } from '@/components/settings/SettingsView';
 import { VerificationTab } from './tabs/VerificationTab';
 import { ActivityTab, ActivityItem } from './tabs/ActivityTab';
 import { ImpactTab, ImpactStats } from './tabs/ImpactTab';
-import { ReviewsModal } from './ReviewsModal';
 import { ProfileHeader } from './ProfileHeader';
 import { ProfileTabs, ProfileTab } from './ProfileTabs';
 import { OverviewTab } from './tabs/OverviewTab';
@@ -360,42 +373,46 @@ export function ProfileView() {
          ========================================================================= */}
 
       {/* EDIT PROFILE MODAL */}
-      <EditProfileModal open={editProfileOpen} onClose={() => setEditProfileOpen(false)} />
-
-
+      {editProfileOpen && (
+        <EditProfileModal open={editProfileOpen} onClose={() => setEditProfileOpen(false)} />
+      )}
 
       {/* EMERGENCY CONTACT ADD / EDIT MODAL */}
-      <EmergencyContactModal
-        open={contactModalOpen}
-        contact={editingContact}
-        onClose={() => {
-          setContactModalOpen(false);
-          setEditingContact(null);
-        }}
-        onSave={(contactData) => {
-          if (editingContact) {
-            updateEmergencyContact({
-              id: editingContact.id,
-              ...contactData,
-            });
-            toast.success('Emergency contact updated');
-          } else {
-            addEmergencyContact(contactData);
-            toast.success('Emergency contact added');
-          }
-          setContactModalOpen(false);
-          setEditingContact(null);
-        }}
-      />
+      {contactModalOpen && (
+        <EmergencyContactModal
+          open={contactModalOpen}
+          contact={editingContact}
+          onClose={() => {
+            setContactModalOpen(false);
+            setEditingContact(null);
+          }}
+          onSave={(contactData) => {
+            if (editingContact) {
+              updateEmergencyContact({
+                id: editingContact.id,
+                ...contactData,
+              });
+              toast.success('Emergency contact updated');
+            } else {
+              addEmergencyContact(contactData);
+              toast.success('Emergency contact added');
+            }
+            setContactModalOpen(false);
+            setEditingContact(null);
+          }}
+        />
+      )}
 
       {/* REVIEWS & TRUST SCORE MODAL */}
-      <ReviewsModal
-        open={reviewsModalOpen}
-        onClose={() => setReviewsModalOpen(false)}
-        userId={userProfile.id}
-        trustScoreDisplay={trustScoreDisplay}
-        ratingCount={summaryStats.ratingsCount}
-      />
+      {reviewsModalOpen && (
+        <ReviewsModal
+          open={reviewsModalOpen}
+          onClose={() => setReviewsModalOpen(false)}
+          userId={userProfile.id}
+          trustScoreDisplay={trustScoreDisplay}
+          ratingCount={summaryStats.ratingsCount}
+        />
+      )}
     </div>
   );
 }

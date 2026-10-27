@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import {
   MapPin,
   Clock,
@@ -21,8 +22,12 @@ import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { dataAdapter } from '@/lib/data';
 import { getCategoryToken } from '@/lib/data/categoryColors';
 import { PrimaryHelpButton, SecondaryButton } from './ActionButtons';
-import { EmergencyStoryCardModal } from './EmergencyStoryCardModal';
 import { EndorsementChip } from './EndorsementChip';
+
+const EmergencyStoryCardModal = dynamic(
+  () => import('./EmergencyStoryCardModal').then((mod) => mod.EmergencyStoryCardModal),
+  { ssr: false }
+);
 
 export interface RequestCardProps {
   request: HelpRequest;
@@ -278,11 +283,13 @@ export function RequestCard({
       </div>
 
       {/* Emergency Story Card Modal */}
-      <EmergencyStoryCardModal
-        request={request}
-        open={storyModalOpen}
-        onClose={() => setStoryModalOpen(false)}
-      />
+      {storyModalOpen && (
+        <EmergencyStoryCardModal
+          request={request}
+          open={storyModalOpen}
+          onClose={() => setStoryModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

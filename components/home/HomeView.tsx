@@ -27,6 +27,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
+import { useSharedTicker } from '@/lib/utils/useSharedTicker';
 import { HelpCategory, HelpRequest } from '@/lib/data/types';
 import { getHumanReadableLocation } from '@/lib/geo/reverse-geocode';
 import { EmergencySosModal } from '../shell/EmergencySosModal';
@@ -266,14 +267,11 @@ export function HomeView() {
     };
   }, [userCoords?.lat, userCoords?.lng, userAreaName]);
 
-  // Initial stats fetch + 60-second polling fallback
+  // Initial stats fetch + 60-second polling fallback (pauses when hidden)
+  const statsTick = useSharedTicker(60000);
   useEffect(() => {
     fetchLiveStats();
-    const interval = setInterval(() => {
-      fetchLiveStats();
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [fetchLiveStats, userCoords?.lat, userCoords?.lng, filterRadius]);
+  }, [fetchLiveStats, userCoords?.lat, userCoords?.lng, filterRadius, statsTick]);
 
   // Clean first name parsing
   const firstName = extractUserFirstName(userProfile);

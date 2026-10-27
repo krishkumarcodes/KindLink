@@ -1,0 +1,91 @@
+name: KindLink CI & Performance Quality Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-and-performance:
+    name: Lint, Type Check, Test Suites & Performance Budgets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Cache Node Modules
+        uses: actions/cache@v4
+        id: npm-cache
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Cache Next.js Build Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .next/cache
+          key: ${{ runner.os }}-next-cache-${{ hashFiles('package-lock.json') }}-${{ hashFiles('**/*.[jt]s', '**/*.[jt]sx') }}
+          restore-keys: |
+            ${{ runner.os }}-next-cache-${{ hashFiles('package-lock.json') }}-
+
+      - name: Install Dependencies
+        if: steps.npm-cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: 1. Clean Architecture & Purge Verification Audit
+        run: npm run check:clean
+
+      - name: 2. Typography & Font Verification Audit
+        run: npm run check:fonts
+
+      - name: 3. TypeScript Static Type Check
+        run: npm run type-check
+
+      - name: 4. Layout, Safe Zones & Alignment QA Audit
+        run: npm run check:layout
+
+      - name: 5. Shared Overlay System & iOS Safari Scroll Lock Tests
+        run: npm run test:overlays
+
+      - name: 6. Scroll Position & Restoration Tests
+        run: npm run test:scroll
+
+      - name: 7. Contact Visibility & Privacy Test Suite
+        run: npm run test:visibility
+
+      - name: 8. Categories & Moderation Test Suite
+        run: npm run test:categories
+
+      - name: 9. Command Palette & Quick Actions Test Suite
+        run: npm run test:palette
+
+      - name: 10. Request Details & Route Maps Test Suite
+        run: npm run test:requests
+
+      - name: 11. Profile Integrity & QA Audit
+        run: npm run check:profile
+
+      - name: 12. Maps Client-Side Code Guard Audit
+        run: npm run check:maps
+
+      - name: 13. Performance Harness & Budget Enforcement (Home <= 170KB Initial JS)
+        run: npm run perf:check
+
+      - name: 14. Next.js Optimized Production Build
+        run: npm run build

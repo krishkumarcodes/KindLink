@@ -1,4 +1,4 @@
-import { DataAdapter, CreateRequestInput, TransitLocation } from './adapter';
+import { DataAdapter, CreateRequestInput, TransitLocation, MapBoundsItem, MapBoundsOptions } from './adapter';
 import {
   HelpRequest,
   UserProfile,
@@ -18,6 +18,50 @@ class SupabaseDataAdapter implements DataAdapter {
     return createClient();
   }
 
+  async getMapItemsInBounds(options: MapBoundsOptions): Promise<MapBoundsItem[]> {
+    const supabase = this.getSupabase();
+    const minLat = Math.min(options.minLat, options.maxLat);
+    const maxLat = Math.max(options.minLat, options.maxLat);
+    const minLng = Math.min(options.minLng, options.maxLng);
+    const maxLng = Math.max(options.minLng, options.maxLng);
+    const cat =
+      options.category && options.category !== 'all'
+        ? options.category === 'elderly'
+          ? 'elderly_help'
+          : options.category
+        : null;
+    const urgency =
+      options.urgency && options.urgency !== 'all' ? options.urgency : null;
+    const lim = options.limit ?? 100;
+
+    const { data, error } = await supabase.rpc('map_items_in_bounds', {
+      min_lat: minLat,
+      min_lng: minLng,
+      max_lat: maxLat,
+      max_lng: maxLng,
+      filter_cat: cat,
+      filter_urgency: urgency,
+      lim,
+    });
+
+    if (error || !data) {
+      console.warn('Fallback on map_items_in_bounds RPC error:', error?.message);
+      return [];
+    }
+
+    return (data as any[]).map((row) => ({
+      id: row.id,
+      category: (row.category === 'elderly_help' ? 'elderly' : row.category) as HelpCategory,
+      urgency: row.urgency as UrgencyLevel,
+      status: row.status as RequestLifecycleStatus,
+      lat: Number(row.lat),
+      lng: Number(row.lng),
+      title: row.title,
+      contactName: row.contact_name || 'Neighbor',
+      distanceKm: Number(row.distance_km ?? 0),
+    }));
+  }
+
   async getRequests(options?: {
     lat?: number;
     lng?: number;
@@ -25,7 +69,49 @@ class SupabaseDataAdapter implements DataAdapter {
     category?: HelpCategory | 'all';
     urgency?: UrgencyLevel | 'all';
     tag?: string;
+    bounds?: {
+      minLat: number;
+      minLng: number;
+      maxLat: number;
+      maxLng: number;
+    };
   }): Promise<HelpRequest[]> {
+    if (options?.bounds) {
+      const items = await this.getMapItemsInBounds({
+        minLat: options.bounds.minLat,
+        minLng: options.bounds.minLng,
+        maxLat: options.bounds.maxLat,
+        maxLng: options.bounds.maxLng,
+        category: options.category,
+        urgency: options.urgency,
+        limit: 100,
+      });
+
+      return items.map((r) => ({
+        id: r.id,
+        requesterId: '',
+        title: r.title,
+        description: '',
+        category: r.category as HelpCategory,
+        customCategoryLabel: undefined,
+        tags: [],
+        urgency: r.urgency,
+        waitingMinutes: 1,
+        distanceKm: r.distanceKm,
+        locationName: 'Local Area',
+        latitude: r.lat,
+        longitude: r.lng,
+        createdAt: new Date().toISOString(),
+        status: r.status as RequestLifecycleStatus,
+        verifiedRequester: false,
+        contactName: r.contactName,
+        contactRole: 'Community Member',
+        phone: '',
+        verified: false,
+        verificationBadge: 'Unverified',
+      }));
+    }
+
     const supabase = this.getSupabase();
     const lat = options?.lat ?? ASANSOL_CENTER.lat;
     const lng = options?.lng ?? ASANSOL_CENTER.lng;

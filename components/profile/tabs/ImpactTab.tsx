@@ -15,7 +15,12 @@ import {
   BookOpen,
   Info,
 } from 'lucide-react';
-import { ShareImpactModal } from '../ShareImpactModal';
+import dynamic from 'next/dynamic';
+
+const ShareImpactModal = dynamic(
+  () => import('../ShareImpactModal').then((mod) => mod.ShareImpactModal),
+  { ssr: false }
+);
 
 export interface ImpactStats {
   helpsGiven: number;
@@ -418,13 +423,15 @@ export function ImpactTab({ stats, userName = 'Community Member', userHandle = '
           7. "SHARE MY IMPACT" HIGH-RES MODAL
           Wire Share Your Impact modal dialog and handleCopyShare action
          ========================================================================= */}
-      <ShareImpactModal
-        open={shareModalOpen}
-        onClose={() => setShareModalOpen(false)}
-        stats={stats}
-        userName={userName}
-        userHandle={userHandle}
-      />
+      {shareModalOpen && (
+        <ShareImpactModal
+          open={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          stats={stats}
+          userName={userName}
+          userHandle={userHandle}
+        />
+      )}
     </div>
   );
 }

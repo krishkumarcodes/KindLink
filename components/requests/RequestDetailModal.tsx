@@ -62,9 +62,14 @@ import { formatTimeAgo, formatMinutesAgo } from '@/lib/utils/formatTime';
 import { OffersReceivedSection } from './OffersReceivedSection';
 import { StickyActionBar } from './StickyActionBar';
 import { getCategoryToken } from '@/lib/data/categoryColors';
-import { EmergencyStoryCardModal } from './EmergencyStoryCardModal';
 import { EndorsementChip } from './EndorsementChip';
 import { HandoverPinModal } from './HandoverPinModal';
+import { useSharedTicker } from '@/lib/utils/useSharedTicker';
+
+const EmergencyStoryCardModal = dynamic(
+  () => import('./EmergencyStoryCardModal').then((mod) => mod.EmergencyStoryCardModal),
+  { ssr: false }
+);
 
 const RequestRouteMiniMap = dynamic(
   () => import('@/components/map/RequestRouteMiniMap'),
@@ -358,16 +363,8 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
   const [loadingPlaces, setLoadingPlaces] = useState(false);
   const [placesError, setPlacesError] = useState<string | null>(null);
 
-  // Live ticking state (updates every 60s for live Waiting tile)
-  const [currentTime, setCurrentTime] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (!open) return;
-    const interval = setInterval(() => {
-      setCurrentTime(Date.now());
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [open]);
+  // Live ticking state (updates every 60s for live Waiting tile; pauses automatically when hidden)
+  const currentTime = useSharedTicker(60000, open);
 
   // Check if current user is the request owner
   const isRequester = Boolean(isRequestOwner(request, userProfile));
@@ -2189,11 +2186,13 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
       {/* =====================================================================
           EMERGENCY STORY CARD MODAL (WhatsApp Status & Instagram Stories)
          ===================================================================== */}
-      <EmergencyStoryCardModal
-        request={request}
-        open={storyModalOpen}
-        onClose={() => setStoryModalOpen(false)}
-      />
+      {storyModalOpen && (
+        <EmergencyStoryCardModal
+          request={request}
+          open={storyModalOpen}
+          onClose={() => setStoryModalOpen(false)}
+        />
+      )}
 
       {/* =====================================================================
           HANDOVER PIN VERIFICATION MODAL

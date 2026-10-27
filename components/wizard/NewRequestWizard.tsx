@@ -40,7 +40,12 @@ import { LocationSearchResult } from '@/lib/location/types';
 import { reverseGeocode } from '@/lib/geo/reverse-geocode';
 import { PinDropMap } from '@/components/location/PinDropMap';
 import { HelpCategory, UrgencyLevel, DraftRequest, HelpRequest } from '@/lib/data/types';
-import { EmergencyStoryCardModal } from '@/components/requests/EmergencyStoryCardModal';
+import dynamic from 'next/dynamic';
+
+const EmergencyStoryCardModal = dynamic(
+  () => import('@/components/requests/EmergencyStoryCardModal').then((mod) => mod.EmergencyStoryCardModal),
+  { ssr: false }
+);
 import { dataAdapter } from '@/lib/data';
 import {
   STANDARD_CATEGORIES,
@@ -754,7 +759,7 @@ export function NewRequestWizard() {
           View in Live Requests Feed
         </button>
 
-        {createdRequest && (
+        {createdRequest && storyModalOpen && (
           <EmergencyStoryCardModal
             request={createdRequest}
             open={storyModalOpen}

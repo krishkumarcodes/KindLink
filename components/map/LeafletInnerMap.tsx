@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import {
   MapContainer,
   Marker,
@@ -11,11 +11,15 @@ import {
   useMapEvents,
 } from 'react-leaflet';
 import L from 'leaflet';
+import Supercluster from 'supercluster';
 import { MapTileLayer } from './MapTileLayer';
 import { HelpRequest, UserProfile } from '@/lib/data/types';
 import { isRequestOwner } from '@/lib/data/ownership';
 import { MedicalFacility, MedicalAmenityType } from '@/lib/geo/hospitals';
 import { RoadRouteResult } from '@/lib/geo/osrm';
+
+// Interop with Supercluster constructor across ESM/CJS bundles
+const SuperclusterConstructor = ((Supercluster as any)?.default || Supercluster) as typeof Supercluster;
 
 export interface MapLayersState {
   requests: boolean;
@@ -48,8 +52,11 @@ interface LeafletInnerMapProps {
   userProfile?: UserProfile | null;
   baseMapMode?: 'auto' | 'light' | 'dark' | 'satellite' | 'outdoor';
   onTimeToFirstTile?: (latencyMs: number) => void;
+  userHeading?: number | null;
+  userAccuracyMeters?: number;
+  bottomSheetSnap?: 'peek' | 'half' | 'full';
+  onViewportBoundsChange?: (bounds: { minLat: number; minLng: number; maxLat: number; maxLng: number }) => void;
 }
-
 
 /**
  * Controller component to smoothly pan and call map.invalidateSize()
@@ -106,10 +113,80 @@ function RouteBoundsController({
 }
 
 /**
+ * Smoothly eases map into view with padding when a pin is selected,
+ * guaranteeing the pin is never obscured by the mobile bottom sheet or desktop sidebar.
+ */
+function SelectedPinCameraController({
+  selectedCoords,
+  bottomSheetSnap,
+}: {
+  selectedCoords: [number, number] | null;
+  bottomSheetSnap?: 'peek' | 'half' | 'full';
+}) {
+  const map = useMap();
+  const lastAnimatedPosRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedCoords) {
+      lastAnimatedPosRef.current = null;
+      return;
+    }
+
+    const key = `${selectedCoords[0].toFixed(5)},${selectedCoords[1].toFixed(5)}-${bottomSheetSnap}`;
+    if (lastAnimatedPosRef.current === key) return;
+    lastAnimatedPosRef.current = key;
+
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const size = map.getSize();
+    if (size.x === 0 || size.y === 0) return;
+
+    let targetOffsetX = 0;
+    let targetOffsetY = 0;
+
+    if (isMobile) {
+      // On mobile: bottom sheet covers the lower portion of the screen
+      // If half: ~46vh + 64px tab bar.
+      // If peek: ~88px + 64px tab bar.
+      const sheetHeight =
+        bottomSheetSnap === 'half'
+          ? size.y * 0.46 + 64
+          : bottomSheetSnap === 'full'
+          ? size.y * 0.52
+          : 152;
+      const visibleCenterY = (size.y - sheetHeight) / 2;
+      const actualCenterY = size.y / 2;
+      targetOffsetY = actualCenterY - visibleCenterY;
+    } else {
+      // On desktop: left panel is 380px wide
+      const panelWidth = 380;
+      const visibleCenterX = panelWidth + (size.x - panelWidth) / 2;
+      const actualCenterX = size.x / 2;
+      targetOffsetX = actualCenterX - visibleCenterX;
+    }
+
+    try {
+      const targetPoint = map.project(selectedCoords, map.getZoom());
+      const adjustedPoint = L.point(targetPoint.x - targetOffsetX, targetPoint.y + targetOffsetY);
+      const adjustedLatLng = map.unproject(adjustedPoint, map.getZoom());
+
+      map.panTo(adjustedLatLng, {
+        animate: true,
+        duration: 0.5,
+        easeLinearity: 0.25,
+      });
+    } catch {
+      // Ignore pan error
+    }
+  }, [selectedCoords, bottomSheetSnap, map]);
+
+  return null;
+}
+
+/**
  * Privacy guarantee: For unverified requesters, apply deterministic jitter
  * (~200m offset) so that their exact coordinates are not exposed publicly.
  */
-function getPrivacyPreservingCoords(req: HelpRequest): [number, number] {
+export function getPrivacyPreservingCoords(req: HelpRequest): [number, number] {
   if (req.verified) {
     return [req.latitude, req.longitude];
   }
@@ -179,25 +256,32 @@ function getCategoryPinColor(category?: string, urgency?: string): string {
 }
 
 /**
- * Redesigned SVG Teardrop Request Pin:
+ * Crisp SVG Teardrop Request Pin:
  * - Category color + icon inside
- * - High-contrast crisp white outline (2.5px)
- * - Critical requests get soft pulsing beacon (reduced motion respected)
- * - Selected state scales up
+ * - Crisp white outline (2.5px / 3.5px when selected)
+ * - Critical requests get soft pulsing beacon (respects reduced motion)
+ * - Selected state scales up and adds an outer cyan-teal highlight ring
+ * - User's own request pin has distinct marker (#4F46E5) with 'YOU' badge and star icon
  */
 function createRequestMarkerIcon(req: HelpRequest, isSelected: boolean, isOwner: boolean) {
-  const color = isOwner ? '#6366F1' : getCategoryPinColor(req.category, req.urgency);
+  const color = isOwner ? '#4F46E5' : getCategoryPinColor(req.category, req.urgency);
   const isCritical = req.urgency === 'critical';
-  const width = isSelected ? 44 : 36;
-  const height = isSelected ? 56 : 46;
+  const width = isSelected ? 46 : 36;
+  const height = isSelected ? 58 : 46;
 
+  // Soft pulse beacon for Critical requests (respects reduced motion)
   const pulseHtml =
     isCritical && !isOwner
-      ? `<span class="kindlink-pin-pulse" style="position: absolute; bottom: 0; left: 50%; transform: translate(-50%, 50%); width: 28px; height: 28px; border-radius: 50%; background: rgba(220, 38, 38, 0.45); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; pointer-events: none;"></span>`
+      ? `<span class="kindlink-pin-pulse" aria-hidden="true" style="position: absolute; bottom: 0; left: 50%; transform: translate(-50%, 50%); width: 28px; height: 28px; border-radius: 50%; background: rgba(220, 38, 38, 0.45); pointer-events: none;"></span>`
       : '';
 
+  // Selected state: Glowing outer highlight ring
+  const highlightRing = isSelected
+    ? `<span class="pin-selected-ring" aria-hidden="true" style="position: absolute; top: 38%; left: 50%; transform: translate(-50%, -50%); width: ${width + 16}px; height: ${width + 16}px; border-radius: 50%; border: 3px solid #0D9488; box-shadow: 0 0 16px rgba(13,148,136,0.65); pointer-events: none; z-index: 1;"></span>`
+    : '';
+
   const ownerBadge = isOwner
-    ? `<div style="position: absolute; top: -6px; right: -6px; background: #4F46E5; color: #FFF; font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 6px; border: 1.5px solid #FFF; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">YOU</div>`
+    ? `<div style="position: absolute; top: -6px; right: -6px; background: #4F46E5; color: #FFF; font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 6px; border: 1.5px solid #FFF; box-shadow: 0 2px 4px rgba(0,0,0,0.3); z-index: 4;">YOU</div>`
     : '';
 
   const svgIcon = isOwner
@@ -205,12 +289,13 @@ function createRequestMarkerIcon(req: HelpRequest, isSelected: boolean, isOwner:
     : getCategoryIconSvg(req.category);
 
   const html = `
-    <div style="position: relative; width: ${width}px; height: ${height}px; transform: translate(-50%, -100%); cursor: pointer; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35)); transition: transform 0.2s ease;">
+    <div style="position: relative; width: ${width}px; height: ${height}px; transform: translate(-50%, -100%); cursor: pointer; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.38)); transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);">
       ${pulseHtml}
+      ${highlightRing}
       ${ownerBadge}
-      <svg width="${width}" height="${height}" viewBox="0 0 36 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg width="${width}" height="${height}" viewBox="0 0 36 46" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: block; position: relative; z-index: 2;">
         <path d="M18 0C8.06 0 0 8.06 0 18C0 31.5 18 46 18 46C18 46 36 31.5 36 18C36 8.06 27.94 0 18 0Z" fill="${color}" stroke="#FFFFFF" stroke-width="${isSelected ? 3.5 : 2.5}"/>
-        <circle cx="18" cy="18" r="11" fill="rgba(255,255,255,0.18)"/>
+        <circle cx="18" cy="18" r="11" fill="rgba(255,255,255,0.2)"/>
         ${svgIcon}
       </svg>
     </div>
@@ -225,76 +310,51 @@ function createRequestMarkerIcon(req: HelpRequest, isSelected: boolean, isOwner:
 }
 
 /**
- * User location cyan-teal pulsing pin with accuracy circle
- */
-function createUserMarkerIcon() {
-  const html = `
-    <div style="
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 26px;
-      height: 26px;
-      background: #0D9488;
-      border: 3px solid #ffffff;
-      border-radius: 50%;
-      box-shadow: 0 2px 10px rgba(13,148,136,0.55);
-      transform: translate(-50%, -50%);
-    ">
-      <div style="width: 8px; height: 8px; background: #ffffff; border-radius: 50%;"></div>
-    </div>
-  `;
-
-  return L.divIcon({
-    html,
-    className: 'custom-user-pin',
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
-  });
-}
-
-/**
- * Proper SVG Facility Badges (No Letters! Cross, Stethoscope, Pill, Blood Drop):
+ * Distinct facility pins:
  * - Hospital: Red (#DC2626) with cross
  * - Clinic: Blue (#2563EB) with stethoscope
  * - Pharmacy: Emerald (#059669) with pill
  * - Blood bank: Crimson (#991B1B) with blood drop
+ * - Selected state: grows and adds outer cyan-teal highlight ring
  */
 function createMedicalMarkerIcon(type: MedicalAmenityType, isSelected: boolean = false) {
   let bg = '#DC2626'; // hospital (red)
   let svgIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
 
   if (type === 'clinic') {
-    bg = '#2563EB'; // blue
+    bg = '#2563EB'; // blue stethoscope
     svgIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>`;
   } else if (type === 'pharmacy') {
-    bg = '#059669'; // emerald
+    bg = '#059669'; // emerald pill
     svgIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>`;
   } else if (type === 'blood_bank') {
-    bg = '#991B1B'; // crimson
+    bg = '#991B1B'; // crimson blood drop
     svgIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>`;
   }
 
-  const size = isSelected ? 42 : 36;
+  const size = isSelected ? 44 : 36;
+  const highlightRing = isSelected
+    ? `<span class="pin-selected-ring" aria-hidden="true" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: ${size + 14}px; height: ${size + 14}px; border-radius: 50%; border: 3px solid #0D9488; box-shadow: 0 0 14px rgba(13,148,136,0.65); pointer-events: none; z-index: 1;"></span>`
+    : '';
 
   const html = `
-    <div style="
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: ${size}px;
-      height: ${size}px;
-      background: ${bg};
-      border: ${isSelected ? '3.5px' : '2.5px'} solid #FFFFFF;
-      border-radius: 50%;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
-      cursor: pointer;
-      transform: translate(-50%, -50%);
-      transition: all 0.2s ease;
-    ">
-      ${svgIcon}
+    <div style="position: relative; width: ${size}px; height: ${size}px; transform: translate(-50%, -50%); cursor: pointer; transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);">
+      ${highlightRing}
+      <div style="
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        background: ${bg};
+        border: ${isSelected ? '3.5px' : '2.5px'} solid #FFFFFF;
+        border-radius: 50%;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+      ">
+        ${svgIcon}
+      </div>
     </div>
   `;
 
@@ -303,6 +363,84 @@ function createMedicalMarkerIcon(type: MedicalAmenityType, isSelected: boolean =
     className: `custom-facility-${type} ${isSelected ? 'pin-selected' : ''}`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
+  });
+}
+
+/**
+ * User location: Blue dot with heading arrow and accuracy circle
+ */
+function createUserMarkerIcon(heading?: number | null) {
+  const hasHeading = typeof heading === 'number' && !isNaN(heading);
+  const rot = hasHeading ? heading : 0;
+
+  // Directional heading cone & sharp arrowhead pointing according to heading
+  const headingArrowSvg = `
+    <div style="
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 44px;
+      height: 44px;
+      transform: translate(-50%, -50%) rotate(${rot}deg);
+      pointer-events: none;
+      z-index: 1;
+    ">
+      <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22 22 L11 4 A22 22 0 0 1 33 4 Z" fill="url(#headingConeGrad)" opacity="0.45"/>
+        <polygon points="22,6 18,14 26,14" fill="#2563EB" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/>
+        <defs>
+          <linearGradient id="headingConeGrad" x1="22" y1="22" x2="22" y2="2" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#2563EB" stop-opacity="0.8"/>
+            <stop offset="1" stop-color="#3B82F6" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+  `;
+
+  const html = `
+    <div style="
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      transform: translate(-50%, -50%);
+    ">
+      ${headingArrowSvg}
+      <span class="user-location-pulse" style="
+        position: absolute;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: rgba(37, 99, 235, 0.25);
+        pointer-events: none;
+        z-index: 2;
+      "></span>
+      <div style="
+        position: relative;
+        z-index: 3;
+        width: 18px;
+        height: 18px;
+        background: #2563EB;
+        border: 3px solid #FFFFFF;
+        border-radius: 50%;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      ">
+        <div style="width: 4px; height: 4px; background: #FFFFFF; border-radius: 50%;"></div>
+      </div>
+    </div>
+  `;
+
+  return L.divIcon({
+    html,
+    className: 'custom-user-location-pin',
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
   });
 }
 
@@ -359,7 +497,7 @@ function createDraggableMarkerIcon() {
 }
 
 /**
- * Cluster Pin Icon
+ * Supercluster Cluster Marker Icon with urgency badge
  */
 function createClusterMarkerIcon(
   count: number,
@@ -377,10 +515,10 @@ function createClusterMarkerIcon(
     bg = '#2563EB'; // blue for facility clusters
   }
 
-  const size = count >= 20 ? 46 : count >= 10 ? 42 : 36;
+  const size = count >= 25 ? 48 : count >= 10 ? 42 : 36;
   const pulse =
     highestUrgency === 'critical'
-      ? `<span style="position: absolute; inset: -4px; border-radius: 50%; background: rgba(220, 38, 38, 0.4); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>`
+      ? `<span class="kindlink-pin-pulse" style="position: absolute; inset: -4px; border-radius: 50%; background: rgba(220, 38, 38, 0.45); pointer-events: none;"></span>`
       : '';
 
   const html = `
@@ -405,6 +543,7 @@ function createClusterMarkerIcon(
         color: #ffffff;
         user-select: none;
         transform: translate(-50%, -50%);
+        transition: transform 0.2s ease;
       ">
         ${count}
       </div>
@@ -468,10 +607,10 @@ function DraggableMarker({
 }
 
 /**
- * Clustered Markers Component
- * Groups close markers based on map zoom to prevent marker piles & overlapping
+ * Supercluster Fast Clustering Layer
+ * Converts all requests and facilities into indexed GeoJSON points and computes clusters in O(log N).
  */
-function ClusteredMarkers({
+function SuperclusterMarkersLayer({
   requests,
   facilities,
   selectedRequest,
@@ -489,223 +628,195 @@ function ClusteredMarkers({
   userProfile?: UserProfile | null;
 }) {
   const map = useMap();
-  const [zoom, setZoom] = useState(() => map.getZoom());
+  const [mapBounds, setMapBounds] = useState(() => map.getBounds());
+  const [zoom, setZoom] = useState(() => Math.floor(map.getZoom()));
 
+  // Listen to map viewport movements
   useMapEvents({
-    zoomend: () => setZoom(map.getZoom()),
-    moveend: () => setZoom(map.getZoom()),
+    moveend: () => {
+      setMapBounds(map.getBounds());
+      setZoom(Math.floor(map.getZoom()));
+    },
+    zoomend: () => {
+      setMapBounds(map.getBounds());
+      setZoom(Math.floor(map.getZoom()));
+    },
   });
 
-  // Convert requests and facilities to MapUnifiedItems
-  const allItems: MapUnifiedItem[] = useMemo(() => {
-    const list: MapUnifiedItem[] = [];
+  // Build GeoJSON features
+  const points = useMemo(() => {
+    const list: Array<GeoJSON.Feature<GeoJSON.Point, any>> = [];
+
     requests.forEach((req) => {
       const coords = getPrivacyPreservingCoords(req);
       list.push({
-        kind: 'request',
-        data: req,
-        position: coords,
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [coords[1], coords[0]], // [lng, lat] for GeoJSON
+        },
+        properties: {
+          id: req.id,
+          kind: 'request',
+          itemData: req,
+          urgency: req.urgency,
+          category: req.category,
+          title: req.title,
+          isOwner: isRequestOwner(req, userProfile),
+        },
       });
     });
+
     facilities.forEach((fac) => {
       list.push({
-        kind: 'facility',
-        data: fac,
-        position: [fac.latitude, fac.longitude],
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [fac.longitude, fac.latitude],
+        },
+        properties: {
+          id: fac.id,
+          kind: 'facility',
+          itemData: fac,
+          facilityType: fac.type,
+          name: fac.name,
+          emergency: fac.emergency,
+          phone: fac.phone,
+          address: fac.address,
+        },
       });
     });
+
     return list;
-  }, [requests, facilities]);
+  }, [requests, facilities, userProfile]);
 
-  // Compute spatial clusters based on pixel distance
-  const clusters = useMemo(() => {
-    // When zoomed in deeply (zoom >= 16), allow pins to unpack
-    const clusterPixelRadius = zoom >= 16 ? 24 : zoom >= 14 ? 40 : 54;
-
-    const result: {
-      id: string;
-      position: [number, number];
-      items: MapUnifiedItem[];
-      bounds: L.LatLngBounds;
-      highestUrgency: string | null;
-      hasFacilities: boolean;
-    }[] = [];
-
-    for (const item of allItems) {
-      const itemPixel = map.project(item.position, zoom);
-      let matchedCluster: (typeof result)[0] | null = null;
-
-      for (const cluster of result) {
-        const clusterPixel = map.project(cluster.position, zoom);
-        const dist = Math.hypot(itemPixel.x - clusterPixel.x, itemPixel.y - clusterPixel.y);
-        if (dist <= clusterPixelRadius) {
-          matchedCluster = cluster;
-          break;
-        }
-      }
-
-      if (matchedCluster) {
-        matchedCluster.items.push(item);
-        matchedCluster.bounds.extend(item.position);
-        const n = matchedCluster.items.length;
-        matchedCluster.position = [
-          (matchedCluster.position[0] * (n - 1) + item.position[0]) / n,
-          (matchedCluster.position[1] * (n - 1) + item.position[1]) / n,
-        ];
-
-        if (item.kind === 'request') {
-          const u = item.data.urgency;
-          if (u === 'critical') matchedCluster.highestUrgency = 'critical';
-          else if (u === 'high' && matchedCluster.highestUrgency !== 'critical') {
-            matchedCluster.highestUrgency = 'high';
-          } else if (
-            u === 'medium' &&
-            matchedCluster.highestUrgency !== 'critical' &&
-            matchedCluster.highestUrgency !== 'high'
-          ) {
-            matchedCluster.highestUrgency = 'medium';
+  // Index points with Supercluster
+  const clusterIndex = useMemo(() => {
+    try {
+      const index = new SuperclusterConstructor({
+        radius: 54,
+        maxZoom: 16,
+        map: (props: any) => ({
+          highestUrgency: props.urgency || null,
+          hasFacilities: props.kind === 'facility',
+          isOwner: Boolean(props.isOwner),
+          items: [
+            {
+              id: props.id,
+              kind: props.kind,
+              title: props.title || props.name,
+              urgency: props.urgency,
+              facilityType: props.facilityType,
+              data: props.itemData,
+            },
+          ],
+        }),
+        reduce: (acc: any, props: any) => {
+          acc.hasFacilities = acc.hasFacilities || props.hasFacilities;
+          if (props.highestUrgency === 'critical' || acc.highestUrgency === 'critical') {
+            acc.highestUrgency = 'critical';
+          } else if (props.highestUrgency === 'high' || acc.highestUrgency === 'high') {
+            acc.highestUrgency = 'high';
+          } else if (props.highestUrgency === 'medium' || acc.highestUrgency === 'medium') {
+            acc.highestUrgency = 'medium';
           }
-        } else {
-          matchedCluster.hasFacilities = true;
-        }
-      } else {
-        const bounds = L.latLngBounds(item.position, item.position);
-        result.push({
-          id: `${item.kind}-${item.data.id}`,
-          position: [item.position[0], item.position[1]],
-          items: [item],
-          bounds,
-          highestUrgency: item.kind === 'request' ? item.data.urgency : null,
-          hasFacilities: item.kind === 'facility',
-        });
-      }
-    }
+          if (props.items && acc.items.length < 8) {
+            acc.items.push(...props.items);
+          }
+        },
+      });
 
-    return result;
-  }, [allItems, map, zoom]);
+      index.load(points);
+      return index;
+    } catch (err) {
+      console.warn('[MapEngine] Supercluster initialization fallback:', err);
+      return null;
+    }
+  }, [points]);
+
+  // Query clusters for current viewport bbox and zoom
+  const clusters = useMemo(() => {
+    if (!clusterIndex) return [];
+    try {
+      const bbox: [number, number, number, number] = [
+        mapBounds.getWest(),
+        mapBounds.getSouth(),
+        mapBounds.getEast(),
+        mapBounds.getNorth(),
+      ];
+      return clusterIndex.getClusters(bbox, zoom);
+    } catch {
+      return [];
+    }
+  }, [clusterIndex, mapBounds, zoom]);
 
   return (
     <>
-      {clusters.map((cluster) => {
-        // Single Item: Render distinct pin
-        if (cluster.items.length === 1) {
-          const single = cluster.items[0];
+      {clusters.map((feature: any) => {
+        const [lng, lat] = feature.geometry.coordinates;
+        const isCluster = feature.properties.cluster === true;
 
-          if (single.kind === 'request') {
-            const req = single.data;
-            const isSelected = selectedRequest?.id === req.id;
-            const isOwner = isRequestOwner(req, userProfile);
-
-            return (
-              <Marker
-                key={req.id}
-                position={single.position}
-                icon={createRequestMarkerIcon(req, isSelected, isOwner)}
-                eventHandlers={{
-                  click: () => onSelectRequest(req),
-                }}
-              >
-                <Popup>
-                  <div className="p-1 space-y-1.5 notranslate max-w-[210px]">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-rose-600 dark:text-rose-400">
-                        {req.urgency}
-                      </span>
-                      {isOwner ? (
-                        <span className="text-[9px] font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded">
-                          ★ Your Request
-                        </span>
-                      ) : req.verified ? (
-                        <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded">
-                          ✓ Verified
-                        </span>
-                      ) : (
-                        <span className="text-[9px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded">
-                          Approx Area
-                        </span>
-                      )}
-                    </div>
-                    <strong className="text-xs text-slate-900 dark:text-slate-100 block leading-tight">
-                      {req.title}
-                    </strong>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 m-0">
-                      {req.locationName}
-                    </p>
-                    {!req.verified && !isOwner && (
-                      <p className="text-[10px] text-amber-700 dark:text-amber-400 m-0 leading-tight">
-                        🔒 Approximate location to protect unverified requester privacy.
-                      </p>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => onSelectRequest(req)}
-                      className={`mt-1.5 w-full py-1.5 px-2 rounded-lg text-white text-[11px] font-bold transition ${
-                        isOwner
-                          ? 'bg-indigo-600 hover:bg-indigo-700'
-                          : 'bg-teal-600 hover:bg-teal-700'
-                      }`}
-                    >
-                      {isOwner ? 'Manage Your Request' : 'View Details'}
-                    </button>
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          }
-
-          // Medical Facility
-          const fac = single.data;
-          const isSelected = selectedFacility?.id === fac.id;
-          const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${fac.latitude},${fac.longitude}`;
+        // CLUSTER PIN
+        if (isCluster) {
+          const clusterId = feature.properties.cluster_id;
+          const count = feature.properties.point_count;
+          const highestUrgency = feature.properties.highestUrgency || null;
+          const hasFacilities = Boolean(feature.properties.hasFacilities);
+          const leaves = clusterIndex ? clusterIndex.getLeaves(clusterId, 8) : [];
 
           return (
             <Marker
-              key={fac.id}
-              position={single.position}
-              icon={createMedicalMarkerIcon(fac.type, isSelected)}
+              key={`cluster-${clusterId}-${count}`}
+              position={[lat, lng]}
+              icon={createClusterMarkerIcon(count, highestUrgency, hasFacilities)}
               eventHandlers={{
                 click: () => {
-                  if (onSelectFacility) onSelectFacility(fac);
+                  if (clusterIndex) {
+                    const expansionZoom = Math.min(
+                      clusterIndex.getClusterExpansionZoom(clusterId),
+                      17
+                    );
+                    map.setView([lat, lng], expansionZoom, { animate: true });
+                  }
                 },
               }}
             >
-              <Popup>
-                <div className="p-1 space-y-1.5 notranslate max-w-[220px]">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
-                      {fac.type.replace('_', ' ')}
+              <Popup minWidth={220}>
+                <div className="p-1.5 space-y-2 notranslate max-w-[240px]">
+                  <div className="flex items-center justify-between border-b border-border pb-1">
+                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                      {count} Items in this area
                     </span>
-                    {fac.emergency && (
-                      <span className="text-[9px] font-extrabold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1.5 py-0.5 rounded">
-                        24/7 ER
-                      </span>
-                    )}
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                      Click to zoom
+                    </span>
                   </div>
-                  <strong className="text-xs text-slate-900 dark:text-slate-100 block leading-tight">
-                    {fac.name}
-                  </strong>
-                  {fac.address && (
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 m-0 line-clamp-2">
-                      {fac.address}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-1.5 pt-1">
-                    {fac.phone && (
-                      <a
-                        href={`tel:${fac.phone.replace(/[^0-9+]/g, '')}`}
-                        className="flex-1 py-1 text-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold"
-                      >
-                        Call
-                      </a>
-                    )}
-                    <a
-                      href={directionsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 py-1 text-center rounded-md bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-bold"
-                    >
-                      Maps
-                    </a>
+                  <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+                    {leaves.map((leaf: any) => {
+                      const item = leaf.properties.itemData;
+                      const isReq = leaf.properties.kind === 'request';
+                      const title = isReq ? item.title : item.name;
+                      const badge = isReq ? item.urgency : item.type?.replace('_', ' ');
+
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            if (isReq) onSelectRequest(item);
+                            else if (onSelectFacility) onSelectFacility(item);
+                          }}
+                          className="w-full text-left p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition text-[11px] flex items-center justify-between gap-1 border border-border/60"
+                        >
+                          <span className="font-semibold text-slate-900 dark:text-slate-100 truncate">
+                            {title}
+                          </span>
+                          <span className="text-[9px] px-1 py-0.5 rounded font-bold uppercase shrink-0 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
+                            {badge}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </Popup>
@@ -713,56 +824,122 @@ function ClusteredMarkers({
           );
         }
 
-        // Multiple Items: Render Cluster Pin
+        // INDIVIDUAL ITEM PIN
+        if (feature.properties.kind === 'request') {
+          const req: HelpRequest = feature.properties.itemData;
+          const isSelected = selectedRequest?.id === req.id;
+          const isOwner = Boolean(feature.properties.isOwner);
+
+          return (
+            <Marker
+              key={`req-${req.id}`}
+              position={[lat, lng]}
+              icon={createRequestMarkerIcon(req, isSelected, isOwner)}
+              eventHandlers={{
+                click: () => onSelectRequest(req),
+              }}
+            >
+              <Popup>
+                <div className="p-1 space-y-1.5 notranslate max-w-[210px]">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-rose-600 dark:text-rose-400">
+                      {req.urgency}
+                    </span>
+                    {isOwner ? (
+                      <span className="text-[9px] font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded">
+                        ★ Your Request
+                      </span>
+                    ) : req.verified ? (
+                      <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded">
+                        ✓ Verified
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded">
+                        Approx Area
+                      </span>
+                    )}
+                  </div>
+                  <strong className="text-xs text-slate-900 dark:text-slate-100 block leading-tight">
+                    {req.title}
+                  </strong>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 m-0">
+                    {req.locationName}
+                  </p>
+                  {!req.verified && !isOwner && (
+                    <p className="text-[10px] text-amber-700 dark:text-amber-400 m-0 leading-tight">
+                      🔒 Approximate location to protect unverified requester privacy.
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onSelectRequest(req)}
+                    className={`mt-1.5 w-full py-1.5 px-2 rounded-lg text-white text-[11px] font-bold transition ${
+                      isOwner
+                        ? 'bg-indigo-600 hover:bg-indigo-700'
+                        : 'bg-teal-600 hover:bg-teal-700'
+                    }`}
+                  >
+                    {isOwner ? 'Manage Your Request' : 'View Details'}
+                  </button>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        }
+
+        // MEDICAL FACILITY PIN
+        const fac: MedicalFacility = feature.properties.itemData;
+        const isSelected = selectedFacility?.id === fac.id;
+        const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${fac.latitude},${fac.longitude}`;
+
         return (
           <Marker
-            key={`cluster-${cluster.id}-${cluster.items.length}`}
-            position={cluster.position}
-            icon={createClusterMarkerIcon(
-              cluster.items.length,
-              cluster.highestUrgency,
-              cluster.hasFacilities
-            )}
+            key={`fac-${fac.id}`}
+            position={[lat, lng]}
+            icon={createMedicalMarkerIcon(fac.type, isSelected)}
             eventHandlers={{
               click: () => {
-                if (map.getZoom() < 17) {
-                  map.fitBounds(cluster.bounds.pad(0.35), {
-                    animate: true,
-                    maxZoom: 17,
-                  });
-                }
+                if (onSelectFacility) onSelectFacility(fac);
               },
             }}
           >
-            <Popup minWidth={220}>
-              <div className="p-1.5 space-y-2 notranslate max-w-[240px]">
-                <div className="flex items-center justify-between border-b border-border pb-1">
-                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                    {cluster.items.length} Pins in this area
+            <Popup>
+              <div className="p-1 space-y-1.5 notranslate max-w-[220px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                    {fac.type.replace('_', ' ')}
                   </span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                    Click to zoom
-                  </span>
+                  {fac.emergency && (
+                    <span className="text-[9px] font-extrabold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1.5 py-0.5 rounded">
+                      24/7 ER
+                    </span>
+                  )}
                 </div>
-                <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
-                  {cluster.items.map((it) => (
-                    <button
-                      key={it.data.id}
-                      type="button"
-                      onClick={() => {
-                        if (it.kind === 'request') onSelectRequest(it.data);
-                        else if (onSelectFacility) onSelectFacility(it.data);
-                      }}
-                      className="w-full text-left p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition text-[11px] flex items-center justify-between gap-1 border border-border/60"
+                <strong className="text-xs text-slate-900 dark:text-slate-100 block leading-tight">
+                  {fac.name}
+                </strong>
+                {fac.address && (
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 m-0 line-clamp-2">
+                    {fac.address}
+                  </p>
+                )}
+                <div className="flex items-center gap-1.5 pt-1">
+                  {fac.phone && (
+                    <a
+                      href={`tel:${fac.phone.replace(/[^0-9+]/g, '')}`}
+                      className="flex-1 py-1 text-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold"
                     >
-                      <span className="font-semibold text-slate-900 dark:text-slate-100 truncate">
-                        {it.kind === 'request' ? it.data.title : it.data.name}
-                      </span>
-                      <span className="text-[9px] px-1 py-0.5 rounded font-bold uppercase shrink-0 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
-                        {it.kind === 'request' ? it.data.urgency : it.data.type.replace('_', ' ')}
-                      </span>
-                    </button>
-                  ))}
+                      Call
+                    </a>
+                  )}
+                  <a
+                    href={directionsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-1 text-center rounded-md bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-bold"
+                  >
+                    Maps
+                  </a>
                 </div>
               </div>
             </Popup>
@@ -798,6 +975,9 @@ export default function LeafletInnerMap({
   userProfile,
   baseMapMode = 'auto',
   onTimeToFirstTile,
+  userHeading,
+  userAccuracyMeters = 30,
+  bottomSheetSnap,
 }: LeafletInnerMapProps) {
   // Filter visible medical facilities according to active layers
   const visibleFacilities = useMemo(() => {
@@ -815,105 +995,186 @@ export default function LeafletInnerMap({
     return requests;
   }, [requests, layers.requests]);
 
+  // Selected Coordinates for the camera controller
+  const selectedCoords = useMemo<[number, number] | null>(() => {
+    if (selectedRequest) {
+      return getPrivacyPreservingCoords(selectedRequest);
+    }
+    if (selectedFacility) {
+      return [selectedFacility.latitude, selectedFacility.longitude];
+    }
+    return null;
+  }, [selectedRequest, selectedFacility]);
+
   return (
-    <MapContainer
-      center={center}
-      zoom={zoom}
-      scrollWheelZoom={true}
-      zoomControl={false}
-      attributionControl={true}
-      className="h-full w-full notranslate kindlink-map-has-bottom-nav"
-      style={{ height: '100%', width: '100%' }}
-    >
-      {/* Primary OpenFreeMap Layer with 4s Failover to MapTiler & OSM */}
-      <MapTileLayer
-        hasBottomNav={true}
-        baseMapMode={baseMapMode}
-        onTimeToFirstTile={onTimeToFirstTile}
-      />
+    <>
+      {/* Global CSS for Animations & Reduced Motion */}
+      <style>{`
+        @keyframes kindlink-beacon-ping {
+          0% { transform: translate(-50%, 50%) scale(0.8); opacity: 0.85; }
+          100% { transform: translate(-50%, 50%) scale(2.4); opacity: 0; }
+        }
+        .kindlink-pin-pulse {
+          animation: kindlink-beacon-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+        @keyframes kindlink-ring-pulse {
+          0% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.9; }
+          50% { transform: translate(-50%, -50%) scale(1.15); opacity: 0.4; }
+          100% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.9; }
+        }
+        .pin-selected-ring {
+          animation: kindlink-ring-pulse 2s ease-in-out infinite;
+        }
+        @keyframes user-location-sonar {
+          0% { transform: scale(0.85); opacity: 0.8; }
+          100% { transform: scale(1.6); opacity: 0; }
+        }
+        .user-location-pulse {
+          animation: user-location-sonar 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .kindlink-pin-pulse,
+          .pin-selected-ring,
+          .user-location-pulse {
+            animation: none !important;
+            opacity: 0.5 !important;
+          }
+        }
+      `}</style>
 
-      {/* Camera Position & Size Controller */}
-      <MapController center={center} zoom={zoom} />
-
-      {/* Route Bounds Controller */}
-      <RouteBoundsController
-        activeRoute={activeRoute}
-        transportTripRoute={transportTripRoute}
-      />
-
-      {/* User Location Marker & Proximity Circle */}
-      {!draggableMode && (
-        <Marker position={center} icon={createUserMarkerIcon()}>
-          <Popup>
-            <div className="text-xs font-bold text-slate-900 dark:text-slate-100 notranslate">
-              Your Current Location Hub
-            </div>
-          </Popup>
-        </Marker>
-      )}
-
-      {/* Draggable Pin Mode */}
-      {draggableMode && draggablePosition && onDraggablePositionChange && (
-        <DraggableMarker
-          position={draggablePosition}
-          onPositionChange={onDraggablePositionChange}
+      <MapContainer
+        center={center}
+        zoom={zoom}
+        scrollWheelZoom={true}
+        zoomControl={false}
+        attributionControl={true}
+        className="h-full w-full notranslate kindlink-map-has-bottom-nav"
+        style={{ height: '100%', width: '100%' }}
+      >
+        {/* Primary OpenFreeMap Layer with Failover to MapTiler & OSM */}
+        <MapTileLayer
+          hasBottomNav={true}
+          baseMapMode={baseMapMode}
+          onTimeToFirstTile={onTimeToFirstTile}
         />
-      )}
 
-      {/* Geofence Proximity Circle */}
-      <Circle
-        center={draggableMode && draggablePosition ? draggablePosition : center}
-        radius={radiusMeters}
-        pathOptions={{
-          color: '#0D9488',
-          fillColor: '#0D9488',
-          fillOpacity: 0.08,
-          weight: 2,
-          dashArray: '4, 8',
-        }}
-      />
+        {/* Camera Position & Size Controller */}
+        <MapController center={center} zoom={zoom} />
 
-      {/* Active Navigation Road Route Polyline (Proxy / Straight line) */}
-      {activeRoute && activeRoute.coordinates && activeRoute.coordinates.length > 0 && (
-        <Polyline
-          positions={activeRoute.coordinates}
-          pathOptions={{
-            color: activeRoute.isFallback || activeRoute.source === 'straight-line' ? '#0D9488' : '#2563EB',
-            weight: 5,
-            opacity: 0.9,
-            lineCap: 'round',
-            lineJoin: 'round',
-            dashArray: activeRoute.isFallback || activeRoute.source === 'straight-line' ? '6, 8' : undefined,
-          }}
+        {/* Selected Pin Easing Controller: Eases pin into view with padding */}
+        <SelectedPinCameraController
+          selectedCoords={selectedCoords}
+          bottomSheetSnap={bottomSheetSnap}
         />
-      )}
 
-      {/* Transport Request Trip Polyline (Pickup to Dropoff) */}
-      {transportTripRoute &&
-        transportTripRoute.coordinates &&
-        transportTripRoute.coordinates.length > 0 && (
-          <Polyline
-            positions={transportTripRoute.coordinates}
-            pathOptions={{
-              color: '#8B5CF6',
-              weight: 5,
-              opacity: 0.95,
-              lineCap: 'round',
-              lineJoin: 'round',
-            }}
+        {/* Route Bounds Controller */}
+        <RouteBoundsController
+          activeRoute={activeRoute}
+          transportTripRoute={transportTripRoute}
+        />
+
+        {/* User Location: Blue Dot with Accuracy Circle and Heading Arrow */}
+        {!draggableMode && (
+          <>
+            {/* GPS Accuracy Circle */}
+            <Circle
+              center={center}
+              radius={Math.max(20, Math.min(100, userAccuracyMeters))}
+              pathOptions={{
+                color: '#3B82F6',
+                fillColor: '#3B82F6',
+                fillOpacity: 0.12,
+                weight: 1.5,
+              }}
+            />
+            {/* Blue Dot with Heading Arrow */}
+            <Marker position={center} icon={createUserMarkerIcon(userHeading)}>
+              <Popup>
+                <div className="text-xs font-bold text-slate-900 dark:text-slate-100 notranslate">
+                  Your Current Location Hub
+                </div>
+              </Popup>
+            </Marker>
+          </>
+        )}
+
+        {/* Draggable Pin Mode */}
+        {draggableMode && draggablePosition && onDraggablePositionChange && (
+          <DraggableMarker
+            position={draggablePosition}
+            onPositionChange={onDraggablePositionChange}
           />
         )}
 
-      {/* Clustered Markers for Requests & Facilities (never piles up or overlaps) */}
-      <ClusteredMarkers
-        requests={visibleRequests}
-        facilities={visibleFacilities}
-        selectedRequest={selectedRequest}
-        selectedFacility={selectedFacility}
-        onSelectRequest={onSelectRequest}
-        onSelectFacility={onSelectFacility}
-        userProfile={userProfile}
-      />
-    </MapContainer>
+        {/* Geofence Proximity Circle */}
+        <Circle
+          center={draggableMode && draggablePosition ? draggablePosition : center}
+          radius={radiusMeters}
+          pathOptions={{
+            color: '#0D9488',
+            fillColor: '#0D9488',
+            fillOpacity: 0.08,
+            weight: 2,
+            dashArray: '4, 8',
+          }}
+        />
+
+        {/* Dual-Tone Teal Route Line with Outline for High Contrast */}
+        {activeRoute && activeRoute.coordinates && activeRoute.coordinates.length > 0 && (
+          <>
+            {/* Dark Outline / Casing Polyline */}
+            <Polyline
+              positions={activeRoute.coordinates}
+              pathOptions={{
+                color: '#042F2E',
+                weight: 8,
+                opacity: 0.75,
+                lineCap: 'round',
+                lineJoin: 'round',
+              }}
+            />
+            {/* Foreground Teal Polyline */}
+            <Polyline
+              positions={activeRoute.coordinates}
+              pathOptions={{
+                color: '#0D9488',
+                weight: 5,
+                opacity: 1,
+                lineCap: 'round',
+                lineJoin: 'round',
+                dashArray: activeRoute.isFallback || activeRoute.source === 'straight-line' ? '6, 8' : undefined,
+              }}
+            />
+          </>
+        )}
+
+        {/* Transport Request Trip Polyline (Pickup to Dropoff) */}
+        {transportTripRoute &&
+          transportTripRoute.coordinates &&
+          transportTripRoute.coordinates.length > 0 && (
+            <Polyline
+              positions={transportTripRoute.coordinates}
+              pathOptions={{
+                color: '#8B5CF6',
+                weight: 5,
+                opacity: 0.95,
+                lineCap: 'round',
+                lineJoin: 'round',
+              }}
+            />
+          )}
+
+        {/* Fast Supercluster Markers Layer */}
+        <SuperclusterMarkersLayer
+          requests={visibleRequests}
+          facilities={visibleFacilities}
+          selectedRequest={selectedRequest}
+          selectedFacility={selectedFacility}
+          onSelectRequest={onSelectRequest}
+          onSelectFacility={onSelectFacility}
+          userProfile={userProfile}
+        />
+      </MapContainer>
+    </>
   );
 }

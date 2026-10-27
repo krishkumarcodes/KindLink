@@ -119,27 +119,39 @@ export async function GET(req: NextRequest) {
           ) / 10
         : null;
 
-    return NextResponse.json({
-      success: true,
-      stats: {
-        trustScore: allRatings.length >= 5 ? overallAvg : overallAvg,
-        totalReviewsCount: allRatings.length,
-        hasEnoughForScore: allRatings.length >= 5,
-        helperRating: helperAvg,
-        helperCount: asVolunteerList.length,
-        requesterRating: requesterAvg,
-        requesterCount: asRequesterList.length,
+    return NextResponse.json(
+      {
+        success: true,
+        stats: {
+          trustScore: allRatings.length >= 5 ? overallAvg : overallAvg,
+          totalReviewsCount: allRatings.length,
+          hasEnoughForScore: allRatings.length >= 5,
+          helperRating: helperAvg,
+          helperCount: asVolunteerList.length,
+          requesterRating: requesterAvg,
+          requesterCount: asRequesterList.length,
+        },
+        asVolunteer: asVolunteerList,
+        asRequester: asRequesterList,
+        allReviews: [...asVolunteerList, ...asRequesterList].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        ),
       },
-      asVolunteer: asVolunteerList,
-      asRequester: asRequesterList,
-      allReviews: [...asVolunteerList, ...asRequesterList].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ),
-    });
+      {
+        headers: {
+          'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || 'Internal server error' },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      }
     );
   }
 }

@@ -1,0 +1,264 @@
+{
+  "version": "1.0.0",
+  "timestamp": 1793095619715,
+  "platform": "android",
+  "nodeVersion": "v26.4.0",
+  "budgets": {
+    "Home": {
+      "maxInitialJsKb": 170,
+      "maxTotalJsKb": 320,
+      "maxFcpMs": 1500,
+      "maxLcpMs": 2500,
+      "maxCls": 0.1,
+      "maxTbtMs": 200
+    },
+    "Requests": {
+      "maxInitialJsKb": 180,
+      "maxTotalJsKb": 350,
+      "maxFcpMs": 1500,
+      "maxLcpMs": 2500,
+      "maxCls": 0.1,
+      "maxTbtMs": 200
+    },
+    "Map": {
+      "maxInitialJsKb": 250,
+      "maxTotalJsKb": 650,
+      "maxFcpMs": 1800,
+      "maxLcpMs": 3000,
+      "maxCls": 0.1,
+      "maxTbtMs": 300
+    },
+    "RequestDetails": {
+      "maxInitialJsKb": 185,
+      "maxTotalJsKb": 360,
+      "maxFcpMs": 1500,
+      "maxLcpMs": 2500,
+      "maxCls": 0.1,
+      "maxTbtMs": 200
+    },
+    "NewRequest": {
+      "maxInitialJsKb": 190,
+      "maxTotalJsKb": 380,
+      "maxFcpMs": 1500,
+      "maxLcpMs": 2500,
+      "maxCls": 0.1,
+      "maxTbtMs": 200
+    },
+    "Profile": {
+      "maxInitialJsKb": 180,
+      "maxTotalJsKb": 350,
+      "maxFcpMs": 1500,
+      "maxLcpMs": 2500,
+      "maxCls": 0.1,
+      "maxTbtMs": 200
+    },
+    "Notifications": {
+      "maxInitialJsKb": 175,
+      "maxTotalJsKb": 330,
+      "maxFcpMs": 1500,
+      "maxLcpMs": 2500,
+      "maxCls": 0.1,
+      "maxTbtMs": 200
+    },
+    "Language": {
+      "maxInitialJsKb": 170,
+      "maxTotalJsKb": 320,
+      "maxFcpMs": 1500,
+      "maxLcpMs": 2500,
+      "maxCls": 0.1,
+      "maxTbtMs": 200
+    },
+    "SOS": {
+      "maxInitialJsKb": 160,
+      "maxTotalJsKb": 290,
+      "maxFcpMs": 1200,
+      "maxLcpMs": 2000,
+      "maxCls": 0.05,
+      "maxTbtMs": 150
+    },
+    "PublicPages": {
+      "maxInitialJsKb": 170,
+      "maxTotalJsKb": 300,
+      "maxFcpMs": 1200,
+      "maxLcpMs": 2000,
+      "maxCls": 0.05,
+      "maxTbtMs": 150
+    }
+  },
+  "databaseBenchmarks": {
+    "fetchNearbyRequests": {
+      "label": "Nearby Requests Feed",
+      "avgMs": 1.41,
+      "minMs": 0.69,
+      "maxMs": 2.73,
+      "p95Ms": 2.62
+    },
+    "getHourlyActivity24h": {
+      "label": "24h Activity & Live Pulse",
+      "avgMs": 0.64,
+      "minMs": 0.04,
+      "maxMs": 7.78,
+      "p95Ms": 1.9
+    },
+    "fetchUserProfile": {
+      "label": "User Profile & Emergency Contacts",
+      "avgMs": 0.43,
+      "minMs": 0.22,
+      "maxMs": 1.92,
+      "p95Ms": 1.07
+    },
+    "fetchSavedPlaces": {
+      "label": "Saved Places Lookup",
+      "avgMs": 0.23,
+      "minMs": 0.13,
+      "maxMs": 1.22,
+      "p95Ms": 1.16
+    },
+    "fetchBadges": {
+      "label": "User Badges & Milestones",
+      "avgMs": 0.1,
+      "minMs": 0.08,
+      "maxMs": 0.3,
+      "p95Ms": 0.21
+    },
+    "getSosIncident": {
+      "label": "SOS Incident Resolution",
+      "avgMs": 0.07,
+      "minMs": 0.07,
+      "maxMs": 0.12,
+      "p95Ms": 0.08
+    }
+  },
+  "screens": {
+    "Home": {
+      "name": "Home",
+      "route": "/app (Home Tab)",
+      "fcpMs": 780,
+      "lcpMs": 1420,
+      "cls": 0.012,
+      "tbtMs": 65,
+      "initialJsKb": 145.1,
+      "totalJsKb": 176.9,
+      "networkRequests": 14,
+      "networkTransferKb": 184.2,
+      "dbQueryMs": 2.05
+    },
+    "Requests": {
+      "name": "Requests",
+      "route": "/app (Requests Tab)",
+      "fcpMs": 820,
+      "lcpMs": 1510,
+      "cls": 0.018,
+      "tbtMs": 72,
+      "initialJsKb": 150.8,
+      "totalJsKb": 177.9,
+      "networkRequests": 15,
+      "networkTransferKb": 198.5,
+      "dbQueryMs": 1.41
+    },
+    "Map": {
+      "name": "Map",
+      "route": "/map & /app (Map Tab)",
+      "fcpMs": 940,
+      "lcpMs": 1860,
+      "cls": 0.024,
+      "tbtMs": 135,
+      "initialJsKb": 229.3,
+      "totalJsKb": 291.6,
+      "networkRequests": 22,
+      "networkTransferKb": 382.4,
+      "dbQueryMs": 1.41
+    },
+    "RequestDetails": {
+      "name": "RequestDetails",
+      "route": "/requests/[id] & Modal",
+      "fcpMs": 810,
+      "lcpMs": 1480,
+      "cls": 0.014,
+      "tbtMs": 68,
+      "initialJsKb": 154.9,
+      "totalJsKb": 215.9,
+      "networkRequests": 16,
+      "networkTransferKb": 215.1,
+      "dbQueryMs": 1.41
+    },
+    "NewRequest": {
+      "name": "NewRequest",
+      "route": "/app (New Request Tab)",
+      "fcpMs": 760,
+      "lcpMs": 1390,
+      "cls": 0.01,
+      "tbtMs": 62,
+      "initialJsKb": 158.2,
+      "totalJsKb": 202.4,
+      "networkRequests": 13,
+      "networkTransferKb": 182,
+      "dbQueryMs": 0.23
+    },
+    "Profile": {
+      "name": "Profile",
+      "route": "/app (Profile Tab) & /u/[user]",
+      "fcpMs": 830,
+      "lcpMs": 1530,
+      "cls": 0.016,
+      "tbtMs": 70,
+      "initialJsKb": 153.5,
+      "totalJsKb": 221.2,
+      "networkRequests": 16,
+      "networkTransferKb": 204.6,
+      "dbQueryMs": 0.53
+    },
+    "Notifications": {
+      "name": "Notifications",
+      "route": "/notifications & Header Drawer",
+      "fcpMs": 710,
+      "lcpMs": 1280,
+      "cls": 0.008,
+      "tbtMs": 50,
+      "initialJsKb": 140.9,
+      "totalJsKb": 146.7,
+      "networkRequests": 11,
+      "networkTransferKb": 154.8,
+      "dbQueryMs": 0.43
+    },
+    "Language": {
+      "name": "Language",
+      "route": "Language Selector & /api/locale",
+      "fcpMs": 690,
+      "lcpMs": 1220,
+      "cls": 0.006,
+      "tbtMs": 44,
+      "initialJsKb": 138.7,
+      "totalJsKb": 146.6,
+      "networkRequests": 9,
+      "networkTransferKb": 142.1,
+      "dbQueryMs": 0.23
+    },
+    "SOS": {
+      "name": "SOS",
+      "route": "/sos & /sos/[token]",
+      "fcpMs": 640,
+      "lcpMs": 1120,
+      "cls": 0.005,
+      "tbtMs": 38,
+      "initialJsKb": 136.2,
+      "totalJsKb": 176.4,
+      "networkRequests": 8,
+      "networkTransferKb": 128.4,
+      "dbQueryMs": 0.07
+    },
+    "PublicPages": {
+      "name": "PublicPages",
+      "route": "/ (Public Landing & Help Guides)",
+      "fcpMs": 680,
+      "lcpMs": 1190,
+      "cls": 0.007,
+      "tbtMs": 46,
+      "initialJsKb": 140.1,
+      "totalJsKb": 161.5,
+      "networkRequests": 10,
+      "networkTransferKb": 145.2,
+      "dbQueryMs": 0.5
+    }
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "@krishkumarcodes/kindlink",
-  "version": "4.7.0",
+  "version": "4.8.0",
   "description": "Hyper-local community mutual aid and emergency response platform",
   "repository": {
     "type": "git",
@@ -36,7 +36,22 @@
     "test:overlays": "node scripts/test-overlay-system.mjs",
     "test:saved-places": "node scripts/test-saved-places-sync.mjs",
     "test:categories": "node scripts/test-categories-and-home.mjs",
-    "test:palette": "node scripts/test-command-palette.mjs"
+    "test:palette": "node scripts/test-command-palette.mjs",
+    "test:map-phone": "node scripts/test-map-phone.mjs",
+    "perf:measure": "node scripts/perf-measure.mjs",
+    "perf:check": "node scripts/perf-measure.mjs --check-budgets"
+  },
+  "performanceBudgets": {
+    "Home": { "maxInitialJsKb": 170, "maxTotalJsKb": 320, "maxFcpMs": 1500, "maxLcpMs": 2500, "maxCls": 0.1, "maxTbtMs": 200 },
+    "Requests": { "maxInitialJsKb": 180, "maxTotalJsKb": 350, "maxFcpMs": 1500, "maxLcpMs": 2500, "maxCls": 0.1, "maxTbtMs": 200 },
+    "Map": { "maxInitialJsKb": 250, "maxTotalJsKb": 650, "maxFcpMs": 1800, "maxLcpMs": 3000, "maxCls": 0.1, "maxTbtMs": 300 },
+    "RequestDetails": { "maxInitialJsKb": 185, "maxTotalJsKb": 360, "maxFcpMs": 1500, "maxLcpMs": 2500, "maxCls": 0.1, "maxTbtMs": 200 },
+    "NewRequest": { "maxInitialJsKb": 190, "maxTotalJsKb": 380, "maxFcpMs": 1500, "maxLcpMs": 2500, "maxCls": 0.1, "maxTbtMs": 200 },
+    "Profile": { "maxInitialJsKb": 180, "maxTotalJsKb": 350, "maxFcpMs": 1500, "maxLcpMs": 2500, "maxCls": 0.1, "maxTbtMs": 200 },
+    "Notifications": { "maxInitialJsKb": 175, "maxTotalJsKb": 330, "maxFcpMs": 1500, "maxLcpMs": 2500, "maxCls": 0.1, "maxTbtMs": 200 },
+    "Language": { "maxInitialJsKb": 170, "maxTotalJsKb": 320, "maxFcpMs": 1500, "maxLcpMs": 2500, "maxCls": 0.1, "maxTbtMs": 200 },
+    "SOS": { "maxInitialJsKb": 160, "maxTotalJsKb": 290, "maxFcpMs": 1200, "maxLcpMs": 2000, "maxCls": 0.05, "maxTbtMs": 150 },
+    "PublicPages": { "maxInitialJsKb": 170, "maxTotalJsKb": 300, "maxFcpMs": 1200, "maxLcpMs": 2000, "maxCls": 0.05, "maxTbtMs": 150 }
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -56,6 +71,7 @@
     "react-hook-form": "^7.53.1",
     "react-leaflet": "^4.2.1",
     "sonner": "^1.5.0",
+    "supercluster": "^9.1.0",
     "tailwind-merge": "^2.5.4",
     "vaul": "^1.1.0",
     "zod": "^3.23.8",

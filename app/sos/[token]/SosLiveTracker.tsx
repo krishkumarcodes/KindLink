@@ -14,6 +14,7 @@ import {
   Radio,
 } from 'lucide-react';
 import { SosEvent } from '@/lib/data/types';
+import { useSharedTicker } from '@/lib/utils/useSharedTicker';
 
 interface SosLiveTrackerProps {
   initialEvent: SosEvent;
@@ -68,28 +69,23 @@ export function SosLiveTracker({ initialEvent, token }: SosLiveTrackerProps) {
     }
   };
 
-  // Live elapsed time counter (updates every 1s)
+  // Live elapsed time counter driven by shared ticker (pauses when hidden)
+  const tickerNow = useSharedTicker(1000);
+
   useEffect(() => {
-    const updateElapsed = () => {
-      const createdTime = new Date(event.createdAt).getTime();
-      const now = Date.now();
-      const diffMs = Math.max(0, now - createdTime);
-      const totalSecs = Math.floor(diffMs / 1000);
-      const hours = Math.floor(totalSecs / 3600);
-      const mins = Math.floor((totalSecs % 3600) / 60);
-      const secs = totalSecs % 60;
+    const createdTime = new Date(event.createdAt).getTime();
+    const diffMs = Math.max(0, tickerNow - createdTime);
+    const totalSecs = Math.floor(diffMs / 1000);
+    const hours = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
 
-      if (hours > 0) {
-        setElapsedText(`${hours}h ${mins}m ${secs}s`);
-      } else {
-        setElapsedText(`${mins}m ${secs}s`);
-      }
-    };
-
-    updateElapsed();
-    const timer = setInterval(updateElapsed, 1000);
-    return () => clearInterval(timer);
-  }, [event.createdAt]);
+    if (hours > 0) {
+      setElapsedText(`${hours}h ${mins}m ${secs}s`);
+    } else {
+      setElapsedText(`${mins}m ${secs}s`);
+    }
+  }, [event.createdAt, tickerNow]);
 
   // Poll for location updates every 10 seconds
   useEffect(() => {

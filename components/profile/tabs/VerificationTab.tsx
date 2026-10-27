@@ -27,8 +27,17 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import dynamic from 'next/dynamic';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
-import { PhoneInput, isValidIndianPhone } from '@/components/profile/PhoneInput';
+import { isValidIndianPhone } from '@/components/ui/PhoneInput';
+
+const PhoneInput = dynamic(
+  () => import('@/components/profile/PhoneInput').then((mod) => mod.PhoneInput),
+  {
+    ssr: false,
+    loading: () => <div className="h-12 w-full animate-pulse bg-muted rounded-xl" />,
+  }
+);
 import {
   VerificationState,
   ProfessionalProofType,

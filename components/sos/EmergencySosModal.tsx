@@ -48,8 +48,13 @@ import { getRoadRoute, RoadRouteResult } from '@/lib/geo/osrm';
 import { ASANSOL_CENTER } from '@/lib/data/mock-requests';
 import { calculateDistance, calculateETA, formatETA } from '@/lib/data/distance';
 import { EmergencyContact } from '@/lib/data/types';
-import { EditProfileModal } from '@/components/profile/EditProfileModal';
 import { generateEmergencySmsBody, buildEmergencySmsUri } from '@/lib/sos/emergency-sms';
+import { useSharedTicker } from '@/lib/utils/useSharedTicker';
+
+const EditProfileModal = dynamic(
+  () => import('@/components/profile/EditProfileModal').then((mod) => mod.EditProfileModal),
+  { ssr: false }
+);
 
 const RequestRouteMiniMap = dynamic(
   () => import('@/components/map/RequestRouteMiniMap'),
@@ -276,20 +281,14 @@ export function EmergencySosModal({ open, onClose }: EmergencySosModalProps) {
     };
   }, [open, userCoords?.lat, userCoords?.lng]);
 
-  // Elapsed timer when active
+  // Elapsed timer when active (pauses automatically when tab is hidden)
+  const tickerNow = useSharedTicker(1000, status === 'activated');
   useEffect(() => {
     if (status === 'activated' && activatedAt) {
-      elapsedTimerRef.current = setInterval(() => {
-        const diff = Math.floor((Date.now() - activatedAt) / 1000);
-        setElapsedSeconds(diff);
-      }, 1000);
-    } else {
-      if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+      const diff = Math.max(0, Math.floor((tickerNow - activatedAt) / 1000));
+      setElapsedSeconds(diff);
     }
-    return () => {
-      if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
-    };
-  }, [status, activatedAt]);
+  }, [status, activatedAt, tickerNow]);
 
   // Simulated nearest helper route calculation for mini-map
   useEffect(() => {

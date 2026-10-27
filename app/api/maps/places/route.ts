@@ -86,7 +86,7 @@ async function handlePlacesSearch(
           status: 200,
           headers: {
             'Content-Type': 'application/json',
-            'Cache-Control': 'public, max-age=86400, s-maxage=86400', // 24 hours
+            'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400', // 24 hours
           },
         }
       );
@@ -121,7 +121,7 @@ async function handlePlacesSearch(
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=3600, s-maxage=86400',
+          'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400',
         },
       }
     );

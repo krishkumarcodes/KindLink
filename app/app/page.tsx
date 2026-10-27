@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { Heart, Loader2 } from 'lucide-react';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { createClient } from '@/lib/supabase/client';
@@ -10,14 +11,71 @@ import { Sidebar } from '@/components/shell/Sidebar';
 import { BottomTabBar } from '@/components/shell/BottomTabBar';
 import { HomeView } from '@/components/home/HomeView';
 import { RequestsView } from '@/components/requests/RequestsView';
-import { MapView } from '@/components/map/MapView';
-import { NewRequestWizard } from '@/components/wizard/NewRequestWizard';
-import { ProfileView } from '@/components/profile/ProfileView';
-import { SettingsView } from '@/components/settings/SettingsView';
-import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
 import { AutoLanguageNotice } from '@/components/locale/AutoLanguageNotice';
-import { CommandPalette } from '@/components/shell/CommandPalette';
 import { initializeRealtime } from '@/lib/supabase/realtime';
+
+// Dynamically split heavy non-initial views & modals
+const MapView = dynamic(
+  () => import('@/components/map/MapView').then((mod) => mod.MapView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[calc(100dvh-var(--header-height))] w-full flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-900">
+        <div className="h-10 w-10 animate-spin rounded-full border-3 border-teal-500/20 border-t-teal-600" />
+        <p className="mt-3 text-sm font-semibold text-foreground">Loading Aid Map...</p>
+      </div>
+    ),
+  }
+);
+
+const NewRequestWizard = dynamic(
+  () => import('@/components/wizard/NewRequestWizard').then((mod) => mod.NewRequestWizard),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex-1 flex flex-col items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+        <p className="mt-3 text-sm font-medium text-muted-foreground">Preparing New Request Form...</p>
+      </div>
+    ),
+  }
+);
+
+const ProfileView = dynamic(
+  () => import('@/components/profile/ProfileView').then((mod) => mod.ProfileView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex-1 flex flex-col items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+        <p className="mt-3 text-sm font-medium text-muted-foreground">Loading Profile...</p>
+      </div>
+    ),
+  }
+);
+
+const SettingsView = dynamic(
+  () => import('@/components/settings/SettingsView').then((mod) => mod.SettingsView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex-1 flex flex-col items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+        <p className="mt-3 text-sm font-medium text-muted-foreground">Loading Settings...</p>
+      </div>
+    ),
+  }
+);
+
+const WelcomeModal = dynamic(
+  () => import('@/components/onboarding/WelcomeModal').then((mod) => mod.WelcomeModal),
+  { ssr: false }
+);
+
+const CommandPalette = dynamic(
+  () => import('@/components/shell/CommandPalette').then((mod) => mod.CommandPalette),
+  { ssr: false }
+);
 
 export default function KindLinkApp() {
   const router = useRouter();
@@ -28,6 +86,7 @@ export default function KindLinkApp() {
     fetchLiveStats,
     fetchLiveProfile,
     fetchLiveNotifications,
+    setCurrentView,
   } = useKindLinkStore();
 
   const [authChecking, setAuthChecking] = useState(true);
@@ -43,6 +102,22 @@ export default function KindLinkApp() {
       fetchLiveNotifications(),
     ]);
   }, [fetchLiveProfile, fetchLiveRequests, fetchLiveStats, fetchLiveNotifications]);
+
+  // Handle map deep link parameters (?request=..., ?route=..., ?lat=..., ?lng=..., ?view=map)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (
+        params.has('request') ||
+        params.has('route') ||
+        params.has('lat') ||
+        params.has('lng') ||
+        params.get('view') === 'map'
+      ) {
+        setCurrentView('map');
+      }
+    }
+  }, [setCurrentView]);
 
   // 1 & 2. Check auth session on mount; if no session, redirect to /login
   useEffect(() => {
@@ -115,6 +190,17 @@ export default function KindLinkApp() {
       cleanupRealtime?.();
     };
   }, [isAuthenticated]);
+
+  // Sync initial view from URL query params (e.g. /app?view=map)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      const v = sp.get('view');
+      if (v === 'map' || v === 'requests' || v === 'new' || v === 'profile' || v === 'settings' || v === 'home') {
+        setCurrentView(v);
+      }
+    }
+  }, [setCurrentView]);
 
   // Set manual scroll restoration on mount while preserving browser back/forward if history state has a position
   useEffect(() => {
@@ -205,7 +291,12 @@ export default function KindLinkApp() {
         <Sidebar />
 
         {/* Dynamic Center Stage Views */}
-        <main ref={mainRef} className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden">
+        <main
+          ref={mainRef}
+          className={`flex-1 flex flex-col min-w-0 overflow-x-hidden ${
+            currentView === 'map' ? 'overflow-hidden overscroll-none' : 'overflow-y-auto'
+          }`}
+        >
           {currentView === 'home' && <HomeView />}
           {currentView === 'requests' && <RequestsView />}
           {currentView === 'map' && <MapView />}

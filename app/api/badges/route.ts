@@ -113,19 +113,31 @@ export async function GET(req: NextRequest) {
     const badges = calculateBadgesForUser(userProfile, statsOverride);
     const summary = getBadgesSummary(badges);
 
-    return NextResponse.json({
-      success: true,
-      badges,
-      summary,
-      catalogTotal: ALL_BADGE_DEFINITIONS.length,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        badges,
+        summary,
+        catalogTotal: ALL_BADGE_DEFINITIONS.length,
+      },
+      {
+        headers: {
+          'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate',
+        },
+      }
+    );
   } catch (error: any) {
     return NextResponse.json(
       {
         success: false,
         error: error.message || 'Failed to fetch user badges',
       },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      }
     );
   }
 }

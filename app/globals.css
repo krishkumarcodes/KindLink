@@ -202,6 +202,56 @@ html[data-reduce-motion="true"] *::after {
   scroll-behavior: auto !important;
 }
 
+/* -------------------------------------------------------------
+   LOW-END DEVICE MODE OPTIMIZATIONS
+   Automatic & silent: disables expensive backdrop-filters, soft pulses,
+   and decorative ambient glows for smooth 60fps rendering on low-tier phones.
+   ------------------------------------------------------------- */
+html.low-end-device *,
+html[data-low-end="true"] * {
+  /* Replace expensive GPU backdrop-blur compositing with flat rendering */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Neutralize all backdrop-blur utility classes */
+html.low-end-device [class*="backdrop-blur"],
+html[data-low-end="true"] [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Fallback solid/translucent surfaces when backdrop-blur is removed */
+html.low-end-device header,
+html[data-low-end="true"] header {
+  background-color: var(--card) !important;
+}
+
+html.low-end-device aside,
+html[data-low-end="true"] aside {
+  background-color: var(--card) !important;
+}
+
+/* Disable continuous animations (pulses, beacons, shimmers) */
+html.low-end-device .animate-pulse,
+html.low-end-device .animate-beacon,
+html.low-end-device .map-skeleton-shimmer,
+html[data-low-end="true"] .animate-pulse,
+html[data-low-end="true"] .animate-beacon,
+html[data-low-end="true"] .map-skeleton-shimmer {
+  animation: none !important;
+}
+
+/* Flatten heavy decorative ambient glows to light flat shadows */
+html.low-end-device [class*="shadow-2xl"],
+html.low-end-device [class*="shadow-xl"],
+html.low-end-device [class*="shadow-soft"],
+html[data-low-end="true"] [class*="shadow-2xl"],
+html[data-low-end="true"] [class*="shadow-xl"],
+html[data-low-end="true"] [class*="shadow-soft"] {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08) !important;
+}
+
 /* Custom scrollbar hiding */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

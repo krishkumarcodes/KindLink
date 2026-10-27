@@ -35,7 +35,12 @@ import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { calculateETA, formatETA } from '@/lib/data/distance';
 import { OverlayPortal, useBodyScrollLock } from '@/components/ui/OverlayPortal';
 import { getCategoryToken } from '@/lib/data/categoryColors';
-import { EmergencyStoryCardModal } from './EmergencyStoryCardModal';
+import dynamic from 'next/dynamic';
+
+const EmergencyStoryCardModal = dynamic(
+  () => import('./EmergencyStoryCardModal').then((mod) => mod.EmergencyStoryCardModal),
+  { ssr: false }
+);
 
 interface HelpFlowModalProps {
   request: HelpRequest | null;
@@ -960,11 +965,13 @@ export function HelpFlowModal({
       </div>
 
       {/* Emergency Story Card Modal */}
-      <EmergencyStoryCardModal
-        request={request}
-        open={storyModalOpen}
-        onClose={() => setStoryModalOpen(false)}
-      />
+      {storyModalOpen && (
+        <EmergencyStoryCardModal
+          request={request}
+          open={storyModalOpen}
+          onClose={() => setStoryModalOpen(false)}
+        />
+      )}
     </OverlayPortal>
   );
 }

@@ -65,6 +65,28 @@ export interface TransitLocation {
   updatedAt: string;
 }
 
+export interface MapBoundsItem {
+  id: string;
+  category: HelpCategory | string;
+  urgency: UrgencyLevel;
+  status: RequestLifecycleStatus | string;
+  lat: number;
+  lng: number;
+  title: string;
+  contactName: string;
+  distanceKm: number;
+}
+
+export interface MapBoundsOptions {
+  minLat: number;
+  minLng: number;
+  maxLat: number;
+  maxLng: number;
+  category?: HelpCategory | 'all';
+  urgency?: UrgencyLevel | 'all';
+  limit?: number;
+}
+
 export interface DataAdapter {
   getRequests(options?: {
     lat?: number;
@@ -73,7 +95,17 @@ export interface DataAdapter {
     category?: HelpCategory | 'all';
     urgency?: UrgencyLevel | 'all';
     tag?: string;
+    bounds?: {
+      minLat: number;
+      minLng: number;
+      maxLat: number;
+      maxLng: number;
+    };
   }): Promise<HelpRequest[]>;
+
+  getMapItemsInBounds?(
+    options: MapBoundsOptions
+  ): Promise<MapBoundsItem[]>;
 
   createRequest(request: CreateRequestInput): Promise<{ success: boolean; id: string }>;
 

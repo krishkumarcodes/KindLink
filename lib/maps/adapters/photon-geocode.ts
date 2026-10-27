@@ -85,22 +85,33 @@ export class PhotonGeocodeProvider implements GeocodeProvider {
   }
 
   private async executeFetch(urlString: string, signal?: AbortSignal): Promise<GeocodeResult[]> {
-    const res = await fetch(urlString, {
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': 'KindLink-Mutual-Aid/1.0',
-      },
-      signal,
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      controller.abort(new Error('Photon request timed out after 5000ms'));
+    }, 5000);
 
-    if (!res.ok) {
-      throw Object.assign(new Error(`Photon HTTP ${res.status}: ${res.statusText}`), {
-        status: res.status,
-      });
+    const onSignalAbort = () => controller.abort();
+    if (signal) {
+      signal.addEventListener('abort', onSignalAbort, { once: true });
     }
 
-    const data: PhotonResponse = await res.json();
-    const features = data.features || [];
+    try {
+      const res = await fetch(urlString, {
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'KindLink-Mutual-Aid/1.0',
+        },
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        throw Object.assign(new Error(`Photon HTTP ${res.status}: ${res.statusText}`), {
+          status: res.status,
+        });
+      }
+
+      const data: PhotonResponse = await res.json();
+      const features = data.features || [];
 
     return features.map((f, idx) => {
       const [lng, lat] = f.geometry.coordinates;
@@ -151,7 +162,13 @@ export class PhotonGeocodeProvider implements GeocodeProvider {
         raw: f,
       };
     });
+  } finally {
+    clearTimeout(timeout);
+    if (signal) {
+      signal.removeEventListener('abort', onSignalAbort);
+    }
   }
+}
 }
 
 export const photonGeocodeProvider = new PhotonGeocodeProvider();

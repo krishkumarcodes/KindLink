@@ -18,10 +18,7 @@ import { toast } from 'sonner';
 import { HelpRequest } from '@/lib/data/types';
 import { getCategoryToken } from '@/lib/data/categoryColors';
 import { ModalOverlay } from '@/components/ui/OverlayPortal';
-import {
-  generateStoryCardBlob,
-  StoryCardFormat,
-} from '@/lib/utils/generateStoryCard';
+import type { StoryCardFormat } from '@/lib/utils/generateStoryCard';
 
 export interface EmergencyStoryCardModalProps {
   request: HelpRequest | null;
@@ -74,6 +71,7 @@ export function EmergencyStoryCardModal({
     setGenerating(true);
 
     try {
+      const { generateStoryCardBlob } = await import('@/lib/utils/generateStoryCard');
       const generatedBlob = await generateStoryCardBlob({
         format,
         request,

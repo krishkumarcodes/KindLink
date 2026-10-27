@@ -443,7 +443,40 @@ export function MapTileLayer({
   useEffect(() => {
     if (!map) return;
 
-    // Clean up previous layers
+    // A) In-place style update for OpenFreeMap when switching dark/light theme
+    if (
+      activeProvider === 'openfreemap' &&
+      activeProviderRef.current === 'openfreemap' &&
+      glLayerRef.current
+    ) {
+      try {
+        glLayerRef.current.setStyle(openFreeMapStyle);
+      } catch (err) {
+        console.warn('[MapEngine] Style update failed, will rebuild:', err);
+      }
+      return;
+    }
+
+    // B) In-place CSS filter update for OSM when switching dark/light theme
+    if (
+      activeProvider === 'osm' &&
+      activeProviderRef.current === 'osm' &&
+      tileLayerRef.current
+    ) {
+      const container = tileLayerRef.current.getContainer();
+      if (container) {
+        if (isDark) {
+          container.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
+          container.classList.add('osm-dark-tiles');
+        } else {
+          container.style.filter = '';
+          container.classList.remove('osm-dark-tiles');
+        }
+      }
+      return;
+    }
+
+    // Clean up previous layers on provider transition
     if (glLayerRef.current) {
       map.removeLayer(glLayerRef.current);
       glLayerRef.current = null;

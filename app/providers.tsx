@@ -4,10 +4,16 @@ import React, { useEffect } from 'react';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
 import { I18nProvider } from '@/lib/i18n';
-import { applyReactGoogleTranslatePatch } from '@/lib/translate/googleTranslate';
+import {
+  applyReactGoogleTranslatePatch,
+  initGoogleTranslateIfNonEnglish,
+} from '@/lib/translate/googleTranslate';
 
 import { LocationProvider } from '@/lib/location';
 import { runStorageMigration } from '@/lib/utils/storage-migration';
+import { initWebVitals } from '@/lib/analytics/vitals';
+import { initializeDeviceCapability } from '@/lib/utils/device-capability';
+import { LazyMotion, domAnimation } from '@/lib/utils/motion';
 
 export function Providers({
   children,
@@ -22,6 +28,12 @@ export function Providers({
 
     // Apply React DOM patch against external translation modifications
     applyReactGoogleTranslatePatch();
+
+    // Initialize low-end device mode & reduced motion automatically
+    initializeDeviceCapability();
+
+    // Lazy load Google Translate widget only when language != 'en' and idle
+    initGoogleTranslateIfNonEnglish(initialLocale);
 
     // 1. Initialize text size accessibility preference
     try {
@@ -47,22 +59,31 @@ export function Providers({
         .register('/sw.js')
         .catch((err) => console.debug('[KindLink PWA] SW register skipped:', err));
     }
+
+    // 4. Initialize Core Web Vitals RUM monitoring (10% sampled, zero PII)
+    const cleanupVitals = initWebVitals();
+
+    return () => {
+      cleanupVitals?.();
+    };
   }, []);
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <I18nProvider initialLocale={initialLocale}>
         <LocationProvider>
-          {children}
-          <Toaster
-            position="top-right"
-            richColors
-            closeButton
-            style={{ zIndex: 100 }}
-            toastOptions={{
-              className: 'font-sans',
-            }}
-          />
+          <LazyMotion features={domAnimation} strict={false}>
+            {children}
+            <Toaster
+              position="top-right"
+              richColors
+              closeButton
+              style={{ zIndex: 100 }}
+              toastOptions={{
+                className: 'font-sans',
+              }}
+            />
+          </LazyMotion>
         </LocationProvider>
       </I18nProvider>
     </ThemeProvider>

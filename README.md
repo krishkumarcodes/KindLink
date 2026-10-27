@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/krishkumarcodes/KindLink/releases/tag/v4.7.0"><img src="https://img.shields.io/badge/Release-v4.7.0-0D9488?style=for-the-badge&logo=github&logoColor=white" alt="Release v4.7.0" /></a>
+  <a href="https://github.com/krishkumarcodes/KindLink/releases/tag/v4.8.0"><img src="https://img.shields.io/badge/Release-v4.8.0-0D9488?style=for-the-badge&logo=github&logoColor=white" alt="Release v4.8.0" /></a>
   <a href="https://kindlink-gd8e.onrender.com"><img src="https://img.shields.io/badge/Live_Site-kindlink--gd8e.onrender.com-0D9488?style=for-the-badge&logo=render&logoColor=white" alt="Live Production Site" /></a>
   <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js-14.2%20App%20Router-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js 14" /></a>
   <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5.6-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>

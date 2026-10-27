@@ -33,6 +33,23 @@ export async function middleware(request: NextRequest) {
     response.headers.set('X-Robots-Tag', 'noindex, nofollow');
   }
 
+  // Ensure private user API endpoints are never cached by browsers or CDNs
+  const isPrivateApi =
+    path.startsWith('/api/auth') ||
+    path.startsWith('/api/admin') ||
+    path.startsWith('/api/profile') ||
+    path.startsWith('/api/saved-places') ||
+    path.startsWith('/api/badges/pin') ||
+    path.startsWith('/api/reports') ||
+    path.startsWith('/api/verification') ||
+    path.startsWith('/api/professional-proofs') ||
+    path.startsWith('/api/deletion-requests') ||
+    path.startsWith('/api/sos');
+
+  if (isPrivateApi) {
+    response.headers.set('Cache-Control', 'private, no-cache, no-store, max-age=0, must-revalidate');
+  }
+
   // Allow static files, manifests, icons, and API routes
   if (
     path.startsWith('/_next') ||

@@ -6,7 +6,15 @@ import { toast } from 'sonner';
 import { EmergencyContact } from '@/lib/data/types';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { useBodyScrollLock } from '@/components/ui/OverlayPortal';
-import { PhoneInput, detectUserCountry } from './PhoneInput';
+import dynamic from 'next/dynamic';
+
+const PhoneInput = dynamic(
+  () => import('./PhoneInput').then((mod) => mod.PhoneInput),
+  {
+    ssr: false,
+    loading: () => <div className="h-12 w-full animate-pulse bg-muted rounded-xl" />,
+  }
+);
 
 export interface EmergencyContactModalProps {
   open: boolean;

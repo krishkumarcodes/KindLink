@@ -418,19 +418,31 @@ export async function GET(req: NextRequest) {
       monthlyActivity: rpcSummary?.monthly_activity ?? monthlyActivity,
     };
 
-    return NextResponse.json({
-      success: true,
-      stats: finalSummary,
-      activity: {
-        completedHelps: formattedCompletedHelps,
-        myRequests: formattedMyRequests,
-        myOffers: formattedMyOffers,
+    return NextResponse.json(
+      {
+        success: true,
+        stats: finalSummary,
+        activity: {
+          completedHelps: formattedCompletedHelps,
+          myRequests: formattedMyRequests,
+          myOffers: formattedMyOffers,
+        },
       },
-    });
+      {
+        headers: {
+          'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || 'Internal server error' },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      }
     );
   }
 }

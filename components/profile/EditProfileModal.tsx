@@ -30,7 +30,15 @@ import {
 import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { FieldVisibility, ProfileVisibilitySettings } from '@/lib/data/types';
-import { PhoneInput } from './PhoneInput';
+import dynamic from 'next/dynamic';
+
+const PhoneInput = dynamic(
+  () => import('./PhoneInput').then((mod) => mod.PhoneInput),
+  {
+    ssr: false,
+    loading: () => <div className="h-12 w-full animate-pulse bg-muted rounded-xl" />,
+  }
+);
 import {
   INDIAN_LANGUAGES,
   INTERNATIONAL_LANGUAGES,

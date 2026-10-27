@@ -1,4 +1,4 @@
-import { DataAdapter, CreateRequestInput, TransitLocation } from './adapter';
+import { DataAdapter, CreateRequestInput, TransitLocation, MapBoundsItem, MapBoundsOptions } from './adapter';
 import { HelpRequest, HelpCategory, UserProfile, NotificationItem, VolunteerOffer, RequestLifecycleStatus, CommunityLiveStats, SosEvent } from './types';
 import { INITIAL_REQUESTS, INITIAL_NOTIFICATIONS, MOCK_USER, ASANSOL_CENTER } from './mock-requests';
 import { calculateDistance } from './distance';
@@ -56,6 +56,37 @@ class MockDataAdapter implements DataAdapter {
   ];
   private transitLocations: Record<string, TransitLocation> = {};
 
+  async getMapItemsInBounds(options: MapBoundsOptions): Promise<MapBoundsItem[]> {
+    const minLat = Math.min(options.minLat, options.maxLat);
+    const maxLat = Math.max(options.minLat, options.maxLat);
+    const minLng = Math.min(options.minLng, options.maxLng);
+    const maxLng = Math.max(options.minLng, options.maxLng);
+    const centerLat = (minLat + maxLat) / 2;
+    const centerLng = (minLng + maxLng) / 2;
+
+    return this.requests
+      .filter((r) => {
+        if (r.status !== 'open') return false;
+        if (r.latitude < minLat || r.latitude > maxLat) return false;
+        if (r.longitude < minLng || r.longitude > maxLng) return false;
+        if (options.category && options.category !== 'all' && r.category !== options.category) return false;
+        if (options.urgency && options.urgency !== 'all' && r.urgency !== options.urgency) return false;
+        return true;
+      })
+      .map((r) => ({
+        id: r.id,
+        category: r.category,
+        urgency: r.urgency,
+        status: r.status,
+        lat: r.latitude,
+        lng: r.longitude,
+        title: r.title,
+        contactName: r.contactName || 'Neighbor',
+        distanceKm: calculateDistance(centerLat, centerLng, r.latitude, r.longitude),
+      }))
+      .slice(0, options.limit ?? 100);
+  }
+
   async getRequests(options?: {
     lat?: number;
     lng?: number;
@@ -63,7 +94,28 @@ class MockDataAdapter implements DataAdapter {
     category?: any;
     urgency?: any;
     tag?: string;
+    bounds?: {
+      minLat: number;
+      minLng: number;
+      maxLat: number;
+      maxLng: number;
+    };
   }): Promise<HelpRequest[]> {
+    if (options?.bounds) {
+      const minLat = Math.min(options.bounds.minLat, options.bounds.maxLat);
+      const maxLat = Math.max(options.bounds.minLat, options.bounds.maxLat);
+      const minLng = Math.min(options.bounds.minLng, options.bounds.maxLng);
+      const maxLng = Math.max(options.bounds.minLng, options.bounds.maxLng);
+
+      return this.requests.filter((r) => {
+        if (r.latitude < minLat || r.latitude > maxLat) return false;
+        if (r.longitude < minLng || r.longitude > maxLng) return false;
+        if (options.category && options.category !== 'all' && r.category !== options.category) return false;
+        if (options.urgency && options.urgency !== 'all' && r.urgency !== options.urgency) return false;
+        return true;
+      });
+    }
+
     const lat = options?.lat ?? ASANSOL_CENTER.lat;
     const lng = options?.lng ?? ASANSOL_CENTER.lng;
     const radius = options?.radiusKm ?? 30;

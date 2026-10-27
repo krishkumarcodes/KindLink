@@ -36,8 +36,12 @@ export async function GET() {
       error: authError,
     } = await supabase.auth.getUser();
 
+    const privateHeaders = {
+      'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate',
+    };
+
     if (authError || !user) {
-      return NextResponse.json({ places: [], authenticated: false }, { status: 200 });
+      return NextResponse.json({ places: [], authenticated: false }, { status: 200, headers: privateHeaders });
     }
 
     const { data: places, error } = await supabase
@@ -48,16 +52,16 @@ export async function GET() {
       .limit(10);
 
     if (error) {
-      return NextResponse.json({ places: [], authenticated: true, error: error.message }, { status: 200 });
+      return NextResponse.json({ places: [], authenticated: true, error: error.message }, { status: 200, headers: privateHeaders });
     }
 
     const formatted = (places || [])
       .map(formatPlaceRecord)
       .filter((p) => !isLegacyPlaceObject(p));
-    return NextResponse.json({ places: formatted, authenticated: true });
+    return NextResponse.json({ places: formatted, authenticated: true }, { headers: privateHeaders });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal error fetching saved places';
-    return NextResponse.json({ error: message, places: [] }, { status: 500 });
+    return NextResponse.json({ error: message, places: [] }, { status: 500, headers: { 'Cache-Control': 'no-store, max-age=0' } });
   }
 }
 

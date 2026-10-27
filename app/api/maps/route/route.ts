@@ -90,7 +90,7 @@ async function handleRouteCalculation(
           status: 200,
           headers: {
             'Content-Type': 'application/json',
-            'Cache-Control': 'public, max-age=21600, s-maxage=21600', // 6 hours
+            'Cache-Control': 'public, max-age=21600, s-maxage=21600, stale-while-revalidate=43200', // 6 hours
           },
         }
       );
@@ -123,7 +123,7 @@ async function handleRouteCalculation(
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=21600, s-maxage=21600',
+          'Cache-Control': 'public, max-age=21600, s-maxage=21600, stale-while-revalidate=43200',
         },
       }
     );

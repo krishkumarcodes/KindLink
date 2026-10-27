@@ -196,11 +196,42 @@ export class MaplibreGLLayer extends BaseLayer {
         this._options.onError?.(e);
       });
 
+      // Handle WebGL context lost and restored for zero blank grey boxes
+      this._glMap.on('webglcontextlost', (e: any) => {
+        console.warn('[MapEngine] MapLibre WebGL context lost event fired');
+        this._options.onError?.(new Error('WebGL context lost'));
+      });
+
+      this._glMap.on('webglcontextrestored', () => {
+        console.info('[MapEngine] MapLibre WebGL context restored, resizing canvas');
+        try {
+          this._glMap?.resize();
+        } catch {
+          // Ignore
+        }
+      });
+
       // Style canvas for Leaflet zoom transform animation
       const canvas = this._glMap.getCanvas();
       if (canvas) {
         L.DomUtil.addClass(canvas, 'leaflet-image-layer');
         L.DomUtil.addClass(canvas, 'leaflet-zoom-animated');
+
+        // Direct DOM WebGL context loss listener
+        canvas.addEventListener('webglcontextlost', (e: Event) => {
+          e.preventDefault();
+          console.warn('[MapEngine] Canvas WebGL context lost detected');
+          this._options.onError?.(new Error('WebGL context lost on canvas'));
+        });
+
+        canvas.addEventListener('webglcontextrestored', () => {
+          console.info('[MapEngine] Canvas WebGL context restored');
+          try {
+            this._glMap?.resize();
+          } catch {
+            // Ignore
+          }
+        });
       }
 
       this._transformGL(map);

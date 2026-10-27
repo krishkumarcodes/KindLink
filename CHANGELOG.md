@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v4.8.0] - 2026-10-27 - Site-Wide Performance & Efficiency Hardening, Mobile Map Rebuild, Spatial Bounds RPC & Real-User Monitoring 🚀
+
+### Summary
+Release v4.8.0 delivers a transformative performance and efficiency overhaul across KindLink's frontend, server, database, spatial GIS engine, and mobile map architecture. The Map page was completely rebuilt for mobile phones (320px–430px) with dedicated 100dvh safe zones, 48px floating search, 36px filter carousel, 44px thumb controls, and a 3-snap-point bottom sheet (`peek`, `half`, `full`), backed by PostGIS `map_items_in_bounds` RPC, automated data retention, privacy-preserving Real-User Monitoring (RUM), and GitHub Actions CI performance budgets.
+
+### 🌟 Key Highlights & Enhancements
+- **Phone Map Page Rebuild (`/map` & `MapView.tsx`)**:
+  - Full-viewport 100dvh map container bound between header and mobile bottom tab bar with zero background page scrolling.
+  - 48px floating search bar with dual-source autocomplete (geocoded places & matching aid requests) and recent search history.
+  - 36px horizontal category filter chips with live counts, auto-scroll, and responsive text suppression below 360px.
+  - 44px WCAG AA right thumb controls (Locate me, Zoom, Layers, Compass) with dynamic bottom sheet offset adaptation.
+  - Draggable bottom sheet with 3 snap points (`peek` 96px, `half` 50%, `full` below search bar) and dedicated 360px left panel on landscape/desktop.
+  - In-sheet pin preview card with straight-line & road route distance/ETA, 3-mode transit selector (Bike, Walk, Car), and "Open in Google Maps" link.
+- **Database & Spatial GIS Migration 22 (`supabase/sql/22_map_bounds_and_performance.sql`)**:
+  - `public.map_items_in_bounds()` RPC using `ST_MakeEnvelope` and GiST bounding-box spatial indexing (`location && envelope`).
+  - Covering indexes on requests (`status, urgency, category, created_at DESC`), notifications, and offers.
+  - Subquery RLS policy optimization wrapping `auth.uid()` in `(SELECT auth.uid())` for one-time statement evaluation.
+  - `public.cleanup_stale_data()` function automating 90-day read notification purge, expired SOS token deletion, and stale map cache cleanup.
+- **Server Cold-Starts & Edge Caching**:
+  - Zero-DB lightweight `/api/health` probe responding in `< 4ms` for keepalive pings and Docker health checks; deep DB probe moved to `/api/health?deep=1`.
+  - HTTP `Cache-Control` edge headers (`s-maxage`, `stale-while-revalidate`) for public statistics and geocoding endpoints; strict `no-store` for private user routes.
+  - Circuit breakers with 600ms timeouts on third-party IP lookups and 5s timeouts on external geocoding providers.
+- **Frontend Code Splitting & Low-End Mode**:
+  - Dynamic imports for phone input, story card canvas, and translation widget.
+  - Silent low-end device adaptation (`device-capability.ts`) reducing blur filters and pulse animations on weak hardware.
+  - Unified interval timers into a document-visibility aware ticker (`useSharedTicker.ts`).
+- **Privacy-Preserving Core Web Vitals RUM & CI Budgets**:
+  - Sampled (10%) anonymous Core Web Vitals endpoint (`/api/metrics/vitals`) dispatched via `sendBeacon` when idle.
+  - Automated repeatable performance harness (`scripts/perf-measure.mjs`).
+  - GitHub Actions CI workflow (`.github/workflows/ci.yml`) enforcing bundle size and performance budgets.
+
+---
+
 ## [v4.7.0] - 2026-10-27 - Universal Command Palette & Quick Actions Navigator (⌘K / Ctrl+K), Shell Integration & Power-User Accessibility 🚀
 
 ### Summary

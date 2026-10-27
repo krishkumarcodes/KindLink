@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
-import Script from 'next/script';
 import { Providers } from './providers';
 import './globals.css';
 
@@ -160,45 +159,6 @@ export default function RootLayout({
           className="fixed bottom-0 left-0 opacity-0 pointer-events-none w-0 h-0 overflow-hidden -z-50"
           aria-hidden="true"
           tabIndex={-1}
-        />
-
-        {/* Google Translate Integration Script */}
-        <Script
-          id="google-translate-init"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.googleTranslateElementInit = function() {
-                if (window.__googleTranslateInitialized) return;
-                function init() {
-                  var el = document.getElementById('google_translate_element');
-                  if (!el) {
-                    setTimeout(init, 50);
-                    return;
-                  }
-                  try {
-                    if (window.google && window.google.translate && window.google.translate.TranslateElement) {
-                      new window.google.translate.TranslateElement({
-                        pageLanguage: 'en',
-                        includedLanguages: 'en,hi,bn,bho,mai,ne,ur,sat,or,as,mr,gu,pa,ta,te,kn,ml,fr,es,de,pt,it,ru,zh-CN,ja,ko,ar,id,tr',
-                        autoDisplay: false,
-                        layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE
-                      }, 'google_translate_element');
-                      window.__googleTranslateInitialized = true;
-                    }
-                  } catch (e) {
-                    console.error('[Google Translate Init Error]', e);
-                  }
-                }
-                init();
-              };
-            `,
-          }}
-        />
-        <Script
-          id="google-translate-script"
-          src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"
-          strategy="afterInteractive"
         />
       </body>
     </html>

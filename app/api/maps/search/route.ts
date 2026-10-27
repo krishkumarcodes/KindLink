@@ -87,7 +87,7 @@ export async function GET(req: Request) {
           status: 200,
           headers: {
             'Content-Type': 'application/json',
-            'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+            'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400',
           },
         }
       );
@@ -127,7 +127,7 @@ export async function GET(req: Request) {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=3600, s-maxage=86400',
+          'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400',
         },
       }
     );

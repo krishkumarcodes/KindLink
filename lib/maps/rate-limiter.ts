@@ -215,12 +215,30 @@ export async function fetchWithNominatimQueue(
     ...(options.headers as Record<string, string> | undefined),
   };
 
-  return nominatimQueue.schedule(() =>
-    fetch(url, {
-      ...options,
-      headers,
-    })
-  );
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort(new Error('Nominatim request timed out after 5000ms'));
+  }, 5000);
+
+  const onSignalAbort = () => controller.abort();
+  if (options.signal) {
+    options.signal.addEventListener('abort', onSignalAbort, { once: true });
+  }
+
+  try {
+    return await nominatimQueue.schedule(() =>
+      fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers,
+      })
+    );
+  } finally {
+    clearTimeout(timer);
+    if (options.signal) {
+      options.signal.removeEventListener('abort', onSignalAbort);
+    }
+  }
 }
 
 // ============================================================================

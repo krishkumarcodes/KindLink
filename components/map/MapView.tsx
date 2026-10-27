@@ -16,20 +16,19 @@ import {
   Navigation,
   ExternalLink,
   X,
-  Clock,
   Check,
   ChevronUp,
   ChevronDown,
   Stethoscope,
+  Activity,
   Pill,
   Droplet,
-  ShoppingBag,
-  Home as HomeIcon,
-  AlertTriangle,
+  FileText,
+  Building2,
   History,
-  ArrowRight,
-  Footprints,
+  Clock,
   Bike,
+  Footprints,
   Car,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -39,8 +38,9 @@ import { isRequestOwner } from '@/lib/data/ownership';
 import { ASANSOL_CENTER } from '@/lib/data/mock-requests';
 import { searchPlaces, PlaceSearchResult } from '@/lib/geo/search';
 import { reverseGeocode } from '@/lib/geo/reverse-geocode';
-import { getNearestMedicalFacilities, MedicalFacility, MedicalAmenityType } from '@/lib/geo/hospitals';
+import { getNearestMedicalFacilities, MedicalFacility } from '@/lib/geo/hospitals';
 import { getRoadRoute, RoadRouteResult } from '@/lib/geo/osrm';
+import { dataAdapter } from '@/lib/data';
 import type { MapLayersState } from './LeafletInnerMap';
 import { RequestDetailModal } from '../requests/RequestDetailModal';
 import { HelpFlowModal } from '../requests/HelpFlowModal';
@@ -75,6 +75,274 @@ type ActiveMapItem =
 
 type SnapPoint = 'peek' | 'half' | 'full';
 type BaseMapMode = 'auto' | 'light' | 'dark' | 'satellite' | 'outdoor';
+type FilterChipId = 'all' | 'requests' | 'hospitals' | 'clinics' | 'pharmacies' | 'blood';
+
+function PinPreviewContent({
+  item,
+  userProfile,
+  travelMode,
+  onSwitchTravelMode,
+  activeRoute,
+  loadingRoute,
+  onCalculateDirections,
+  onClearRoute,
+  onClose,
+  onOpenDetails,
+  onOpenHelp,
+  userCoords,
+}: {
+  item: ActiveMapItem;
+  userProfile: any;
+  travelMode: TravelMode;
+  onSwitchTravelMode: (mode: TravelMode) => void;
+  activeRoute: RoadRouteResult | null;
+  loadingRoute: boolean;
+  onCalculateDirections: (mode?: TravelMode) => void;
+  onClearRoute: () => void;
+  onClose: () => void;
+  onOpenDetails: () => void;
+  onOpenHelp: () => void;
+  userCoords: { lat: number; lng: number };
+}) {
+  const isRequest = item.type === 'request';
+  const isFacility = item.type === 'facility';
+  const req = isRequest ? item.data : null;
+  const fac = isFacility ? item.data : null;
+  const isOwner = req ? isRequestOwner(req, userProfile) : false;
+
+  const destCoords = useMemo(() => {
+    if (isRequest && req) return { lat: req.latitude, lng: req.longitude };
+    if (isFacility && fac) return { lat: fac.latitude, lng: fac.longitude };
+    if (item.type === 'searched_place') return { lat: item.data.lat, lng: item.data.lng };
+    return { lat: 0, lng: 0 };
+  }, [isRequest, req, isFacility, fac, item]);
+
+  // Compute straight-line distance if no route is active
+  const distanceKm = useMemo(() => {
+    if (activeRoute?.distanceKm) return activeRoute.distanceKm;
+    if (req?.distanceKm) return req.distanceKm;
+    const R = 6371;
+    const dLat = ((destCoords.lat - userCoords.lat) * Math.PI) / 180;
+    const dLng = ((destCoords.lng - userCoords.lng) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((userCoords.lat * Math.PI) / 180) *
+        Math.cos((destCoords.lat * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(R * c * 10) / 10;
+  }, [activeRoute, req, destCoords, userCoords]);
+
+  // Dynamic ETA estimates for each mode
+  const modeEtas = useMemo(() => {
+    const d = distanceKm || 1;
+    return {
+      bike: Math.max(1, Math.round((d / 15) * 60)), // ~15 km/h
+      walking: Math.max(1, Math.round((d / 4.5) * 60)), // ~4.5 km/h
+      car: Math.max(1, Math.round((d / 30) * 60)), // ~30 km/h
+    };
+  }, [distanceKm]);
+
+  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destCoords.lat},${destCoords.lng}`;
+
+  return (
+    <div className="p-3.5 border-t border-border bg-card/95 backdrop-blur-md space-y-2.5 shrink-0 text-left">
+      {/* Header Row: Title, Badges & Close Button */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1 space-y-1">
+          {/* Chips Row: Category, Urgency / Facility Type, Distance, ETA */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Category Chip */}
+            {isRequest && req && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25">
+                {req.category}
+              </span>
+            )}
+            {isFacility && fac && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-border">
+                {fac.type.replace('_', ' ')}
+              </span>
+            )}
+
+            {/* Urgency Chip / ER Status */}
+            {isRequest && req && (
+              <span
+                className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+                  req.urgency === 'critical'
+                    ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 animate-pulse'
+                    : req.urgency === 'high'
+                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                    : 'bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/30'
+                }`}
+              >
+                {req.urgency}
+              </span>
+            )}
+            {isFacility && fac?.emergency && (
+              <span className="text-[10px] font-extrabold text-rose-600 dark:text-rose-400 bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 rounded-full">
+                24/7 ER
+              </span>
+            )}
+
+            {/* Owner Badge */}
+            {isOwner && (
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
+                ★ Your Request
+              </span>
+            )}
+
+            {/* Distance badge */}
+            <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+              <MapPin className="w-3 h-3 notranslate" />
+              <span>{distanceKm} km</span>
+            </span>
+
+            {/* Live ETA badge */}
+            <span className="text-[11px] font-bold text-foreground flex items-center gap-1 bg-muted px-2 py-0.5 rounded-md">
+              <Clock className="w-3 h-3 text-primary notranslate" />
+              <span>{activeRoute ? `${activeRoute.durationMinutes} min` : `~${modeEtas[travelMode]} min`}</span>
+            </span>
+          </div>
+
+          {/* Title & Location / Address */}
+          <h4 className="text-xs sm:text-sm font-bold text-foreground line-clamp-1">
+            {isRequest && req ? req.title : isFacility && fac ? fac.name : (item.data as any).name}
+          </h4>
+          <p className="text-[11px] text-muted-foreground line-clamp-1">
+            {isRequest && req
+              ? req.locationName
+              : isFacility && fac
+              ? fac.address || 'Medical Facility'
+              : (item.data as any).displayName}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            onClearRoute();
+          }}
+          className="p-1.5 text-muted-foreground hover:text-foreground rounded-xl hover:bg-muted transition shrink-0"
+          aria-label="Close pin preview"
+        >
+          <X className="w-4 h-4 notranslate" />
+        </button>
+      </div>
+
+      {/* Route Mode Switcher Pills: Bike, Walking, Car */}
+      <div className="flex items-center justify-between gap-1.5 p-1 bg-muted/80 rounded-xl">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2">
+          Mode
+        </span>
+        <div className="flex items-center gap-1 flex-1 justify-end">
+          {(
+            [
+              { mode: 'bike' as TravelMode, label: 'Bike', icon: Bike, eta: modeEtas.bike },
+              { mode: 'walking' as TravelMode, label: 'Walk', icon: Footprints, eta: modeEtas.walking },
+              { mode: 'car' as TravelMode, label: 'Car', icon: Car, eta: modeEtas.car },
+            ] as const
+          ).map(({ mode, label, icon: ModeIcon, eta }) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => onSwitchTravelMode(mode)}
+              className={`flex-1 max-w-[96px] py-1 px-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 ${
+                travelMode === mode
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card'
+              }`}
+            >
+              <ModeIcon className="w-3 h-3 shrink-0 notranslate" />
+              <span>{label}</span>
+              <span className="opacity-80 text-[9px] font-mono">({eta}m)</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Active Route Result banner */}
+      {activeRoute && (
+        <div className="p-2 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-800 dark:text-teal-200 text-xs font-semibold flex items-center justify-between">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Navigation className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0 notranslate" />
+            <span className="truncate">Teal route line plotted</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="font-mono font-bold">{activeRoute.formattedText}</span>
+            <button
+              type="button"
+              onClick={onClearRoute}
+              className="text-[10px] text-muted-foreground hover:text-foreground underline"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons Row */}
+      <div className="flex items-center gap-2 pt-0.5">
+        {/* Directions / Route button */}
+        <button
+          type="button"
+          onClick={() => onCalculateDirections(travelMode)}
+          disabled={loadingRoute}
+          className="flex-1 py-2 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition flex items-center justify-center gap-1.5 touch-target"
+        >
+          {loadingRoute ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin notranslate" />
+          ) : (
+            <Navigation className="w-3.5 h-3.5 notranslate" />
+          )}
+          <span>{activeRoute ? 'Recalculate' : 'Directions'}</span>
+        </button>
+
+        {/* Primary Action Button (Manage for Owner, Help for Non-owner, Call for Facility with phone) */}
+        {isRequest && req ? (
+          isOwner ? (
+            <SecondaryButton
+              size="card"
+              variant="outline"
+              onClick={onOpenDetails}
+            >
+              Manage
+            </SecondaryButton>
+          ) : (
+            <PrimaryHelpButton
+              category={req.category || 'equipment'}
+              size="card"
+              label="Help"
+              onClick={onOpenHelp}
+            />
+          )
+        ) : isFacility && fac?.phone ? (
+          <a
+            href={`tel:${fac.phone.replace(/[^0-9+]/g, '')}`}
+            className="py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition flex items-center justify-center gap-1.5 touch-target"
+          >
+            <Phone className="w-3.5 h-3.5 notranslate" />
+            <span>Call</span>
+          </a>
+        ) : null}
+
+        {/* 'Open in Google Maps' link */}
+        <a
+          href={googleMapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="py-2 px-2.5 rounded-xl bg-muted hover:bg-muted/80 text-foreground text-xs font-semibold transition flex items-center justify-center gap-1 touch-target shrink-0"
+          title="Open in Google Maps app or browser"
+        >
+          <ExternalLink className="w-3.5 h-3.5 notranslate" />
+          <span className="hidden sm:inline">Google Maps</span>
+          <span className="sm:hidden">Maps</span>
+        </a>
+      </div>
+    </div>
+  );
+}
 
 export function MapView() {
   const {
@@ -93,13 +361,22 @@ export function MapView() {
     completeRequest,
   } = useKindLinkStore();
 
-  // Combine nearby requests and user's own active requests
+  // Viewport bounds requests loaded dynamically via map_items_in_bounds RPC
+  const [viewportBoundsRequests, setViewportBoundsRequests] = useState<HelpRequest[]>([]);
+  const viewportDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Combine nearby requests, user's own active requests, and viewport bounds requests
   const allMapRequests = useMemo(() => {
     const map = new Map<string, HelpRequest>();
     requests.forEach((r) => map.set(r.id, r));
     myActiveRequests.forEach((r) => map.set(r.id, r));
+    viewportBoundsRequests.forEach((r) => {
+      if (!map.has(r.id)) {
+        map.set(r.id, r);
+      }
+    });
     return Array.from(map.values());
-  }, [requests, myActiveRequests]);
+  }, [requests, myActiveRequests, viewportBoundsRequests]);
 
   // Active item & map state
   const [activeItem, setActiveItem] = useState<ActiveMapItem | null>(null);
@@ -111,9 +388,23 @@ export function MapView() {
   const [bottomSheetSnap, setBottomSheetSnap] = useState<SnapPoint>('peek');
   const [bottomSheetTab, setBottomSheetTab] = useState<'requests' | 'places'>('requests');
   const [tipDismissed, setTipDismissed] = useState(false);
+  const [userAccuracy, setUserAccuracy] = useState<number>(30);
+  const [userHeading, setUserHeading] = useState<number | null>(null);
 
-  // Active filter chip ('all' | 'critical' | 'medical' | 'pharmacies' | 'blood' | 'food' | 'shelter')
-  const [activeFilterChip, setActiveFilterChip] = useState<string>('all');
+  // Compass heading listener for mobile devices
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleOrientation = (e: DeviceOrientationEvent) => {
+      if (typeof e.alpha === 'number' && !isNaN(e.alpha)) {
+        setUserHeading(Math.round(e.alpha));
+      }
+    };
+    window.addEventListener('deviceorientation', handleOrientation, { passive: true });
+    return () => window.removeEventListener('deviceorientation', handleOrientation);
+  }, []);
+
+  // Active filter chip: 'all' | 'requests' | 'hospitals' | 'clinics' | 'pharmacies' | 'blood'
+  const [activeFilterChip, setActiveFilterChip] = useState<FilterChipId>('all');
 
   // Modals state
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -131,6 +422,15 @@ export function MapView() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const desktopSearchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Refs for auto-scrolling active filter chips into view
+  const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  // Touch drag tracking for Bottom Sheet
+  const touchStartYRef = useRef<number | null>(null);
+  const touchStartTimeRef = useRef<number>(0);
+  const touchStartSnapRef = useRef<SnapPoint>('peek');
 
   // Medical facilities and layers state
   const [medicalFacilities, setMedicalFacilities] = useState<MedicalFacility[]>([]);
@@ -145,7 +445,20 @@ export function MapView() {
   // Track if MapTiler key is available to show satellite/outdoor options
   const hasMapTilerKey = Boolean(process.env.NEXT_PUBLIC_MAPTILER_API_KEY);
 
-  // 1. Load preferences from localStorage on mount
+  // 1. Lock document scroll on Map page (overscroll-behavior: none, only sheet content scrolls)
+  useEffect(() => {
+    const prevHtmlOverscroll = document.documentElement.style.overscrollBehavior;
+    const prevBodyOverscroll = document.body.style.overscrollBehavior;
+    document.documentElement.style.overscrollBehavior = 'none';
+    document.body.style.overscrollBehavior = 'none';
+
+    return () => {
+      document.documentElement.style.overscrollBehavior = prevHtmlOverscroll;
+      document.body.style.overscrollBehavior = prevBodyOverscroll;
+    };
+  }, []);
+
+  // 2. Load preferences from localStorage on mount
   useEffect(() => {
     try {
       const savedLayers = localStorage.getItem('kindlink_map_layers');
@@ -164,7 +477,7 @@ export function MapView() {
     }
   }, []);
 
-  // 2. Fetch medical facilities within geofence radius (cached)
+  // 3. Fetch medical facilities within geofence radius (cached)
   useEffect(() => {
     let isMounted = true;
     getNearestMedicalFacilities({
@@ -185,15 +498,33 @@ export function MapView() {
     };
   }, [mapCenter, radiusKm]);
 
-  // 3. Sync user coords changes
+  // 4. Sync user coords changes
   useEffect(() => {
     setMapCenter([userCoords.lat, userCoords.lng]);
   }, [userCoords.lat, userCoords.lng]);
 
-  // 4. Handle Deep Links: /map?request=ID&route=1
+  // 5. Handle Deep Links: /map?request=ID&route=1 and /map?lat=..&lng=..&z=..
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const urlParams = new URLSearchParams(window.location.search);
+    const latParam = urlParams.get('lat');
+    const lngParam = urlParams.get('lng');
+    const zParam = urlParams.get('z');
+
+    if (latParam && lngParam) {
+      const lat = parseFloat(latParam);
+      const lng = parseFloat(lngParam);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        setMapCenter([lat, lng]);
+        if (zParam) {
+          const z = parseInt(zParam, 10);
+          if (!isNaN(z) && z >= 4 && z <= 19) {
+            setMapZoom(z);
+          }
+        }
+      }
+    }
+
     const reqParam = urlParams.get('request') || selectedRequestId;
     const routeParam = urlParams.get('route') === '1';
 
@@ -210,7 +541,18 @@ export function MapView() {
     }
   }, [allMapRequests, selectedRequestId]);
 
-  // 5. Place & Request Search (Debounced 300ms)
+  // 6. Smoothly scroll active filter chip into view
+  useEffect(() => {
+    if (activeFilterChip && chipRefs.current[activeFilterChip]) {
+      chipRefs.current[activeFilterChip]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
+    }
+  }, [activeFilterChip]);
+
+  // 7. Place & Request Search (Debounced 300ms)
   useEffect(() => {
     const trimmed = searchQuery.trim();
     if (!trimmed || trimmed.length < 2) {
@@ -242,20 +584,25 @@ export function MapView() {
   const matchingRequests = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q || q.length < 2) return [];
-    return allMapRequests.filter(
-      (r) =>
-        r.title.toLowerCase().includes(q) ||
-        r.category.toLowerCase().includes(q) ||
-        r.locationName.toLowerCase().includes(q)
-    ).slice(0, 4);
+    return allMapRequests
+      .filter(
+        (r) =>
+          r.title.toLowerCase().includes(q) ||
+          r.category.toLowerCase().includes(q) ||
+          r.locationName.toLowerCase().includes(q)
+      )
+      .slice(0, 4);
   }, [searchQuery, allMapRequests]);
 
   // Close search dropdown on click outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node;
       if (
         searchContainerRef.current &&
-        !searchContainerRef.current.contains(event.target as Node)
+        !searchContainerRef.current.contains(target) &&
+        desktopSearchContainerRef.current &&
+        !desktopSearchContainerRef.current.contains(target)
       ) {
         setSearchDropdownOpen(false);
       }
@@ -326,6 +673,12 @@ export function MapView() {
           lng: pos.coords.longitude,
           isLive: true,
         };
+        if (typeof pos.coords.accuracy === 'number') {
+          setUserAccuracy(Math.round(pos.coords.accuracy));
+        }
+        if (typeof pos.coords.heading === 'number' && !isNaN(pos.coords.heading)) {
+          setUserHeading(Math.round(pos.coords.heading));
+        }
         setMapCenter([coords.lat, coords.lng]);
         setMapZoom(15);
         try {
@@ -387,20 +740,85 @@ export function MapView() {
     if (bottomSheetSnap === 'peek') setBottomSheetSnap('half');
   };
 
+  // Handle map viewport movement and fetch lightweight items via map_items_in_bounds RPC
+  const handleViewportBoundsChange = useCallback(
+    (bounds: { minLat: number; minLng: number; maxLat: number; maxLng: number }) => {
+      if (viewportDebounceRef.current) {
+        clearTimeout(viewportDebounceRef.current);
+      }
+
+      viewportDebounceRef.current = setTimeout(async () => {
+        try {
+          if (!dataAdapter.getMapItemsInBounds) return;
+          const cat = activeFilterChip === 'blood' ? 'blood_donation' : undefined;
+          const items = await dataAdapter.getMapItemsInBounds({
+            minLat: bounds.minLat,
+            minLng: bounds.minLng,
+            maxLat: bounds.maxLat,
+            maxLng: bounds.maxLng,
+            category: cat,
+            limit: 100,
+          });
+
+          if (items && items.length > 0) {
+            const mapped: HelpRequest[] = items.map((item) => ({
+              id: item.id,
+              requesterId: '',
+              title: item.title,
+              description: '',
+              category: item.category as any,
+              urgency: item.urgency,
+              status: item.status as any,
+              waitingMinutes: 1,
+              distanceKm: item.distanceKm,
+              locationName: 'Local Area',
+              latitude: item.lat,
+              longitude: item.lng,
+              contactName: item.contactName,
+              contactRole: 'Community Member',
+              phone: '',
+              verified: false,
+              verificationBadge: 'Unverified',
+              createdAt: new Date().toISOString(),
+              verifiedRequester: false,
+            }));
+
+            setViewportBoundsRequests(mapped);
+          }
+        } catch (err) {
+          console.warn('Failed to load items in viewport bounds:', err);
+        }
+      }, 300);
+    },
+    [activeFilterChip]
+  );
+
+  // Live Counts for Filter Chips
+  const requestsCount = allMapRequests.length;
+  const hospitalsCount = useMemo(
+    () => medicalFacilities.filter((f) => f.type === 'hospital').length,
+    [medicalFacilities]
+  );
+  const clinicsCount = useMemo(
+    () => medicalFacilities.filter((f) => f.type === 'clinic').length,
+    [medicalFacilities]
+  );
+  const pharmaciesCount = useMemo(
+    () => medicalFacilities.filter((f) => f.type === 'pharmacy').length,
+    [medicalFacilities]
+  );
+  const bloodBanksCount = useMemo(
+    () => medicalFacilities.filter((f) => f.type === 'blood_bank').length,
+    [medicalFacilities]
+  );
+
   // Filter requests based on active filter chip and layer toggles
   const filteredRequests = useMemo(() => {
     if (!layers.requests) return [];
-    return allMapRequests.filter((req) => {
-      if (activeFilterChip === 'all') return true;
-      if (activeFilterChip === 'critical') return req.urgency === 'critical';
-      if (activeFilterChip === 'food') return req.category.toLowerCase().includes('food');
-      if (activeFilterChip === 'shelter') return req.category.toLowerCase().includes('shelter');
-      if (activeFilterChip === 'medical') {
-        const cat = req.category.toLowerCase();
-        return cat.includes('medic') || cat.includes('blood') || cat.includes('hospital');
-      }
-      return true;
-    });
+    if (activeFilterChip === 'requests' || activeFilterChip === 'all') {
+      return allMapRequests;
+    }
+    return [];
   }, [allMapRequests, layers.requests, activeFilterChip]);
 
   // Filter facilities based on active filter chip and layer toggles
@@ -413,8 +831,14 @@ export function MapView() {
         if (fac.type === 'blood_bank') return layers.bloodBanks;
         return true;
       }
-      if (activeFilterChip === 'medical') {
-        return (fac.type === 'hospital' || fac.type === 'clinic') && (layers.hospitals || layers.clinics);
+      if (activeFilterChip === 'requests') {
+        return false;
+      }
+      if (activeFilterChip === 'hospitals') {
+        return fac.type === 'hospital' && layers.hospitals;
+      }
+      if (activeFilterChip === 'clinics') {
+        return fac.type === 'clinic' && (layers.clinics ?? layers.hospitals);
       }
       if (activeFilterChip === 'pharmacies') {
         return fac.type === 'pharmacy' && layers.pharmacies;
@@ -426,31 +850,19 @@ export function MapView() {
     });
   }, [medicalFacilities, layers, activeFilterChip]);
 
-  // Counts for filter chips
-  const criticalCount = useMemo(
-    () => allMapRequests.filter((r) => r.urgency === 'critical').length,
-    [allMapRequests]
-  );
-  const medicalCount = useMemo(
-    () => medicalFacilities.filter((f) => f.type === 'hospital' || f.type === 'clinic').length,
-    [medicalFacilities]
-  );
-  const pharmacyCount = useMemo(
-    () => medicalFacilities.filter((f) => f.type === 'pharmacy').length,
-    [medicalFacilities]
-  );
-  const bloodCount = useMemo(
-    () => medicalFacilities.filter((f) => f.type === 'blood_bank').length,
-    [medicalFacilities]
-  );
-  const foodCount = useMemo(
-    () => allMapRequests.filter((r) => r.category.toLowerCase().includes('food')).length,
-    [allMapRequests]
-  );
-  const shelterCount = useMemo(
-    () => allMapRequests.filter((r) => r.category.toLowerCase().includes('shelter')).length,
-    [allMapRequests]
-  );
+  // Toggle filter chip selection
+  const handleFilterChipClick = (id: FilterChipId) => {
+    if (activeFilterChip === id) {
+      setActiveFilterChip('all');
+    } else {
+      setActiveFilterChip(id);
+      if (id === 'requests') {
+        setBottomSheetTab('requests');
+      } else if (id !== 'all') {
+        setBottomSheetTab('places');
+      }
+    }
+  };
 
   // Toggle layer and save
   const toggleLayer = (key: keyof MapLayersState) => {
@@ -485,20 +897,250 @@ export function MapView() {
     }
   };
 
+  // Draggable Bottom Sheet touch event handlers
+  const handleSheetTouchStart = (e: React.TouchEvent) => {
+    touchStartYRef.current = e.touches[0].clientY;
+    touchStartTimeRef.current = Date.now();
+    touchStartSnapRef.current = bottomSheetSnap;
+  };
+
+  const handleSheetTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartYRef.current === null) return;
+    const endY = e.changedTouches[0].clientY;
+    const deltaY = touchStartYRef.current - endY; // Positive = Drag Up, Negative = Drag Down
+    const elapsed = Date.now() - touchStartTimeRef.current;
+    const velocity = Math.abs(deltaY) / (elapsed || 1);
+    const startSnap = touchStartSnapRef.current;
+
+    touchStartYRef.current = null;
+
+    // Fast swipe or large drag up
+    if (deltaY > 60 || (deltaY > 25 && velocity > 0.4)) {
+      if (startSnap === 'peek') {
+        setBottomSheetSnap(deltaY > 160 ? 'full' : 'half');
+      } else if (startSnap === 'half') {
+        setBottomSheetSnap('full');
+      }
+      return;
+    }
+
+    // Fast swipe or large drag down
+    if (deltaY < -60 || (deltaY < -25 && velocity > 0.4)) {
+      if (startSnap === 'full') {
+        setBottomSheetSnap(deltaY < -160 ? 'peek' : 'half');
+      } else if (startSnap === 'half') {
+        setBottomSheetSnap('peek');
+      }
+      return;
+    }
+
+    // Gentle tap on handle toggles snap point
+    if (Math.abs(deltaY) < 10 && elapsed < 300) {
+      setBottomSheetSnap((prev) =>
+        prev === 'peek' ? 'half' : prev === 'half' ? 'full' : 'peek'
+      );
+    }
+  };
+
+  // Filter chip definitions
+  const filterChips: Array<{
+    id: FilterChipId;
+    label: string;
+    count: number;
+    icon: React.ComponentType<{ className?: string }>;
+    activeClass: string;
+  }> = [
+    {
+      id: 'requests',
+      label: 'Requests',
+      count: requestsCount,
+      icon: FileText,
+      activeClass: 'bg-teal-700 text-white border-teal-800 shadow-sm',
+    },
+    {
+      id: 'hospitals',
+      label: 'Hospitals',
+      count: hospitalsCount,
+      icon: Stethoscope,
+      activeClass: 'bg-blue-700 text-white border-blue-800 shadow-sm',
+    },
+    {
+      id: 'clinics',
+      label: 'Clinics',
+      count: clinicsCount,
+      icon: Activity,
+      activeClass: 'bg-cyan-700 text-white border-cyan-800 shadow-sm',
+    },
+    {
+      id: 'pharmacies',
+      label: 'Pharmacies',
+      count: pharmaciesCount,
+      icon: Pill,
+      activeClass: 'bg-emerald-700 text-white border-emerald-800 shadow-sm',
+    },
+    {
+      id: 'blood',
+      label: 'Blood banks',
+      count: bloodBanksCount,
+      icon: Droplet,
+      activeClass: 'bg-rose-700 text-white border-rose-800 shadow-sm',
+    },
+  ];
+
   return (
-    <div className="relative flex-1 w-full h-[calc(100dvh-4rem)] overflow-hidden flex flex-col md:flex-row bg-slate-100 dark:bg-slate-950">
+    <div className="relative flex-1 w-full h-[calc(100dvh-7.5rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] sm:h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px))] landscape:h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px))] overflow-hidden flex flex-col sm:flex-row landscape:flex-row bg-slate-100 dark:bg-slate-950 overscroll-none select-none">
       {/* =========================================================================
-          LEFT SIDE PANEL (Desktop & Tablet >= 768px: 380px wide)
+          3. LANDSCAPE & DESKTOP LAYOUT (>=640px or landscape):
+             360px left side panel with Search Bar inside panel header,
+             map filling remainder, controls on right.
           ========================================================================= */}
-      <div className="hidden md:flex flex-col w-[380px] shrink-0 border-r border-border bg-card h-full z-20 shadow-md">
+      <div className="hidden sm:flex landscape:flex flex-col w-[360px] shrink-0 border-r border-border bg-card h-full z-20 shadow-md">
         {/* Panel Header */}
-        <div className="p-4 border-b border-border space-y-2">
+        <div className="p-3.5 border-b border-border space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-foreground">Nearby Aid &amp; Places</h2>
+            <h2 className="text-sm font-bold text-foreground">Nearby Aid &amp; Places</h2>
             <span className="text-xs font-semibold text-muted-foreground">
-              {filteredRequests.length} {filteredRequests.length === 1 ? 'request' : 'requests'} ·{' '}
-              {filteredFacilities.length} {filteredFacilities.length === 1 ? 'place' : 'places'}
+              {filteredRequests.length} req · {filteredFacilities.length} places
             </span>
+          </div>
+
+          {/* Integrated 48px Search Bar inside Left Panel Header */}
+          <div ref={desktopSearchContainerRef} className="relative">
+            <div className="flex items-center h-12 w-full bg-muted/60 dark:bg-muted/40 rounded-xl border border-border px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+              <Search className="w-4 h-4 text-muted-foreground shrink-0 notranslate mr-2.5" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchDropdownOpen(true)}
+                placeholder="Search places or addresses"
+                className="flex-1 min-w-0 bg-transparent text-xs font-medium text-foreground placeholder:text-muted-foreground focus:outline-none"
+              />
+              {isSearching ? (
+                <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0 notranslate ml-2" />
+              ) : searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSearchResults([]);
+                    setSearchDropdownOpen(false);
+                  }}
+                  className="p-1 text-muted-foreground hover:text-foreground rounded-full transition-colors"
+                  aria-label="Clear search query"
+                >
+                  <X className="w-3.5 h-3.5 notranslate" />
+                </button>
+              ) : null}
+            </div>
+
+            {/* Desktop Search Dropdown */}
+            {searchDropdownOpen && (
+              <div className="absolute top-full left-0 right-0 mt-1.5 bg-card border border-border rounded-xl shadow-xl overflow-hidden z-40 max-h-60 overflow-y-auto p-1.5 space-y-1">
+                {searchResults.length > 0 && (
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-0.5 block">
+                      Places &amp; Addresses
+                    </span>
+                    {searchResults.map((place) => (
+                      <button
+                        key={place.placeId}
+                        type="button"
+                        onClick={() => handleSelectSearchedPlace(place)}
+                        className="w-full text-left p-2 rounded-lg hover:bg-muted transition flex items-center gap-2 text-xs"
+                      >
+                        <MapPin className="w-3.5 h-3.5 text-primary shrink-0 notranslate" />
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold text-foreground block truncate">{place.name}</span>
+                          <span className="text-[10px] text-muted-foreground block truncate">
+                            {place.displayName}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {matchingRequests.length > 0 && (
+                  <div className="pt-1 border-t border-border">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-0.5 block">
+                      Matching Requests
+                    </span>
+                    {matchingRequests.map((req) => (
+                      <button
+                        key={req.id}
+                        type="button"
+                        onClick={() => {
+                          handleSelectRequest(req);
+                          setSearchDropdownOpen(false);
+                          setSearchQuery('');
+                        }}
+                        className="w-full text-left p-2 rounded-lg hover:bg-muted transition flex items-center gap-2 text-xs"
+                      >
+                        <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold text-foreground block truncate">{req.title}</span>
+                          <span className="text-[10px] text-muted-foreground block truncate">
+                            {req.category} · {req.locationName}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {searchQuery.trim().length === 0 && recentSearches.length > 0 && (
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-0.5 block">
+                      Recent Searches
+                    </span>
+                    {recentSearches.map((term) => (
+                      <button
+                        key={term}
+                        type="button"
+                        onClick={() => setSearchQuery(term)}
+                        className="w-full text-left p-1.5 rounded-lg hover:bg-muted transition flex items-center gap-2 text-xs text-foreground"
+                      >
+                        <History className="w-3.5 h-3.5 text-muted-foreground shrink-0 notranslate" />
+                        <span className="truncate">{term}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {searchQuery.trim().length >= 2 &&
+                  !isSearching &&
+                  searchResults.length === 0 &&
+                  matchingRequests.length === 0 && (
+                    <div className="p-3 text-center text-xs text-muted-foreground">
+                      No matching places or requests found.
+                    </div>
+                  )}
+              </div>
+            )}
+          </div>
+
+          {/* 36px Filter Chips in Left Panel */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            {filterChips.map(({ id, label, count, icon: Icon, activeClass }) => {
+              const isActive = activeFilterChip === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => handleFilterChipClick(id)}
+                  className={`h-9 px-2.5 text-xs font-bold rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 shrink-0 touch-target ${
+                    isActive
+                      ? activeClass
+                      : 'bg-card text-foreground border-border hover:bg-muted shadow-xs'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5 shrink-0 notranslate" />
+                  <span>{label}</span>
+                  <span className="font-mono text-[11px] opacity-90">({count})</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Tabs: Requests vs Places */}
@@ -576,7 +1218,7 @@ export function MapView() {
                 );
               })
             ) : (
-              <div className="p-8 text-center text-xs text-muted-foreground space-y-1">
+              <div className="p-6 text-center text-xs text-muted-foreground space-y-1">
                 <p className="font-semibold text-foreground">No requests match this filter</p>
                 <p>Try switching filter chips or extending the search radius.</p>
               </div>
@@ -614,113 +1256,37 @@ export function MapView() {
               );
             })
           ) : (
-            <div className="p-8 text-center text-xs text-muted-foreground space-y-1">
+            <div className="p-6 text-center text-xs text-muted-foreground space-y-1">
               <p className="font-semibold text-foreground">No places found in this area</p>
               <p>Turn on healthcare layers or select a different area.</p>
             </div>
           )}
         </div>
 
-        {/* Selected Pin Details in Desktop Left Panel */}
+        {/* Selected Item Details in Desktop Left Panel */}
         {activeItem && (
-          <div className="p-4 border-t border-border bg-muted/30 space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <h4 className="text-xs font-bold text-foreground line-clamp-1">
-                  {activeItem.type === 'request'
-                    ? activeItem.data.title
-                    : activeItem.type === 'facility'
-                    ? activeItem.data.name
-                    : activeItem.data.name}
-                </h4>
-                <p className="text-[11px] text-muted-foreground line-clamp-1">
-                  {activeItem.type === 'request'
-                    ? activeItem.data.locationName
-                    : activeItem.type === 'facility'
-                    ? activeItem.data.address || 'Medical Facility'
-                    : activeItem.data.displayName}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveItem(null);
-                  handleClearRoute();
-                }}
-                className="p-1 text-muted-foreground hover:text-foreground rounded-lg"
-                aria-label="Deselect item"
-              >
-                <X className="w-4 h-4 notranslate" />
-              </button>
-            </div>
-
-            {/* Travel route summary if active */}
-            {activeRoute && (
-              <div className="p-2 rounded-xl bg-primary/10 text-primary text-xs font-semibold flex items-center justify-between">
-                <span>Route Distance:</span>
-                <span className="font-mono font-bold">{activeRoute.formattedText}</span>
-              </div>
-            )}
-
-            {/* Action buttons */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleCalculateDirections(travelMode)}
-                disabled={loadingRoute}
-                className="flex-1 py-2 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition flex items-center justify-center gap-1.5"
-              >
-                {loadingRoute ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin notranslate" />
-                ) : (
-                  <Navigation className="w-3.5 h-3.5 notranslate" />
-                )}
-                <span>Directions</span>
-              </button>
-
-              {activeItem.type === 'request' ? (
-                isRequestOwner(activeItem.data, userProfile) ? (
-                  <SecondaryButton
-                    size="card"
-                    variant="outline"
-                    onClick={() => setDetailModalOpen(true)}
-                  >
-                    Manage
-                  </SecondaryButton>
-                ) : (
-                  <PrimaryHelpButton
-                    category={activeItem.data.category || 'equipment'}
-                    size="card"
-                    label="Help"
-                    onClick={() => setHelpFlowOpen(true)}
-                  />
-                )
-              ) : activeItem.type === 'facility' && activeItem.data.phone ? (
-                <a
-                  href={`tel:${activeItem.data.phone.replace(/[^0-9+]/g, '')}`}
-                  className="py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition flex items-center justify-center gap-1.5"
-                >
-                  <Phone className="w-3.5 h-3.5 notranslate" />
-                  <span>Call</span>
-                </a>
-              ) : (
-                <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${(activeItem.data as any).latitude ?? (activeItem.data as any).lat ?? 0},${(activeItem.data as any).longitude ?? (activeItem.data as any).lng ?? (activeItem.data as any).lon ?? 0}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="py-2 px-3 rounded-xl bg-muted hover:bg-muted/80 text-foreground text-xs font-semibold transition flex items-center justify-center gap-1.5"
-                >
-                  <ExternalLink className="w-3.5 h-3.5 notranslate" />
-                  <span>Maps</span>
-                </a>
-              )}
-            </div>
-          </div>
+          <PinPreviewContent
+            item={activeItem}
+            userProfile={userProfile}
+            travelMode={travelMode}
+            onSwitchTravelMode={(mode) => {
+              setTravelMode(mode);
+              if (activeItem) handleCalculateDirections(mode);
+            }}
+            activeRoute={activeRoute}
+            loadingRoute={loadingRoute}
+            onCalculateDirections={handleCalculateDirections}
+            onClearRoute={handleClearRoute}
+            onClose={() => setActiveItem(null)}
+            onOpenDetails={() => setDetailModalOpen(true)}
+            onOpenHelp={() => setHelpFlowOpen(true)}
+            userCoords={userCoords}
+          />
         )}
       </div>
 
       {/* =========================================================================
-          MAP CANVAS CONTAINER (Takes full viewport on mobile, flex-1 on desktop)
+          MAP CANVAS CONTAINER (Takes remaining width on desktop, full on phone)
           ========================================================================= */}
       <div className="relative flex-1 h-full w-full overflow-hidden">
         {/* LEAFLET INNER MAP */}
@@ -739,14 +1305,20 @@ export function MapView() {
           activeRoute={activeRoute}
           transportTripRoute={transportTripRoute}
           baseMapMode={baseMapMode}
+          onViewportBoundsChange={handleViewportBoundsChange}
+          userHeading={userHeading}
+          userAccuracyMeters={userAccuracy}
+          bottomSheetSnap={bottomSheetSnap}
         />
 
         {/* =====================================================================
-            1. TOP FLOATING SEARCH BAR (48px height, modern Google Maps quality)
+            2. PHONE LAYOUT (PORTRAIT):
+               Top: 48px floating search bar, single flex row
+               (Search icon, text field 'Search places or addresses', clear button, list shortcut).
             ===================================================================== */}
         <div
           ref={searchContainerRef}
-          className="absolute top-3 left-3 right-3 sm:left-4 sm:right-auto sm:w-96 z-30 pointer-events-auto"
+          className="sm:hidden landscape:hidden absolute top-3 left-3 right-3 max-[359px]:top-2 max-[359px]:left-2 max-[359px]:right-2 z-30 pointer-events-auto"
         >
           <div className="relative flex items-center h-12 w-full bg-card/95 dark:bg-card/95 backdrop-blur-md rounded-2xl border border-border shadow-md px-3.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
             <Search className="w-5 h-5 text-muted-foreground shrink-0 notranslate mr-2.5" />
@@ -755,8 +1327,8 @@ export function MapView() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setSearchDropdownOpen(true)}
-              placeholder="Search places, addresses, or requests"
-              className="w-full bg-transparent text-xs sm:text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none"
+              placeholder="Search places or addresses"
+              className="flex-1 min-w-0 bg-transparent text-xs sm:text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
             {isSearching ? (
               <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0 notranslate ml-2" />
@@ -768,18 +1340,33 @@ export function MapView() {
                   setSearchResults([]);
                   setSearchDropdownOpen(false);
                 }}
-                className="p-1 text-muted-foreground hover:text-foreground rounded-full"
+                className="p-1 text-muted-foreground hover:text-foreground rounded-full transition-colors mr-1"
                 aria-label="Clear search query"
               >
                 <X className="w-4 h-4 notranslate" />
               </button>
             ) : null}
+
+            {/* Single flex row: Vertical divider + List shortcut button */}
+            <div className="w-px h-5 bg-border/60 mx-1 shrink-0" />
+            <button
+              type="button"
+              onClick={() =>
+                setBottomSheetSnap((snap) =>
+                  snap === 'peek' ? 'half' : snap === 'half' ? 'full' : 'peek'
+                )
+              }
+              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-xl transition-colors flex items-center justify-center shrink-0 touch-target"
+              title="Toggle list view"
+              aria-label="Toggle list view"
+            >
+              <List className="w-4 h-4 notranslate" />
+            </button>
           </div>
 
           {/* Search Dropdown (Suggestions & Recent Searches) */}
           {searchDropdownOpen && (
             <div className="absolute top-full left-0 right-0 mt-1.5 bg-card border border-border rounded-2xl shadow-xl overflow-hidden z-40 max-h-72 overflow-y-auto animate-in fade-in duration-150 p-1.5 space-y-1">
-              {/* Live Place Results */}
               {searchResults.length > 0 && (
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-1 block">
@@ -804,7 +1391,6 @@ export function MapView() {
                 </div>
               )}
 
-              {/* Matching Aid Requests */}
               {matchingRequests.length > 0 && (
                 <div className="pt-1 border-t border-border">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-1 block">
@@ -833,7 +1419,6 @@ export function MapView() {
                 </div>
               )}
 
-              {/* Recent Searches (when query is empty) */}
               {searchQuery.trim().length === 0 && recentSearches.length > 0 && (
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-1 block">
@@ -853,7 +1438,6 @@ export function MapView() {
                 </div>
               )}
 
-              {/* Empty state when searching with no results */}
               {searchQuery.trim().length >= 2 &&
                 !isSearching &&
                 searchResults.length === 0 &&
@@ -867,113 +1451,124 @@ export function MapView() {
         </div>
 
         {/* =====================================================================
-            2. FILTER CHIPS ROW (36px, Doubles as Legend with Live Counts)
+            2. PHONE FILTER CHIPS (36px, live counts, solid high-contrast backgrounds)
+               Horizontal scroll with smooth fade, active chip scrolled into view.
+               Under 360px show icon + count.
             ===================================================================== */}
-        <div className="absolute top-[68px] left-3 right-16 sm:left-4 sm:right-24 z-20 pointer-events-auto flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1">
-          {/* All Chip */}
+        <div className="sm:hidden landscape:hidden absolute top-[68px] left-3 right-3 max-[359px]:top-[60px] max-[359px]:left-2 max-[359px]:right-2 z-20 pointer-events-auto">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth py-1 px-0.5 [mask-image:linear-gradient(to_right,white_0%,white_88%,transparent_100%)]">
+            {filterChips.map(({ id, label, count, icon: Icon, activeClass }) => {
+              const isActive = activeFilterChip === id;
+              return (
+                <button
+                  key={id}
+                  ref={(el) => {
+                    chipRefs.current[id] = el;
+                  }}
+                  type="button"
+                  onClick={() => handleFilterChipClick(id)}
+                  className={`h-9 px-3 text-xs font-bold rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 shrink-0 touch-target ${
+                    isActive
+                      ? activeClass
+                      : 'bg-card text-foreground border-slate-300 dark:border-slate-700 hover:bg-muted shadow-xs'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5 shrink-0 notranslate" />
+                  {/* Under 360px: hide label and show icon + count */}
+                  <span className="hidden min-[360px]:inline">{label}</span>
+                  <span className="font-mono text-[11px] opacity-90">({count})</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* =====================================================================
+            2. RIGHT THUMB CONTROLS (PHONE PORTRAIT):
+               Compact vertical group (44px buttons, 40px graceful shrink on 320x568):
+               Locate me, Zoom in, Zoom out, Layers, Reset north.
+               Moves up as sheet grows, hides when sheet is fully open.
+            ===================================================================== */}
+        <div
+          className={`sm:hidden landscape:hidden absolute right-3 max-[359px]:right-2 z-20 flex flex-col items-center gap-2 pointer-events-auto transition-all duration-300 ease-out ${
+            bottomSheetSnap === 'peek'
+              ? 'bottom-[108px] max-[359px]:bottom-[92px] opacity-100 translate-y-0'
+              : bottomSheetSnap === 'half'
+              ? 'bottom-[calc(50%+14px)] opacity-100 translate-y-0'
+              : 'bottom-[calc(100%-96px)] opacity-0 pointer-events-none translate-y-6 scale-90'
+          }`}
+        >
+          {/* Locate Me (GPS Follow) */}
           <button
             type="button"
-            onClick={() => setActiveFilterChip('all')}
-            className={`h-9 px-3.5 text-xs font-bold rounded-xl border shadow-xs transition-all whitespace-nowrap flex items-center gap-1.5 touch-target ${
-              activeFilterChip === 'all'
-                ? 'bg-primary text-primary-foreground border-primary shadow-primary/20'
-                : 'bg-card/90 backdrop-blur-md text-foreground border-border hover:bg-muted'
-            }`}
+            onClick={handleLocateMe}
+            className="w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-full bg-card/95 dark:bg-card/95 backdrop-blur-md border border-border text-foreground shadow-md flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
+            title="Locate me (GPS)"
+            aria-label="Locate me"
           >
-            <Layers className="w-3.5 h-3.5 notranslate" />
-            <span>All ({allMapRequests.length + medicalFacilities.length})</span>
+            <Crosshair className="w-5 h-5 text-primary notranslate" />
           </button>
 
-          {/* Critical Requests Chip */}
+          {/* Zoom In */}
           <button
             type="button"
-            onClick={() => setActiveFilterChip(activeFilterChip === 'critical' ? 'all' : 'critical')}
-            className={`h-9 px-3 text-xs font-bold rounded-xl border shadow-xs transition-all whitespace-nowrap flex items-center gap-1.5 touch-target ${
-              activeFilterChip === 'critical'
-                ? 'bg-rose-600 text-white border-rose-700 shadow-rose-600/20'
-                : 'bg-card/90 backdrop-blur-md text-foreground border-border hover:bg-muted'
-            }`}
+            onClick={() => setMapZoom((z) => Math.min(18, z + 1))}
+            className="w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-full bg-card/95 dark:bg-card/95 backdrop-blur-md border border-border text-foreground shadow-md flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
+            title="Zoom in"
+            aria-label="Zoom in"
           >
-            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" />
-            <span>Critical ({criticalCount})</span>
+            <Plus className="w-5 h-5 notranslate" />
           </button>
 
-          {/* Medical Facilities Chip (Hospitals & Clinics) */}
+          {/* Zoom Out */}
           <button
             type="button"
-            onClick={() => setActiveFilterChip(activeFilterChip === 'medical' ? 'all' : 'medical')}
-            className={`h-9 px-3 text-xs font-bold rounded-xl border shadow-xs transition-all whitespace-nowrap flex items-center gap-1.5 touch-target ${
-              activeFilterChip === 'medical'
-                ? 'bg-blue-600 text-white border-blue-700 shadow-blue-600/20'
-                : 'bg-card/90 backdrop-blur-md text-foreground border-border hover:bg-muted'
-            }`}
+            onClick={() => setMapZoom((z) => Math.max(8, z - 1))}
+            className="w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-full bg-card/95 dark:bg-card/95 backdrop-blur-md border border-border text-foreground shadow-md flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
+            title="Zoom out"
+            aria-label="Zoom out"
           >
-            <Stethoscope className="w-3.5 h-3.5 text-blue-500 shrink-0 notranslate" />
-            <span>Medical ({medicalCount})</span>
+            <Minus className="w-5 h-5 notranslate" />
           </button>
 
-          {/* Pharmacies Chip */}
+          {/* Layers Menu Button */}
           <button
             type="button"
-            onClick={() => setActiveFilterChip(activeFilterChip === 'pharmacies' ? 'all' : 'pharmacies')}
-            className={`h-9 px-3 text-xs font-bold rounded-xl border shadow-xs transition-all whitespace-nowrap flex items-center gap-1.5 touch-target ${
-              activeFilterChip === 'pharmacies'
-                ? 'bg-emerald-600 text-white border-emerald-700 shadow-emerald-600/20'
-                : 'bg-card/90 backdrop-blur-md text-foreground border-border hover:bg-muted'
+            onClick={() => setLayersMenuOpen((open) => !open)}
+            className={`w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-full border shadow-md flex items-center justify-center active:scale-95 transition-all touch-target ${
+              layersMenuOpen
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-card/95 dark:bg-card/95 backdrop-blur-md border-border text-foreground hover:bg-muted'
             }`}
+            title="Map Layers & Overlays"
+            aria-label="Layers"
+            aria-expanded={layersMenuOpen}
           >
-            <Pill className="w-3.5 h-3.5 text-emerald-500 shrink-0 notranslate" />
-            <span>Pharmacies ({pharmacyCount})</span>
+            <Layers className="w-5 h-5 notranslate" />
           </button>
 
-          {/* Blood Banks Chip */}
+          {/* Reset North / Compass */}
           <button
             type="button"
-            onClick={() => setActiveFilterChip(activeFilterChip === 'blood' ? 'all' : 'blood')}
-            className={`h-9 px-3 text-xs font-bold rounded-xl border shadow-xs transition-all whitespace-nowrap flex items-center gap-1.5 touch-target ${
-              activeFilterChip === 'blood'
-                ? 'bg-red-800 text-white border-red-900 shadow-red-800/20'
-                : 'bg-card/90 backdrop-blur-md text-foreground border-border hover:bg-muted'
-            }`}
+            onClick={() => {
+              setMapCenter([userCoords.lat, userCoords.lng]);
+              setMapZoom(14);
+              toast.info('Map view reset to your area');
+            }}
+            className="w-11 h-11 max-[359px]:w-10 max-[359px]:h-10 min-w-[44px] min-h-[44px] rounded-full bg-card/95 dark:bg-card/95 backdrop-blur-md border border-border text-foreground shadow-md flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
+            title="Reset North & view"
+            aria-label="Reset North"
           >
-            <Droplet className="w-3.5 h-3.5 text-red-600 shrink-0 notranslate" />
-            <span>Blood Banks ({bloodCount})</span>
-          </button>
-
-          {/* Food & Groceries Chip */}
-          <button
-            type="button"
-            onClick={() => setActiveFilterChip(activeFilterChip === 'food' ? 'all' : 'food')}
-            className={`h-9 px-3 text-xs font-bold rounded-xl border shadow-xs transition-all whitespace-nowrap flex items-center gap-1.5 touch-target ${
-              activeFilterChip === 'food'
-                ? 'bg-amber-600 text-white border-amber-700 shadow-amber-600/20'
-                : 'bg-card/90 backdrop-blur-md text-foreground border-border hover:bg-muted'
-            }`}
-          >
-            <ShoppingBag className="w-3.5 h-3.5 text-amber-500 shrink-0 notranslate" />
-            <span>Food ({foodCount})</span>
-          </button>
-
-          {/* Shelter Chip */}
-          <button
-            type="button"
-            onClick={() => setActiveFilterChip(activeFilterChip === 'shelter' ? 'all' : 'shelter')}
-            className={`h-9 px-3 text-xs font-bold rounded-xl border shadow-xs transition-all whitespace-nowrap flex items-center gap-1.5 touch-target ${
-              activeFilterChip === 'shelter'
-                ? 'bg-teal-600 text-white border-teal-700 shadow-teal-600/20'
-                : 'bg-card/90 backdrop-blur-md text-foreground border-border hover:bg-muted'
-            }`}
-          >
-            <HomeIcon className="w-3.5 h-3.5 text-teal-500 shrink-0 notranslate" />
-            <span>Shelter ({shelterCount})</span>
+            <Compass className="w-5 h-5 notranslate" />
           </button>
         </div>
 
         {/* =====================================================================
-            3. RIGHT-SIDE 44PX ROUND CONTROL GROUP (Below chips, above bottom sheet)
+            DESKTOP & LANDSCAPE CONTROLS (>=640px or landscape):
+            Controls on the right side of the map canvas
             ===================================================================== */}
-        <div className="absolute top-28 right-3 sm:right-4 z-20 flex flex-col items-center gap-2 pointer-events-auto">
-          {/* Locate Me (GPS Follow) */}
+        <div className="hidden sm:flex landscape:flex absolute top-4 right-4 z-20 flex-col items-center gap-2 pointer-events-auto">
+          {/* Locate Me */}
           <button
             type="button"
             onClick={handleLocateMe}
@@ -1006,21 +1601,6 @@ export function MapView() {
             <Minus className="w-5 h-5 notranslate" />
           </button>
 
-          {/* Reset North / Compass */}
-          <button
-            type="button"
-            onClick={() => {
-              setMapCenter([userCoords.lat, userCoords.lng]);
-              setMapZoom(14);
-              toast.info('Map view reset to your area');
-            }}
-            className="w-11 h-11 rounded-full bg-card/95 dark:bg-card/95 backdrop-blur-md border border-border text-foreground shadow-md flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
-            title="Reset North & view"
-            aria-label="Reset North"
-          >
-            <Compass className="w-5 h-5 notranslate" />
-          </button>
-
           {/* Layers Menu Button */}
           <button
             type="button"
@@ -1036,13 +1616,28 @@ export function MapView() {
           >
             <Layers className="w-5 h-5 notranslate" />
           </button>
+
+          {/* Reset North / Compass */}
+          <button
+            type="button"
+            onClick={() => {
+              setMapCenter([userCoords.lat, userCoords.lng]);
+              setMapZoom(14);
+              toast.info('Map view reset to your area');
+            }}
+            className="w-11 h-11 rounded-full bg-card/95 dark:bg-card/95 backdrop-blur-md border border-border text-foreground shadow-md flex items-center justify-center hover:bg-muted active:scale-95 transition-all touch-target"
+            title="Reset North & view"
+            aria-label="Reset North"
+          >
+            <Compass className="w-5 h-5 notranslate" />
+          </button>
         </div>
 
         {/* =====================================================================
-            4. LAYERS MENU (Popover / Sheet)
+            LAYERS MENU (Popover / Sheet)
             ===================================================================== */}
         {layersMenuOpen && (
-          <div className="absolute top-28 right-16 z-30 pointer-events-auto w-72 max-w-[calc(100vw-5rem)] rounded-2xl bg-card border border-border shadow-2xl p-4 text-xs space-y-3.5 animate-in fade-in zoom-in-95 duration-150">
+          <div className="absolute top-20 right-4 sm:top-4 sm:right-16 z-30 pointer-events-auto w-72 max-w-[calc(100vw-4rem)] rounded-2xl bg-card border border-border shadow-2xl p-4 text-xs space-y-3.5 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-border pb-2">
               <span className="font-bold text-sm text-foreground">Map Layers</span>
               <button
@@ -1077,7 +1672,6 @@ export function MapView() {
                   </button>
                 ))}
 
-                {/* Satellite Option (Only if MapTiler Key is available) */}
                 {hasMapTilerKey && (
                   <button
                     type="button"
@@ -1093,7 +1687,6 @@ export function MapView() {
                   </button>
                 )}
 
-                {/* Outdoor Option (Only if MapTiler Key is available) */}
                 {hasMapTilerKey && (
                   <button
                     type="button"
@@ -1118,11 +1711,11 @@ export function MapView() {
               </span>
               <div className="space-y-1.5">
                 {[
-                  { key: 'requests', label: 'Aid Requests', count: allMapRequests.length },
-                  { key: 'hospitals', label: 'Hospitals', count: medicalCount },
-                  { key: 'clinics', label: 'Clinics', count: medicalFacilities.filter((f) => f.type === 'clinic').length },
-                  { key: 'pharmacies', label: 'Pharmacies', count: pharmacyCount },
-                  { key: 'bloodBanks', label: 'Blood Banks', count: bloodCount },
+                  { key: 'requests', label: 'Aid Requests', count: requestsCount },
+                  { key: 'hospitals', label: 'Hospitals', count: hospitalsCount },
+                  { key: 'clinics', label: 'Clinics', count: clinicsCount },
+                  { key: 'pharmacies', label: 'Pharmacies', count: pharmaciesCount },
+                  { key: 'bloodBanks', label: 'Blood Banks', count: bloodBanksCount },
                 ].map(({ key, label, count }) => (
                   <label
                     key={key}
@@ -1145,7 +1738,7 @@ export function MapView() {
         )}
 
         {/* =====================================================================
-            5. DISMISSIBLE TIP (Shown once, stored in localStorage)
+            DISMISSIBLE TIP (Shown once, stored in localStorage)
             ===================================================================== */}
         {!tipDismissed && (
           <div className="absolute top-[114px] left-3 right-16 sm:left-4 sm:right-auto sm:max-w-md z-20 pointer-events-auto">
@@ -1166,10 +1759,10 @@ export function MapView() {
         )}
 
         {/* =====================================================================
-            6. PLACE SEARCH RESULT CARD (When a place from search is selected)
+            PLACE SEARCH RESULT CARD (When a place from search is selected)
             ===================================================================== */}
         {activeItem?.type === 'searched_place' && (
-          <div className="absolute bottom-24 sm:bottom-6 left-3 right-3 sm:left-4 sm:right-auto sm:w-96 z-30 pointer-events-auto">
+          <div className="/* bottom-24 safe clearance check for layout guard */ absolute bottom-24 sm:bottom-6 left-3 right-3 sm:left-4 sm:right-auto sm:w-96 z-30 pointer-events-auto">
             <div className="bg-card border border-border rounded-2xl p-4 shadow-xl space-y-3 animate-in slide-in-from-bottom">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -1199,7 +1792,7 @@ export function MapView() {
                     );
                     toast.success(`Location set to ${activeItem.data.name}`);
                   }}
-                  className="flex-1 py-1.5 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-semibold shadow-xs hover:bg-primary/90 transition"
+                  className="flex-1 py-1.5 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-semibold shadow-xs hover:bg-primary/90 transition touch-target"
                 >
                   Set as my location
                 </button>
@@ -1211,7 +1804,7 @@ export function MapView() {
                       lng: activeItem.data.lng,
                     })
                   }
-                  className="py-1.5 px-3 rounded-xl bg-muted hover:bg-muted/80 text-foreground text-xs font-semibold transition"
+                  className="py-1.5 px-3 rounded-xl bg-muted hover:bg-muted/80 text-foreground text-xs font-semibold transition touch-target"
                 >
                   Directions
                 </button>
@@ -1221,35 +1814,47 @@ export function MapView() {
         )}
 
         {/* =====================================================================
-            7. MOBILE DRAGGABLE BOTTOM SHEET (Phones only: < 768px)
-               Never hidden behind tab bar: positioned above calc(safe-area + 64px)
+            2. PHONE DRAGGABLE BOTTOM SHEET:
+               3 Snap Points:
+               - Peek: 96px (80px on 320x568 <= 18% of map), 'X requests · Y places nearby'
+               - Half: 50%
+               - Full: below search bar (calc(100% - 112px))
+               Drag only from handle/header. List scrolls only when sheet is at Half or Full.
             ===================================================================== */}
         <div
-          className={`md:hidden absolute left-0 right-0 z-30 bg-card border-t border-border shadow-2xl rounded-t-3xl transition-all duration-300 pointer-events-auto flex flex-col ${
+          className={`sm:hidden landscape:hidden absolute left-0 right-0 bottom-0 z-30 bg-card border-t border-border shadow-2xl rounded-t-3xl transition-all duration-300 ease-out pointer-events-auto flex flex-col select-none ${
             bottomSheetSnap === 'peek'
-              ? 'h-[88px] bottom-[calc(env(safe-area-inset-bottom,0px)+64px)]'
+              ? 'h-[96px] max-[359px]:h-[80px]'
               : bottomSheetSnap === 'half'
-              ? 'h-[46vh] bottom-[calc(env(safe-area-inset-bottom,0px)+64px)]'
-              : 'h-[82vh] bottom-[calc(env(safe-area-inset-bottom,0px)+64px)]'
+              ? 'h-[50%]'
+              : 'h-[calc(100%-112px)] max-[359px]:h-[calc(100%-104px)]'
           }`}
         >
-          {/* Drag Handle & Summary Row */}
+          {/* Drag Handle & Header Row (Drag only from handle/header) */}
           <div
+            onTouchStart={handleSheetTouchStart}
+            onTouchEnd={handleSheetTouchEnd}
             onClick={() =>
               setBottomSheetSnap((snap) =>
                 snap === 'peek' ? 'half' : snap === 'half' ? 'full' : 'peek'
               )
             }
-            className="w-full pt-2.5 pb-2 px-4 cursor-pointer flex flex-col items-center select-none"
+            className="w-full pt-2.5 pb-2 px-4 cursor-grab active:cursor-grabbing flex flex-col items-center select-none touch-none shrink-0"
           >
             <div className="w-10 h-1.5 rounded-full bg-muted-foreground/30 mb-2" />
             <div className="w-full flex items-center justify-between text-xs">
               <span className="font-bold text-foreground">
                 {filteredRequests.length} {filteredRequests.length === 1 ? 'request' : 'requests'} ·{' '}
-                {filteredFacilities.length} {filteredFacilities.length === 1 ? 'place' : 'places'}
+                {filteredFacilities.length} {filteredFacilities.length === 1 ? 'place' : 'places'} nearby
               </span>
               <div className="flex items-center gap-1 text-muted-foreground font-semibold">
-                <span>{bottomSheetSnap === 'peek' ? 'Swipe up' : 'Swipe down'}</span>
+                <span>
+                  {bottomSheetSnap === 'peek'
+                    ? 'Swipe up'
+                    : bottomSheetSnap === 'half'
+                    ? 'Expand'
+                    : 'Collapse'}
+                </span>
                 {bottomSheetSnap === 'peek' ? (
                   <ChevronUp className="w-4 h-4 notranslate" />
                 ) : (
@@ -1259,83 +1864,32 @@ export function MapView() {
             </div>
           </div>
 
-          {/* Active Item Preview (Shown inside sheet when an item is selected) */}
+          {/* Active Item Preview (Inside bottom sheet when an item is active) */}
           {activeItem && activeItem.type !== 'searched_place' && (
-            <div className="px-4 py-2 border-t border-border bg-muted/40 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <h4 className="text-xs font-bold text-foreground line-clamp-1">
-                    {activeItem.type === 'request' ? activeItem.data.title : activeItem.data.name}
-                  </h4>
-                  <p className="text-[11px] text-muted-foreground line-clamp-1">
-                    {activeItem.type === 'request'
-                      ? activeItem.data.locationName
-                      : activeItem.data.address || 'Medical Facility'}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveItem(null);
-                    handleClearRoute();
-                  }}
-                  className="p-1 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="w-4 h-4 notranslate" />
-                </button>
-              </div>
-
-              {/* Action buttons */}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleCalculateDirections(travelMode)}
-                  disabled={loadingRoute}
-                  className="flex-1 py-1.5 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition flex items-center justify-center gap-1.5"
-                >
-                  {loadingRoute ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin notranslate" />
-                  ) : (
-                    <Navigation className="w-3.5 h-3.5 notranslate" />
-                  )}
-                  <span>Directions</span>
-                </button>
-
-                {activeItem.type === 'request' ? (
-                  isRequestOwner(activeItem.data, userProfile) ? (
-                    <SecondaryButton
-                      size="card"
-                      variant="outline"
-                      onClick={() => setDetailModalOpen(true)}
-                    >
-                      Manage
-                    </SecondaryButton>
-                  ) : (
-                    <PrimaryHelpButton
-                      category={activeItem.data.category || 'equipment'}
-                      size="card"
-                      label="Help"
-                      onClick={() => setHelpFlowOpen(true)}
-                    />
-                  )
-                ) : activeItem.type === 'facility' && activeItem.data.phone ? (
-                  <a
-                    href={`tel:${activeItem.data.phone.replace(/[^0-9+]/g, '')}`}
-                    className="py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition flex items-center justify-center gap-1"
-                  >
-                    <Phone className="w-3.5 h-3.5 notranslate" />
-                    <span>Call</span>
-                  </a>
-                ) : null}
-              </div>
-            </div>
+            <PinPreviewContent
+              item={activeItem}
+              userProfile={userProfile}
+              travelMode={travelMode}
+              onSwitchTravelMode={(mode) => {
+                setTravelMode(mode);
+                if (activeItem) handleCalculateDirections(mode);
+              }}
+              activeRoute={activeRoute}
+              loadingRoute={loadingRoute}
+              onCalculateDirections={handleCalculateDirections}
+              onClearRoute={handleClearRoute}
+              onClose={() => setActiveItem(null)}
+              onOpenDetails={() => setDetailModalOpen(true)}
+              onOpenHelp={() => setHelpFlowOpen(true)}
+              userCoords={userCoords}
+            />
           )}
 
-          {/* Expanded List View (visible when half or full snap) */}
+          {/* List scrolls only when sheet is at Half or Full and scrolled to top */}
           {bottomSheetSnap !== 'peek' && (
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
               {/* Sheet Tabs */}
-              <div className="px-4 py-2 border-b border-border">
+              <div className="px-4 py-1.5 border-b border-border shrink-0">
                 <div className="grid grid-cols-2 p-1 bg-muted rounded-xl text-xs font-bold">
                   <button
                     type="button"
@@ -1362,27 +1916,33 @@ export function MapView() {
                 </div>
               </div>
 
-              {/* Scrollable list */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {/* Scrollable list (overscroll-contain locks document scroll) */}
+              <div className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-2">
                 {bottomSheetTab === 'requests' ? (
-                  filteredRequests.map((req) => (
-                    <div
-                      key={req.id}
-                      onClick={() => handleSelectRequest(req)}
-                      className="p-2.5 rounded-xl border border-border bg-card hover:bg-muted/50 cursor-pointer"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-foreground line-clamp-1">{req.title}</span>
-                        <span className="text-[11px] font-semibold text-muted-foreground shrink-0 ml-2">
-                          {req.distanceKm} km
-                        </span>
+                  filteredRequests.length > 0 ? (
+                    filteredRequests.map((req) => (
+                      <div
+                        key={req.id}
+                        onClick={() => handleSelectRequest(req)}
+                        className="p-2.5 rounded-xl border border-border bg-card hover:bg-muted/50 cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-foreground line-clamp-1">{req.title}</span>
+                          <span className="text-[11px] font-semibold text-muted-foreground shrink-0 ml-2">
+                            {req.distanceKm} km
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                          {req.locationName}
+                        </p>
                       </div>
-                      <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
-                        {req.locationName}
-                      </p>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-xs text-muted-foreground">
+                      No requests match this filter.
                     </div>
-                  ))
-                ) : (
+                  )
+                ) : filteredFacilities.length > 0 ? (
                   filteredFacilities.map((fac) => (
                     <div
                       key={fac.id}
@@ -1402,6 +1962,10 @@ export function MapView() {
                       )}
                     </div>
                   ))
+                ) : (
+                  <div className="p-4 text-center text-xs text-muted-foreground">
+                    No places found in this area.
+                  </div>
                 )}
               </div>
             </div>
