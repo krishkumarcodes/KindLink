@@ -14,6 +14,7 @@ export function BottomTabBar() {
 
   const [isArcMenuOpen, setIsArcMenuOpen] = useState(false);
   const [anchorCenter, setAnchorCenter] = useState<{ x: number; y: number } | null>(null);
+  const [isChargingPlus, setIsChargingPlus] = useState(false);
 
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isHoldingRef = useRef(false);
@@ -34,13 +35,14 @@ export function BottomTabBar() {
 
     const rect = e.currentTarget.getBoundingClientRect();
     setAnchorCenter({
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2,
+      x: Math.round(rect.left + rect.width / 2),
+      y: Math.round(rect.top + rect.height / 2),
     });
 
     isHoldingRef.current = false;
     didTriggerHoldRef.current = false;
     pointerDownTimeRef.current = Date.now();
+    setIsChargingPlus(true);
 
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -54,6 +56,7 @@ export function BottomTabBar() {
     holdTimerRef.current = setTimeout(() => {
       isHoldingRef.current = true;
       didTriggerHoldRef.current = true;
+      setIsChargingPlus(false);
       setIsArcMenuOpen(true);
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
@@ -64,6 +67,7 @@ export function BottomTabBar() {
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    setIsChargingPlus(false);
     try {
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId);
@@ -94,6 +98,7 @@ export function BottomTabBar() {
   };
 
   const handlePointerCancel = (e: React.PointerEvent<HTMLButtonElement>) => {
+    setIsChargingPlus(false);
     try {
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId);
@@ -173,6 +178,16 @@ export function BottomTabBar() {
           <div className="absolute -inset-2.5 rounded-full bg-gradient-to-tr from-teal-500/35 via-emerald-500/25 to-teal-400/40 blur-lg animate-pulse pointer-events-none" />
           <div className="absolute -inset-1 rounded-full bg-teal-500/30 blur-md pointer-events-none" />
 
+          {/* Anticipatory 240ms Energy Charge Halo & Expanding Ripple Wave */}
+          <div
+            className={`pointer-events-none absolute -inset-3 rounded-full transition-all duration-[240ms] ease-out ${
+              isChargingPlus && !isArcMenuOpen
+                ? 'scale-125 opacity-100 ring-2 ring-teal-300 ring-offset-2 ring-offset-background shadow-[0_0_24px_rgba(45,212,191,0.95)] bg-teal-400/25'
+                : 'scale-75 opacity-0 ring-0'
+            }`}
+            aria-hidden="true"
+          />
+
           <button
             type="button"
             onClick={handleClick}
@@ -183,7 +198,11 @@ export function BottomTabBar() {
               currentView === 'new'
                 ? 'ring-4 ring-teal-500/40 ring-offset-2 ring-offset-background dark:ring-offset-slate-950 scale-105'
                 : ''
-            } ${isArcMenuOpen ? 'scale-105 ring-4 ring-teal-400/50' : ''}`}
+            } ${isArcMenuOpen ? 'scale-105 ring-4 ring-teal-400/50' : ''} ${
+              isChargingPlus && !isArcMenuOpen
+                ? 'scale-90 shadow-[inset_0_2px_4px_rgba(255,255,255,0.9),0_0_24px_rgba(20,184,166,0.75)] ring-2 ring-teal-400/60'
+                : ''
+            }`}
             aria-label="Create new help request (Hold for quick categories)"
             title="Ask for Help (Hold for quick categories)"
           >
@@ -203,6 +222,8 @@ export function BottomTabBar() {
               className={`h-6 w-6 notranslate stroke-[2.75] text-white transition-transform duration-300 relative z-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)] ${
                 isArcMenuOpen
                   ? 'rotate-45 scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]'
+                  : isChargingPlus
+                  ? 'rotate-12 scale-90 text-teal-100 drop-shadow-[0_0_6px_rgba(255,255,255,0.9)]'
                   : 'group-hover:rotate-90 group-active:scale-90'
               }`}
             />
