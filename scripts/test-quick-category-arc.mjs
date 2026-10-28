@@ -299,6 +299,72 @@ assert(
 );
 
 // ============================================================================
+// 7. Auditing Portal Mounting, Viewport Elevation & Occlusion Eradication
+// ============================================================================
+console.log('\n🏛️ 7. Auditing Portal Mounting, Viewport Elevation & Occlusion Eradication...');
+assert(
+  arcMenuSource.includes('OverlayPortal') &&
+    arcMenuSource.includes("from '@/components/ui/OverlayPortal'"),
+  'QuickCategoryArcMenu imports OverlayPortal from @/components/ui/OverlayPortal'
+);
+assert(
+  arcMenuSource.includes('<OverlayPortal>') &&
+    arcMenuSource.includes('</OverlayPortal>'),
+  'QuickCategoryArcMenu renders inside <OverlayPortal> to mount to document.body'
+);
+assert(
+  arcMenuSource.includes('z-[9999]'),
+  'QuickCategoryArcMenu root overlay has z-[9999] ensuring zero bottom tab occlusion'
+);
+assert(
+  arcMenuSource.includes('useBodyScrollLock'),
+  'QuickCategoryArcMenu uses useBodyScrollLock to prevent page shifts during mobile drag'
+);
+assert(
+  arcMenuSource.includes('effectiveAnchor') ||
+    arcMenuSource.includes('viewportFallback'),
+  'QuickCategoryArcMenu implements dynamic viewport fallback coordinates'
+);
+
+// ============================================================================
+// 8. Auditing Luminous SVG Branch Network & Bespoke Logo Emblems
+// ============================================================================
+console.log('\n🌿 8. Auditing Luminous SVG Branch Network & Bespoke Logo Emblems...');
+assert(
+  arcMenuSource.includes('QUICK_ARC_BRANCHES') ||
+    arcMenuSource.includes('ArcBranchData'),
+  'QuickCategoryArcMenu defines QUICK_ARC_BRANCHES data structure'
+);
+assert(
+  arcMenuSource.includes('pathD') &&
+    arcMenuSource.includes('spurD') &&
+    arcMenuSource.includes('spurEnd'),
+  'QuickCategoryArcMenu precomputes branch Bezier paths, spurs, and junction nodes'
+);
+assert(
+  arcMenuSource.includes('animate-arc-flow-dash') ||
+    arcMenuSource.includes('arcBranchDashFlow'),
+  'QuickCategoryArcMenu implements animated flowing energy dash for active branches'
+);
+assert(
+  arcMenuSource.includes('animateMotion'),
+  'QuickCategoryArcMenu features travelling energy pulse along active branch path'
+);
+assert(
+  arcMenuSource.includes('BloodDonationEmblem') &&
+    arcMenuSource.includes('MedicalEquipmentEmblem') &&
+    arcMenuSource.includes('EmergencyTransitEmblem') &&
+    arcMenuSource.includes('FoodSupportEmblem') &&
+    arcMenuSource.includes('MedicinesRxEmblem'),
+  'QuickCategoryArcMenu implements bespoke vector logo emblems for categories'
+);
+assert(
+  arcMenuSource.includes('animate-[spin_') ||
+    arcMenuSource.includes('strokeDasharray="6 8 3 8"'),
+  'QuickCategoryArcMenu features rotating crystal orbital ring when magnetically targeted'
+);
+
+// ============================================================================
 // Summary
 // ============================================================================
 console.log('\n=============================================================');
