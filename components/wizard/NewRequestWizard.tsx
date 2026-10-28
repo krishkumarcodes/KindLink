@@ -60,7 +60,13 @@ import { validateCustomCategoryLabel, validateTag } from '@/lib/utils/content-fi
 const DRAFT_STORAGE_KEY = 'kindlink_new_request_draft_v2';
 
 export function NewRequestWizard() {
-  const { addRequest, setCurrentView, userProfile } = useKindLinkStore();
+  const {
+    addRequest,
+    setCurrentView,
+    userProfile,
+    preselectedCategory,
+    setPreselectedCategory,
+  } = useKindLinkStore();
   const {
     userCoords: providerCoords,
     userAreaName: providerAreaName,
@@ -69,7 +75,7 @@ export function NewRequestWizard() {
     requestLiveLocation,
   } = useLocation();
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(preselectedCategory ? 2 : 1);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDraftRestored, setIsDraftRestored] = useState(false);
@@ -77,7 +83,7 @@ export function NewRequestWizard() {
   const [storyModalOpen, setStoryModalOpen] = useState(false);
 
   // Form State - Categories & Custom Label
-  const [category, setCategory] = useState<HelpCategory>('blood');
+  const [category, setCategory] = useState<HelpCategory>(preselectedCategory || 'blood');
   const [customCategoryLabel, setCustomCategoryLabel] = useState('');
   const [customCategoryError, setCustomCategoryError] = useState('');
 
@@ -175,6 +181,16 @@ export function NewRequestWizard() {
   // Review & Submit (Step 5)
   const [nearbyHelpersCount, setNearbyHelpersCount] = useState(14);
 
+  // Handle preselected category from store on mount
+  useEffect(() => {
+    if (preselectedCategory) {
+      setCategory(preselectedCategory);
+      handleSelectCategory(preselectedCategory);
+      setStep(2);
+      setPreselectedCategory(null);
+    }
+  }, [preselectedCategory, setPreselectedCategory]);
+
   // Load draft from localStorage on initial render
   useEffect(() => {
     try {
@@ -182,7 +198,9 @@ export function NewRequestWizard() {
       if (raw) {
         const draft: DraftRequest = JSON.parse(raw);
         if (draft.title || draft.description || draft.customCategoryLabel) {
-          setCategory(draft.category || 'blood');
+          if (!preselectedCategory) {
+            setCategory(draft.category || 'blood');
+          }
           setCustomCategoryLabel(draft.customCategoryLabel || '');
           setTags(draft.tags || []);
           setUrgency(draft.urgency || 'critical');

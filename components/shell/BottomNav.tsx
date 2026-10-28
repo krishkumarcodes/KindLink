@@ -1,3 +1,3 @@
 'use client';
 
-export { BottomTabBar, BottomNav } from './BottomTabBar';
+export { BottomTabBar, BottomNav, startNewRequestWithCategory } from './BottomTabBar';

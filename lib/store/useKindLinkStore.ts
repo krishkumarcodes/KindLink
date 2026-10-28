@@ -88,9 +88,12 @@ interface KindLinkState {
   isLoadingRequests: boolean;
   liveStats: CommunityLiveStats | null;
   isLoadingStats: boolean;
+  preselectedCategory: HelpCategory | null;
 
   // Actions
   setCurrentView: (view: AppView) => void;
+  setPreselectedCategory: (cat: HelpCategory | null) => void;
+  startNewRequestWithCategory: (cat: HelpCategory) => void;
   setSelectedRequestId: (id: string | null) => void;
   setActiveFeedTab: (tab: 'urgent' | 'nearest' | 'newest' | 'my_requests') => void;
   setFilterCategory: (cat: HelpCategory | 'all') => void;
@@ -187,8 +190,11 @@ export const useKindLinkStore = create<KindLinkState>()(
       isLoadingRequests: false,
       liveStats: null,
       isLoadingStats: false,
+      preselectedCategory: null,
 
       setCurrentView: (view) => set({ currentView: view }),
+      setPreselectedCategory: (cat) => set({ preselectedCategory: cat }),
+      startNewRequestWithCategory: (cat) => set({ preselectedCategory: cat, currentView: 'new' }),
       setSelectedRequestId: (id) => set({ selectedRequestId: id }),
       setActiveFeedTab: (tab) => set({ activeFeedTab: tab }),
       setFilterCategory: (cat) => set({ filterCategory: cat }),
