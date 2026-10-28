@@ -21,6 +21,7 @@ import { OverlayPortal, useBodyScrollLock } from '@/components/ui/OverlayPortal'
 export interface ArcCategoryItem {
   id: HelpCategory;
   name: string;
+  shortLabel: string;
   tag: string;
   icon: LucideIcon;
   gradient: string;
@@ -50,6 +51,7 @@ const END_ANGLE = -25; // Upward fan end angle
 export const CATEGORY_DEFINITIONS: Array<{
   id: HelpCategory;
   name: string;
+  shortLabel: string;
   tag: string;
   icon: LucideIcon;
   gradient: string;
@@ -61,6 +63,7 @@ export const CATEGORY_DEFINITIONS: Array<{
   {
     id: 'blood',
     name: 'Blood Donation',
+    shortLabel: 'Blood',
     tag: 'Rose',
     icon: Droplets,
     gradient: 'from-rose-500 via-rose-600 to-red-600',
@@ -72,6 +75,7 @@ export const CATEGORY_DEFINITIONS: Array<{
   {
     id: 'equipment',
     name: 'Medical Equipment',
+    shortLabel: 'Equipment',
     tag: 'Cyan/Blue',
     icon: Stethoscope,
     gradient: 'from-cyan-500 via-teal-600 to-blue-600',
@@ -83,6 +87,7 @@ export const CATEGORY_DEFINITIONS: Array<{
   {
     id: 'elderly',
     name: 'Elderly Care',
+    shortLabel: 'Elderly',
     tag: 'Sky/Blue',
     icon: HeartHandshake,
     gradient: 'from-sky-500 via-blue-600 to-indigo-600',
@@ -94,6 +99,7 @@ export const CATEGORY_DEFINITIONS: Array<{
   {
     id: 'transport',
     name: 'Emergency Transit',
+    shortLabel: 'Transit',
     tag: 'Amber/Orange',
     icon: Car,
     gradient: 'from-amber-500 via-amber-600 to-orange-600',
@@ -105,6 +111,7 @@ export const CATEGORY_DEFINITIONS: Array<{
   {
     id: 'food',
     name: 'Food Support',
+    shortLabel: 'Food',
     tag: 'Emerald/Green',
     icon: Utensils,
     gradient: 'from-emerald-500 via-emerald-600 to-green-600',
@@ -116,6 +123,7 @@ export const CATEGORY_DEFINITIONS: Array<{
   {
     id: 'medicine',
     name: 'Medicines & Rx',
+    shortLabel: 'Medicine',
     tag: 'Violet/Purple',
     icon: Pill,
     gradient: 'from-violet-500 via-purple-600 to-fuchsia-600',
@@ -127,6 +135,7 @@ export const CATEGORY_DEFINITIONS: Array<{
   {
     id: 'books',
     name: 'Books & Education',
+    shortLabel: 'Books',
     tag: 'Teal',
     icon: BookOpen,
     gradient: 'from-teal-500 via-teal-600 to-emerald-600',
@@ -138,6 +147,7 @@ export const CATEGORY_DEFINITIONS: Array<{
   {
     id: 'other',
     name: 'Other Support',
+    shortLabel: 'Other',
     tag: 'Slate/Indigo',
     icon: HelpCircle,
     gradient: 'from-indigo-600 via-slate-700 to-slate-800',
@@ -774,7 +784,7 @@ export function QuickCategoryArcMenu({
                       initial={{ opacity: 0, y: 8, scale: 0.92 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -6, scale: 0.92 }}
-                      transition={{ type: 'spring', stiffness: 450, damping: 28 }}
+                      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                       className={`relative flex items-center gap-2.5 px-4 py-2 rounded-full border border-white/35 shadow-2xl backdrop-blur-xl ring-1 ring-inset ring-white/25 overflow-hidden ${activeCategory.chipClass}`}
                       style={{
                         boxShadow: `0 0 28px ${activeCategory.glowColor}, 0 10px 25px rgba(0,0,0,0.4)`,
@@ -804,7 +814,7 @@ export function QuickCategoryArcMenu({
                       initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -4 }}
-                      transition={{ duration: 0.15 }}
+                      transition={{ duration: 0.15, ease: 'easeOut' }}
                       className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-teal-500/35 shadow-xl text-slate-200 text-[11px] font-semibold backdrop-blur-md ring-1 ring-inset ring-white/15"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-teal-400 notranslate animate-pulse" />
@@ -853,12 +863,12 @@ export function QuickCategoryArcMenu({
                   cy="0"
                   r={ARC_RADIUS}
                   stroke="currentColor"
-                  strokeWidth="1.5"
+                  strokeWidth="1.2"
                   strokeDasharray="4 6"
-                  className="text-teal-400/25"
+                  className="text-teal-400/20"
                 />
 
-                {/* 8 Dynamic Branch Lines */}
+                {/* 8 Crisp Minimalist Laser Filament Branches */}
                 {QUICK_ARC_BRANCHES.map((branch) => {
                   const isActive = activeCategoryId === branch.id;
                   return (
@@ -867,13 +877,13 @@ export function QuickCategoryArcMenu({
                       <path
                         d={branch.spurD}
                         stroke={isActive ? branch.category.glowColor : 'currentColor'}
-                        strokeWidth={isActive ? '2.5' : '1.5'}
-                        strokeOpacity={isActive ? 0.95 : 0.28}
+                        strokeWidth={isActive ? '2' : '1'}
+                        strokeOpacity={isActive ? 0.9 : 0.2}
                         strokeLinecap="round"
-                        className={isActive ? '' : 'text-teal-400/35'}
+                        className={isActive ? '' : 'text-teal-400/30'}
                         style={
                           isActive
-                            ? { filter: `drop-shadow(0 0 6px ${branch.category.glowColor})` }
+                            ? { filter: `drop-shadow(0 0 5px ${branch.category.glowColor})` }
                             : undefined
                         }
                       />
@@ -881,80 +891,66 @@ export function QuickCategoryArcMenu({
                       <circle
                         cx={branch.spurEnd.x}
                         cy={branch.spurEnd.y}
-                        r={isActive ? 2.5 : 1.5}
+                        r={isActive ? 2 : 1.2}
                         fill={isActive ? '#ffffff' : 'currentColor'}
                         stroke={isActive ? branch.category.glowColor : 'none'}
                         strokeWidth="1"
-                        className={isActive ? 'animate-pulse' : 'text-teal-300/40'}
+                        className={isActive ? 'animate-pulse' : 'text-teal-300/30'}
                         style={
                           isActive
-                            ? { filter: `drop-shadow(0 0 5px ${branch.category.glowColor})` }
-                            : undefined
-                        }
-                      />
-                      {/* Mid branch bifurcation junction node */}
-                      <circle
-                        cx={branch.midX}
-                        cy={branch.midY}
-                        r={isActive ? 3.2 : 2}
-                        fill={isActive ? '#ffffff' : 'currentColor'}
-                        className={isActive ? 'animate-ping' : 'text-teal-300/40'}
-                        style={
-                          isActive
-                            ? { filter: `drop-shadow(0 0 8px ${branch.category.glowColor})` }
+                            ? { filter: `drop-shadow(0 0 4px ${branch.category.glowColor})` }
                             : undefined
                         }
                       />
 
-                      {/* Inactive Branch Filament */}
+                      {/* Inactive Crisp Laser Filament */}
                       {!isActive && (
                         <path
                           d={branch.pathD}
                           stroke="currentColor"
-                          strokeWidth="2"
+                          strokeWidth="1.5"
                           strokeLinecap="round"
-                          className="text-teal-400/35"
-                          style={{ opacity: 0.32 }}
+                          className="text-teal-400/25"
                         />
                       )}
 
-                      {/* Active Luminous Laser Branch with Energy Dash Flow */}
+                      {/* Active Prominent Luminous Laser Branch with Energy Dash Flow */}
                       {isActive && (
                         <g>
                           <path
                             d={branch.pathD}
                             stroke={branch.category.glowColor}
-                            strokeWidth="8"
+                            strokeWidth="6"
                             strokeLinecap="round"
-                            strokeOpacity="0.45"
-                            style={{ filter: `drop-shadow(0 0 10px ${branch.category.glowColor})` }}
+                            strokeOpacity="0.4"
+                            style={{ filter: `drop-shadow(0 0 8px ${branch.category.glowColor})` }}
                           />
                           <path
                             d={branch.pathD}
                             stroke={`url(#branch-laser-${branch.id})`}
-                            strokeWidth="4"
+                            strokeWidth="2.5"
                             strokeLinecap="round"
-                            style={{ filter: `drop-shadow(0 0 10px ${branch.category.glowColor})` }}
+                            style={{ filter: `drop-shadow(0 0 6px ${branch.category.glowColor})` }}
                           />
                           <path
                             d={branch.pathD}
                             stroke="#ffffff"
-                            strokeWidth="2"
+                            strokeWidth="1.25"
                             strokeLinecap="round"
-                            strokeDasharray="8 8"
+                            strokeDasharray="6 6"
                             className="animate-arc-flow-dash"
-                            style={{ filter: 'drop-shadow(0 0 6px #ffffff)' }}
+                            style={{ filter: 'drop-shadow(0 0 4px #ffffff)' }}
                           />
                           <circle
-                            r="3.5"
+                            r="2.5"
                             fill="#ffffff"
                             style={{
-                              filter: `drop-shadow(0 0 6px #ffffff) drop-shadow(0 0 10px ${branch.category.glowColor})`,
+                              filter: `drop-shadow(0 0 4px #ffffff) drop-shadow(0 0 8px ${branch.category.glowColor})`,
                             }}
                           >
                             <animateMotion
                               path={branch.pathD}
-                              dur="0.8s"
+                              dur="0.75s"
                               repeatCount="indefinite"
                             />
                           </circle>
@@ -965,7 +961,7 @@ export function QuickCategoryArcMenu({
                 })}
               </svg>
 
-              {/* 8 Arc Category Floating Logo Emblem Nodes */}
+              {/* 8 Arc Category Floating Logo Emblem Nodes with Crystal Rims and Crisp Labels */}
               {QUICK_ARC_CATEGORIES.map((cat, index) => {
                 const isActive = activeCategoryId === cat.id;
 
@@ -975,17 +971,16 @@ export function QuickCategoryArcMenu({
                     type="button"
                     initial={{ scale: 0, opacity: 0, x: 0, y: 0 }}
                     animate={{
-                      scale: isActive ? 1.28 : 1,
+                      scale: isActive ? 1.22 : 1,
                       opacity: 1,
                       x: cat.x,
                       y: cat.y,
                     }}
                     exit={{ scale: 0, opacity: 0, x: 0, y: 0 }}
                     transition={{
-                      type: 'spring',
-                      stiffness: 420,
-                      damping: 24,
-                      delay: index * 0.015,
+                      duration: 0.22,
+                      ease: [0.16, 1, 0.3, 1],
+                      delay: index * 0.012,
                     }}
                     style={{
                       position: 'absolute',
@@ -998,7 +993,7 @@ export function QuickCategoryArcMenu({
                       onSelectCategory(cat.id);
                       onClose();
                     }}
-                    className={`group pointer-events-auto relative flex items-center justify-center w-12 h-12 rounded-2xl focus:outline-none select-none transition-shadow duration-200 ${
+                    className={`group pointer-events-auto relative flex flex-col items-center justify-center w-12 h-12 focus:outline-none select-none ${
                       isActive ? 'z-30' : 'z-10'
                     }`}
                     aria-label={`${cat.name} (${cat.tag})`}
@@ -1039,52 +1034,65 @@ export function QuickCategoryArcMenu({
                       />
                     </div>
 
-                    {/* Multi-layer Glassmorphic Emblem Badge */}
+                    {/* Multi-layer Glassmorphic Emblem Medallion with Crystal Rim */}
                     <div
-                      className={`relative flex items-center justify-center w-full h-full rounded-2xl overflow-hidden shadow-lg border border-white/35 dark:border-white/25 ring-1 ring-inset ring-white/30 transition-all duration-200 bg-gradient-to-br ${cat.gradient}`}
+                      className={`relative flex items-center justify-center w-full h-full rounded-2xl overflow-hidden shadow-lg border-2 border-white/60 dark:border-white/40 ring-1 ring-inset ring-white/40 transition-all duration-200 bg-gradient-to-br ${cat.gradient}`}
                       style={{
                         boxShadow: isActive
-                          ? `0 0 30px ${cat.glowColor}, 0 8px 24px rgba(0,0,0,0.55)`
+                          ? `0 0 28px ${cat.glowColor}, 0 8px 24px rgba(0,0,0,0.55)`
                           : '0 4px 14px rgba(0,0,0,0.35)',
                       }}
                     >
-                      {/* Top-down Specular Highlight Sheen Curve */}
+                      {/* Top-down Specular Highlight Sheen Meniscus */}
                       <span
-                        className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/45 via-white/15 to-transparent rounded-t-[inherit]"
+                        className="pointer-events-none absolute inset-x-1 top-0.5 h-3 bg-gradient-to-b from-white/70 via-white/20 to-transparent rounded-t-xl"
                         aria-hidden="true"
                       />
 
                       {/* Ambient Bottom Depth Shade */}
                       <span
-                        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/35 to-transparent rounded-b-[inherit]"
+                        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/35 to-transparent rounded-b-xl"
                         aria-hidden="true"
                       />
 
                       {/* Micro Bevel Corner Sheen */}
                       <span
-                        className="pointer-events-none absolute top-1 left-1.5 w-3 h-1.5 rounded-full bg-white/60 blur-[0.5px] -rotate-12"
+                        className="pointer-events-none absolute top-1 left-1.5 w-3 h-1.5 rounded-full bg-white/70 blur-[0.4px] -rotate-12"
                         aria-hidden="true"
                       />
 
                       {/* Bespoke Vector Logo Emblem */}
                       <CategoryLogoEmblem
                         category={cat.id}
-                        className="relative z-10 w-7 h-7 drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)]"
+                        className="relative z-10 w-6.5 h-6.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)]"
                       />
                     </div>
 
-                    {/* Floating Micro Urgency Dot Badge */}
+                    {/* Immediate Urgency Micro Dot */}
                     {cat.expectation.includes('Immediate') && (
                       <span className="pointer-events-none absolute -top-1 -right-1 z-20 flex h-3 w-3">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
                         <span className="relative inline-flex rounded-full h-3 w-3 bg-gradient-to-tr from-rose-600 to-red-400 border border-white shadow-xs" />
                       </span>
                     )}
+
+                    {/* High-Contrast Crisp Label: immediately legible without visual clutter */}
+                    <span className="absolute top-[calc(100%+3px)] left-1/2 -translate-x-1/2 pointer-events-none whitespace-nowrap z-20">
+                      <span
+                        className={`inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold tracking-tight transition-all duration-150 ${
+                          isActive
+                            ? 'bg-slate-900/95 text-white border border-teal-400/90 shadow-[0_0_12px_rgba(45,212,191,0.6)] scale-110'
+                            : 'bg-slate-950/85 text-slate-100 border border-white/25 shadow-[0_2px_6px_rgba(0,0,0,0.65)] backdrop-blur-md'
+                        }`}
+                      >
+                        {cat.shortLabel}
+                      </span>
+                    </span>
                   </m.button>
                 );
               })}
 
-              {/* Center Hub: Pulsing Crystal Core Morph with Close / Cancel Glyph */}
+              {/* Center Hub: Pulsing Crystal Core Morph into Clean 'X' Glyph */}
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center z-20">
                 <div
                   className="absolute -inset-3 rounded-full blur-xl animate-pulse pointer-events-none transition-colors duration-300"
@@ -1100,21 +1108,28 @@ export function QuickCategoryArcMenu({
                 />
                 <m.button
                   type="button"
-                  initial={{ scale: 0.85, rotate: -45, opacity: 0 }}
+                  initial={{ scale: 0.88, rotate: -45, opacity: 0 }}
                   animate={{ scale: 1, rotate: 0, opacity: 1 }}
-                  exit={{ scale: 0.85, rotate: 45, opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 420, damping: 25 }}
+                  exit={{ scale: 0.88, rotate: 45, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                   onClick={onClose}
-                  className="group relative pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full overflow-hidden bg-gradient-to-tr from-teal-500 via-emerald-500 to-teal-400 dark:from-teal-400 dark:via-emerald-400 dark:to-teal-300 text-white shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.85),0_12px_32px_rgba(13,148,136,0.55)] border-[3.5px] border-white/30 dark:border-white/40 active:scale-95 transition-all duration-200 focus:outline-none"
+                  className="group relative pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full overflow-hidden bg-gradient-to-tr from-teal-500 via-emerald-500 to-teal-400 dark:from-teal-400 dark:via-emerald-400 dark:to-teal-300 text-white shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.85),0_10px_28px_rgba(13,148,136,0.5)] border-[3.5px] border-white/60 dark:border-white/40 active:scale-95 transition-all duration-200 focus:outline-none"
                   aria-label="Cancel quick category selection"
                   title="Close"
                 >
+                  {/* Top specular white reflection meniscus */}
                   <span
-                    className="pointer-events-none absolute inset-x-2 top-0.5 h-3 bg-gradient-to-b from-white/70 via-white/25 to-transparent rounded-full"
+                    className="pointer-events-none absolute inset-x-2.5 top-0.5 h-3.5 bg-gradient-to-b from-white/80 via-white/25 to-transparent rounded-full"
                     aria-hidden="true"
                   />
+                  {/* Secondary crystal internal gloss */}
                   <span
-                    className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/25 to-transparent rounded-b-full"
+                    className="pointer-events-none absolute -top-1 left-3 w-5 h-2.5 bg-white/70 blur-[1px] rounded-full"
+                    aria-hidden="true"
+                  />
+                  {/* Bottom depth ambient shadow */}
+                  <span
+                    className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-teal-950/30 to-transparent rounded-b-full"
                     aria-hidden="true"
                   />
                   {activeCategory && (
@@ -1123,7 +1138,7 @@ export function QuickCategoryArcMenu({
                       style={{ boxShadow: `inset 0 0 16px ${activeCategory.glowColor}` }}
                     />
                   )}
-                  <X className="relative z-10 w-6 h-6 notranslate stroke-[2.75] text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] transition-transform duration-200 group-hover:rotate-90 group-active:scale-90" />
+                  <X className="relative z-10 w-6 h-6 notranslate stroke-[2.75] text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] transition-transform duration-200 group-hover:rotate-90 group-active:scale-95" />
                 </m.button>
               </div>
             </div>

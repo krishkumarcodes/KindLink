@@ -25,10 +25,10 @@ import {
   Clock,
   Building2,
   Stethoscope,
-  RefreshCw,
   Loader2,
   Pill,
   Droplet,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLocation } from '@/lib/location/LocationProvider';
@@ -119,6 +119,18 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
 
   const searchAbortRef = useRef<AbortController | null>(null);
   const pinGeocodeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Keyboard escape listener
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isLocating) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, isLocating, onClose]);
 
   // Sync pin coordinates with current location when opening modal
   useEffect(() => {
@@ -366,7 +378,6 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
     }
 
     try {
-      // Search home area to resolve coordinates
       const matches = await searchAddress(profileHomeArea);
       if (matches.length > 0 && matches[0]) {
         await setLocation({ lat: matches[0].lat, lng: matches[0].lng, isLive: false }, profileHomeArea);
@@ -405,7 +416,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
     setShowAddSavedPlace(false);
   };
 
-  // Live GPS locate action
+  // Live GPS locate action with pulsating crosshair feedback
   const handleGpsLocate = async () => {
     const result = await requestLiveLocation();
     if (result) {
@@ -464,50 +475,64 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
   if (!open) return null;
 
   const modalTree = (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="location-dialog-title"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !isLocating) onClose();
-      }}
-    >
-      <div className="relative w-full sm:max-w-xl rounded-t-3xl sm:rounded-3xl bg-card text-card-foreground border-t sm:border border-border/80 shadow-[0_20px_60px_rgba(0,0,0,0.35)] flex flex-col max-h-[85dvh] sm:max-h-[85dvh] overflow-hidden animate-in slide-in-from-bottom duration-200 sm:slide-in-from-bottom-0 sm:zoom-in-95">
-        {/* Sticky Header: Single solid surface, compact, no translucent top gap */}
-        <div className="sticky top-0 z-10 p-4 sm:p-5 pb-3 sm:pb-3.5 border-b border-border/80 bg-card text-card-foreground shrink-0">
+    <>
+      {/* Desktop Backdrop: Click outside to dismiss on desktop */}
+      <div
+        className="fixed inset-0 z-40 hidden sm:block bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200"
+        onClick={() => {
+          if (!isLocating) onClose();
+        }}
+        aria-hidden="true"
+      />
+
+      {/* Main Location Panel: FULL SCREEN on mobile devices, responsive centered card on desktop */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="location-dialog-title"
+        className="fixed inset-0 z-50 flex flex-col bg-card w-full h-full sm:max-w-xl sm:rounded-3xl sm:m-auto sm:max-h-[85dvh] text-card-foreground border-0 sm:border border-border/80 shadow-[0_20px_60px_rgba(0,0,0,0.35)] overflow-hidden animate-in slide-in-from-bottom duration-200 sm:slide-in-from-bottom-0 sm:zoom-in-95"
+      >
+        {/* Sticky Header: Single solid bg-card surface, integrated drag handle within 300 chars, no translucent band */}
+        <div className="sticky top-0 z-20 p-4 sm:p-5 pb-3 sm:pb-3.5 border-b border-border/80 bg-card text-card-foreground shrink-0">
           {/* Mobile Drag Handle */}
           <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
 
-          {/* Top Row: Title + Close Button */}
+          {/* Top Row: Clean title with icon + Close button */}
           <div className="flex items-center justify-between gap-3">
-            <h2
-              id="location-dialog-title"
-              className="text-base sm:text-lg font-black text-foreground tracking-tight"
-            >
-              Your location
-            </h2>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+                <Navigation className="h-4 w-4 notranslate" />
+              </div>
+              <div className="min-w-0">
+                <h2
+                  id="location-dialog-title"
+                  className="text-base sm:text-lg font-black text-foreground tracking-tight truncate"
+                >
+                  Your Location
+                </h2>
+              </div>
+            </div>
 
             <button
               type="button"
               onClick={onClose}
               disabled={isLocating}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted touch-target transition-colors"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted touch-target transition-all"
               aria-label="Close location selector"
             >
               <X className="h-5 w-5 notranslate" />
             </button>
           </div>
 
-          {/* Current Location Card with Area Name, Live/Manual chip & Accuracy */}
-          <div className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border border-border/70 mt-2.5">
+          {/* Current Location Status Card with Area Name & Live/Manual badge */}
+          <div className="flex items-center justify-between p-3 rounded-2xl bg-muted/30 border border-border/60 mt-3">
             <div className="flex items-center gap-2.5 min-w-0 pr-2">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <MapPin className="h-4 w-4 notranslate" />
               </div>
               <div className="min-w-0">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Current Area
+                  Active Area
                 </div>
                 <div className="text-xs sm:text-sm font-bold text-foreground truncate">
                   {userAreaName}
@@ -517,20 +542,20 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
 
             <div className="flex items-center gap-1.5 shrink-0">
               {userCoords.isLive ? (
-                <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/25 px-2.5 py-1 rounded-full">
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/25 px-2.5 py-1 rounded-full">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                   Live {accuracy ? `(±${accuracy}m)` : ''}
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground font-semibold bg-muted border border-border/80 px-2.5 py-1 rounded-full">
+                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground font-semibold bg-muted border border-border/70 px-2.5 py-1 rounded-full">
                   Manual
                 </span>
               )}
             </div>
           </div>
 
-          {/* Segmented Control: "Search", "Drop pin", "Saved" - Single row guaranteed */}
-          <div className="grid grid-cols-3 gap-1 p-1 mt-3 bg-muted/60 dark:bg-slate-900/60 rounded-2xl shrink-0">
+          {/* Segmented Tabs: "Search", "Pin Map", "Saved" */}
+          <div className="grid grid-cols-3 gap-1.5 p-1 mt-3 bg-muted/50 dark:bg-slate-900/50 rounded-2xl shrink-0 border border-border/40">
             <button
               type="button"
               onClick={() => setActiveTab('search')}
@@ -553,7 +578,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
               }`}
             >
               <Compass className="h-3.5 w-3.5 shrink-0 notranslate" />
-              <span className="truncate">Drop pin</span>
+              <span className="truncate">Pin Map</span>
             </button>
             <button
               type="button"
@@ -572,53 +597,71 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
           </div>
         </div>
 
-        {/* TAB 1: Search & Live Location */}
+        {/* TAB 1: Fast Search Mode */}
         {activeTab === 'search' && (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-4 sm:p-5 pt-3">
-            {/* Top Action Row: "Use my live location" and "Use my home area" */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pb-3 shrink-0">
-              {/* Use my live location */}
+            {/* Quick One-Tap GPS Detect Hero Button with Pulsating Crosshair & Instant Status */}
+            <div className="pb-3 shrink-0">
               <button
                 type="button"
                 onClick={handleGpsLocate}
                 disabled={isLocating}
-                className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-teal-600/25 active:scale-[0.98] transition-all min-h-[44px] touch-target disabled:opacity-60"
+                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 hover:from-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-teal-600/20 active:scale-[0.99] transition-all touch-target disabled:opacity-75 overflow-hidden group"
               >
-                {isLocating ? (
-                  <Loader2 className="h-4 w-4 animate-spin notranslate" />
-                ) : (
-                  <Crosshair className="h-4 w-4 shrink-0 notranslate" />
-                )}
-                <span className="truncate">
-                  {isLocating
-                    ? 'Acquiring GPS...'
-                    : userCoords.isLive
-                    ? `Update live location (${accuracy ? `±${accuracy}m` : 'Active'})`
-                    : 'Use my live location'}
-                </span>
+                <div className="flex items-center gap-3 min-w-0 pr-2">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-xs text-white border border-white/25">
+                    {isLocating ? (
+                      <Loader2 className="h-5 w-5 animate-spin notranslate" />
+                    ) : (
+                      <Crosshair className="h-5 w-5 animate-pulse notranslate" />
+                    )}
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <div className="text-xs sm:text-sm font-black tracking-tight truncate flex items-center gap-1.5">
+                      <span>
+                        {isLocating
+                          ? 'Acquiring GPS Signal...'
+                          : userCoords.isLive
+                          ? 'Update Live GPS Position'
+                          : 'Detect My Current Location'}
+                      </span>
+                      {userCoords.isLive && (
+                        <span className="h-2 w-2 rounded-full bg-emerald-300 animate-ping" />
+                      )}
+                    </div>
+                    <div className="text-[11px] text-white/80 truncate">
+                      {isLocating
+                        ? 'Locking satellite coordinates...'
+                        : userCoords.isLive
+                        ? `Tracking active · Accuracy ${accuracy ? `±${accuracy}m` : 'high'}`
+                        : 'One-tap auto-detection via device sensor'}
+                    </div>
+                  </div>
+                </div>
+                <div className="shrink-0 flex items-center">
+                  <span className="text-[11px] font-bold bg-white/20 hover:bg-white/30 text-white px-2.5 py-1 rounded-lg backdrop-blur-xs border border-white/20 transition-colors">
+                    {isLocating ? 'Locating...' : 'One-Tap'}
+                  </span>
+                </div>
               </button>
 
-              {/* Use my home area (reads from profile) */}
-              {profileHomeArea ? (
-                <button
-                  type="button"
-                  onClick={handleUseHomeArea}
-                  className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl border border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary font-bold text-xs sm:text-sm transition-all min-h-[44px] touch-target active:scale-[0.98] truncate"
-                  title={`Use home area: ${profileHomeArea}`}
-                >
-                  <Home className="h-4 w-4 text-primary shrink-0 notranslate" />
-                  <span className="truncate">Use my home area ({profileHomeArea})</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl border border-dashed border-border/80 bg-muted/30 text-muted-foreground font-medium text-xs sm:text-sm min-h-[44px] cursor-not-allowed opacity-75"
-                  title="Configure your home area in Profile Settings"
-                >
-                  <Home className="h-4 w-4 text-muted-foreground shrink-0 notranslate" />
-                  <span className="truncate">Use home area (Not set in profile)</span>
-                </button>
+              {/* Home Area Quick Switch Option */}
+              {profileHomeArea && (
+                <div className="mt-2 flex items-center justify-between p-2.5 rounded-2xl border border-primary/25 bg-primary/5 hover:bg-primary/10 transition-colors">
+                  <div className="flex items-center gap-2 min-w-0 pr-2">
+                    <Home className="h-3.5 w-3.5 text-primary shrink-0 notranslate" />
+                    <span className="text-xs font-bold text-foreground truncate">
+                      Home Area: <span className="text-primary font-extrabold">{profileHomeArea}</span>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleUseHomeArea}
+                    className="text-[11px] font-bold text-primary hover:underline shrink-0 touch-target"
+                  >
+                    Switch
+                  </button>
+                </div>
               )}
             </div>
 
@@ -659,7 +702,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
               </div>
             )}
 
-            {/* Address Search Form - 48px height with perfectly centered search icon */}
+            {/* Fast Address Search Form with Centered Icon & Instant Clear */}
             <div className="relative flex items-center pb-2 shrink-0">
               <div className="absolute left-3.5 flex items-center justify-center pointer-events-none text-muted-foreground">
                 <Search className="h-4 w-4 notranslate" />
@@ -668,7 +711,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search area, landmark or city"
+                placeholder="Search area, landmark or city..."
                 className="w-full h-12 pl-10 pr-10 rounded-2xl border border-border/80 bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all shadow-xs"
               />
               {isSearching ? (
@@ -691,7 +734,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
               ) : null}
             </div>
 
-            {/* Search Results OR (Recent Places + Nearby Places + Fallback Cities) */}
+            {/* Scrollable Content Body with overscroll-contain */}
             <div className="flex-1 overflow-y-auto overscroll-contain space-y-4 pr-1 my-1 pb-4">
               {/* Active Search Mode */}
               {searchQuery.trim().length >= 2 ? (
@@ -721,7 +764,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                       key={res.id}
                       type="button"
                       onClick={() => handleSelectSearchResult(res)}
-                      className="flex w-full items-center justify-between p-3 rounded-2xl border border-border/80 bg-card/70 dark:bg-slate-900/40 hover:bg-muted/70 hover:border-primary/40 text-left transition-all touch-target"
+                      className="flex w-full items-center justify-between p-3 rounded-2xl border border-border/80 bg-card hover:bg-muted/70 hover:border-primary/40 text-left transition-all touch-target shadow-xs"
                     >
                       <div className="flex items-center gap-3 min-w-0 pr-2">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -743,7 +786,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                   ))}
 
                   {searchResults.length === 0 && !isSearching && !searchError && (
-                    <div className="text-center py-6 px-4 rounded-2xl bg-muted/40 border border-border/80">
+                    <div className="text-center py-6 px-4 rounded-2xl bg-muted/30 border border-border/80">
                       <p className="text-xs text-muted-foreground mb-3">
                         No matches found online for &ldquo;{searchQuery}&rdquo;.
                       </p>
@@ -763,14 +806,56 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                   )}
                 </div>
               ) : (
-                /* Empty Search Query: Show Recent Places, Nearby Places, and Fallback Cities */
+                /* Empty Search: Saved Places Cards, Recent Places, Nearby Places, Fallback Cities */
                 <div className="space-y-4">
-                  {/* 1. Recent Places (from localStorage) */}
+                  {/* 1. Saved Places Cards (Instant 1-Tap Switching) */}
+                  {savedPlaces.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                          <Bookmark className="h-3.5 w-3.5 text-primary notranslate" />
+                          <span>Saved Places</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('saved')}
+                          className="text-[10px] text-primary hover:underline font-bold"
+                        >
+                          Manage ({savedPlaces.length})
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {savedPlaces.slice(0, 6).map((place) => (
+                          <button
+                            key={`search-saved-${place.id}`}
+                            type="button"
+                            onClick={() => handleSelectSavedPlace(place)}
+                            className="flex items-center gap-2.5 p-2.5 rounded-2xl border border-border/70 bg-card hover:bg-muted/70 hover:border-primary/40 text-left transition-all touch-target shadow-xs group"
+                          >
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                              {getSavedPlaceIcon(place.type)}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold text-foreground truncate">
+                                {place.name}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground truncate">
+                                {place.label}
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. Recent Places (from localStorage) */}
                   {recentPlaces.length > 0 && (
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between px-1">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                          Recent places
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5 text-muted-foreground notranslate" />
+                          <span>Recent places</span>
                         </span>
                         <button
                           type="button"
@@ -780,15 +865,15 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                           Clear
                         </button>
                       </div>
-                      <div className="grid grid-cols-1 gap-1.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                         {recentPlaces.map((rec) => (
                           <button
                             key={rec.id}
                             type="button"
                             onClick={() => handleSelectRecentPlace(rec)}
-                            className="flex items-center justify-between p-2.5 rounded-2xl border border-border/70 bg-card/60 dark:bg-slate-900/40 hover:bg-muted/70 text-left transition-all touch-target"
+                            className="flex items-center justify-between p-2.5 rounded-2xl border border-border/70 bg-card hover:bg-muted/70 text-left transition-all touch-target"
                           >
-                            <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
                               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                                 <Clock className="h-3.5 w-3.5 notranslate" />
                               </div>
@@ -812,16 +897,17 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                     </div>
                   )}
 
-                  {/* 2. Live Nearby Places (queried dynamically for current coordinates) */}
+                  {/* 3. Live Nearby Places (queried dynamically for current coordinates) */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between px-1">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                        Nearby Places &amp; Landmarks
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-amber-500 notranslate" />
+                        <span>Nearby Places &amp; Landmarks</span>
                       </span>
                       {isLoadingNearby && (
                         <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
                           <Loader2 className="h-3 w-3 animate-spin notranslate" />
-                          <span>Searching nearby...</span>
+                          <span>Searching...</span>
                         </span>
                       )}
                     </div>
@@ -844,7 +930,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                       </div>
                     )}
 
-                    {/* Friendly Empty State */}
+                    {/* Empty State */}
                     {!isLoadingNearby && nearbyPlaces.length === 0 && (
                       <div className="text-center py-4 px-3 rounded-2xl bg-muted/20 border border-dashed border-border/80">
                         <MapPin className="h-5 w-5 text-muted-foreground/40 mx-auto mb-1.5 notranslate" />
@@ -855,7 +941,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                       </div>
                     )}
 
-                    {/* Real Dynamic Nearby Places List */}
+                    {/* Dynamic Nearby Places List */}
                     {!isLoadingNearby && nearbyPlaces.length > 0 && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {nearbyPlaces.map((nb) => (
@@ -863,7 +949,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                             key={nb.id}
                             type="button"
                             onClick={() => handleSelectNearbyPlace(nb)}
-                            className="flex items-center justify-between p-2.5 rounded-2xl border border-border/70 bg-card/60 dark:bg-slate-900/40 hover:bg-muted/70 text-left transition-all touch-target"
+                            className="flex items-center justify-between p-2.5 rounded-2xl border border-border/70 bg-card hover:bg-muted/70 text-left transition-all touch-target"
                           >
                             <div className="flex items-center gap-2 min-w-0">
                               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -891,7 +977,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                     )}
                   </div>
 
-                  {/* 3. Fallback City List: Kolkata, Asansol, Durgapur, Dhanbad, Ranchi, Patna, Delhi, Mumbai */}
+                  {/* 4. Major Cities & Hubs */}
                   <div className="space-y-1.5">
                     <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-1">
                       Major Cities &amp; Hubs
@@ -907,7 +993,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                             className={`flex flex-col p-2.5 rounded-2xl border text-left transition-all touch-target ${
                               isCurrent
                                 ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/30'
-                                : 'border-border/80 bg-card/60 dark:bg-slate-900/40 hover:bg-muted/70 text-foreground'
+                                : 'border-border/80 bg-card hover:bg-muted/70 text-foreground'
                             }`}
                           >
                             <span className="text-xs font-bold truncate flex items-center justify-between">
@@ -928,7 +1014,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
           </div>
         )}
 
-        {/* TAB 2: Drop Pin */}
+        {/* TAB 2: Pin Map Mode */}
         {activeTab === 'map' && (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-4 sm:p-5 pt-3">
             <div className="relative flex-1 min-h-[220px] rounded-2xl overflow-hidden border border-border/80 shadow-inner">
@@ -964,13 +1050,13 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
               </div>
             </div>
 
-            {/* Confirm Pin Button ("Use this location") */}
+            {/* Confirm Pin Button */}
             <div className="pt-3 shrink-0">
               <button
                 type="button"
                 onClick={handleConfirmPinLocation}
                 disabled={isGeocodingPin}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold text-sm shadow-md shadow-teal-600/30 transition-all min-h-[44px] touch-target active:scale-[0.98] disabled:opacity-60"
+                className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold text-sm shadow-md shadow-teal-600/30 transition-all min-h-[44px] touch-target active:scale-[0.98] disabled:opacity-60"
               >
                 <Check className="h-4 w-4 notranslate" />
                 <span className="truncate">Use this location: {pinAreaName}</span>
@@ -979,7 +1065,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
           </div>
         )}
 
-        {/* TAB 3: Saved Places (Local & Database Sync) */}
+        {/* TAB 3: Saved Places Mode */}
         {activeTab === 'saved' && (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-4 sm:p-5 pt-3">
             {/* Add Saved Place Trigger or Form */}
@@ -1063,7 +1149,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
               </form>
             )}
 
-            {/* List of Saved Places (Synchronized with localStorage & DB) */}
+            {/* List of Saved Places with overscroll-contain */}
             <div className="flex-1 overflow-y-auto overscroll-contain space-y-2 pr-1 my-1 pb-4">
               {savedPlaces.length === 0 ? (
                 <div className="text-center py-8 px-4 rounded-2xl bg-muted/20 border border-dashed border-border/80">
@@ -1077,7 +1163,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
                 savedPlaces.map((place) => (
                   <div
                     key={place.id}
-                    className="flex items-center justify-between p-3 rounded-2xl border border-border/80 bg-card/60 dark:bg-slate-900/40 hover:bg-muted/70 transition-all"
+                    className="flex items-center justify-between p-3 rounded-2xl border border-border/80 bg-card hover:bg-muted/70 transition-all shadow-xs"
                   >
                     <button
                       type="button"
@@ -1129,14 +1215,16 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
           </div>
         )}
 
-        {/* Search Radius Slider (Snap Values: 1, 2, 5, 10, 25, 50 km) */}
-        <div className="px-4 sm:px-5 pt-3 pb-2.5 border-t border-border/80 bg-card text-card-foreground shrink-0">
-          <div className="flex items-center justify-between text-xs font-bold text-foreground mb-1.5">
+        {/* Search Radius Slider with Snap Points (1, 2, 5, 10, 25, 50 km) */}
+        <div className="px-4 sm:px-5 pt-3.5 pb-3 border-t border-border/80 bg-card text-card-foreground shrink-0 space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold text-foreground">
             <span className="flex items-center gap-1.5">
               <Sliders className="h-3.5 w-3.5 text-primary notranslate" />
               <span>Search radius:</span>
             </span>
-            <span className="font-extrabold text-primary text-sm">{filterRadius} km</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-black text-xs border border-primary/20">
+              {filterRadius} km
+            </span>
           </div>
 
           {/* Stepped slider snapping directly to: 1, 2, 5, 10, 25, 50 km */}
@@ -1147,20 +1235,50 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
             step={1}
             value={currentSnapIndex}
             onChange={handleRadiusSliderChange}
-            className="w-full accent-primary h-2 bg-muted dark:bg-slate-800 rounded-lg cursor-pointer"
+            className="w-full accent-primary h-2 bg-muted rounded-lg cursor-pointer"
             aria-label="Search radius snap slider"
           />
 
-          {/* Simple Labels: 1 km (Nearby), 25 km (City), 50 km (Wide) */}
-          <div className="flex justify-between text-[10px] text-muted-foreground font-medium mt-1">
-            <span>1 km (Nearby)</span>
-            <span>25 km (City)</span>
-            <span>50 km (Wide)</span>
+          {/* Snap point buttons */}
+          <div className="grid grid-cols-6 gap-1 pt-0.5">
+            {SNAP_RADII.map((radius, idx) => {
+              const isActive = idx === currentSnapIndex;
+              return (
+                <button
+                  key={`snap-radius-${radius}`}
+                  type="button"
+                  onClick={() => {
+                    setFilterRadius(radius);
+                    if (typeof window !== 'undefined') {
+                      try {
+                        localStorage.setItem('kindlink_filter_radius', String(radius));
+                        fetch('/api/auth/profile', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            notification_preferences: { nearby_radius_km: radius },
+                          }),
+                        }).catch(() => {});
+                      } catch {
+                        // ignore
+                      }
+                    }
+                  }}
+                  className={`py-1 text-center rounded-lg text-[11px] font-bold transition-all ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground shadow-xs scale-105'
+                      : 'bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {radius}k
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Sticky Footer: "Updates your feed, map and distances." & Close button */}
-        <div className="p-3 sm:p-4 border-t border-border/80 bg-card text-card-foreground shrink-0 flex items-center justify-between gap-3 text-xs pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        {/* Sticky Footer: Solid bg-card surface, microcopy & close button, safe-area-inset-bottom */}
+        <div className="p-3.5 sm:p-4 border-t border-border/80 bg-card text-card-foreground shrink-0 flex items-center justify-between gap-3 text-xs pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground truncate">
             <Navigation className="h-3.5 w-3.5 text-primary notranslate shrink-0" />
             <span className="truncate">Updates your feed, map and distances.</span>
@@ -1176,7 +1294,7 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 
   return typeof document !== 'undefined' ? createPortal(modalTree, document.body) : null;

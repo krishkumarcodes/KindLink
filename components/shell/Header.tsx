@@ -220,7 +220,7 @@ export function Header() {
               <span className="tracking-wider font-black text-xs">SOS</span>
             </button>
 
-            {/* Notifications Bell Button */}
+            {/* Notifications Bell Button: Sleek crystal container with micro-sheen & tactile active compression */}
             <button
               ref={bellButtonRef}
               type="button"
@@ -229,15 +229,65 @@ export function Header() {
                 setNotifOpen((prev) => !prev);
                 // setNotifOpen(true) toggle trigger
               }}
-              className="relative inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl border border-border/70 bg-muted/40 hover:bg-muted text-foreground transition-all hover:border-primary/40 touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 shrink-0"
-              aria-label={`Notifications, ${unreadCount} unread`}
-              title="Notifications"
+              className={`group relative inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl transition-all duration-200 touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 active:scale-90 active:duration-75 shrink-0 select-none ${
+                notifOpen
+                  ? 'bg-card dark:bg-slate-800 border border-primary/50 dark:border-teal-400/50 shadow-sm shadow-primary/20 ring-1 ring-primary/30'
+                  : unreadCount > 0
+                  ? 'bg-card/75 hover:bg-card/95 dark:bg-slate-900/65 dark:hover:bg-slate-900/90 supports-[backdrop-filter]:backdrop-blur-md border border-rose-500/30 dark:border-rose-400/30 hover:border-rose-500/50 shadow-xs shadow-rose-500/15'
+                  : 'bg-card/70 hover:bg-card/95 dark:bg-slate-900/60 dark:hover:bg-slate-900/90 supports-[backdrop-filter]:backdrop-blur-md border border-border/80 dark:border-white/10 hover:border-primary/40 dark:hover:border-teal-400/40 shadow-xs hover:shadow-sm hover:shadow-primary/10'
+              }`}
+              aria-label={
+                unreadCount > 0
+                  ? `Notifications, ${unreadCount} unread`
+                  : 'Notifications'
+              }
+              title={
+                unreadCount > 0
+                  ? `Notifications (${unreadCount} unread)`
+                  : 'Notifications'
+              }
               aria-expanded={notifOpen}
+              aria-haspopup="dialog"
             >
-              <Bell className="h-4 w-4 notranslate shrink-0" />
+              {/* Crystal Glass Specular Bevel & Micro-Sheen Sweep */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 overflow-hidden rounded-[11px]"
+              >
+                {/* Top specular reflection rim */}
+                <span className="absolute inset-x-1.5 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/70 dark:via-white/20 to-transparent" />
+                {/* Glossy diagonal micro-sheen glide on hover */}
+                <span className="absolute -inset-full top-0 block -rotate-45 bg-gradient-to-r from-transparent via-white/25 dark:via-white/10 to-transparent opacity-0 transition-all duration-700 ease-out group-hover:inset-full group-hover:opacity-100 motion-reduce:hidden" />
+              </span>
+
+              {/* Crisp Lucide Bell Icon with Subtle Hover Tilt & Micro-Motion */}
+              <Bell
+                className={`h-4 w-4 sm:h-[18px] sm:w-[18px] shrink-0 notranslate transition-transform duration-300 ease-out origin-top group-hover:rotate-12 group-hover:scale-110 group-active:-rotate-6 motion-reduce:transform-none ${
+                  notifOpen
+                    ? 'text-primary dark:text-teal-400'
+                    : unreadCount > 0
+                    ? 'text-foreground dark:text-slate-100 group-hover:text-amber-500 dark:group-hover:text-amber-400'
+                    : 'text-muted-foreground group-hover:text-foreground dark:text-slate-300 dark:group-hover:text-white'
+                }`}
+                aria-hidden="true"
+              />
+
+              {/* Dynamic Glowing Rose/Amber Unread Badge with Pulse & Ping Animation */}
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white shadow-xs ring-2 ring-card animate-in zoom-in-75">
-                  {unreadCount > 9 ? '9+' : unreadCount}
+                <span
+                  className="absolute -top-1 -right-1 sm:-top-1.5 sm:-right-1.5 z-10 flex items-center justify-center pointer-events-none"
+                  aria-hidden="true"
+                >
+                  {/* Dynamic Glowing Ambient Aura */}
+                  <span className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 opacity-70 blur-[3px] animate-pulse motion-reduce:animate-none" />
+
+                  {/* Radar Ping Animation */}
+                  <span className="absolute inset-0 rounded-full bg-rose-500 animate-ping opacity-60 motion-reduce:animate-none" />
+
+                  {/* Crisp Crystal Pill Badge */}
+                  <span className="relative flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 text-[9.5px] font-black text-white shadow-xs shadow-rose-600/40 ring-2 ring-card dark:ring-slate-950 leading-none tracking-tight">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
                 </span>
               )}
             </button>

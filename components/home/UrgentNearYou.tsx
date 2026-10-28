@@ -12,11 +12,7 @@ import {
   MapPin,
   ShieldCheck,
   HeartHandshake,
-  Droplets,
-  Stethoscope,
-  Users,
-  BookOpen,
-  Car,
+  Navigation,
 } from 'lucide-react';
 import { HelpCategory, HelpRequest, TravelMode } from '@/lib/data/types';
 import { isRequestOwner } from '@/lib/data/ownership';
@@ -61,16 +57,16 @@ const URGENCY_PRIORITY: Record<string, number> = {
   low: 4,
 };
 
-function getUrgencyBarColor(urgency: string): string {
+export function getUrgencyBarColor(urgency: string): string {
   switch (urgency) {
     case 'critical':
-      return 'bg-rose-600';
+      return 'bg-gradient-to-b from-rose-500 via-rose-600 to-red-600 shadow-[0_0_12px_rgba(244,63,94,0.5)]';
     case 'high':
-      return 'bg-amber-500';
+      return 'bg-gradient-to-b from-amber-400 via-amber-500 to-orange-500 shadow-[0_0_12px_rgba(245,158,11,0.45)]';
     case 'medium':
-      return 'bg-blue-500';
+      return 'bg-gradient-to-b from-blue-400 via-blue-500 to-indigo-500 shadow-[0_0_8px_rgba(59,130,246,0.35)]';
     case 'low':
-      return 'bg-emerald-500';
+      return 'bg-gradient-to-b from-emerald-400 via-emerald-500 to-teal-500 shadow-[0_0_8px_rgba(16,185,129,0.35)]';
     default:
       return 'bg-slate-400';
   }
@@ -79,15 +75,15 @@ function getUrgencyBarColor(urgency: string): string {
 function getUrgencyBadgeStyle(urgency: string): string {
   switch (urgency) {
     case 'critical':
-      return 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30';
+      return 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/35 shadow-xs shadow-rose-500/15';
     case 'high':
-      return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30';
+      return 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/35 shadow-xs shadow-amber-500/15';
     case 'medium':
-      return 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30';
+      return 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30';
     case 'low':
-      return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
+      return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
     default:
-      return 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30';
+      return 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30';
   }
 }
 
@@ -110,12 +106,12 @@ function getCategoryIcon(category: HelpCategory | string) {
   const cat = getCategoryByKey(category);
   if (cat && CATEGORY_ICON_MAP[cat.icon]) {
     const Icon = CATEGORY_ICON_MAP[cat.icon];
-    return <Icon className="h-4 w-4 notranslate" />;
+    return <Icon className="h-3.5 w-3.5 notranslate stroke-[2.2]" />;
   }
-  return <HeartHandshake className="h-4 w-4 notranslate" />;
+  return <HeartHandshake className="h-3.5 w-3.5 notranslate stroke-[2.2]" />;
 }
 
-function getCategoryCircleStyle(category: HelpCategory | string, customLabel?: string) {
+export function getCategoryCircleStyle(category: HelpCategory | string, customLabel?: string) {
   const token = getCategoryToken(category, customLabel);
   return {
     backgroundColor: token.lightBg,
@@ -124,7 +120,7 @@ function getCategoryCircleStyle(category: HelpCategory | string, customLabel?: s
   };
 }
 
-function getCategoryChip(category: HelpCategory | string, customLabel?: string) {
+export function getCategoryChip(category: HelpCategory | string, customLabel?: string) {
   const token = getCategoryToken(category, customLabel);
   const title = formatCategoryTitle(category, customLabel);
   const icon = getCategoryIcon(category);
@@ -267,17 +263,24 @@ export function UrgentNearYou({
       {/* 1. Header */}
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-2">
-          {/* Flame Chip + Title */}
+          {/* Glowing Flame Chip + Title */}
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-10 w-10 shrink-0 flex items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-              <Flame className="h-5 w-5 notranslate" />
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-md shadow-rose-500/25 ring-1 ring-inset ring-white/30 overflow-hidden">
+              <span
+                className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 via-white/10 to-transparent"
+                aria-hidden="true"
+              />
+              <Flame className="h-5 w-5 notranslate text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)] animate-pulse motion-reduce:animate-none" />
             </div>
-            <h2
-              id="urgent-near-you-heading"
-              className="text-base sm:text-lg font-bold text-foreground"
-            >
-              Urgent Near You
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2
+                id="urgent-near-you-heading"
+                className="text-base sm:text-lg font-bold text-foreground"
+              >
+                Urgent Near You
+              </h2>
+              <span className="flex h-2 w-2 rounded-full bg-rose-500 animate-ping shrink-0" aria-hidden="true" />
+            </div>
           </div>
 
           {/* Single-line 'View all' button with small arrow and pill count (44px touch target) */}
@@ -289,7 +292,7 @@ export function UrgentNearYou({
           >
             <span>View all</span>
             {totalCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/25 shadow-2xs">
                 {totalCount}
               </span>
             )}
@@ -310,28 +313,28 @@ export function UrgentNearYou({
           {[1, 2, 3].map((idx) => (
             <div
               key={idx}
-              className="flex overflow-hidden rounded-2xl border border-border/70 dark:border-white/5 bg-card/60 p-3.5 sm:p-4 animate-pulse items-center"
+              className="flex overflow-hidden rounded-3xl border border-white/50 dark:border-white/10 bg-card/60 backdrop-blur-md p-4 animate-pulse items-center"
             >
-              <div className="w-1.5 self-stretch rounded-l-2xl bg-muted shrink-0 mr-3.5" />
+              <div className="w-1.5 self-stretch rounded-l-3xl bg-muted shrink-0 mr-3.5" />
               <div className="flex-1 flex flex-col min-[400px]:flex-row min-[400px]:items-center justify-between gap-3">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <div className="h-10 w-10 rounded-full bg-muted shrink-0" />
+                  <div className="h-10 w-10 rounded-2xl bg-muted shrink-0" />
                   <div className="flex-1 space-y-2 py-0.5">
                     <div className="flex gap-2">
+                      <div className="h-4 bg-muted rounded-md w-20" />
                       <div className="h-4 bg-muted rounded-md w-16" />
-                      <div className="h-4 bg-muted rounded-md w-14" />
                     </div>
                     <div className="h-4 bg-muted rounded w-3/4" />
                     <div className="h-3.5 bg-muted rounded w-1/2" />
                   </div>
                 </div>
-                <div className="h-[44px] w-full min-[400px]:w-20 rounded-xl bg-muted shrink-0" />
+                <div className="h-[44px] w-full min-[400px]:w-24 rounded-[16px] bg-muted shrink-0" />
               </div>
             </div>
           ))}
         </div>
       ) : top3Requests.length > 0 ? (
-        /* Top 3 requests as clean, tappable cards in a vertical list with 12 px gaps (space-y-3) */
+        /* Top 3 requests as clean, crystal tappable cards in a vertical list with 12 px gaps (space-y-3) */
         <div className="space-y-3" role="list">
           {top3Requests.map((req) => {
             const etaMinutes = calculateETA(req.distanceKm, effectiveTravelMode);
@@ -354,18 +357,18 @@ export function UrgentNearYou({
                   }
                 }}
                 style={{ borderLeftColor: categoryToken.primary, borderLeftWidth: '4px' }}
-                className={`group relative flex overflow-hidden rounded-3xl border border-white/40 dark:border-white/12 bg-card/85 dark:bg-card/75 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.25)] hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer ${
+                className={`group relative flex overflow-hidden rounded-3xl border border-white/50 dark:border-white/12 bg-card/90 dark:bg-card/75 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.25)] hover:border-primary/45 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer ${
                   isNew ? 'animate-urgent-slide-in' : ''
                 }`}
                 aria-label={`Urgent request: ${req.title}, urgency ${req.urgency}, distance ${req.distanceKm} kilometers`}
               >
-                {/* Specular top rim highlight */}
+                {/* Specular top rim micro-highlight */}
                 <div
                   className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/25 to-transparent z-10"
                   aria-hidden="true"
                 />
 
-                {/* Translucent watery caustic ambient tint */}
+                {/* Translucent caustic ambient tint */}
                 <div
                   className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-primary/[0.03] dark:from-white/[0.05] dark:via-transparent dark:to-primary/[0.04] z-0"
                   aria-hidden="true"
@@ -373,13 +376,13 @@ export function UrgentNearYou({
 
                 {/* Watery crystal sheen overlay */}
                 <div
-                  className="crystal-card-sheen crystal-card-ambient-sheen"
+                  className="crystal-card-sheen crystal-card-ambient-sheen pointer-events-none"
                   aria-hidden="true"
                 />
 
                 {/* Ambient crystal corner refraction */}
                 <div
-                  className="pointer-events-none absolute -top-12 -right-12 w-28 h-28 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500 ease-out z-0 opacity-20 dark:opacity-25"
+                  className="pointer-events-none absolute -top-12 -right-12 w-32 h-32 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500 ease-out z-0 opacity-25 dark:opacity-30"
                   style={{
                     background: `radial-gradient(circle, ${categoryToken.glow} 0%, transparent 70%)`,
                   }}
@@ -397,12 +400,12 @@ export function UrgentNearYou({
                 {/* Card Body */}
                 <div className="flex-1 p-3.5 sm:p-4 min-w-0 relative z-10">
                   <div className="flex flex-col min-[400px]:flex-row min-[400px]:items-center justify-between gap-3">
-                    {/* Left: Category icon in tinted circle + Content details */}
+                    {/* Left: Category icon with bespoke multi-stop gradient emblem + Content details */}
                     <div className="flex items-start gap-3 min-w-0 flex-1">
-                      {/* Category icon with bespoke multi-stop gradient emblem and ambient glow */}
+                      {/* Bespoke Category Emblem Logo with glowing halo */}
                       <div className="relative shrink-0">
                         <div
-                          className="pointer-events-none absolute -inset-1.5 rounded-full blur-md opacity-40 group-hover:opacity-75 transition-opacity duration-300"
+                          className="pointer-events-none absolute -inset-1 rounded-2xl blur-md opacity-45 group-hover:opacity-80 transition-opacity duration-300"
                           style={{ backgroundColor: categoryToken.primary }}
                           aria-hidden="true"
                         />
@@ -411,42 +414,52 @@ export function UrgentNearYou({
                           customLabel={req.customCategoryLabel}
                           size="md"
                           glow={true}
+                          withSheen={true}
                         />
                       </div>
 
                       {/* Content column */}
-                      <div className="min-w-0 flex-1 space-y-1.5">
-                        {/* Top chips row: Category chip + Urgency badge with text label + Verified */}
+                      <div className="min-w-0 flex-1 space-y-2">
+                        {/* Top chips row: Luminous Category badge + High-visibility Urgency badge + Verified */}
                         <div className="flex items-center flex-wrap gap-1.5">
-                          {/* Top category chip with icon and accent color */}
+                          {/* Luminous category chip with icon and accent color */}
                           <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold border"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[11px] font-bold border backdrop-blur-xs shadow-2xs"
                             style={categoryChip.style}
                           >
                             {categoryChip.icon}
                             <span>{categoryChip.label}</span>
                           </span>
 
-                          {/* Urgency accent badge with text label (never colour only) */}
+                          {/* High-visibility urgency badge with glowing flame/pulse indicator */}
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider border ${getUrgencyBadgeStyle(
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider border backdrop-blur-xs ${getUrgencyBadgeStyle(
                               req.urgency
                             )}`}
                           >
-                            <AlertTriangle className="h-3 w-3 shrink-0 notranslate" />
+                            {req.urgency === 'critical' ? (
+                              <span className="relative flex h-2 w-2 shrink-0">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+                              </span>
+                            ) : req.urgency === 'high' ? (
+                              <Flame className="h-3 w-3 shrink-0 notranslate text-amber-500" />
+                            ) : (
+                              <AlertTriangle className="h-3 w-3 shrink-0 notranslate" />
+                            )}
                             <span>{getUrgencyTextLabel(req.urgency)}</span>
                           </span>
 
-                          {/* Small "Verified" badge if requester is verified */}
+                          {/* Verified requester badge */}
                           {req.verified && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                              <ShieldCheck className="h-3 w-3 shrink-0 notranslate" />
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 shadow-2xs">
+                              <ShieldCheck className="h-3.5 w-3.5 shrink-0 notranslate" />
                               <span>{req.verificationBadge || 'Verified'}</span>
                             </span>
                           )}
                         </div>
 
-                        {/* Request title */}
+                        {/* Request title (natural wrapping, zero truncation) */}
                         <h3 className="text-sm sm:text-base font-bold text-foreground group-hover:text-primary transition leading-snug break-words">
                           {req.title}
                         </h3>
@@ -455,17 +468,17 @@ export function UrgentNearYou({
                         {req.category === 'blood' && (req.bloodGroup || req.unitsNeeded || req.hospitalName) && (
                           <div className="flex items-center flex-wrap gap-1.5">
                             {req.bloodGroup && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[11px] font-bold border border-rose-500/20">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[11px] font-bold border border-rose-500/20">
                                 🩸 Group {req.bloodGroup}
                               </span>
                             )}
                             {req.unitsNeeded && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[11px] font-semibold border border-rose-500/20">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[11px] font-semibold border border-rose-500/20">
                                 {req.unitsNeeded} {req.unitsNeeded === 1 ? 'unit' : 'units'}
                               </span>
                             )}
                             {req.hospitalName && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[11px] font-semibold border border-rose-500/20 max-w-[200px]">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[11px] font-semibold border border-rose-500/20 max-w-[220px] overflow-hidden">
                                 🏥 {req.hospitalName}
                               </span>
                             )}
@@ -473,20 +486,20 @@ export function UrgentNearYou({
                         )}
 
                         {req.category === 'transport' && (req.pickupAddress || req.dropAddress) && (
-                          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-[11px] font-medium max-w-full overflow-hidden">
-                            <span className="max-w-[150px]">{req.pickupAddress || 'Pickup'}</span>
+                          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-[11px] font-medium max-w-full overflow-hidden">
+                            <span className="max-w-[150px] overflow-hidden">{req.pickupAddress || 'Pickup'}</span>
                             <span className="text-amber-500 font-bold shrink-0">→</span>
-                            <span className="max-w-[150px]">{req.dropAddress || 'Destination'}</span>
+                            <span className="max-w-[150px] overflow-hidden">{req.dropAddress || 'Destination'}</span>
                           </div>
                         )}
 
                         {req.category === 'books' && (req.booksClassSubject || req.bookTitle) && (
                           <div className="flex items-center flex-wrap gap-1.5">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-[11px] font-semibold">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-[11px] font-semibold">
                               📚 {req.booksClassSubject || req.bookTitle}
                             </span>
                             {req.bookCondition && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-[11px]">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-[11px]">
                                 {req.bookCondition}
                               </span>
                             )}
@@ -496,12 +509,12 @@ export function UrgentNearYou({
                         {req.category === 'equipment' && (req.itemType || req.itemDuration) && (
                           <div className="flex items-center flex-wrap gap-1.5">
                             {req.itemType && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20 text-[11px] font-bold">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20 text-[11px] font-bold">
                                 🩺 {req.itemType}
                               </span>
                             )}
                             {req.itemDuration && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20 text-[11px] font-semibold">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20 text-[11px] font-semibold">
                                 ⏱️ {req.itemDuration}
                               </span>
                             )}
@@ -511,12 +524,12 @@ export function UrgentNearYou({
                         {req.category === 'elderly' && (req.elderlyAidType || req.scheduledTime || req.elderlyDuration) && (
                           <div className="flex items-center flex-wrap gap-1.5">
                             {req.elderlyAidType && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 text-[11px] font-bold">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 text-[11px] font-bold">
                                 🤝 {req.elderlyAidType}
                               </span>
                             )}
                             {(req.scheduledTime || req.elderlyDuration) && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 text-[11px] font-semibold">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 text-[11px] font-semibold">
                                 ⏰ {req.scheduledTime || req.elderlyDuration}
                               </span>
                             )}
@@ -525,7 +538,7 @@ export function UrgentNearYou({
 
                         {req.category === 'medicine' && (
                           <div className="flex items-center flex-wrap gap-1.5">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-orange-500/10 text-orange-700 dark:text-orange-300 border border-orange-500/20 text-[11px] font-semibold">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-orange-500/10 text-orange-700 dark:text-orange-300 border border-orange-500/20 text-[11px] font-semibold">
                               💊 {req.categoryFields?.medicineNames || 'Prescribed medicines'}
                             </span>
                           </div>
@@ -533,7 +546,7 @@ export function UrgentNearYou({
 
                         {req.category === 'food' && (
                           <div className="flex items-center flex-wrap gap-1.5">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20 text-[11px] font-semibold">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20 text-[11px] font-semibold">
                               🍲 {req.categoryFields?.servingsCount || 2} Meals
                             </span>
                           </div>
@@ -545,7 +558,7 @@ export function UrgentNearYou({
                             {req.tags.slice(0, 4).map((t) => (
                               <span
                                 key={t}
-                                className="px-1.5 py-0.5 rounded-md bg-muted text-[10px] font-mono text-muted-foreground"
+                                className="px-2 py-0.5 rounded-md bg-muted/80 text-[10px] font-mono text-muted-foreground border border-border/50"
                               >
                                 #{t}
                               </span>
@@ -553,23 +566,21 @@ export function UrgentNearYou({
                           </div>
                         )}
 
-                        {/* Distance, ETA, and Waiting time */}
-                        <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1 text-xs text-muted-foreground pt-0.5">
-                          {/* Distance and ETA */}
-                          <span className="flex items-center gap-1 font-medium">
+                        {/* Dedicated Luminous ETA Chip, Distance, and Waiting time */}
+                        <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1.5 text-xs text-muted-foreground pt-0.5">
+                          {/* Luminous ETA Chip with MapPin */}
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 text-primary border border-primary/25 font-bold shadow-2xs">
                             <MapPin className="h-3.5 w-3.5 text-primary shrink-0 notranslate" />
-                            <span>
-                              {req.distanceKm} km · {etaStr} away
-                            </span>
+                            <span>{req.distanceKm} km · {etaStr} away</span>
                           </span>
 
                           <span className="text-muted-foreground/40" aria-hidden="true">
                             •
                           </span>
 
-                          {/* Waiting time */}
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3 text-muted-foreground shrink-0 notranslate" />
+                          {/* Waiting time chip */}
+                          <span className="inline-flex items-center gap-1 font-medium">
+                            <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0 notranslate" />
                             <span>{formatWaitingTime(req.waitingMinutes, req.createdAt)}</span>
                           </span>
                         </div>
@@ -589,7 +600,7 @@ export function UrgentNearYou({
                       </div>
                     </div>
 
-                    {/* 2 Action Buttons: Details + Category-colored Help Button */}
+                    {/* 2 Action Buttons: Details + Category-colored Modernized Help Button */}
                     <div className="flex items-center gap-2.5 w-full min-[400px]:w-auto shrink-0 pt-2 min-[400px]:pt-0">
                       <button
                         type="button"
@@ -597,10 +608,10 @@ export function UrgentNearYou({
                           e.stopPropagation();
                           handleRequestClick(req);
                         }}
-                        className="relative overflow-hidden h-[44px] min-h-[44px] px-4 rounded-[16px] border border-border/80 dark:border-white/15 bg-card/85 dark:bg-card/75 hover:bg-muted/90 backdrop-blur-md text-xs sm:text-sm font-bold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-primary/40 active:scale-[0.98] transition-all duration-150 touch-target flex items-center justify-center flex-1 min-[400px]:flex-initial"
+                        className="relative overflow-hidden h-[44px] min-h-[44px] px-4 rounded-[16px] border border-white/60 dark:border-white/15 bg-card/85 dark:bg-card/75 hover:bg-muted/90 backdrop-blur-md text-xs sm:text-sm font-bold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-primary/50 active:scale-[0.98] transition-all duration-200 touch-target flex items-center justify-center flex-1 min-[400px]:flex-initial"
                       >
                         <span
-                          className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 dark:via-white/20 to-transparent"
+                          className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/60 dark:via-white/20 to-transparent"
                           aria-hidden="true"
                         />
                         <span>Details</span>
@@ -613,7 +624,7 @@ export function UrgentNearYou({
                           e.stopPropagation();
                           handleRequestClick(req);
                         }}
-                        className="h-[44px] min-h-[44px] rounded-[16px] flex-1 min-[400px]:flex-initial min-[400px]:px-5 px-4 shrink-0"
+                        className="h-[44px] min-h-[44px] rounded-[16px] flex-1 min-[400px]:flex-initial min-[400px]:px-5 px-4 shrink-0 shadow-md"
                         aria-label={`Help with request: ${req.title}`}
                       />
                     </div>
@@ -624,11 +635,23 @@ export function UrgentNearYou({
           })}
         </div>
       ) : (
-        /* 3. When there are none: Compact calm empty state */
-        <div className="rounded-2xl sm:rounded-3xl border border-solid border-border/80 dark:border-white/10 bg-card/75 dark:bg-card/40 p-5 sm:p-7 text-center space-y-3.5 shadow-soft">
-          {/* Heart icon in tinted circle */}
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-            <Heart className="h-6 w-6 notranslate fill-emerald-500/20" />
+        /* 3. When there are none: Compact calm crystal empty state */
+        <div className="relative overflow-hidden rounded-3xl border border-white/60 dark:border-white/10 bg-card/80 dark:bg-card/50 backdrop-blur-md p-6 sm:p-8 text-center space-y-4 shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.25)]">
+          {/* Top specular highlight line */}
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/25 to-transparent z-10"
+            aria-hidden="true"
+          />
+
+          {/* Ambient crystal glow */}
+          <div
+            className="pointer-events-none absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-20 bg-emerald-500"
+            aria-hidden="true"
+          />
+
+          {/* Heart icon in luminous circle */}
+          <div className="mx-auto relative flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 shadow-md shadow-emerald-500/15">
+            <Heart className="h-7 w-7 notranslate fill-emerald-500/20 stroke-[2.2]" />
           </div>
 
           {/* Title & friendly sentence */}
@@ -675,3 +698,5 @@ export function UrgentNearYou({
     </section>
   );
 }
+
+export default UrgentNearYou;

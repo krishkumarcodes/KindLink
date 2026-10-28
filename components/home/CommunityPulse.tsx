@@ -389,11 +389,34 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
     {
       id: 'helpers',
       label: 'Helpers nearby',
-      icon: <Users className="h-4 w-4 notranslate" />,
-      iconBg: 'bg-emerald-500/15',
+      icon: (
+        <div className="relative flex items-center justify-center h-4 w-4 notranslate">
+          <span className="absolute -inset-1 rounded-full bg-emerald-400/30 animate-ping opacity-60 motion-reduce:animate-none" />
+          <svg
+            className="h-4 w-4 text-emerald-600 dark:text-emerald-400 notranslate relative z-10"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="9" strokeDasharray="3 3" opacity="0.45" />
+            <circle cx="12" cy="12" r="5" opacity="0.8" />
+            <path d="M12 3v3M12 18v3M3 12h3M18 12h3" opacity="0.35" />
+            <line x1="12" y1="12" x2="18.5" y2="5.5" strokeWidth="2.2" />
+            <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+            <circle cx="18" cy="6" r="1.5" fill="currentColor" className="animate-pulse" />
+          </svg>
+        </div>
+      ),
+      iconBg: 'bg-emerald-500/15 dark:bg-emerald-500/25',
       iconColor: 'text-emerald-600 dark:text-emerald-400',
-      iconBorder: 'border-emerald-500/20',
+      iconBorder: 'border-emerald-500/30 dark:border-emerald-500/40',
       cardBorder: 'border-emerald-500/30 hover:border-emerald-500/60',
+      glowBg: 'bg-emerald-500/15',
+      specularTint: 'via-emerald-400/40',
       value: helpersNearby !== undefined && helpersNearby !== null ? String(helpersNearby) : '—',
       caption: 'Verified and active now',
       tooltipTitle: 'Helpers nearby',
@@ -402,11 +425,19 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
     {
       id: 'response',
       label: 'Avg. response',
-      icon: <Clock className="h-4 w-4 notranslate" />,
-      iconBg: 'bg-amber-500/15',
+      icon: (
+        <div className="relative flex items-center justify-center h-4 w-4 notranslate">
+          <span className="absolute -inset-1 rounded-full bg-amber-400/25 animate-ping opacity-60 motion-reduce:animate-none" />
+          <Clock className="h-4 w-4 relative z-10 notranslate" />
+          <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-amber-500 shadow-[0_0_6px_#F59E0B]" />
+        </div>
+      ),
+      iconBg: 'bg-amber-500/15 dark:bg-amber-500/25',
       iconColor: 'text-amber-600 dark:text-amber-400',
-      iconBorder: 'border-amber-500/20',
+      iconBorder: 'border-amber-500/30 dark:border-amber-500/40',
       cardBorder: 'border-amber-500/30 hover:border-amber-500/60',
+      glowBg: 'bg-amber-500/15',
+      specularTint: 'via-amber-400/40',
       value: hasAvgRespData ? `${avgResp} min` : '—',
       caption: hasAvgRespData ? 'Time to first offer' : 'Not enough data yet',
       tooltipTitle: 'Avg. response',
@@ -415,11 +446,19 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
     {
       id: 'acts',
       label: 'Acts of help',
-      icon: <Heart className="h-4 w-4 notranslate" />,
-      iconBg: 'bg-rose-500/15',
+      icon: (
+        <div className="relative flex items-center justify-center h-4 w-4 notranslate">
+          <span className="absolute -inset-1 rounded-full bg-rose-400/25 animate-pulse motion-reduce:animate-none" />
+          <Heart className="h-4 w-4 fill-rose-500/20 text-rose-600 dark:text-rose-400 relative z-10 notranslate" />
+          <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-rose-500 shadow-[0_0_6px_#F43F5E]" />
+        </div>
+      ),
+      iconBg: 'bg-rose-500/15 dark:bg-rose-500/25',
       iconColor: 'text-rose-600 dark:text-rose-400',
-      iconBorder: 'border-rose-500/20',
+      iconBorder: 'border-rose-500/30 dark:border-rose-500/40',
       cardBorder: 'border-rose-500/30 hover:border-rose-500/60',
+      glowBg: 'bg-rose-500/15',
+      specularTint: 'via-rose-400/40',
       value: String(displayedActsOfHelp),
       caption: 'Completed so far',
       tooltipTitle: 'Acts of help',
@@ -428,11 +467,19 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
     {
       id: 'trust',
       label: 'Trust match',
-      icon: <ShieldCheck className="h-4 w-4 notranslate" />,
-      iconBg: 'bg-blue-500/15',
-      iconColor: 'text-blue-600 dark:text-blue-400',
-      iconBorder: 'border-blue-500/20',
-      cardBorder: 'border-blue-500/30 hover:border-blue-500/60',
+      icon: (
+        <div className="relative flex items-center justify-center h-4 w-4 notranslate">
+          <span className="absolute -inset-1 rounded-full bg-cyan-400/25 animate-pulse motion-reduce:animate-none" />
+          <ShieldCheck className="h-4 w-4 text-cyan-600 dark:text-cyan-400 relative z-10 notranslate" />
+          <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-cyan-500 shadow-[0_0_6px_#06B6D4]" />
+        </div>
+      ),
+      iconBg: 'bg-cyan-500/15 dark:bg-cyan-500/25',
+      iconColor: 'text-cyan-600 dark:text-cyan-400',
+      iconBorder: 'border-cyan-500/30 dark:border-cyan-500/40',
+      cardBorder: 'border-cyan-500/30 hover:border-cyan-500/60',
+      glowBg: 'bg-cyan-500/15',
+      specularTint: 'via-cyan-400/40',
       value: hasTrustData ? `${rawTrust}%` : '—',
       caption: hasTrustData ? 'Rated 4 or 5 stars' : 'Needs 5 ratings',
       tooltipTitle: 'Trust match',
@@ -444,10 +491,20 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
     <div className={`mt-8 pt-6 border-t border-border/80 space-y-3 w-full ${className}`}>
       {/* Row 1: Title "Community Pulse" + Refresh button (min height 44 px, items centered, never wrapping) */}
       <div className="flex items-center justify-between w-full gap-3 min-h-[44px]">
-        <h2 className="text-base sm:text-lg font-extrabold text-foreground tracking-tight flex items-center gap-2 min-w-0">
-          <Activity className="h-4 w-4 text-primary shrink-0 notranslate" />
-          <span className="truncate">Community Pulse</span>
-        </h2>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="relative flex items-center justify-center h-8 w-8 rounded-xl bg-primary/10 border border-primary/20 text-primary shrink-0 shadow-xs">
+            <Activity className="h-4 w-4 text-primary notranslate animate-pulse motion-reduce:animate-none" />
+            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background animate-ping opacity-75 motion-reduce:animate-none" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-extrabold text-foreground tracking-tight flex items-center gap-2 min-w-0 leading-tight">
+              <span className="truncate">Community Pulse</span>
+            </h2>
+            <p className="text-[11px] text-muted-foreground/80 hidden sm:block leading-none mt-0.5">
+              Real-time mutual aid telemetry & response vitality
+            </p>
+          </div>
+        </div>
 
         {/* 44 x 44 px round refresh button that spins while refreshing */}
         <button
@@ -459,14 +516,16 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
           disabled={isLoadingStats || isRefreshing}
           title="Refresh live stats"
           aria-label="Refresh live stats"
-          className="h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 rounded-full border border-border/80 bg-background/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-all shadow-xs flex items-center justify-center touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-70 active:scale-95"
+          className="h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 rounded-full border border-border/80 bg-background/90 dark:bg-card/90 hover:bg-muted text-muted-foreground hover:text-foreground transition-all shadow-xs hover:shadow-soft flex items-center justify-center touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-70 active:scale-95 group relative overflow-hidden"
         >
+          {/* Specular glare sheen on button hover */}
+          <span className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           {showCheck ? (
             <Check className="h-4 w-4 text-emerald-500 notranslate animate-in zoom-in-75" />
           ) : (
             <RotateCw
               className={`h-4 w-4 notranslate transition-transform duration-500 ${
-                isLoadingStats || isRefreshing ? 'animate-spin text-primary' : 'hover:rotate-180'
+                isLoadingStats || isRefreshing ? 'animate-spin text-primary' : 'group-hover:rotate-180'
               }`}
             />
           )}
@@ -477,27 +536,38 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
           - Left: Pulsing green dot with single "Live · updated 18s ago" (or "Live · 18s ago" on narrow screens).
           - Right: "24h" chip with tiny sparkline, label "24h", and chevron (opens last 24h details sheet).
           - Below 340px: hide sparkline; never wrap or overflow horizontally. */}
-      <div className="h-11 min-h-[44px] h-auto w-full rounded-2xl border border-border/80 bg-card/85 dark:bg-card/50 backdrop-blur-xs p-2 sm:px-3.5 flex flex-wrap items-center justify-between gap-2 min-w-0 shadow-xs">
-        {/* Left: Pulsing green dot + single status string */}
-        <div className="flex items-center gap-2 min-w-0 shrink">
-          <span className="relative flex h-2.5 w-2.5 shrink-0 items-center justify-center">
+      <div className="h-11 min-h-[44px] w-full rounded-2xl border border-border/80 dark:border-white/10 bg-card/90 dark:bg-card/60 backdrop-blur-md px-2.5 sm:px-3.5 flex flex-wrap items-center justify-between gap-2 min-w-0 shadow-xs relative overflow-hidden">
+        {/* Specular top glass sheen line */}
+        <div className="pointer-events-none absolute inset-x-4 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/30 dark:via-white/15 to-transparent" />
+
+        {/* Left: Pulsing radiant green dot beacon with animated radiating waves + status string */}
+        <div className="flex items-center gap-2.5 min-w-0 shrink">
+          {/* Radiant live dot beacon with multiple glowing waves */}
+          <span className="relative flex h-3 w-3 shrink-0 items-center justify-center">
+            {/* Outer harmonic ripple wave */}
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+            {/* Mid ambient glow ring */}
+            <span className="absolute inline-flex h-4 w-4 rounded-full bg-emerald-500/20 blur-[1px] animate-pulse motion-reduce:animate-none" />
+            {/* Inner high-intensity radiant core */}
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_#10B981,0_0_18px_rgba(16,185,129,0.7)] ring-1 ring-emerald-300/50" />
           </span>
-          <span className="text-xs font-semibold text-foreground truncate select-none">
+          <span className="text-xs font-semibold text-foreground truncate select-none tracking-tight">
             <span className="hidden min-[380px]:inline">{liveStatus.long}</span>
             <span className="min-[380px]:hidden">{liveStatus.short}</span>
           </span>
         </div>
 
-        {/* Right: "Last 24h" chip with tiny sparkline (hidden below 340px), label "Last 24h", and chevron */}
+        {/* Right: "Last 24h" chip with luminous sparkline (hidden below 340px), label "Last 24h", and chevron */}
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
           aria-label="Last 24 hours activity trend"
-          className="group relative h-9 min-h-[36px] max-h-[36px] px-2.5 sm:px-3 rounded-full border border-border/70 bg-background/80 hover:bg-muted/90 active:scale-[0.98] transition-all text-xs font-medium text-foreground flex items-center gap-1.5 sm:gap-2 shrink-0 select-none shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary touch-target cursor-pointer"
+          className="group relative h-9 min-h-[36px] max-h-[36px] px-2.5 sm:px-3 rounded-full border border-border/70 dark:border-white/10 bg-background/80 dark:bg-card/75 hover:bg-muted/90 hover:border-emerald-500/40 active:scale-[0.98] transition-all text-xs font-semibold text-foreground flex items-center gap-1.5 sm:gap-2 shrink-0 select-none shadow-xs hover:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary touch-target cursor-pointer overflow-hidden"
         >
-          {/* Tiny inline SVG sparkline (56 x 20 px) - hidden below 340px */}
+          {/* Subtle top glare sheen */}
+          <span className="pointer-events-none absolute inset-x-2 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/40 dark:via-white/20 to-transparent" />
+
+          {/* Tiny inline SVG luminous sparkline (56 x 20 px) - hidden below 340px */}
           <svg
             className="w-[42px] sm:w-[50px] h-[18px] text-emerald-500 shrink-0 hidden min-[340px]:block overflow-visible"
             viewBox="0 0 56 20"
@@ -507,9 +577,12 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
           >
             <defs>
               <linearGradient id="pulseSparkGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="currentColor" stopOpacity="0.3" />
-                <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+                <stop offset="0%" stopColor="#10B981" stopOpacity="0.4" />
+                <stop offset="100%" stopColor="#10B981" stopOpacity="0.02" />
               </linearGradient>
+              <filter id="pulseGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="0" stdDeviation="1" floodColor="#10B981" floodOpacity="0.5" />
+              </filter>
             </defs>
             {sparklineData.areaPath && (
               <path d={sparklineData.areaPath} fill="url(#pulseSparkGrad)" />
@@ -517,15 +590,25 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
             <path
               d={sparklineData.linePath}
               stroke="currentColor"
-              strokeWidth="1.75"
+              strokeWidth="1.85"
               strokeLinecap="round"
               strokeLinejoin="round"
+              filter="url(#pulseGlow)"
+            />
+            {/* Luminous beacon dot at latest time coordinate */}
+            <circle
+              cx={sparklineData.lastPoint.x}
+              cy={sparklineData.lastPoint.y}
+              r="3.5"
+              className="animate-ping motion-reduce:animate-none opacity-60"
+              fill="currentColor"
             />
             <circle
               cx={sparklineData.lastPoint.x}
               cy={sparklineData.lastPoint.y}
               r="2"
               fill="currentColor"
+              className="drop-shadow-[0_0_4px_#10B981]"
             />
           </svg>
 
@@ -546,14 +629,26 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
         onTouchEnd={() => setIsTickerPaused(false)}
         onFocus={() => setIsTickerPaused(true)}
         onBlur={() => setIsTickerPaused(false)}
-        className="w-full min-h-[44px] h-auto flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-muted/40 border border-border/70 text-xs text-foreground transition-colors hover:bg-muted/60"
+        className="relative overflow-hidden w-full min-h-[44px] h-auto flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-card/75 dark:bg-card/45 backdrop-blur-md border border-border/75 dark:border-white/10 text-xs text-foreground transition-all duration-300 hover:bg-muted/50 hover:border-primary/30 shadow-xs group"
         role="region"
         aria-label="Latest community activity"
       >
-        <Radio className="h-3.5 w-3.5 text-primary shrink-0 notranslate" />
-        <span className="font-bold text-muted-foreground shrink-0 text-[10px] sm:text-[11px] uppercase tracking-wider select-none">
-          Latest:
+        {/* Specular top glare line */}
+        <div className="pointer-events-none absolute inset-x-4 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/30 dark:via-white/10 to-transparent" />
+
+        {/* Specular sheen sweep on hover */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
+
+        {/* Subtle glowing beacon next to Radio/signal */}
+        <div className="relative flex items-center justify-center shrink-0">
+          <span className="absolute -inset-1 rounded-full bg-primary/25 blur-[2px] animate-pulse motion-reduce:animate-none" />
+          <Radio className="h-3.5 w-3.5 text-primary shrink-0 notranslate relative z-10" />
+        </div>
+
+        <span className="font-extrabold text-primary dark:text-teal-400 shrink-0 text-[10px] sm:text-[11px] uppercase tracking-wider select-none px-1.5 py-0.5 rounded-md bg-primary/10 dark:bg-primary/20 border border-primary/20">
+          Latest
         </span>
+
         <div className="flex-1 min-w-0 overflow-hidden">
           <p
             key={currentEventIndex}
@@ -579,12 +674,22 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
           return (
             <div
               key={card.id}
-              className={`relative flex flex-col justify-between p-3.5 rounded-2xl bg-card/90 dark:bg-card/75 border ${card.cardBorder} shadow-xs hover:shadow-md transition-all duration-200 h-[154px] min-h-[154px] backdrop-blur-xs`}
+              className={`group relative flex flex-col justify-between p-3.5 rounded-2xl bg-card/90 dark:bg-card/75 border ${card.cardBorder} shadow-xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 h-[154px] min-h-[154px] backdrop-blur-md overflow-hidden`}
             >
+              {/* Specular glare sheen on card top edge */}
+              <div
+                className={`pointer-events-none absolute inset-x-3 top-0 h-[1px] bg-gradient-to-r from-transparent ${card.specularTint} to-transparent`}
+              />
+
+              {/* Luminous ambient corner halo */}
+              <div
+                className={`pointer-events-none absolute -top-8 -left-8 w-24 h-24 rounded-full ${card.glowBg} blur-xl opacity-60 group-hover:opacity-100 group-hover:scale-125 transition-all duration-500`}
+              />
+
               {/* Top Row: Icon chip on left, Info button with 44px tap area on right */}
-              <div className="flex h-9 items-center justify-between gap-2">
+              <div className="flex h-9 items-center justify-between gap-2 relative z-10">
                 <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${card.iconBg} ${card.iconColor} border ${card.iconBorder}`}
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${card.iconBg} ${card.iconColor} border ${card.iconBorder} shadow-xs group-hover:scale-105 transition-transform duration-300`}
                 >
                   {card.icon}
                 </div>
@@ -606,7 +711,7 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
               {/* Bottom Content: Number, Full Label, Caption sitting on the exact same lines across cards (12px mt-3 gap) */}
               {isLoadingStats && !liveStats ? (
                 <div
-                  className="grid grid-rows-[32px_18px_28px] items-start gap-1 mt-3 animate-pulse"
+                  className="grid grid-rows-[32px_18px_28px] items-start gap-1 mt-3 animate-pulse relative z-10"
                   aria-busy="true"
                 >
                   <div className="h-7 w-16 bg-muted/80 rounded-lg" />
@@ -614,7 +719,7 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
                   <div className="h-3 w-28 bg-muted/40 rounded-md" />
                 </div>
               ) : (
-                <div className="grid grid-rows-[32px_18px_28px] items-start gap-1 mt-3">
+                <div className="grid grid-rows-[32px_18px_28px] items-start gap-1 mt-3 relative z-10">
                   {/* Row 1: Number */}
                   <div className="h-8 flex items-baseline text-2xl sm:text-3xl font-black text-foreground tabular-nums tracking-tight leading-none">
                     <AnimatedNumber value={card.value} />

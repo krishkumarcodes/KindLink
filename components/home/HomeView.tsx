@@ -337,15 +337,21 @@ export function HomeView() {
     icon: React.ReactNode;
     tintBg: string;
     borderColor: string;
+    accentColor: string;
+    glowBg: string;
+    activePillStyle: string;
     urgencySummary: string;
     urgencyDotColor: string;
   }[] = [
     {
       key: 'blood',
       title: t('categories.blood') || 'Blood Donation',
-      icon: <CategoryEmblem category="blood" size="md" />,
-      tintBg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20',
-      borderColor: 'border-rose-500/30 hover:border-rose-500/60 hover:shadow-rose-500/10',
+      icon: <CategoryEmblem category="blood" size="md" glow={true} withSheen={true} />,
+      tintBg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-rose-500',
+      borderColor: 'border-rose-500/30 hover:border-rose-500/60 hover:shadow-rose-500/15',
+      accentColor: '#C62828',
+      glowBg: 'bg-rose-500',
+      activePillStyle: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30 shadow-rose-500/10',
       urgencySummary:
         (categoryStats.blood?.criticalCount ?? 0) > 0
           ? `${categoryStats.blood.criticalCount} critical`
@@ -362,9 +368,12 @@ export function HomeView() {
     {
       key: 'equipment',
       title: t('categories.equipment') || 'Medical Gear',
-      icon: <CategoryEmblem category="equipment" size="md" />,
-      tintBg: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20',
-      borderColor: 'border-teal-500/30 hover:border-teal-500/60 hover:shadow-teal-500/10',
+      icon: <CategoryEmblem category="equipment" size="md" glow={true} withSheen={true} />,
+      tintBg: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 text-teal-500',
+      borderColor: 'border-teal-500/30 hover:border-teal-500/60 hover:shadow-teal-500/15',
+      accentColor: '#0F766E',
+      glowBg: 'bg-teal-500',
+      activePillStyle: 'bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/30 shadow-teal-500/10',
       urgencySummary:
         (categoryStats.equipment?.criticalCount ?? 0) > 0
           ? `${categoryStats.equipment.criticalCount} critical`
@@ -383,9 +392,12 @@ export function HomeView() {
     {
       key: 'elderly',
       title: t('categories.elderly') || 'Elderly Care',
-      icon: <CategoryEmblem category="elderly" size="md" />,
-      tintBg: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20',
-      borderColor: 'border-indigo-500/30 hover:border-indigo-500/60 hover:shadow-indigo-500/10',
+      icon: <CategoryEmblem category="elderly" size="md" glow={true} withSheen={true} />,
+      tintBg: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-indigo-500',
+      borderColor: 'border-indigo-500/30 hover:border-indigo-500/60 hover:shadow-indigo-500/15',
+      accentColor: '#4F46E5',
+      glowBg: 'bg-indigo-500',
+      activePillStyle: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 shadow-indigo-500/10',
       urgencySummary:
         (categoryStats.elderly?.criticalCount ?? 0) > 0
           ? `${categoryStats.elderly.criticalCount} critical`
@@ -404,9 +416,12 @@ export function HomeView() {
     {
       key: 'books',
       title: t('categories.books') || 'Books & Study',
-      icon: <CategoryEmblem category="books" size="md" />,
-      tintBg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20',
-      borderColor: 'border-emerald-500/30 hover:border-emerald-500/60 hover:shadow-emerald-500/10',
+      icon: <CategoryEmblem category="books" size="md" glow={true} withSheen={true} />,
+      tintBg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-emerald-500 text-amber-500',
+      borderColor: 'border-emerald-500/30 hover:border-emerald-500/60 hover:shadow-emerald-500/15',
+      accentColor: '#047857',
+      glowBg: 'bg-emerald-500',
+      activePillStyle: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 shadow-emerald-500/10',
       urgencySummary:
         (categoryStats.books?.criticalCount ?? 0) > 0
           ? `${categoryStats.books.criticalCount} critical`
@@ -656,29 +671,68 @@ export function HomeView() {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           {categories.map((cat) => {
             const stats = categoryStats[cat.key] || { count: 0, criticalCount: 0, highCount: 0 };
+            const hasActive = stats.count > 0;
 
             return (
               <button
                 key={cat.key}
                 type="button"
                 onClick={() => handleCategoryClick(cat.key)}
-                className={`group flex flex-col justify-between p-4 rounded-3xl border ${cat.borderColor} bg-card/90 hover:bg-card hover:shadow-md hover:-translate-y-0.5 active:scale-98 transition-all duration-200 text-left min-h-[142px] touch-target`}
+                className={`group relative overflow-hidden flex flex-col justify-between p-4 rounded-3xl border ${cat.borderColor} bg-card/85 dark:bg-card/75 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:bg-card hover:shadow-lg hover:-translate-y-0.5 active:scale-98 transition-all duration-200 text-left min-h-[148px] touch-target`}
               >
-                <div className="flex items-start justify-between w-full">
-                  <div className="transition-transform duration-200 group-hover:scale-105">
-                    {cat.icon}
+                {/* Specular top rim micro-highlight */}
+                <div
+                  className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/20 to-transparent z-10"
+                  aria-hidden="true"
+                />
+
+                {/* Micro-specular crystal sheen sweep on hover */}
+                <div
+                  className="crystal-card-sheen pointer-events-none"
+                  aria-hidden="true"
+                />
+
+                {/* Subtle category-tinted corner glow */}
+                <div
+                  className={`pointer-events-none absolute -top-8 -right-8 w-24 h-24 rounded-full blur-2xl opacity-15 dark:opacity-20 group-hover:opacity-35 transition-opacity duration-300 ${cat.glowBg}`}
+                  aria-hidden="true"
+                />
+
+                {/* Card Top: Category Emblem with luminous halo + Active open count pill */}
+                <div className="flex items-start justify-between w-full relative z-10">
+                  <div className="relative transition-transform duration-200 group-hover:scale-105">
+                    <div
+                      className="pointer-events-none absolute -inset-1 rounded-2xl blur-md opacity-35 group-hover:opacity-70 transition-opacity duration-300"
+                      style={{ backgroundColor: cat.accentColor }}
+                      aria-hidden="true"
+                    />
+                    <div className="relative z-10">
+                      {cat.icon}
+                    </div>
                   </div>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-[10px] font-black text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                    {stats.count} open
-                  </span>
+
+                  {/* Active open count pill */}
+                  {hasActive ? (
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black border backdrop-blur-xs transition-colors shadow-2xs ${cat.activePillStyle}`}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${stats.criticalCount > 0 ? 'bg-rose-500' : 'bg-current'} animate-pulse`} aria-hidden="true" />
+                      <span>{stats.count} open</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted/80 text-[10px] font-bold text-muted-foreground border border-border/60 transition-colors">
+                      0 open
+                    </span>
+                  )}
                 </div>
 
-                <div className="mt-3 space-y-1 w-full">
+                {/* Card Bottom: Title & Urgency summary */}
+                <div className="mt-3.5 space-y-1 w-full relative z-10">
                   <h3 className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-1">
                     {cat.title}
                   </h3>
-                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <span className={`h-1.5 w-1.5 rounded-full ${cat.urgencyDotColor} shrink-0`} />
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
+                    <span className={`h-1.5 w-1.5 rounded-full ${cat.urgencyDotColor} shrink-0 shadow-xs`} />
                     <span className="truncate">{cat.urgencySummary}</span>
                   </div>
                 </div>
@@ -690,19 +744,41 @@ export function HomeView() {
           <button
             type="button"
             onClick={() => setAllCategoriesModalOpen(true)}
-            className="col-span-2 lg:col-span-1 group p-4 rounded-3xl border border-primary/30 hover:border-primary/60 bg-card/90 hover:bg-card hover:shadow-md hover:shadow-primary/5 hover:-translate-y-0.5 active:scale-98 transition-all duration-200 text-left touch-target flex flex-col justify-between min-h-[142px]"
+            className="col-span-2 lg:col-span-1 group relative overflow-hidden p-4 rounded-3xl border border-primary/30 hover:border-primary/60 bg-card/85 dark:bg-card/75 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:bg-card hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-0.5 active:scale-98 transition-all duration-200 text-left touch-target flex flex-col justify-between min-h-[148px]"
           >
+            {/* Specular top rim micro-highlight */}
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/20 to-transparent z-10"
+              aria-hidden="true"
+            />
+
+            {/* Micro-specular crystal sheen sweep on hover */}
+            <div
+              className="crystal-card-sheen pointer-events-none"
+              aria-hidden="true"
+            />
+
+            {/* Ambient purple/pink corner glow */}
+            <div
+              className="pointer-events-none absolute -top-8 -right-8 w-24 h-24 rounded-full blur-2xl opacity-15 dark:opacity-20 group-hover:opacity-35 transition-opacity duration-300 bg-purple-500"
+              aria-hidden="true"
+            />
+
             {/* Wide horizontal layout on mobile/tablet */}
-            <div className="flex lg:hidden items-center justify-between w-full gap-3 my-auto">
+            <div className="flex lg:hidden items-center justify-between w-full gap-3 my-auto relative z-10">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white shadow-md shadow-purple-500/25 ring-1 ring-inset ring-white/25 transition-transform duration-200 group-hover:scale-105">
-                  <Layers className="h-5 w-5 notranslate filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]" />
+                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white shadow-md shadow-purple-500/25 ring-1 ring-inset ring-white/30 transition-transform duration-200 group-hover:scale-105 overflow-hidden">
+                  <span
+                    className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 via-white/10 to-transparent"
+                    aria-hidden="true"
+                  />
+                  <Layers className="h-5 w-5 notranslate filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)] relative z-10 stroke-[2.2]" />
                 </div>
                 <div className="min-w-0 space-y-0.5">
                   <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors leading-snug truncate">
                     More categories
                   </h3>
-                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
                     <span
                       className={`h-1.5 w-1.5 rounded-full ${
                         otherCategoriesStats.criticalCount > 0 ? 'bg-rose-500' : 'bg-primary'
@@ -718,25 +794,35 @@ export function HomeView() {
                   </div>
                 </div>
               </div>
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-primary/10 text-[11px] font-black text-primary transition-colors shrink-0">
-                {otherCategoriesStats.count} open
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/15 text-[11px] font-black text-primary border border-primary/25 shadow-2xs transition-colors shrink-0">
+                {otherCategoriesStats.count > 0 && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" aria-hidden="true" />
+                )}
+                <span>{otherCategoriesStats.count} open</span>
               </span>
             </div>
 
             {/* Standard vertical layout on desktop (lg) */}
-            <div className="hidden lg:flex items-start justify-between w-full">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white shadow-md shadow-purple-500/25 ring-1 ring-inset ring-white/25 transition-transform duration-200 group-hover:scale-105">
-                <Layers className="h-5 w-5 notranslate filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]" />
+            <div className="hidden lg:flex items-start justify-between w-full relative z-10">
+              <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white shadow-md shadow-purple-500/25 ring-1 ring-inset ring-white/30 transition-transform duration-200 group-hover:scale-105 overflow-hidden">
+                <span
+                  className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 via-white/10 to-transparent"
+                  aria-hidden="true"
+                />
+                <Layers className="h-5 w-5 notranslate filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)] relative z-10 stroke-[2.2]" />
               </div>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-[10px] font-black text-primary transition-colors">
-                {otherCategoriesStats.count} open
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/15 text-[10px] font-black text-primary border border-primary/25 shadow-2xs transition-colors">
+                {otherCategoriesStats.count > 0 && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" aria-hidden="true" />
+                )}
+                <span>{otherCategoriesStats.count} open</span>
               </span>
             </div>
-            <div className="hidden lg:block mt-3 space-y-1 w-full">
+            <div className="hidden lg:block mt-3.5 space-y-1 w-full relative z-10">
               <h3 className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-1">
                 More categories
               </h3>
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
                 <span
                   className={`h-1.5 w-1.5 rounded-full ${
                     otherCategoriesStats.criticalCount > 0 ? 'bg-rose-500' : 'bg-primary'
