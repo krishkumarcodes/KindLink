@@ -59,6 +59,7 @@ export function RequestsView() {
     selectedRequestId,
     setSelectedRequestId,
     fetchLiveRequests,
+    fetchLiveStats,
     setCurrentView,
     isLoadingRequests,
     userProfile,
@@ -332,6 +333,40 @@ export function RequestsView() {
   const completedCount = useMemo(() => {
     return allFeedRequests.filter((r) => r.status === 'completed').length;
   }, [allFeedRequests]);
+
+  // 1. When RequestsView mounts, execute fetchLiveRequests() and fetchLiveStats() to pull fresh requests
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    Promise.all([fetchLiveRequests(), fetchLiveStats()]).finally(() => {
+      if (isMounted) {
+        setInitialFetchDone(true);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [fetchLiveRequests, fetchLiveStats]);
+
+  // 2. Auto-recover to 'urgent' if user visits requests with 'my_requests' tab active but has 0 requests of their own
+  const initialVisitTabRef = useRef(activeFeedTab);
+  const autoRecoverDoneRef = useRef(false);
+
+  useEffect(() => {
+    if (autoRecoverDoneRef.current) return;
+    if (initialVisitTabRef.current !== 'my_requests') {
+      autoRecoverDoneRef.current = true;
+      return;
+    }
+
+    if (initialFetchDone) {
+      if (myRequestsCount === 0 && activeFeedTab === 'my_requests') {
+        setActiveFeedTab('urgent');
+      }
+      autoRecoverDoneRef.current = true;
+    }
+  }, [initialFetchDone, myRequestsCount, activeFeedTab, setActiveFeedTab]);
 
   const categoriesList: { key: HelpCategory; label: string; icon: React.ReactNode }[] = useMemo(() => {
     return STANDARD_CATEGORIES.map((c) => {
@@ -803,11 +838,19 @@ export function RequestsView() {
                 When you post an aid request (such as for medical gear, emergency transit, or elderly care), you can manage incoming volunteer offers and track fulfillment status here.
               </p>
             </div>
-            <div className="pt-2">
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveFeedTab('urgent')}
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-primary text-white text-xs font-bold shadow-soft hover:brightness-105 transition-all duration-200 active:scale-95 touch-target"
+              >
+                <Flame className="h-4 w-4 notranslate text-rose-300" />
+                <span>Browse Community Requests</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setCurrentView('new')}
-                className="relative overflow-hidden inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 dark:from-amber-400 dark:via-rose-400 dark:to-amber-500 text-white text-xs font-bold shadow-[inset_0_1px_1px_rgba(255,255,255,0.45),0_6px_20px_rgba(244,63,94,0.32)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_8px_24px_rgba(244,63,94,0.42)] hover:brightness-105 transition-all duration-200 active:scale-95 touch-target"
+                className="relative overflow-hidden inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 dark:from-amber-400 dark:via-rose-400 dark:to-amber-500 text-white text-xs font-bold shadow-[inset_0_1px_1px_rgba(255,255,255,0.45),0_6px_20px_rgba(244,63,94,0.32)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_8px_24px_rgba(244,63,94,0.42)] hover:brightness-105 transition-all duration-200 active:scale-95 touch-target"
               >
                 <span
                   className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/70 to-transparent"

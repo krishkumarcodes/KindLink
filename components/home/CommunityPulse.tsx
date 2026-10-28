@@ -674,7 +674,7 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
           return (
             <div
               key={card.id}
-              className={`group relative flex flex-col justify-between p-3.5 rounded-2xl bg-card/90 dark:bg-card/75 border ${card.cardBorder} shadow-xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 h-[154px] min-h-[154px] backdrop-blur-md overflow-hidden`}
+              className={`group relative flex flex-col justify-between p-3.5 rounded-2xl bg-card/90 dark:bg-card/75 border ${card.cardBorder} shadow-xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 h-[154px] min-h-[154px] backdrop-blur-md transform-gpu overflow-hidden`}
             >
               {/* Specular glare sheen on card top edge */}
               <div
@@ -683,7 +683,7 @@ export function CommunityPulse({ className = '' }: CommunityPulseProps) {
 
               {/* Luminous ambient corner halo */}
               <div
-                className={`pointer-events-none absolute -top-8 -left-8 w-24 h-24 rounded-full ${card.glowBg} blur-xl opacity-60 group-hover:opacity-100 group-hover:scale-125 transition-all duration-500`}
+                className={`pointer-events-none absolute -top-8 -left-8 w-24 h-24 rounded-full ${card.glowBg} blur-md transform-gpu opacity-60 group-hover:opacity-100 group-hover:scale-125 transition-all duration-500`}
               />
 
               {/* Top Row: Icon chip on left, Info button with 44px tap area on right */}

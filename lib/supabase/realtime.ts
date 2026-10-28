@@ -41,6 +41,7 @@ export function initializeRealtime() {
                 label: 'View',
                 onClick: () => {
                   store.setSelectedRequestId(newReq.id);
+                  store.setActiveFeedTab('urgent');
                   store.setCurrentView('requests');
                 },
               },

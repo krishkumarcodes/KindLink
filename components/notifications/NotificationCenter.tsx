@@ -360,6 +360,7 @@ export function NotificationCenter({
     dismissNotification,
     clearAllNotifications,
     setSelectedRequestId,
+    setActiveFeedTab,
     setCurrentView,
     fetchLiveNotifications,
   } = useKindLinkStore();
@@ -678,6 +679,7 @@ export function NotificationCenter({
 
     // If request ID is attached
     if (item.requestId) {
+      setActiveFeedTab('urgent');
       setSelectedRequestId(item.requestId);
       setCurrentView('requests');
       onClose();

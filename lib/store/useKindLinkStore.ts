@@ -226,14 +226,14 @@ export const useKindLinkStore = create<KindLinkState>()(
       setUserAreaName: (name) => set({ userAreaName: name }),
 
       fetchLiveRequests: async () => {
-        const { userCoords, filterRadius, filterCategory, filterUrgency, userProfile } = get();
+        const { userCoords, filterCategory, filterUrgency, userProfile } = get();
         set({ isLoadingRequests: true });
         try {
           const [fresh, myActive] = await Promise.all([
             dataAdapter.getRequests({
               lat: userCoords.lat,
               lng: userCoords.lng,
-              radiusKm: filterRadius,
+              radiusKm: 50,
               category: filterCategory,
               urgency: filterUrgency,
             }),

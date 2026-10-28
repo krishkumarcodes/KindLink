@@ -119,7 +119,7 @@ export function HowItWorksCard({
 
   return (
     <div
-      className={`group/card relative overflow-hidden rounded-3xl border border-white/60 dark:border-white/10 bg-card/85 dark:bg-card/75 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.25)] transition-all duration-300 ${className}`}
+      className={`group/card relative overflow-hidden rounded-3xl border border-white/60 dark:border-white/10 bg-card/85 dark:bg-card/75 backdrop-blur-md transform-gpu shadow-sm hover:shadow-md transition-all duration-300 ${className}`}
     >
       {/* Specular top rim micro-highlight line */}
       <div
@@ -129,13 +129,13 @@ export function HowItWorksCard({
 
       {/* Crystal water sheen reflection overlay */}
       <div
-        className="crystal-card-sheen crystal-card-ambient-sheen pointer-events-none"
+        className="crystal-card-sheen crystal-card-ambient-sheen pointer-events-none transform-gpu"
         aria-hidden="true"
       />
 
       {/* Ambient luminous corner glow */}
       <div
-        className="pointer-events-none absolute -top-14 -right-14 w-36 h-36 rounded-full blur-3xl opacity-20 dark:opacity-25 bg-gradient-to-br from-teal-400 via-emerald-400 to-indigo-500 z-0"
+        className="pointer-events-none absolute -top-14 -right-14 w-36 h-36 rounded-full blur-xl transform-gpu opacity-20 dark:opacity-25 bg-gradient-to-br from-teal-400 via-emerald-400 to-indigo-500 z-0"
         aria-hidden="true"
       />
 

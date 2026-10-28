@@ -29,6 +29,12 @@ export function BottomTabBar() {
         navigator.vibrate(12);
       } catch {}
     }
+    if (view === 'requests') {
+      const { activeFeedTab, setActiveFeedTab } = useKindLinkStore.getState();
+      if (activeFeedTab === 'my_requests' || !activeFeedTab) {
+        setActiveFeedTab('urgent');
+      }
+    }
     setCurrentView(view);
   };
 

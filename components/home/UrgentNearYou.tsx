@@ -156,6 +156,7 @@ export function UrgentNearYou({
   const setCurrentView = useKindLinkStore((s) => s.setCurrentView);
   const setSelectedRequestId = useKindLinkStore((s) => s.setSelectedRequestId);
   const setFilterRadius = useKindLinkStore((s) => s.setFilterRadius);
+  const setActiveFeedTab = useKindLinkStore((s) => s.setActiveFeedTab);
 
   const effectiveRequests = propRequests ?? storeRequests;
   const effectiveIsLoading = propIsLoading ?? storeIsLoading;
@@ -234,6 +235,7 @@ export function UrgentNearYou({
   };
 
   const handleViewAll = () => {
+    setActiveFeedTab('urgent');
     if (onViewAll) {
       onViewAll();
     } else {
@@ -242,6 +244,7 @@ export function UrgentNearYou({
   };
 
   const handleBroadenRadius = () => {
+    setActiveFeedTab('urgent');
     if (onBroadenRadius) {
       onBroadenRadius();
     } else {
@@ -357,7 +360,7 @@ export function UrgentNearYou({
                   }
                 }}
                 style={{ borderLeftColor: categoryToken.primary, borderLeftWidth: '4px' }}
-                className={`group relative flex overflow-hidden rounded-3xl border border-white/50 dark:border-white/12 bg-card/90 dark:bg-card/75 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.25)] hover:border-primary/45 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer ${
+                className={`group relative flex overflow-hidden rounded-3xl border border-white/50 dark:border-white/12 bg-card/90 dark:bg-card/75 backdrop-blur-sm transform-gpu shadow-xs hover:border-primary/45 hover:shadow-md hover:shadow-primary/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer ${
                   isNew ? 'animate-urgent-slide-in' : ''
                 }`}
                 aria-label={`Urgent request: ${req.title}, urgency ${req.urgency}, distance ${req.distanceKm} kilometers`}
@@ -382,7 +385,7 @@ export function UrgentNearYou({
 
                 {/* Ambient crystal corner refraction */}
                 <div
-                  className="pointer-events-none absolute -top-12 -right-12 w-32 h-32 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500 ease-out z-0 opacity-25 dark:opacity-30"
+                  className="pointer-events-none absolute -top-12 -right-12 w-32 h-32 rounded-full blur-md transform-gpu group-hover:scale-125 transition-transform duration-500 ease-out z-0 opacity-25 dark:opacity-30"
                   style={{
                     background: `radial-gradient(circle, ${categoryToken.glow} 0%, transparent 70%)`,
                   }}

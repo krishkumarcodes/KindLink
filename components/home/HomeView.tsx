@@ -439,11 +439,13 @@ export function HomeView() {
 
   const handleCategoryClick = (cat: HelpCategory) => {
     setFilterCategory(cat);
+    setActiveFeedTab('urgent');
     setCurrentView('requests');
   };
 
   const handleRequestClick = (req: HelpRequest) => {
     setSelectedRequestId(req.id);
+    setActiveFeedTab('urgent');
     setCurrentView('requests');
   };
 
