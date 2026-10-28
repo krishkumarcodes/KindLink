@@ -166,10 +166,14 @@ export function UrgentNearYou({
   const effectiveRadius = propFilterRadius ?? storeFilterRadius ?? 20;
   const effectiveTravelMode = propTravelMode ?? storeTravelMode ?? 'bike';
 
-  // Sort strictly by urgency, distance, and waiting time - exclude user's own requests from help list
+  // Sort strictly by urgency, distance, and waiting time - only OPEN requests awaiting help, excluding user's own requests
   const sortedUrgentRequests = useMemo(() => {
     return [...effectiveRequests]
-      .filter((r) => r.status !== 'completed' && r.status !== 'cancelled' && !isRequestOwner(r, userProfile))
+      .filter((r) => {
+        const isAwaitingHelp =
+          r.status === 'open' || (r.status === 'offered' && !r.acceptedHelperId);
+        return isAwaitingHelp && !isRequestOwner(r, userProfile);
+      })
       .sort((a, b) => {
         const urgA = URGENCY_PRIORITY[a.urgency] ?? 5;
         const urgB = URGENCY_PRIORITY[b.urgency] ?? 5;
@@ -177,7 +181,7 @@ export function UrgentNearYou({
         if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
         return (b.waitingMinutes || 0) - (a.waitingMinutes || 0);
       });
-  }, [effectiveRequests]);
+  }, [effectiveRequests, userProfile]);
 
   // Top 3 requests for the card list
   const top3Requests = useMemo(() => {

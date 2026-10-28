@@ -24,6 +24,9 @@ import {
   Car,
   User,
   Tag,
+  HeartHandshake,
+  CheckCircle2,
+  Radio,
 } from 'lucide-react';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
 import { HelpCategory, HelpRequest, UrgencyLevel } from '@/lib/data/types';
@@ -82,7 +85,7 @@ export function RequestsView() {
     filterUrgency !== 'all' ? [filterUrgency] : []
   );
   const [radiusKm, setRadiusKm] = useState<number>(filterRadius || 25);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'accepted'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'in_progress' | 'completed'>('all');
   const [neededInFilter, setNeededInFilter] = useState<'all' | 'immediate' | 'today' | 'within24h'>('all');
   const [verifiedOnly, setVerifiedOnly] = useState<boolean>(false);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -134,13 +137,29 @@ export function RequestsView() {
   const filteredRequests = useMemo(() => {
     return allFeedRequests.filter((req) => {
       const isOwner = isRequestOwner(req, userProfile);
+      const isAcceptedHelper = Boolean(userProfile?.id && req.acceptedHelperId === userProfile.id);
 
-      // Ownership enforcement:
-      // Tab 'my_requests' shows ONLY the user's own requests.
-      // Volunteer tabs ('urgent', 'nearest', 'newest') show all active community requests,
-      // with the user's own request clearly distinguished with a 'Your Request' badge.
+      // Ownership & Feed Tab Lifecycle Enforcement:
+      // - "My Requests" tab: shows all requests created by the current user across all states
+      // - "In Progress" / "My Commitments": shows requests that are currently in progress (accepted, on_the_way, arrived) for author and matched helper
+      // - "Completed" tab: shows fulfilled requests
+      // - Public / "All" Open Feed ('urgent', 'nearest', 'newest'): should ONLY show active open requests that need volunteers (status === 'open' || (status === 'offered' && !req.acceptedHelperId)).
+      //   Requests with status === 'accepted', 'on_the_way', or 'arrived' must NOT appear because they are already taken!
       if (activeFeedTab === 'my_requests') {
         if (!isOwner) return false;
+      } else if (activeFeedTab === 'in_progress') {
+        const isInProgress = req.status === 'accepted' || req.status === 'on_the_way' || req.status === 'arrived';
+        if (!isInProgress) return false;
+        if (userProfile?.id) {
+          if (!isOwner && !isAcceptedHelper) return false;
+        }
+      } else if (activeFeedTab === 'completed') {
+        if (req.status !== 'completed') return false;
+      } else {
+        // Public Open Community Feed
+        const isOpenAndNeedsHelp =
+          req.status === 'open' || (req.status === 'offered' && !req.acceptedHelperId);
+        if (!isOpenAndNeedsHelp) return false;
       }
 
       // 1. Categories Multi-Select
@@ -159,14 +178,26 @@ export function RequestsView() {
       }
 
       // 3. Distance Radius Slider (1-50 km) - apply only for volunteer feed tabs
-      if (activeFeedTab !== 'my_requests' && req.distanceKm > radiusKm) {
+      if (
+        activeFeedTab !== 'my_requests' &&
+        activeFeedTab !== 'in_progress' &&
+        activeFeedTab !== 'completed' &&
+        req.distanceKm > radiusKm
+      ) {
         return false;
       }
 
-      // 4. Status Filter (open / accepted)
+      // 4. Status Filter from drawer (open / in_progress / completed)
       if (statusFilter !== 'all') {
-        if (statusFilter === 'open' && req.status !== 'open') return false;
-        if (statusFilter === 'accepted' && req.status !== 'accepted') return false;
+        if (statusFilter === 'open') {
+          const isOpen = req.status === 'open' || (req.status === 'offered' && !req.acceptedHelperId);
+          if (!isOpen) return false;
+        } else if (statusFilter === 'in_progress') {
+          const inProg = req.status === 'accepted' || req.status === 'on_the_way' || req.status === 'arrived';
+          if (!inProg) return false;
+        } else if (statusFilter === 'completed') {
+          if (req.status !== 'completed') return false;
+        }
       }
 
       // 5. "Needed in" timing
@@ -232,24 +263,29 @@ export function RequestsView() {
   };
 
   // Sorting logic based on tab:
-  // My Requests: status progression > newest
+  // My Requests / In Progress: status progression > newest
+  // Completed: most recently updated / newest
   // Most Urgent: urgency > distance > waiting time
   // Nearest: road/geodesic distance > urgency > waiting time
   // Newest: waitingMinutes ascending (creation time) > urgency
   const sortedRequests = useMemo(() => {
     return [...filteredRequests].sort((a, b) => {
-      if (activeFeedTab === 'my_requests') {
+      if (activeFeedTab === 'my_requests' || activeFeedTab === 'in_progress') {
         const statusOrder: Record<string, number> = {
-          open: 1,
-          accepted: 2,
-          on_the_way: 3,
-          arrived: 4,
-          completed: 5,
-          cancelled: 6,
+          arrived: 1,
+          on_the_way: 2,
+          accepted: 3,
+          offered: 4,
+          open: 5,
+          completed: 6,
+          cancelled: 7,
         };
         const orderA = statusOrder[a.status] ?? 9;
         const orderB = statusOrder[b.status] ?? 9;
         if (orderA !== orderB) return orderA - orderB;
+        return (a.waitingMinutes || 0) - (b.waitingMinutes || 0);
+      }
+      if (activeFeedTab === 'completed') {
         return (a.waitingMinutes || 0) - (b.waitingMinutes || 0);
       }
       if (activeFeedTab === 'urgent') {
@@ -257,14 +293,14 @@ export function RequestsView() {
         const urgB = URGENCY_PRIORITY[b.urgency] ?? 5;
         if (urgA !== urgB) return urgA - urgB;
         if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
-        return b.waitingMinutes - a.waitingMinutes;
+        return (b.waitingMinutes || 0) - (a.waitingMinutes || 0);
       }
       if (activeFeedTab === 'nearest') {
         if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
         const urgA = URGENCY_PRIORITY[a.urgency] ?? 5;
         const urgB = URGENCY_PRIORITY[b.urgency] ?? 5;
         if (urgA !== urgB) return urgA - urgB;
-        return b.waitingMinutes - a.waitingMinutes;
+        return (b.waitingMinutes || 0) - (a.waitingMinutes || 0);
       }
       // newest: most recently posted (smallest waitingMinutes or createdAt)
       if (a.waitingMinutes !== b.waitingMinutes) {
@@ -279,6 +315,23 @@ export function RequestsView() {
   const displayedRequests = useMemo(() => {
     return sortedRequests.slice(0, visibleCount);
   }, [sortedRequests, visibleCount]);
+
+  // Tab Badge Counts
+  const myRequestsCount = useMemo(() => {
+    return allFeedRequests.filter((r) => isRequestOwner(r, userProfile)).length;
+  }, [allFeedRequests, userProfile]);
+
+  const inProgressCount = useMemo(() => {
+    return allFeedRequests.filter((r) => {
+      const inProg = r.status === 'accepted' || r.status === 'on_the_way' || r.status === 'arrived';
+      if (!inProg) return false;
+      return isRequestOwner(r, userProfile) || Boolean(userProfile?.id && r.acceptedHelperId === userProfile.id);
+    }).length;
+  }, [allFeedRequests, userProfile]);
+
+  const completedCount = useMemo(() => {
+    return allFeedRequests.filter((r) => r.status === 'completed').length;
+  }, [allFeedRequests]);
 
   const categoriesList: { key: HelpCategory; label: string; icon: React.ReactNode }[] = useMemo(() => {
     return STANDARD_CATEGORIES.map((c) => {
@@ -533,7 +586,16 @@ export function RequestsView() {
 
           {statusFilter !== 'all' && (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-border text-foreground font-semibold">
-              <span>Status: {statusFilter}</span>
+              <span>
+                Status:{' '}
+                {statusFilter === 'in_progress'
+                  ? 'In Progress'
+                  : statusFilter === 'open'
+                  ? 'Open'
+                  : statusFilter === 'completed'
+                  ? 'Completed'
+                  : statusFilter}
+              </span>
               <button
                 type="button"
                 onClick={() => setStatusFilter('all')}
@@ -583,7 +645,7 @@ export function RequestsView() {
         </div>
       )}
 
-      {/* Tabs Row: Most Urgent, Nearest, Newest, My Requests */}
+      {/* Tabs Row: Most Urgent, Nearest, Newest, In Progress, My Requests, Completed */}
       <div className="flex items-center justify-between border-b border-border/80 pb-2.5 overflow-x-auto no-scrollbar gap-2">
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
@@ -627,6 +689,30 @@ export function RequestsView() {
 
           <button
             type="button"
+            onClick={() => setActiveFeedTab('in_progress')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition-all active:scale-95 touch-target ${
+              activeFeedTab === 'in_progress'
+                ? 'bg-amber-600 text-white shadow-soft ring-2 ring-amber-500/20'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+            }`}
+          >
+            <HeartHandshake className="h-4 w-4 notranslate text-amber-400" />
+            <span>In Progress</span>
+            {inProgressCount > 0 && (
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                  activeFeedTab === 'in_progress'
+                    ? 'bg-white text-amber-700'
+                    : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25'
+                }`}
+              >
+                {inProgressCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveFeedTab('my_requests')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition-all active:scale-95 touch-target ${
               activeFeedTab === 'my_requests'
@@ -636,7 +722,7 @@ export function RequestsView() {
           >
             <User className="h-4 w-4 notranslate text-indigo-400" />
             <span>My Requests</span>
-            {myActiveRequests.length > 0 && (
+            {myRequestsCount > 0 && (
               <span
                 className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
                   activeFeedTab === 'my_requests'
@@ -644,7 +730,31 @@ export function RequestsView() {
                     : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25'
                 }`}
               >
-                {myActiveRequests.length}
+                {myRequestsCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveFeedTab('completed')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition-all active:scale-95 touch-target ${
+              activeFeedTab === 'completed'
+                ? 'bg-emerald-600 text-white shadow-soft ring-2 ring-emerald-500/20'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+            }`}
+          >
+            <CheckCircle2 className="h-4 w-4 notranslate text-emerald-400" />
+            <span>Completed</span>
+            {completedCount > 0 && (
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                  activeFeedTab === 'completed'
+                    ? 'bg-white text-emerald-700'
+                    : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25'
+                }`}
+              >
+                {completedCount}
               </span>
             )}
           </button>
@@ -705,6 +815,50 @@ export function RequestsView() {
                 />
                 <PlusCircle className="h-4 w-4 notranslate drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
                 <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">Ask for Help</span>
+              </button>
+            </div>
+          </div>
+        ) : activeFeedTab === 'in_progress' ? (
+          /* Case 0.5: No in-progress commitments */
+          <div className="rounded-3xl border border-dashed border-border/80 bg-card/60 p-10 sm:p-14 text-center shadow-soft space-y-4">
+            <div className="h-16 w-16 rounded-3xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+              <HeartHandshake className="h-8 w-8 notranslate" />
+            </div>
+            <div className="max-w-md mx-auto space-y-1.5">
+              <h3 className="text-lg font-bold text-foreground">No in-progress commitments</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                When you accept a volunteer's offer for your request, or when you are matched to help someone, the active commitment appears here with live transit updates and handover PIN verification.
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setActiveFeedTab('urgent')}
+                className="relative overflow-hidden inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-white text-xs font-bold shadow-soft hover:brightness-105 transition-all duration-200 active:scale-95 touch-target"
+              >
+                <span>Browse Open Requests</span>
+              </button>
+            </div>
+          </div>
+        ) : activeFeedTab === 'completed' ? (
+          /* Case 0.6: No completed requests */
+          <div className="rounded-3xl border border-dashed border-border/80 bg-card/60 p-10 sm:p-14 text-center shadow-soft space-y-4">
+            <div className="h-16 w-16 rounded-3xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="h-8 w-8 notranslate" />
+            </div>
+            <div className="max-w-md mx-auto space-y-1.5">
+              <h3 className="text-lg font-bold text-foreground">No completed requests yet</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Requests that have been successfully fulfilled and verified will be recorded here.
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setActiveFeedTab('urgent')}
+                className="relative overflow-hidden inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600 text-white text-xs font-bold shadow-soft hover:brightness-105 transition-all duration-200 active:scale-95 touch-target"
+              >
+                <span>Browse Community Feed</span>
               </button>
             </div>
           </div>
@@ -992,7 +1146,8 @@ export function RequestsView() {
               >
                 <option value="all">All Statuses</option>
                 <option value="open">Open Needs Only</option>
-                <option value="accepted">Accepted / In Progress</option>
+                <option value="in_progress">In Progress / Matched</option>
+                <option value="completed">Completed / Fulfilled</option>
               </select>
             </div>
 

@@ -31,6 +31,7 @@ import {
   X,
   Tag,
   Plus,
+  KeyRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKindLinkStore } from '@/lib/store/useKindLinkStore';
@@ -39,6 +40,7 @@ import { searchAddressNominatim } from '@/lib/location/search';
 import { LocationSearchResult } from '@/lib/location/types';
 import { reverseGeocode } from '@/lib/geo/reverse-geocode';
 import { PinDropMap } from '@/components/location/PinDropMap';
+import { Switch } from '@/components/ui/Switch';
 import { HelpCategory, UrgencyLevel, DraftRequest, HelpRequest } from '@/lib/data/types';
 import dynamic from 'next/dynamic';
 
@@ -96,6 +98,7 @@ export function NewRequestWizard() {
   const [urgency, setUrgency] = useState<UrgencyLevel>('critical');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [requiresHandoverPin, setRequiresHandoverPin] = useState(true);
 
   // Category specific fields
   // 1. Blood
@@ -243,6 +246,13 @@ export function NewRequestWizard() {
             if (draft.categoryFields.schemeName) setSchemeName(draft.categoryFields.schemeName);
             if (draft.categoryFields.animalType) setAnimalType(draft.categoryFields.animalType);
           }
+          if (draft.requiresHandoverPin !== undefined) {
+            setRequiresHandoverPin(draft.requiresHandoverPin);
+          } else if (draft.category) {
+            setRequiresHandoverPin(
+              draft.category === 'equipment' || draft.category === 'blood' || draft.category === 'medicine'
+            );
+          }
           setIsDraftRestored(true);
         }
       }
@@ -298,6 +308,7 @@ export function NewRequestWizard() {
         contactName,
         contactRole,
         phone,
+        requiresHandoverPin,
         savedAt: Date.now(),
       };
       localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
@@ -347,6 +358,7 @@ export function NewRequestWizard() {
     contactName,
     contactRole,
     phone,
+    requiresHandoverPin,
   ]);
 
   useEffect(() => {
@@ -369,11 +381,14 @@ export function NewRequestWizard() {
       setDescription('');
       setCustomCategoryLabel('');
       setTags([]);
+      setRequiresHandoverPin(
+        category === 'equipment' || category === 'blood' || category === 'medicine'
+      );
       toast.info('Draft discarded');
     } catch {}
   };
 
-  // Category switch with smart default urgency
+  // Category switch with smart default urgency and security PIN
   const handleSelectCategory = (cat: HelpCategory) => {
     setCategory(cat);
     const catObj = getCategoryByKey(cat);
@@ -387,6 +402,12 @@ export function NewRequestWizard() {
     } else {
       setUrgency('high');
       setNeededByTime('Within 2-4 hours');
+    }
+    // Intelligently set default requiresHandoverPin (equipment, blood, medicine -> true, others -> false)
+    if (cat === 'equipment' || cat === 'blood' || cat === 'medicine') {
+      setRequiresHandoverPin(true);
+    } else {
+      setRequiresHandoverPin(false);
     }
     setCustomCategoryError('');
   };
@@ -649,6 +670,7 @@ export function NewRequestWizard() {
         contactName,
         contactRole,
         phone,
+        requiresHandoverPin,
         bloodGroup: category === 'blood' ? bloodGroup : undefined,
         unitsNeeded: category === 'blood' ? unitsNeeded : undefined,
         hospitalName: category === 'blood' ? hospitalName : undefined,
@@ -686,6 +708,7 @@ export function NewRequestWizard() {
         contactName,
         contactRole,
         phone,
+        requiresHandoverPin,
         bloodGroup: category === 'blood' ? bloodGroup : undefined,
         unitsNeeded: category === 'blood' ? unitsNeeded : undefined,
         hospitalName: category === 'blood' ? hospitalName : undefined,
@@ -815,7 +838,7 @@ export function NewRequestWizard() {
           <span className="text-primary font-extrabold truncate max-w-[200px] text-right">
             {step === 1 && '1. Choose Category'}
             {step === 2 && '2. Specific Details'}
-            {step === 3 && '3. Urgency & Timing'}
+            {step === 3 && '3. Urgency, Timing & Security'}
             {step === 4 && '4. Location & Contact'}
             {step === 5 && '5. Review & Publish'}
           </span>
@@ -836,7 +859,7 @@ export function NewRequestWizard() {
           <span className="text-foreground font-bold">
             {step === 1 && 'Category'}
             {step === 2 && 'Details'}
-            {step === 3 && 'Urgency'}
+            {step === 3 && 'Urgency & Security'}
             {step === 4 && 'Location'}
             {step === 5 && 'Review'}
           </span>
@@ -1824,6 +1847,88 @@ export function NewRequestWizard() {
               />
             </div>
 
+            {/* Handover Verification PIN Security Crystal Card */}
+            <div
+              className={`relative overflow-hidden rounded-3xl p-5 border transition-all duration-300 group ${
+                requiresHandoverPin
+                  ? 'border-primary/40 bg-gradient-to-br from-primary/[0.08] via-card to-background shadow-[0_4px_24px_rgba(13,148,136,0.12)]'
+                  : 'border-border/80 bg-muted/30 hover:bg-muted/50 hover:border-border'
+              }`}
+            >
+              {/* Caustic ambient crystal sheen light sweep */}
+              <div
+                className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-primary/[0.04] dark:from-white/[0.04] dark:via-transparent dark:to-primary/[0.03] z-0"
+                aria-hidden="true"
+              />
+              <div className="crystal-card-sheen crystal-card-ambient-sheen" aria-hidden="true" />
+
+              {/* Ambient crystal corner refraction */}
+              <div
+                className="pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full blur-2xl transition-opacity duration-500 z-0 opacity-20 dark:opacity-25"
+                style={{
+                  background: 'radial-gradient(circle, #0d9488 0%, transparent 70%)',
+                }}
+                aria-hidden="true"
+              />
+
+              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                  <div
+                    className={`p-3 rounded-2xl shrink-0 transition-colors shadow-xs ${
+                      requiresHandoverPin
+                        ? 'bg-primary text-white ring-4 ring-primary/15 shadow-[0_2px_12px_rgba(13,148,136,0.3)]'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    <KeyRound className="h-5 w-5 notranslate" />
+                  </div>
+
+                  <div className="space-y-1.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <label
+                        htmlFor="handover-pin-toggle"
+                        className="text-sm font-bold text-foreground cursor-pointer select-none"
+                      >
+                        Require Handover Verification PIN
+                      </label>
+                      {requiresHandoverPin ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                          <ShieldCheck className="h-3 w-3 notranslate text-emerald-500" />
+                          PIN Protected
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground border border-border">
+                          Direct Handover
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Generates a matching 4-digit code for the requester and the volunteer to verify in person before item handover (recommended for wheelchairs, medical equipment, or high-value aids).
+                    </p>
+
+                    {requiresHandoverPin && (
+                      <div className="pt-1 flex items-center gap-2 text-[11px] font-semibold text-primary">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-primary/10 border border-primary/25 shadow-xs">
+                          <Lock className="h-3.5 w-3.5 notranslate text-primary" />
+                          4-Digit PIN will be generated upon creation
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="shrink-0 flex items-center sm:self-center pl-1 sm:pl-3">
+                  <Switch
+                    id="handover-pin-toggle"
+                    checked={requiresHandoverPin}
+                    onCheckedChange={setRequiresHandoverPin}
+                    aria-label="Require Handover Verification PIN"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="flex justify-between pt-4 border-t border-border/80">
               <button
                 type="button"
@@ -2442,6 +2547,27 @@ export function NewRequestWizard() {
                   <ShieldCheck className="h-4 w-4 text-emerald-500 notranslate" />
                   <span>Requester: {contactName}</span>
                 </div>
+              </div>
+
+              {/* Handover Verification PIN Summary Row */}
+              <div className="pt-2.5 border-t border-border/80 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="h-4 w-4 text-primary shrink-0 notranslate" />
+                  <span className="text-muted-foreground font-medium">Handover Verification:</span>
+                  <span className={`font-bold ${requiresHandoverPin ? 'text-primary' : 'text-foreground'}`}>
+                    {requiresHandoverPin ? 'Enabled (4-Digit PIN)' : 'Direct Handover (No PIN)'}
+                  </span>
+                </div>
+                {requiresHandoverPin ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 self-start sm:self-auto">
+                    <ShieldCheck className="h-3 w-3 text-emerald-500 notranslate" />
+                    Requester & Volunteer Code Handshake
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground border border-border self-start sm:self-auto">
+                    No Code Required
+                  </span>
+                )}
               </div>
             </div>
 

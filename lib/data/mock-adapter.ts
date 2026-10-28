@@ -136,6 +136,8 @@ class MockDataAdapter implements DataAdapter {
         if (options?.category && options.category !== 'all' && r.category !== options.category) return false;
         if (options?.urgency && options.urgency !== 'all' && r.urgency !== options.urgency) return false;
         if (options?.tag && options.tag.trim() && !(r.tags || []).some(t => t.toLowerCase() === options.tag!.trim().toLowerCase())) return false;
+        // Public open feed returns open and offered requests only
+        if (r.status !== 'open' && r.status !== 'offered') return false;
         return r.distanceKm <= radius;
       })
       .sort((a, b) => {
@@ -149,6 +151,15 @@ class MockDataAdapter implements DataAdapter {
 
   async createRequest(req: CreateRequestInput): Promise<{ success: boolean; id: string }> {
     const newId = `req-mock-${Date.now()}`;
+    const requiresPin =
+      req.requiresHandoverPin !== undefined
+        ? Boolean(req.requiresHandoverPin)
+        : (req.category === 'equipment' || req.category === 'books');
+
+    const handoverPin = requiresPin
+      ? (req.handoverPin || Math.floor(1000 + Math.random() * 9000).toString())
+      : undefined;
+
     const newReq: HelpRequest = {
       id: newId,
       requesterId: this.user.id,
@@ -189,12 +200,8 @@ class MockDataAdapter implements DataAdapter {
       createdAt: 'Just now',
       status: 'open',
       helpersOffered: 0,
-      requiresHandoverPin: req.requiresHandoverPin ?? (req.category === 'equipment' || req.category === 'books'),
-      handoverPin:
-        req.handoverPin ||
-        ((req.requiresHandoverPin ?? (req.category === 'equipment' || req.category === 'books'))
-          ? Math.floor(1000 + Math.random() * 9000).toString()
-          : undefined),
+      requiresHandoverPin: requiresPin,
+      handoverPin: handoverPin,
     };
     this.requests.unshift(newReq);
     return { success: true, id: newId };
@@ -206,7 +213,9 @@ class MockDataAdapter implements DataAdapter {
     return this.requests.filter(
       (r) =>
         (r.requesterId === targetUserId ||
-          (r.contactName && targetUserName && r.contactName.trim().toLowerCase() === targetUserName.trim().toLowerCase())) &&
+          (r.contactName && targetUserName && r.contactName.trim().toLowerCase() === targetUserName.trim().toLowerCase()) ||
+          r.acceptedHelperId === targetUserId ||
+          (r.acceptedHelperName && targetUserName && r.acceptedHelperName.trim().toLowerCase() === targetUserName.trim().toLowerCase())) &&
         r.status !== 'completed' &&
         r.status !== 'cancelled'
     );
@@ -260,31 +269,42 @@ class MockDataAdapter implements DataAdapter {
     return { success: true, offerId: newOffer.id };
   }
 
-  async acceptOffer(offerId: string): Promise<{ success: boolean }> {
+  async acceptOffer(offerId: string): Promise<{ success: boolean; error?: string }> {
     const offer = this.offers.find((o) => o.id === offerId);
-    if (offer) {
-      offer.status = 'accepted';
-      // Transitions other pending offers for this request to 'not_selected'
-      this.offers.forEach((o) => {
-        if (o.requestId === offer.requestId && o.id !== offerId && o.status === 'pending') {
-          o.status = 'not_selected';
-        }
-      });
-      const r = this.requests.find((x) => x.id === offer.requestId);
-      if (r) {
-        r.status = 'accepted';
-        r.acceptedHelperId = offer.helperId;
-        r.acceptedHelperName = offer.helperName;
-        r.acceptedHelperPhone = offer.helperPhone;
-        r.acceptedHelperRating = offer.helperRating;
-        r.acceptedHelperDistanceKm = offer.helperDistanceKm;
-        r.acceptedHelperEtaMinutes = offer.helperEtaMinutes;
-        if (r.requiresHandoverPin ?? (r.category === 'equipment' || r.category === 'books')) {
-          r.requiresHandoverPin = true;
-          if (!r.handoverPin) {
-            r.handoverPin = Math.floor(1000 + Math.random() * 9000).toString();
-          }
-        }
+    if (!offer) return { success: false, error: 'Offer not found' };
+    const r = this.requests.find((x) => x.id === offer.requestId);
+    if (!r) return { success: false, error: 'Request not found' };
+
+    // Requester cannot accept own request or make aid offers on own request
+    if (
+      offer.helperId === r.requesterId ||
+      (r.contactName && offer.helperName && r.contactName.trim().toLowerCase() === offer.helperName.trim().toLowerCase())
+    ) {
+      return { success: false, error: 'Requester cannot accept own request or make aid offers on own request' };
+    }
+
+    offer.status = 'accepted';
+    // Transitions other pending offers for this request to 'not_selected'
+    this.offers.forEach((o) => {
+      if (o.requestId === offer.requestId && o.id !== offerId && o.status === 'pending') {
+        o.status = 'not_selected';
+      }
+    });
+    r.status = 'accepted';
+    r.acceptedHelperId = offer.helperId;
+    r.acceptedHelperName = offer.helperName;
+    r.acceptedHelperPhone = offer.helperPhone;
+    r.acceptedHelperRating = offer.helperRating;
+    r.acceptedHelperDistanceKm = offer.helperDistanceKm;
+    r.acceptedHelperEtaMinutes = offer.helperEtaMinutes;
+    const requiresPin =
+      r.requiresHandoverPin !== undefined
+        ? Boolean(r.requiresHandoverPin)
+        : (r.category === 'equipment' || r.category === 'books');
+    if (requiresPin) {
+      r.requiresHandoverPin = true;
+      if (!r.handoverPin) {
+        r.handoverPin = Math.floor(1000 + Math.random() * 9000).toString();
       }
     }
     return { success: true };
@@ -368,10 +388,18 @@ class MockDataAdapter implements DataAdapter {
     const r = this.requests.find((x) => x.id === requestId);
     if (!r) return { success: false, error: 'Request not found' };
 
-    // If request requires PIN, verify it
-    if (r.requiresHandoverPin) {
+    const requiresPin =
+      r.requiresHandoverPin !== undefined
+        ? Boolean(r.requiresHandoverPin)
+        : (r.category === 'equipment' || r.category === 'books');
+
+    // Only verify when requiresHandoverPin !== false and requiresPin is true
+    if (r.requiresHandoverPin !== false && requiresPin) {
       if (!r.handoverPin || r.handoverPin !== pin.trim()) {
-        return { success: false, error: 'Incorrect 4-digit PIN. Please ask the requester for the PIN on their screen.' };
+        return {
+          success: false,
+          error: 'Incorrect 4-digit PIN. Please ask the requester for the PIN on their screen.',
+        };
       }
     }
 

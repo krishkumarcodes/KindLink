@@ -125,8 +125,17 @@ export interface HelpRequest {
   helpersOffered?: number;
 
   // Handover confirmation PIN fields
+  /**
+   * 4-digit secure handover PIN. Shared only with the requester to give to helper upon physical exchange.
+   */
   handoverPin?: string;
+  /**
+   * Whether this request requires handover PIN verification before transitioning to completed.
+   */
   requiresHandoverPin?: boolean;
+  /**
+   * Timestamp when the handover PIN was successfully verified and exchange completed.
+   */
   handoverConfirmedAt?: string;
 
   // Matched helper & live transit fields
@@ -293,7 +302,60 @@ export interface DraftRequest {
   contactName: string;
   contactRole: string;
   phone: string;
+  requiresHandoverPin?: boolean;
+  handoverPin?: string;
   savedAt: number;
+}
+
+export interface CreateRequestInput {
+  category: HelpCategory;
+  customCategoryLabel?: string;
+  tags?: string[];
+  categoryFields?: Record<string, any>;
+  title: string;
+  description: string;
+  urgency: UrgencyLevel;
+  latitude: number;
+  longitude: number;
+  addressText: string;
+
+  // Dynamic category fields
+  bloodGroup?: string;
+  unitsNeeded?: number;
+  hospitalName?: string;
+  neededByTime?: string;
+
+  itemType?: string;
+  itemDuration?: string;
+
+  elderlyAidType?: string;
+  elderlyDuration?: string;
+  scheduledTime?: string;
+
+  booksClassSubject?: string;
+  bookTitle?: string;
+  bookCondition?: string;
+
+  pickupAddress?: string;
+  dropAddress?: string;
+  passengerCount?: number;
+  hasLuggage?: boolean;
+  wheelchairAccessible?: boolean;
+
+  patientAge?: number;
+  contactName?: string;
+  contactPhone?: string;
+  contactRole?: string;
+
+  // Handover confirmation PIN
+  /**
+   * Whether this request requires a 4-digit handover verification PIN.
+   */
+  requiresHandoverPin?: boolean;
+  /**
+   * Optional pre-specified 4-digit PIN (otherwise generated automatically if requiresHandoverPin is true).
+   */
+  handoverPin?: string;
 }
 
 export interface SosEvent {

@@ -75,7 +75,7 @@ interface KindLinkState {
   unreadNotificationCount: number;
   currentView: AppView;
   selectedRequestId: string | null;
-  activeFeedTab: 'urgent' | 'nearest' | 'newest' | 'my_requests';
+  activeFeedTab: 'urgent' | 'nearest' | 'newest' | 'my_requests' | 'in_progress' | 'completed';
   filterCategory: HelpCategory | 'all';
   filterUrgency: UrgencyLevel | 'all';
   filterRadius: number; // km
@@ -95,7 +95,7 @@ interface KindLinkState {
   setPreselectedCategory: (cat: HelpCategory | null) => void;
   startNewRequestWithCategory: (cat: HelpCategory) => void;
   setSelectedRequestId: (id: string | null) => void;
-  setActiveFeedTab: (tab: 'urgent' | 'nearest' | 'newest' | 'my_requests') => void;
+  setActiveFeedTab: (tab: 'urgent' | 'nearest' | 'newest' | 'my_requests' | 'in_progress' | 'completed') => void;
   setFilterCategory: (cat: HelpCategory | 'all') => void;
   setFilterUrgency: (urg: UrgencyLevel | 'all') => void;
   setFilterRadius: (radius: number) => void;
@@ -109,6 +109,11 @@ interface KindLinkState {
   fetchLiveStats: () => Promise<void>;
   fetchLiveProfile: () => Promise<void>;
   fetchLiveNotifications: () => Promise<void>;
+
+  // Request Feed & Lifecycle state selectors
+  getOpenCommunityRequests: () => HelpRequest[];
+  getInProgressRequests: () => HelpRequest[];
+  getCompletedRequests: () => HelpRequest[];
 
   profileActiveTab?: 'overview' | 'activity' | 'badges' | 'impact' | 'verification' | 'settings';
   setProfileActiveTab: (tab: 'overview' | 'activity' | 'badges' | 'impact' | 'verification' | 'settings') => void;
@@ -286,6 +291,25 @@ export const useKindLinkStore = create<KindLinkState>()(
         }
       },
 
+      getOpenCommunityRequests: () => {
+        return get().requests.filter(
+          (r) => r.status === 'open' || (r.status === 'offered' && !r.acceptedHelperId)
+        );
+      },
+
+      getInProgressRequests: () => {
+        return get().requests.filter(
+          (r) =>
+            r.status === 'accepted' ||
+            r.status === 'on_the_way' ||
+            r.status === 'arrived'
+        );
+      },
+
+      getCompletedRequests: () => {
+        return get().requests.filter((r) => r.status === 'completed');
+      },
+
       addRequest: async (newReqData) => {
         const { userCoords, fetchLiveRequests, fetchLiveStats } = get();
         try {
@@ -318,6 +342,11 @@ export const useKindLinkStore = create<KindLinkState>()(
             contactName: newReqData.contactName,
             contactPhone: newReqData.phone,
             contactRole: newReqData.contactRole,
+            requiresHandoverPin: newReqData.requiresHandoverPin,
+            handoverPin: newReqData.handoverPin,
+            customCategoryLabel: newReqData.customCategoryLabel,
+            tags: newReqData.tags,
+            categoryFields: newReqData.categoryFields,
           });
 
           if (res.success) {
@@ -338,6 +367,15 @@ export const useKindLinkStore = create<KindLinkState>()(
             newReqData.longitude
           );
 
+          const requiresPin =
+            newReqData.requiresHandoverPin !== undefined
+              ? Boolean(newReqData.requiresHandoverPin)
+              : (newReqData.category === 'equipment' || newReqData.category === 'books');
+
+          const pin = requiresPin
+            ? (newReqData.handoverPin || Math.floor(1000 + Math.random() * 9000).toString())
+            : undefined;
+
           const newRequest: HelpRequest = {
             ...newReqData,
             id: `req-${Date.now()}`,
@@ -345,6 +383,8 @@ export const useKindLinkStore = create<KindLinkState>()(
             createdAt: 'Just now',
             status: 'open',
             helpersOffered: 0,
+            requiresHandoverPin: requiresPin,
+            handoverPin: pin,
           };
 
           set((state) => ({
@@ -714,3 +754,68 @@ export const useKindLinkStore = create<KindLinkState>()(
     }
   )
 );
+
+// ==========================================
+// Request Feed & Lifecycle State Selectors
+// ==========================================
+
+/**
+ * Filter helper for open community requests:
+ * Requests where status is 'open', or 'offered' without an accepted helper yet.
+ */
+export const filterOpenCommunityRequests = (requests: HelpRequest[]): HelpRequest[] =>
+  requests.filter(
+    (r) => r.status === 'open' || (r.status === 'offered' && !r.acceptedHelperId)
+  );
+
+/**
+ * Filter helper for in-progress requests:
+ * Requests where a volunteer is 'accepted', 'on_the_way', or 'arrived'.
+ */
+export const filterInProgressRequests = (requests: HelpRequest[]): HelpRequest[] =>
+  requests.filter(
+    (r) =>
+      r.status === 'accepted' ||
+      r.status === 'on_the_way' ||
+      r.status === 'arrived'
+  );
+
+/**
+ * Filter helper for completed requests:
+ * Requests that reached 'completed' status.
+ */
+export const filterCompletedRequests = (requests: HelpRequest[]): HelpRequest[] =>
+  requests.filter((r) => r.status === 'completed');
+
+/**
+ * Zustand selector for open community requests
+ */
+export const selectOpenCommunityRequests = (state: { requests: HelpRequest[] }): HelpRequest[] =>
+  filterOpenCommunityRequests(state.requests);
+
+/**
+ * Zustand selector for in-progress requests
+ */
+export const selectInProgressRequests = (state: { requests: HelpRequest[] }): HelpRequest[] =>
+  filterInProgressRequests(state.requests);
+
+/**
+ * Zustand selector for completed requests
+ */
+export const selectCompletedRequests = (state: { requests: HelpRequest[] }): HelpRequest[] =>
+  filterCompletedRequests(state.requests);
+
+/**
+ * React hook selector returning open community requests
+ */
+export const useOpenCommunityRequests = () => useKindLinkStore(selectOpenCommunityRequests);
+
+/**
+ * React hook selector returning in-progress requests
+ */
+export const useInProgressRequests = () => useKindLinkStore(selectInProgressRequests);
+
+/**
+ * React hook selector returning completed requests
+ */
+export const useCompletedRequests = () => useKindLinkStore(selectCompletedRequests);

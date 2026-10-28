@@ -67,6 +67,7 @@ import { OffersReceivedSection } from './OffersReceivedSection';
 import { StickyActionBar } from './StickyActionBar';
 import { EndorsementChip } from './EndorsementChip';
 import { HandoverPinModal } from './HandoverPinModal';
+import { HandoverCodeDisplayModal } from './HandoverCodeDisplayModal';
 import { useSharedTicker } from '@/lib/utils/useSharedTicker';
 
 const EmergencyStoryCardModal = dynamic(
@@ -217,6 +218,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
   const [descExpanded, setDescExpanded] = useState(false);
   const [isEndorsing, setIsEndorsing] = useState(false);
   const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [codeDisplayModalOpen, setCodeDisplayModalOpen] = useState(false);
 
   const isOrgAccount = Boolean(
     userProfile?.isOrganization || userProfile?.organizationVerified
@@ -652,7 +654,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
   // Transition Lifecycle Status
   const handleAdvanceStatus = async (newStatus: RequestLifecycleStatus) => {
     // If equipment/books requires handover confirmation PIN and viewer is helper, prompt PIN modal
-    if (newStatus === 'completed' && request.requiresHandoverPin && !isRequester) {
+    if (newStatus === 'completed' && request.requiresHandoverPin !== false && !isRequester) {
       setPinModalOpen(true);
       return;
     }
@@ -1820,10 +1822,10 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
             )}
 
             {/* =====================================================================
-                HANDOVER CONFIRMATION PIN SECURITY CARD
+                HANDOVER CONFIRMATION PIN SECURITY CARD & COMPLETION ACTIONS
                ===================================================================== */}
-            {request.requiresHandoverPin && (
-              <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent border-2 border-indigo-500/30 shadow-soft space-y-3.5">
+            {request.requiresHandoverPin !== false ? (
+              <div className="p-4 sm:p-5 rounded-3xl bg-card border-2 border-indigo-500/30 shadow-soft space-y-3.5 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-xs">
@@ -1871,36 +1873,89 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
                         ))}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const pinToCopy = String(request.handoverPin || '4821').padStart(4, '0').slice(0, 4);
-                        if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-                          navigator.clipboard.writeText(pinToCopy).catch(() => {});
-                        }
-                        toast.success('Handover PIN copied to clipboard');
-                      }}
-                      className="px-3.5 py-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition flex items-center gap-1.5 touch-target"
-                    >
-                      <Copy className="h-3.5 w-3.5 notranslate" />
-                      <span>Copy PIN</span>
-                    </button>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={() => setCodeDisplayModalOpen(true)}
+                        className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shrink-0 shadow-xs transition active:scale-95 touch-target flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <ShieldCheck className="h-4 w-4 notranslate" />
+                        <span>Show Code</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const pinToCopy = String(request.handoverPin || '4821').padStart(4, '0').slice(0, 4);
+                          if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                            navigator.clipboard.writeText(pinToCopy).catch(() => {});
+                          }
+                          toast.success('Handover PIN copied to clipboard');
+                        }}
+                        className="px-3.5 py-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition flex items-center justify-center gap-1.5 touch-target cursor-pointer"
+                      >
+                        <Copy className="h-3.5 w-3.5 notranslate" />
+                        <span>Copy PIN</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <div className="p-3 rounded-xl bg-card/80 border border-border/60 text-xs text-muted-foreground flex items-center justify-between gap-2">
-                    <span>Physical item handover is secured with a 4-digit security code.</span>
+                  <div className="p-3.5 rounded-2xl bg-card border border-border/80 text-xs text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <span className="leading-relaxed">
+                      Physical item handover is secured with a 4-digit security code. Ask the requester to tap &quot;Show Code&quot; when handing over the item.
+                    </span>
                     {isAcceptedHelper && currentStatus !== 'completed' && (
                       <button
                         type="button"
                         onClick={() => setPinModalOpen(true)}
-                        className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shrink-0 shadow-xs transition active:scale-95 touch-target"
+                        className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shrink-0 shadow-xs transition active:scale-95 touch-target flex items-center justify-center gap-1.5 cursor-pointer"
                       >
-                        Enter PIN
+                        <KeyRound className="h-3.5 w-3.5 notranslate" />
+                        <span>Verify Handover PIN</span>
                       </button>
                     )}
                   </div>
                 )}
               </div>
+            ) : (
+              /* If request.requiresHandoverPin === false:
+                 Show 1-tap direct completion button ("Confirm Delivery & Complete") for owner / accepted helper */
+              (isRequester || isAcceptedHelper) && currentStatus !== 'completed' && (
+                <div className="p-4 sm:p-5 rounded-3xl bg-card border-2 border-emerald-500/30 shadow-soft space-y-3.5 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
+                      <CheckCircle2 className="h-5 w-5 notranslate" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-black text-foreground">
+                        Confirm Delivery & Complete
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">
+                        This request does not require a verification code. Confirm completion directly.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAdvanceStatus('completed')}
+                    disabled={Boolean(actionInProgress)}
+                    className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2 touch-target cursor-pointer disabled:opacity-50"
+                  >
+                    {actionInProgress === 'completed' ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin notranslate" />
+                        <span>Completing request...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 notranslate" />
+                        <span>Confirm Delivery & Complete</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )
             )}
 
             {/* =====================================================================
@@ -2262,7 +2317,7 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
       )}
 
       {/* =====================================================================
-          HANDOVER PIN VERIFICATION MODAL
+          HANDOVER PIN VERIFICATION MODAL (Volunteer)
          ===================================================================== */}
       <HandoverPinModal
         open={pinModalOpen}
@@ -2275,6 +2330,19 @@ export function RequestDetailModal({ request, open, onClose }: RequestDetailModa
           setPinModalOpen(false);
           setRatingModalOpen(true);
         }}
+      />
+
+      {/* =====================================================================
+          HANDOVER PIN CODE DISPLAY MODAL (Requester)
+         ===================================================================== */}
+      <HandoverCodeDisplayModal
+        open={codeDisplayModalOpen}
+        onClose={() => setCodeDisplayModalOpen(false)}
+        pin={request.handoverPin || '4821'}
+        requestTitle={request.title}
+        category={request.category}
+        isCompleted={currentStatus === 'completed'}
+        onOpenRating={() => setRatingModalOpen(true)}
       />
     </OverlayPortal>
   );

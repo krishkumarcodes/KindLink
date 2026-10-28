@@ -333,13 +333,18 @@ class SupabaseDataAdapter implements DataAdapter {
     if (req.contactRole) details.contact_role = req.contactRole;
 
     const requiresPin =
-      req.requiresHandoverPin ?? (req.category === 'equipment' || req.category === 'books');
-    const pin =
-      req.handoverPin ||
-      (requiresPin ? Math.floor(1000 + Math.random() * 9000).toString() : undefined);
-    if (requiresPin) {
-      details.requires_handover_pin = true;
-      if (pin) details.handover_pin = pin;
+      req.requiresHandoverPin !== undefined
+        ? Boolean(req.requiresHandoverPin)
+        : (req.category === 'equipment' || req.category === 'books');
+    const pin = requiresPin
+      ? (req.handoverPin || Math.floor(1000 + Math.random() * 9000).toString())
+      : undefined;
+
+    details.requires_handover_pin = requiresPin;
+    if (requiresPin && pin) {
+      details.handover_pin = pin;
+    } else {
+      details.handover_pin = null;
     }
 
     const dbCategory = req.category === 'elderly' ? 'elderly_help' : req.category;
@@ -625,16 +630,21 @@ class SupabaseDataAdapter implements DataAdapter {
     }
 
     const requiresPin =
-      reqData.requires_handover_pin ??
-      reqData.details?.requires_handover_pin ??
-      (reqData.category === 'equipment' || reqData.category === 'books');
+      reqData.requires_handover_pin !== undefined && reqData.requires_handover_pin !== null
+        ? Boolean(reqData.requires_handover_pin)
+        : (reqData.details?.requires_handover_pin !== undefined && reqData.details?.requires_handover_pin !== null
+            ? Boolean(reqData.details.requires_handover_pin)
+            : (reqData.category === 'equipment' || reqData.category === 'books'));
     const expectedPin = reqData.handover_pin ?? reqData.details?.handover_pin;
 
-    if (requiresPin && expectedPin && expectedPin !== pin.trim()) {
-      return {
-        success: false,
-        error: 'Incorrect 4-digit PIN. Please ask the requester for the PIN on their screen.',
-      };
+    // Only verify when requiresHandoverPin !== false and requiresPin is true
+    if (requiresPin !== false && requiresPin) {
+      if (!expectedPin || expectedPin.trim() !== pin.trim()) {
+        return {
+          success: false,
+          error: 'Incorrect 4-digit PIN. Please ask the requester for the PIN on their screen.',
+        };
+      }
     }
 
     const now = new Date().toISOString();

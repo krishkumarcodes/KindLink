@@ -12,6 +12,8 @@ import {
   XCircle,
   CheckCircle2,
   Share2,
+  HeartHandshake,
+  Radio,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { HelpRequest, TravelMode } from '@/lib/data/types';
@@ -70,6 +72,73 @@ export function RequestCard({
         return 'bg-gradient-to-r from-blue-500/15 to-sky-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30 shadow-xs';
       default:
         return 'bg-gradient-to-r from-slate-500/15 to-zinc-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30 shadow-xs';
+    }
+  };
+
+  const renderStatusBadge = () => {
+    switch (request.status) {
+      case 'completed':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-xs">
+            <CheckCircle2 className="h-3 w-3 notranslate" />
+            <span>Completed</span>
+          </span>
+        );
+      case 'arrived':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30 shadow-xs animate-pulse">
+            <MapPin className="h-3 w-3 notranslate" />
+            <span>Arrived</span>
+          </span>
+        );
+      case 'on_the_way':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/30 shadow-xs">
+            <Navigation className="h-3 w-3 notranslate" />
+            <span>On the way</span>
+          </span>
+        );
+      case 'accepted':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 shadow-xs">
+            <Clock className="h-3 w-3 notranslate" />
+            <span>In Progress</span>
+          </span>
+        );
+      case 'offered': {
+        const offersCount = request.helpersOffered || 1;
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 shadow-xs">
+            <HeartHandshake className="h-3 w-3 notranslate" />
+            <span>{offersCount} {offersCount === 1 ? 'offer' : 'offers'}</span>
+          </span>
+        );
+      }
+      case 'cancelled':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border border-zinc-500/25 shadow-xs">
+            <XCircle className="h-3 w-3 notranslate" />
+            <span>Cancelled</span>
+          </span>
+        );
+      case 'open':
+      default: {
+        if (request.helpersOffered && request.helpersOffered > 0) {
+          const count = request.helpersOffered;
+          return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 shadow-xs">
+              <HeartHandshake className="h-3 w-3 notranslate" />
+              <span>{count} {count === 1 ? 'offer' : 'offers'}</span>
+            </span>
+          );
+        }
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/25 shadow-xs">
+            <Radio className="h-3 w-3 notranslate" />
+            <span>Open</span>
+          </span>
+        );
+      }
     }
   };
 
@@ -155,6 +224,7 @@ export function RequestCard({
               <AlertTriangle className="h-3 w-3 notranslate" />
               <span>{request.urgency}</span>
             </span>
+            {renderStatusBadge()}
           </div>
 
           {/* Header Actions: Owner Badge & Story Card Share */}
@@ -305,21 +375,62 @@ export function RequestCard({
               </SecondaryButton>
             )
           ) : (
-            /* Volunteer Help button: category-coloured primary button (44px, radius 16, category icon on left, single line) */
-            <PrimaryHelpButton
-              category={request.category}
-              size="card"
-              label="I can help"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onHelp) {
-                  onHelp(request);
-                } else {
-                  onSelect(request);
-                }
-              }}
-              className="w-full"
-            />
+            /* Non-owner actions */
+            request.status === 'completed' ? (
+              <SecondaryButton
+                size="card"
+                disabled
+                className="w-full text-emerald-600 dark:text-emerald-400 font-bold"
+              >
+                Completed
+              </SecondaryButton>
+            ) : request.status === 'cancelled' ? (
+              <SecondaryButton
+                size="card"
+                disabled
+                className="w-full"
+              >
+                Cancelled
+              </SecondaryButton>
+            ) : (request.status === 'accepted' || request.status === 'on_the_way' || request.status === 'arrived') ? (
+              userProfile?.id && request.acceptedHelperId === userProfile.id ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect(request);
+                  }}
+                  className="relative overflow-hidden w-full h-[44px] min-h-[44px] rounded-[16px] bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 hover:brightness-105 text-white font-bold text-xs shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_4px_14px_rgba(0,0,0,0.12)] active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 touch-target"
+                >
+                  <Navigation className="h-4 w-4 notranslate relative z-10" />
+                  <span className="relative z-10">Active Transit</span>
+                </button>
+              ) : (
+                <SecondaryButton
+                  size="card"
+                  disabled
+                  className="w-full text-muted-foreground font-semibold"
+                >
+                  In Progress (Taken)
+                </SecondaryButton>
+              )
+            ) : (
+              /* Volunteer Help button: category-coloured primary button (44px, radius 16, category icon on left, single line) */
+              <PrimaryHelpButton
+                category={request.category}
+                size="card"
+                label="I can help"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onHelp) {
+                    onHelp(request);
+                  } else {
+                    onSelect(request);
+                  }
+                }}
+                className="w-full"
+              />
+            )
           )}
         </div>
       </div>

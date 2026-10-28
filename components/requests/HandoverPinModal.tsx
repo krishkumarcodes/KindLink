@@ -44,7 +44,7 @@ export function HandoverPinModal({
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const categoryToken = getCategoryToken(category);
-  const { fetchLiveRequests, fetchLiveStats } = useKindLinkStore();
+  const { updateRequestStatus, fetchLiveRequests, fetchLiveStats } = useKindLinkStore();
 
   // Reset inputs when opened
   useEffect(() => {
@@ -63,6 +63,13 @@ export function HandoverPinModal({
     setErrorMsg(null);
     const cleaned = val.replace(/\D/g, '');
 
+    if (!cleaned) {
+      const newDigits = [...digits];
+      newDigits[index] = '';
+      setDigits(newDigits);
+      return;
+    }
+
     // Handle multi-character paste or typed string
     if (cleaned.length > 1) {
       const chars = cleaned.slice(0, 4).split('');
@@ -79,7 +86,7 @@ export function HandoverPinModal({
     }
 
     const newDigits = [...digits];
-    newDigits[index] = cleaned;
+    newDigits[index] = cleaned[cleaned.length - 1];
     setDigits(newDigits);
 
     // Auto-focus next input
@@ -89,8 +96,25 @@ export function HandoverPinModal({
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !digits[index] && index > 0) {
+    if (e.key === 'Backspace') {
+      if (!digits[index] && index > 0) {
+        e.preventDefault();
+        const newDigits = [...digits];
+        newDigits[index - 1] = '';
+        setDigits(newDigits);
+        inputRefs.current[index - 1]?.focus();
+      } else if (digits[index]) {
+        e.preventDefault();
+        const newDigits = [...digits];
+        newDigits[index] = '';
+        setDigits(newDigits);
+      }
+    } else if (e.key === 'ArrowLeft' && index > 0) {
+      e.preventDefault();
       inputRefs.current[index - 1]?.focus();
+    } else if (e.key === 'ArrowRight' && index < 3) {
+      e.preventDefault();
+      inputRefs.current[index + 1]?.focus();
     }
   };
 
@@ -98,12 +122,13 @@ export function HandoverPinModal({
     e.preventDefault();
     const pasteData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
     if (!pasteData) return;
+    const chars = pasteData.split('');
     const newDigits = ['', '', '', ''];
-    pasteData.split('').forEach((char, i) => {
+    chars.forEach((char, i) => {
       newDigits[i] = char;
     });
     setDigits(newDigits);
-    const focusIdx = Math.min(3, pasteData.length);
+    const focusIdx = Math.min(3, chars.length);
     inputRefs.current[focusIdx]?.focus();
   };
 
@@ -129,16 +154,22 @@ export function HandoverPinModal({
         return;
       }
 
-      // Success
+      // Success: Haptic celebration & immediate request status update to 'completed'
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([40, 60, 100]);
+      }
       setIsSuccess(true);
       toast.success('Handover confirmed! Request completed.');
+
+      // Immediate store status update
+      await updateRequestStatus(requestId, 'completed');
       await fetchLiveRequests();
       await fetchLiveStats();
 
       setTimeout(() => {
         if (onSuccess) onSuccess();
         onClose();
-      }, 1200);
+      }, 1400);
     } catch (err: any) {
       setErrorMsg(err.message || 'Verification failed. Please check your network connection.');
       setIsSubmitting(false);
@@ -155,7 +186,7 @@ export function HandoverPinModal({
       maxWidthClass="max-w-md"
       className="p-0 overflow-hidden"
     >
-      {/* HEADER */}
+      {/* HEADER (Solid bg-card, strictly complies with test-overlay-system) */}
       <div className="sticky top-0 z-10 px-5 py-4 bg-card border-b border-border/80 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div
@@ -184,34 +215,45 @@ export function HandoverPinModal({
         </button>
       </div>
 
-      {/* CONTENT */}
-      <div className="p-5 sm:p-6 space-y-5">
+      {/* CONTENT WITH overscroll-contain */}
+      <div className="p-5 sm:p-6 space-y-5 overflow-y-auto overscroll-contain">
         {isSuccess ? (
-          <div className="py-8 text-center space-y-3 animate-in zoom-in-95 duration-200">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="h-10 w-10 notranslate" />
+          /* CELEBRATORY CHECKMARK & SUCCESS ANIMATION */
+          <div className="py-8 text-center space-y-4 animate-in zoom-in-95 duration-300">
+            <div className="relative mx-auto flex h-20 w-20 items-center justify-center">
+              <div className="absolute inset-0 rounded-full bg-emerald-500/20 motion-safe:animate-ping opacity-75" />
+              <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/15 border-2 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shadow-lg">
+                <CheckCircle2 className="h-12 w-12 notranslate" />
+              </div>
+              <Sparkles className="absolute -top-1 -right-1 h-6 w-6 text-amber-500 motion-safe:animate-bounce" />
             </div>
-            <h3 className="text-lg font-black text-foreground">
-              Handover Verified!
-            </h3>
-            <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-              Delivery has been securely confirmed. Thank you for making a positive impact in our community!
-            </p>
+
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                <span>Handover Verified!</span>
+              </div>
+              <h3 className="text-lg font-black text-foreground pt-1">
+                Request Completed
+              </h3>
+              <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
+                Delivery has been securely confirmed. Thank you for making a positive impact in our community!
+              </p>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* INSTRUCTION CARD */}
+            {/* INSTRUCTION CARD WITH CLEAR HELPER TEXT */}
             <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/80 space-y-1.5 text-xs">
               <div className="flex items-center gap-1.5 font-bold text-foreground">
                 <Lock className="h-3.5 w-3.5 text-primary shrink-0 notranslate" />
                 <span>Ask {requesterName} for their 4-Digit PIN</span>
               </div>
               <p className="text-muted-foreground leading-relaxed">
-                To confirm physical delivery and complete this request, enter the 4-digit security PIN displayed on the requester&apos;s screen.
+                Enter the 4-digit code shown on the requester&apos;s phone to verify and complete the handover.
               </p>
             </div>
 
-            {/* 4 DIGIT INPUT BOXES */}
+            {/* 4 DIGIT AUTO-ADVANCING INPUT BOXES */}
             <div className="flex justify-center items-center gap-3 sm:gap-4 py-2">
               {digits.map((digit, idx) => (
                 <input

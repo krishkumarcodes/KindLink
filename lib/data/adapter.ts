@@ -8,53 +8,13 @@ import {
   RequestLifecycleStatus,
   CommunityLiveStats,
   SosEvent,
+  CreateRequestInput,
 } from './types';
 
-export type { CommunityLiveStats, SosEvent };
+export type { CommunityLiveStats, SosEvent, CreateRequestInput };
 
-export interface CreateRequestInput {
-  category: HelpCategory;
-  customCategoryLabel?: string;
-  tags?: string[];
-  categoryFields?: Record<string, any>;
-  title: string;
-  description: string;
-  urgency: UrgencyLevel;
-  latitude: number;
-  longitude: number;
-  addressText: string;
-
-  // Dynamic category fields
-  bloodGroup?: string;
-  unitsNeeded?: number;
-  hospitalName?: string;
-  neededByTime?: string;
-
-  itemType?: string;
-  itemDuration?: string;
-
-  elderlyAidType?: string;
-  elderlyDuration?: string;
-  scheduledTime?: string;
-
-  booksClassSubject?: string;
-  bookTitle?: string;
-  bookCondition?: string;
-
-  pickupAddress?: string;
-  dropAddress?: string;
-  passengerCount?: number;
-  hasLuggage?: boolean;
-  wheelchairAccessible?: boolean;
-
-  patientAge?: number;
-  contactName?: string;
-  contactPhone?: string;
-  contactRole?: string;
-
-  // Handover confirmation PIN
+export interface HandoverPinOptions {
   requiresHandoverPin?: boolean;
-  handoverPin?: string;
 }
 
 export interface TransitLocation {
@@ -107,6 +67,10 @@ export interface DataAdapter {
     options: MapBoundsOptions
   ): Promise<MapBoundsItem[]>;
 
+  /**
+   * Create and post a new help request to the community.
+   * If requiresHandoverPin is true, a 4-digit PIN is generated if not provided.
+   */
   createRequest(request: CreateRequestInput): Promise<{ success: boolean; id: string }>;
 
   getOffers(requestId: string): Promise<VolunteerOffer[]>;
@@ -128,6 +92,10 @@ export interface DataAdapter {
 
   completeRequest(requestId: string): Promise<{ success: boolean; error?: string }>;
 
+  /**
+   * Verify the 4-digit handover confirmation PIN.
+   * Checks PIN if requiresHandoverPin !== false. Transitions request status to 'completed'.
+   */
   verifyHandoverPin(
     requestId: string,
     pin: string
